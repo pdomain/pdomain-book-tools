@@ -10,7 +10,7 @@ authors = [
     { name = "CT", email = "concavetrillion@gmail.com" }
 ]
 readme = "README.md"
-license = { text = "0BSD" }
+license = { text = "Unlicense" }
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "opencv-python>=4.11.0",
