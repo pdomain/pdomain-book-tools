@@ -21,6 +21,58 @@ class BoundingBox:
     top_left: Point
     bottom_right: Point
 
+    @property
+    def minX(self) -> float:
+        return self.top_left.x
+
+    @property
+    def minY(self) -> float:
+        return self.top_left.y
+
+    @property
+    def maxX(self) -> float:
+        return self.bottom_right.x
+
+    @property
+    def maxY(self) -> float:
+        return self.bottom_right.y
+
+    @property
+    def lrtb(self) -> Tuple[float, float, float, float]:
+        return self.minX, self.minY, self.maxX, self.maxY
+
+    @property
+    def width(self) -> float:
+        """Get width of the box"""
+        return self.bottom_right.x - self.top_left.x
+
+    @property
+    def height(self) -> float:
+        """Get height of the box"""
+        return self.bottom_right.y - self.top_left.y
+
+    @property
+    def size(self) -> Tuple[float, float]:
+        """Get (width, height) of the box"""
+        return self.width, self.height
+
+    @property
+    def lrwh(self) -> Tuple[float, float, float, float]:
+        return self.minX, self.minY, self.width, self.height
+
+    @property
+    def area(self) -> float:
+        """Get area of the box"""
+        return self.width * self.height
+
+    @property
+    def center(self) -> Point:
+        """Get center point of the box"""
+        return Point(
+            (self.top_left.x + self.bottom_right.x) / 2,
+            (self.top_left.y + self.bottom_right.y) / 2,
+        )
+
     # Initialization Checks
     def __post_init__(self):
         """Validate the bounding box coordinates"""
@@ -183,14 +235,6 @@ class BoundingBox:
                 min(self.bottom_right.y, other.bottom_right.y),
             ),
         )
-
-    def width(self) -> float:
-        """Get width of the box"""
-        return self.bottom_right.x - self.top_left.x
-
-    def height(self) -> float:
-        """Get height of the box"""
-        return self.bottom_right.y - self.top_left.y
 
     @classmethod
     def union(cls, bounding_boxes: Sequence["BoundingBox"]) -> "BoundingBox":
