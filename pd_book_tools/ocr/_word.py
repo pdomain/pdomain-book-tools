@@ -33,6 +33,18 @@ class Word:
     def text(self, value: str) -> None:
         self._text = value
 
+    def scale(self, width, height):
+        """
+        Return new word with scaled bounding box
+        to absolute pixel coordinates
+        """
+        return Word(
+            text=self.text,
+            bounding_box=self.bounding_box.scale(width, height),
+            ocr_confidence=self.ocr_confidence,
+            word_labels=self.word_labels,
+        )
+
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary"""
         return {

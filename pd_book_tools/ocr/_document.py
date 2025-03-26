@@ -53,6 +53,14 @@ class Document:
                 )
         self._pages = SortedList(value, key=lambda page: page.page_index)
 
+    def scale(self, width: int, height: int) -> "Document":
+        """Return new document with scaled bounding boxes to absolute pixel coordinates"""
+        return Document(
+            source_lib=self.source_lib,
+            source_path=self.source_path,
+            pages=[page.scale(width, height) for page in self.pages],
+        )
+
     def to_dict(self) -> Dict:
         """Convert to a JSON-serializable dictionary"""
         return {
@@ -61,15 +69,13 @@ class Document:
             "pages": [page.to_dict() for page in self.pages] if self.pages else [],
         }
 
-    def from_dict(dict) -> "Document":
-        """Create OCRDocument from dictionary"""
-        return Document(
+    @classmethod
+    def from_dict(cls, dict) -> "Document":
+        """Create Document from dictionary"""
+        return cls(
             source_lib=dict["source_lib"],
             source_path=Path(dict["source_path"]),
-            pages=SortedList(
-                [Page.from_dict(page) for page in dict["pages"]],
-                key=lambda page: page.page_index,
-            ),
+            pages=[Page.from_dict(page) for page in dict["pages"]],
         )
 
     def save_json(self, file_path: Union[str, Path]) -> None:

@@ -197,11 +197,14 @@ class BoundingBox:
         lt, width, height = self.to_ltwh()
         return lt.scale(width, height) + (width * width, height * height)
 
-    def scale(self, width: int, height: int) -> Tuple["Point", "Point"]:
-        """Convert normalized coordinates to absolute pixel coordinates"""
-        return (
-            Point(self.top_left.x * width, self.top_left.y * height),
-            Point(self.bottom_right.x * width, self.bottom_right.y * height),
+    def scale(self, width: int, height: int) -> "BoundingBox":
+        """
+        Return new BoundingBox, with normalized coordinates converted
+        to absolute pixel coordinates
+        """
+        return BoundingBox(
+            top_left=self.top_left.scale(width, height),
+            bottom_right=self.bottom_right.scale(width, height),
         )
 
     def contains_point(self, point: Point) -> bool:

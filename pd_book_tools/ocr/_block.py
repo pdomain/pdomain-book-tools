@@ -141,6 +141,19 @@ class Block:
             return 0.0
         return sum(scores) / len(scores)
 
+    def scale(self, width: int, height: int) -> "Block":
+        """
+        Return new block with scaled bounding box
+        and scaled children to absolute pixel coordinates
+        """
+        return Block(
+            items=[item.scale(width, height) for item in self.items],
+            bounding_box=self.bounding_box.scale(width, height),
+            child_type=self.child_type,
+            block_category=self.block_category,
+            block_labels=self.block_labels,
+        )
+
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary"""
         return {
@@ -152,7 +165,8 @@ class Block:
             "items": [item.to_dict() for item in self.items] if self.items else [],
         }
 
-    def from_dict(dict) -> "Block":
+    @classmethod
+    def from_dict(cls, dict) -> "Block":
         """Create OCRBlock from dictionary"""
         if dict.get("child_type"):
             child_type = BlockChildType(dict["child_type"])
@@ -164,7 +178,7 @@ class Block:
         else:
             items = [Block.from_dict(item) for item in dict["items"]]
 
-        return Block(
+        return cls(
             items=SortedList(
                 items,
                 key=lambda item: item.bounding_box.top_left.y,

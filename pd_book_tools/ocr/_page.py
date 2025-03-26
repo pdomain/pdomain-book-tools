@@ -83,6 +83,20 @@ class Page:
             itertools.chain.from_iterable([item.lines() for item in self.items])
         )
 
+    def scale(self, width: int, height: int) -> "Page":
+        """
+        Return new page with scaled bounding box
+        to absolute pixel coordinates
+        """
+        return Page(
+            width=width,
+            height=height,
+            page_index=self.page_index,
+            items=[item.scale(width, height) for item in self.items],
+            bounding_box=self.bounding_box.scale(width, height),
+            page_labels=self.page_labels,
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dictionary"""
         return {
