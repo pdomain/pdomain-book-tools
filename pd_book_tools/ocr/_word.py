@@ -38,7 +38,7 @@ class Word:
         return {
             "type": "Word",
             "text": self.text,
-            "bounding_box": self.bounding_box.to_dict(),
+            "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "ocr_confidence": self.ocr_confidence,
             "word_labels": self.word_labels,
         }

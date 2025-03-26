@@ -19,7 +19,7 @@ class Page:
     bounding_box: Optional[BoundingBox] = None
     _items: SortedList[Block] = field(
         default_factory=lambda: SortedList(
-            key=lambda item: item.bounding_box.top_left.y
+            key=lambda item: item.bounding_box.top_left.y if item.bounding_box else 0
         )
     )
     page_labels: Optional[list[str]] = None
@@ -87,11 +87,11 @@ class Page:
         """Convert to JSON-serializable dictionary"""
         return {
             "type": "Page",
-            "items": [item.to_dict() for item in self.items],
             "width": self.width,
             "height": self.height,
             "page_index": self.page_index,
-            "bounding_box": self.bounding_box.to_dict(),
+            "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
+            "items": [item.to_dict() for item in self.items] if self.items else [],
         }
 
     @classmethod

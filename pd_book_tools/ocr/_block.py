@@ -145,11 +145,11 @@ class Block:
         """Convert to JSON-serializable dictionary"""
         return {
             "type": "Block",
-            "items": [item.to_dict() for item in self.items],
-            "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "child_type": self.child_type.value,
             "block_category": self.block_category.value,
             "block_labels": self.block_labels,
+            "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
+            "items": [item.to_dict() for item in self.items] if self.items else [],
         }
 
     def from_dict(dict) -> "Block":
