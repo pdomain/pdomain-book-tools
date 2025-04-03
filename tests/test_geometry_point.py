@@ -1,4 +1,5 @@
 import pytest
+
 from pd_book_tools.geometry.point import Point
 
 # Try to import shapely, but don't fail if not installed

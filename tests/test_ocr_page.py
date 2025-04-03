@@ -1,5 +1,5 @@
-import pd_book_tools.ocr as ocr
 import pd_book_tools.geometry as geometry
+import pd_book_tools.ocr as ocr
 
 
 def test_page_initialization(sample_page):

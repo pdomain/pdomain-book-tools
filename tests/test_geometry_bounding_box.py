@@ -1,7 +1,7 @@
 import pytest
+
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
-
 
 # Try to import shapely, but don't fail if not installed
 try:

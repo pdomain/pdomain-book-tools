@@ -1,6 +1,7 @@
 import pytest
-import pd_book_tools.ocr as ocr
+
 import pd_book_tools.geometry as geometry
+import pd_book_tools.ocr as ocr
 
 
 def test_block_initialization(sample_block1):
