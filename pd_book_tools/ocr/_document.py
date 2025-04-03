@@ -7,7 +7,7 @@ from pandas import DataFrame
 from sortedcontainers import SortedList
 
 from ..geometry import BoundingBox
-from ._block import Block, BlockChildType, BlockCategory
+from ._block import Block, BlockCategory, BlockChildType
 from ._page import Page
 from ._word import Word
 

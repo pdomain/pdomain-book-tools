@@ -1,13 +1,12 @@
-from dataclasses import dataclass
 import itertools
+from dataclasses import dataclass
+from enum import Enum
 from typing import Collection, List, Optional, Union
 
 from sortedcontainers import SortedList
 
 from ..geometry import BoundingBox
 from ._word import Word
-
-from enum import Enum
 
 
 class BlockChildType(Enum):

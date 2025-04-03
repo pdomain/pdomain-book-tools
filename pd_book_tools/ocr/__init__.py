@@ -1,7 +1,7 @@
-from ._word import Word
-from ._block import Block, BlockChildType, BlockCategory
-from ._page import Page
+from ._block import Block, BlockCategory, BlockChildType
 from ._document import Document
+from ._page import Page
+from ._word import Word
 
 # Get all available modules in this package
 __all__ = [

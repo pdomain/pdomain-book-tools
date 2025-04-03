@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
 import itertools
+from dataclasses import dataclass, field
 from typing import Any, Collection, Dict, List, Optional
 
 import numpy as np
