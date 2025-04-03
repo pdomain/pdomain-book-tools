@@ -18,13 +18,13 @@ def test_page_text(sample_page):
 
 
 def test_page_words(sample_page):
-    words = sample_page.words()
+    words = sample_page.words
     assert isinstance(words, list)
     assert all(isinstance(word, ocr.Word) for word in words)
 
 
 def test_page_lines(sample_page):
-    lines = sample_page.lines()
+    lines = sample_page.lines
     assert isinstance(lines, list)
     assert all(isinstance(line, ocr.Block) for line in lines)
 

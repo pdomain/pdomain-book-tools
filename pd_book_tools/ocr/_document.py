@@ -134,7 +134,7 @@ class Document:
                 block = Block(
                     items=lines,
                     bounding_box=block_bounding_box,
-                    block_category=BlockCategory.BLOCK,
+                    block_category=BlockCategory.PARAGRAPH,
                     child_type=BlockChildType.BLOCKS,
                 )
                 blocks.append(block)

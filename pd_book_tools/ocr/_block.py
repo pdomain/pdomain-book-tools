@@ -47,6 +47,9 @@ class Block:
         block_category: Optional[BlockCategory] = BlockCategory.BLOCK,
         block_labels: Optional[list[str]] = None,
     ):
+        self.child_type = child_type
+        self.block_category = block_category
+        self.block_labels = block_labels
         self.items = items  # Use the setter for validation or processing
         if bounding_box:
             self.bounding_box = bounding_box
@@ -54,9 +57,6 @@ class Block:
             self.bounding_box = BoundingBox.union(
                 [item.bounding_box for item in self.items]
             )
-        self.child_type = child_type
-        self.block_category = block_category
-        self.block_labels = block_labels
 
     @property
     def items(self) -> SortedList:
@@ -80,14 +80,22 @@ class Block:
                 )
             if not isinstance(item, (Word, Block)):
                 raise TypeError("Each item in items must be of type Word or Block")
-        # Sort by x then y-coordinate
-        self._items = SortedList(
-            value,
-            key=lambda item: (
-                item.bounding_box.top_left.x,
-                item.bounding_box.top_left.y,
-            ),
-        )
+        if self.child_type == BlockChildType.WORDS:
+            self._items = SortedList(
+                value,
+                key=lambda item: (
+                    item.bounding_box.top_left.x,
+                    item.bounding_box.top_left.y,
+                ),
+            )
+        else:
+            self._items = SortedList(
+                value,
+                key=lambda item: (
+                    item.bounding_box.top_left.y,
+                    item.bounding_box.top_left.x,
+                ),
+            )
 
     @property
     def text(self) -> str:
@@ -103,22 +111,24 @@ class Block:
         else:
             return "\n\n".join(item.text for item in self.items)
 
+    @property
     def words(self) -> list[Word]:
         """Get flat list of all words in the block"""
         if self.child_type == BlockChildType.WORDS:
             return list(self.items)
         else:
             return list(
-                itertools.chain.from_iterable([item.words() for item in self.items])
+                itertools.chain.from_iterable([item.words for item in self.items])
             )
 
+    @property
     def lines(self) -> List["Block"]:
-        """Get flat list of all 'lines' in the block"""
+        """Flat list of all 'lines' in the block"""
         if self.child_type == BlockChildType.WORDS:
             return [self]
         else:
             return list(
-                itertools.chain.from_iterable([item.lines() for item in self.items])
+                itertools.chain.from_iterable([item.lines for item in self.items])
             )
 
     def ocr_confidence_scores(self) -> list[float]:

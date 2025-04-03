@@ -18,12 +18,12 @@ def test_from_float_points():
 
 def test_to_points():
     point = Point(0.5, 0.5)
-    assert point.to_points() == (0.5, 0.5)
+    assert point.to_x_y() == (0.5, 0.5)
 
 
 def test_scale():
     point = Point(0.5, 0.5)
-    assert point.scale(200, 100) == (100, 50)
+    assert point.scale(200, 100) == Point(100, 50)
 
 
 def test_is_larger_than():

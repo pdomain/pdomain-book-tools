@@ -15,8 +15,8 @@ def test_block_initialization(sample_block1):
 
 def test_block_methods(sample_block1):
     assert sample_block1.text == "word1 word2"
-    assert sample_block1.words() == sample_block1.items
-    assert sample_block1.lines() == [sample_block1]
+    assert sample_block1.words == sample_block1.items
+    assert sample_block1.lines == [sample_block1]
 
 
 def test_block_scores(sample_block1):
@@ -51,12 +51,12 @@ def test_paragraph(
     sample_block3,
 ):
     assert sample_paragraph_block1.text == "word1 word2\nword3 word4\nword5 word6"
-    assert sample_paragraph_block1.words() == [
+    assert sample_paragraph_block1.words == [
         *sample_line1,
         *sample_line2,
         *sample_line3,
     ]
-    assert sample_paragraph_block1.lines() == [
+    assert sample_paragraph_block1.lines == [
         sample_block1,
         sample_block2,
         sample_block3,
@@ -92,12 +92,12 @@ def test_two_paragraph_block(
     sample_block3,
 ):
     assert sample_two_paragraph_block1.text == "word1 word2\nword3 word4\n\nword5 word6"
-    assert sample_two_paragraph_block1.words() == [
+    assert sample_two_paragraph_block1.words == [
         *sample_line1,
         *sample_line2,
         *sample_line3,
     ]
-    assert sample_two_paragraph_block1.lines() == [
+    assert sample_two_paragraph_block1.lines == [
         sample_block1,
         sample_block2,
         sample_block3,
