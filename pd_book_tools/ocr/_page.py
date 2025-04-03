@@ -197,8 +197,6 @@ class Page:
             b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
             blocks.append(b)
 
-        print(blocks)
-
         new_block = Block(items=blocks, block_category=BlockCategory.BLOCK)
         return new_block
 
@@ -217,8 +215,6 @@ class Page:
 
         left_max = median_left_indent + left_tolerance
         right_min = median_right_indent - right_tolerance
-
-        # print(lines[0].text)
 
         blocks = []
         current_block = [lines[0]]
