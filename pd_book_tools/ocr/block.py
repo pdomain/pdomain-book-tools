@@ -1,12 +1,13 @@
 import itertools
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Collection, List, Optional, Union
 
 from sortedcontainers import SortedList
+from thefuzz.fuzz import ratio as fuzz_ratio
 
 from ..geometry import BoundingBox
-from ._word import Word
+from .word import Word
 
 
 class BlockChildType(Enum):
@@ -38,6 +39,19 @@ class Block:
     block_category: Optional[BlockCategory] = BlockCategory.BLOCK
     block_labels: Optional[list[str]] = None
 
+    # TODO: Override page sort order for multi-column page layouts
+    override_page_sort_order: Optional[int] = field(default=None)
+
+    unmatched_ground_truth_words: Optional[list[(int, str)]] = field(
+        default_factory=list
+    )
+    """
+    For lines of text only, this is a list of tuples of (index, word) for words that are inserted
+    in the line and not matched to ground truth.
+    The index is the location right before the unmatched word is inserted into the line.
+    This is used for data labeling, model training, and evaluation purposes.
+    """
+
     def __init__(
         self,
         items: Collection,
@@ -45,6 +59,8 @@ class Block:
         child_type: Optional[BlockChildType] = BlockChildType.BLOCKS,
         block_category: Optional[BlockCategory] = BlockCategory.BLOCK,
         block_labels: Optional[list[str]] = None,
+        override_page_sort_order: Optional[int] = None,
+        unmatched_ground_truth_words: Optional[list[(int, str)]] = None,
     ):
         self.child_type = child_type
         self.block_category = block_category
@@ -56,6 +72,13 @@ class Block:
             self.bounding_box = BoundingBox.union(
                 [item.bounding_box for item in self.items]
             )
+        else:
+            self.bounding_box = None
+        self.override_page_sort_order = override_page_sort_order
+        if unmatched_ground_truth_words:
+            self.unmatched_ground_truth_words = []
+        else:
+            self.unmatched_ground_truth_words = unmatched_ground_truth_words
 
     @property
     def items(self) -> SortedList:
@@ -111,6 +134,16 @@ class Block:
             return "\n\n".join(item.text for item in self.items)
 
     @property
+    def word_list(self) -> list[str]:
+        """Get list of words in the block"""
+        if self.child_type == BlockChildType.WORDS:
+            return [item.text for item in self.items]
+        else:
+            return list(
+                itertools.chain.from_iterable([item.word_list for item in self.items])
+            )
+
+    @property
     def words(self) -> list[Word]:
         """Get flat list of all words in the block"""
         if self.child_type == BlockChildType.WORDS:
@@ -162,6 +195,16 @@ class Block:
             block_category=self.block_category,
             block_labels=self.block_labels,
         )
+
+    def fuzz_score_against(self, ground_truth_text):
+        """Scores a string as "matching" against a ground truth string
+
+        TODO: Perhaps add loose scoring for curly quotes against straight quotes, and em-dashes against hyphens to count these as "closer" to gt
+
+        Args:
+            ground_truth_text (_type_): 'correct' text
+        """
+        return fuzz_ratio(self.text, ground_truth_text)
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary"""

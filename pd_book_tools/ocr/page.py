@@ -2,12 +2,12 @@ import itertools
 from dataclasses import dataclass, field
 from typing import Any, Collection, Dict, List, Optional
 
-import numpy as np
+from numpy import ndarray, mean as np_mean, median as np_median, std as np_std
 from sortedcontainers import SortedList
 
 from ..geometry import BoundingBox
-from ._block import Block, BlockCategory
-from ._word import Word
+from .block import Block, BlockCategory
+from .word import Word
 
 
 @dataclass
@@ -24,6 +24,10 @@ class Page:
         )
     )
     page_labels: Optional[list[str]] = None
+    cv2_numpy_page_image: Optional[ndarray] = None
+
+    unmatched_ground_truth_lines: list[(int, str)] = field(default_factory=list)
+    "List of Ground Truth Lines and the line they were found on before an OCR match"
 
     def __init__(
         self,
@@ -33,6 +37,7 @@ class Page:
         items: Collection,
         bounding_box: Optional[BoundingBox] = None,
         page_labels: Optional[list[str]] = None,
+        cv2_numpy_page_image: Optional[ndarray] = None,
     ):
         self.width = width
         self.height = height
@@ -45,6 +50,7 @@ class Page:
                 [item.bounding_box for item in self.items]
             )
         self.page_labels = page_labels
+        self.cv2_numpy_page_image = cv2_numpy_page_image
 
     @property
     def items(self) -> SortedList:
@@ -111,7 +117,7 @@ class Page:
         """
         Reogranize the page into paragraphs and blocks.
         This is a post-processing step to ensure that the text is
-        organized into logical sections.
+        organized into logical sections for text generated output.
         """
         row_blocks = self.compute_text_row_blocks(self.lines)
         reset_paragraph_blocks = []
@@ -151,7 +157,7 @@ class Page:
 
         # Tolerance is 20% of average line height by default
         if tolerance is None:
-            tolerance = 0.2 * np.mean([line.bounding_box.height for line in lines])
+            tolerance = 0.2 * np_mean([line.bounding_box.height for line in lines])
 
         # Sort lines by their Y position
         lines.sort(key=lambda line: line.bounding_box.minY)
@@ -173,9 +179,9 @@ class Page:
         # Use 1/4 of the standard deviation, or 10% of the avarage line height
         # as the tolerance for line spacing
         median_line_height_spacing = (
-            np.median([line.bounding_box.height for line in lines]) * 0.10
+            np_median([line.bounding_box.height for line in lines]) * 0.10
         )
-        std_line_height_spacing = np.std(line_spacings) * 0.25
+        std_line_height_spacing = np_std(line_spacings) * 0.25
 
         tolerance_spacing = tolerance + max(
             std_line_height_spacing, (median_line_height_spacing * 0.10)
@@ -205,16 +211,38 @@ class Page:
         min_x_positions = [line.bounding_box.minX for line in lines]
         max_x_positions = [line.bounding_box.maxX for line in lines]
 
-        median_line_length = np.median([line.bounding_box.width for line in lines])
+        median_line_length = np_median([line.bounding_box.width for line in lines])
 
-        median_left_indent = np.median(min_x_positions)
-        median_right_indent = np.median(max_x_positions)
+        median_left_indent = np_median(min_x_positions)
+        median_right_indent = np_median(max_x_positions)
 
         left_tolerance = 0.02 * median_line_length  # np.std(min_x_positions) * 2
         right_tolerance = 0.02 * median_line_length  # np.std(max_x_positions) * 2
 
         left_max = median_left_indent + left_tolerance
         right_min = median_right_indent - right_tolerance
+
+        # def cluster_numbers(numbers, threshold):
+        #     numbers.sort()
+        #     clusters = [[numbers[0]]]
+
+        #     for number in numbers[1:]:
+        #         if abs(number - clusters[-1][-1]) <= threshold:
+        #             clusters[-1].append(number)
+        #         else:
+        #             clusters.append([number])
+
+        #     return clusters
+
+        # TODO - Dramas & pages with lots of dialog are unique in that they
+        # have many one-line indented paragraphs,
+        # and as such often will have MORE lines that are indented than not.
+        # Add clustering logic to detect this and handle it. Look for two similar
+        # sets of left-aligned locations that are fairly close to each other
+        # compared to the page width, and have multiple lines that match each.
+
+        # Perform Clustering
+        # left_clusters = cluster_numbers(min_x_positions, left_tolerance)
 
         blocks = []
         current_block = [lines[0]]

@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from pandas import DataFrame
 
-from pd_book_tools.ocr._document import Document
-from pd_book_tools.ocr._page import Page
+from pd_book_tools.ocr.document import Document
+from pd_book_tools.ocr.page import Page
 
 
 @pytest.fixture

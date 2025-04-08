@@ -15,7 +15,10 @@ def test_word_to_dict(sample_word1):
             "bottom_right": {"x": 10, "y": 10},
         },
         "ocr_confidence": pytest.approx(0.9),
-        "word_labels": None,
+        "word_labels": [],
+        "ground_truth_text": None,
+        "ground_truth_bounding_box": None,
+        "ground_truth_match_keys": {},
     }
 
 
