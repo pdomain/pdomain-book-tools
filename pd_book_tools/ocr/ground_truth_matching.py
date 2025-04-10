@@ -3,8 +3,10 @@ from collections import namedtuple
 from difflib import SequenceMatcher
 from enum import Enum
 
+from numpy import mean as np_mean
 from thefuzz.fuzz import ratio as fuzz_ratio
 
+from pd_book_tools.geometry import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
@@ -60,6 +62,10 @@ LineMatchScores = namedtuple(
     "LineMatchScores",
     ["ocr_line_nbr", "gt_line_nbr", "ground_truth_text", "match_score"],
 )
+WordMatchScores = namedtuple(
+    "WordMatchScores",
+    ["ocr_word_nbr", "gt_word_nbr", "ground_truth_text", "match_score"],
+)
 
 
 class MatchType(Enum):
@@ -80,11 +86,8 @@ class MatchType(Enum):
     LINE_REPLACE_WORD_REPLACE_SAME_OCR_COUNT = (
         LINE_REPLACE + "-word-replace-same-ocr-count"
     )
-    LINE_REPLACE_WORD_REPLACE_MORE_OCR_COUNT = (
-        LINE_REPLACE + "-word-replace-more-ocr-count"
-    )
-    LINE_REPLACE_WORD_REPLACE_LESS_OCR_COUNT = (
-        LINE_REPLACE + "-word-replace-less-ocr-count"
+    LINE_REPLACE_WORD_REPLACE_DIFFERENT_OCR_COUNT_COMBINED = (
+        LINE_REPLACE + "-word-replace-different-ocr-count-combined"
     )
     LINE_REPLACE_WORD_DELETE = LINE_REPLACE + "-word-delete"
     LINE_REPLACE_WORD_INSERT = LINE_REPLACE + "-word-insert"
@@ -233,12 +236,8 @@ def update_page_match_difflib_lines_replace(
                 ground_truth_text=ground_truth_text,
                 previous_ground_truth_text=previous_line_ground_truth_text,
             )
-    elif (op.ocr_line_2 - op.ocr_line_1) > (op.gt_line_2 - op.gt_line_1):
-        update_page_match_difflib_lines_replace_more_ocr_lines(
-            page, op, ocr_tuples, ground_truth_tuples
-        )
     else:
-        update_page_match_difflib_lines_replace_less_ocr_lines(
+        update_page_match_difflib_lines_replace_different_line_count(
             page, op, ocr_tuples, ground_truth_tuples
         )
 
@@ -269,6 +268,8 @@ def update_line_with_ground_truth(line: Block, ocr_line_tuple, ground_truth_tupl
     word_matcher = SequenceMatcher(None, ocr_line_tuple, ground_truth_tuple)
     opcodes_list = word_matcher.get_opcodes()
 
+    combined_ocr_word_nbrs, new_combined_words = [], []
+
     for o in opcodes_list:
         op = WordDiffOpCodes(*o)
         if op.word_tag == "delete":
@@ -291,26 +292,224 @@ def update_line_with_ground_truth(line: Block, ocr_line_tuple, ground_truth_tupl
                 (op.ocr_word_1, ground_truth_tuple[op.gt_word_1])
             )
         elif op.word_tag == "replace":
-            # Word(s) are in both OCR and GT, but the words themselves are different
-            if (op.ocr_word_2 - op.ocr_word_1) == (op.gt_word_2 - op.gt_word_1):
-                for i, ocr_word_nbr in enumerate(range(op.ocr_word_1, op.ocr_word_2)):
-                    gt_word_nbr = op.gt_word_1 + i
-                    word = line.words[ocr_word_nbr]
-                    word.ground_truth_text = ground_truth_tuple[gt_word_nbr]
-                    word.ground_truth_match_keys = {
-                        "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_SAME_OCR_COUNT.value,
-                        "match_score": word.fuzz_score_against(word.ground_truth_text),
-                    }
-            elif (op.ocr_word_2 - op.ocr_word_1) > (op.gt_word_2 - op.gt_word_1):
-                # More OCR Words than GT Words
-                logger.critical(
-                    "REPLACE - WORDS with more OCR words than GT words Not Yet Implemented"
-                )
-            else:
-                # Fewer OCR Words than GT Words
-                logger.critical(
-                    "REPLACE - WORDS with fewer OCR words than GT words Not Yet Implemented"
-                )
+            c, n = update_line_with_ground_truth_replace_words(
+                line=line,
+                op=op,
+                ocr_line_tuple=ocr_line_tuple,
+                ground_truth_tuple=ground_truth_tuple,
+            )
+            combined_ocr_word_nbrs.extend(c)
+            new_combined_words.extend(n)
+
+    if combined_ocr_word_nbrs or new_combined_words:
+        update_combined_words_in_line(
+            line=line,
+            combined_ocr_word_nbrs=combined_ocr_word_nbrs,
+            new_combined_words=new_combined_words,
+        )
+
+
+def try_matching_combined_words(
+    matched_ocr_line_words, ocr_line_tuple, ground_truth_tuple
+):
+    """
+    Try to match combined words in OCR line with single-word ground truth.
+    e.g. ["<word>", ";"] OCR might be "<word>;" GT
+    if so, merge the two words in the OCR line
+    and update the ground truth text
+    """
+    # Combine adjoining OCR words and see if they closely match single-word ground truth
+    # e.g. ["<word>", ";"] OCR might be "<word>;" GT
+    # if so, merge the two words in the OCR line
+    # and update the ground truth text
+    ocr_combination_tuple = tuple(
+        [
+            (
+                ocr_word_start,
+                ocr_word_end,
+                "".join(ocr_line_tuple[ocr_word_start:ocr_word_end]),
+                ocr_line_tuple[ocr_word_start:ocr_word_end],
+            )
+            for ocr_word_start in range(0, len(ocr_line_tuple))
+            for ocr_word_end in range(ocr_word_start + 1, len(ocr_line_tuple) + 1)
+        ]
+    )
+
+    match_scores = [
+        (
+            fuzz_ratio(
+                ocr_combination_tuple[ocr_combination_nbr][2].strip(),
+                ground_truth_tuple[gt_word_nbr].strip(),
+            ),
+            (
+                ocr_combination_tuple[ocr_combination_nbr][0],
+                ocr_combination_tuple[ocr_combination_nbr][1],
+            ),
+            ocr_combination_tuple[ocr_combination_nbr][2].strip(),
+            ocr_combination_tuple[ocr_combination_nbr][3],
+            ground_truth_tuple[gt_word_nbr].strip(),
+            gt_word_nbr,
+        )
+        for ocr_combination_nbr in range(0, len(ocr_combination_tuple))
+        for gt_word_nbr in range(0, len(ground_truth_tuple))
+    ]
+
+    # Only match to fairly confident words (> 70)
+    sorted_match_scores = sorted(match_scores, key=lambda x: (-x[0], x[1][0]))
+
+    sorted_match_scores = [s for s in sorted_match_scores if s[0] >= 80]
+
+    combined_words = []
+    while True:
+        if not sorted_match_scores:
+            break
+        # Get the best match score
+        s = sorted_match_scores.pop(0)
+        (
+            score,
+            combination_start_end,
+            combined_word,
+            ocr_combination_tuple,
+            gt_word,
+            gt_word_nbr,
+        ) = s
+        combination_start, combination_end = combination_start_end
+        matched_words = matched_ocr_line_words[combination_start:combination_end]
+        # Create a new word object with the combined word
+        # Then remove the words from the line
+        combined_word_text = "".join([word.text for word in matched_words])
+        combined_word_bbox = BoundingBox.union(
+            word.bounding_box for word in matched_words
+        )
+        combined_word = Word(
+            text=combined_word_text,
+            bounding_box=combined_word_bbox,
+            ocr_confidence=np_mean([word.ocr_confidence for word in matched_words]),
+            ground_truth_text=gt_word,
+            ground_truth_match_keys={
+                "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_DIFFERENT_OCR_COUNT_COMBINED.value,
+                "match_score": score,
+            },
+        )
+        combined_words.append(
+            (combination_start, combination_end, gt_word_nbr, combined_word)
+        )
+        sorted_match_scores = [
+            s
+            for s in sorted_match_scores
+            if not any(
+                s[1][0] <= n <= s[1][1]
+                for n in range(combination_start, combination_end)
+            )
+        ]
+
+    print(combined_words)
+
+    return combined_words
+
+
+def update_line_with_ground_truth_replace_words(
+    line: Block, op: WordDiffOpCodes, ocr_line_tuple, ground_truth_tuple
+):
+    """
+    Update the line with the best matched ground truth text
+    when the number of words in the OCR line and ground truth line are different.
+    """
+    matched_ocr_line_tuple = ocr_line_tuple[op.ocr_word_1 : op.ocr_word_2]
+    matched_ground_truth_tuple = ground_truth_tuple[op.gt_word_1 : op.gt_word_2]
+
+    matched_ocr_line_words = [
+        word for word in line.words[op.ocr_word_1 : op.ocr_word_2]
+    ]
+
+    combined_word_detail = try_matching_combined_words(
+        matched_ocr_line_words, matched_ocr_line_tuple, matched_ground_truth_tuple
+    )
+    # Check if the combined words in the OCR line closely match the ground truth line
+    # If so, update the line with the combined words
+
+    # TODO:
+    #   Check if ground truth word includes a double or single quote character.
+    #   OCR can misread these as short one or two character words
+    #   If such a short word is in OCR but not in GT, and GT has ", ',
+    #   prime or double prime, then combine the two OCR words
+
+    # Iterate over the remaining words
+    # Update each word with best matched ground truth text. If there are then more
+    # GT words than OCR words, append them to the unmatched list.
+    combined_ocr_word_nbrs = list(
+        set(
+            [
+                (r + op.ocr_word_1)
+                for combination_start, combination_end, _, _ in combined_word_detail
+                for r in range(combination_start, combination_end)
+            ]
+        )
+    )
+
+    combined_gt_word_nbrs = list(
+        set(
+            [
+                (gt_word_nbr + op.gt_word_1)
+                for _, _, gt_word_nbr, _ in combined_word_detail
+            ]
+        )
+    )
+
+    to_match_gt_word_nbrs = [
+        gt_word_nbr
+        for gt_word_nbr in range(op.gt_word_1, op.gt_word_2)
+        if (gt_word_nbr + op.gt_word_1) not in combined_gt_word_nbrs
+    ]
+
+    for ocr_word_nbr in range(op.ocr_word_1, op.ocr_word_2):
+        if not to_match_gt_word_nbrs:
+            # If there's no more GT words to match
+            break
+
+        if ocr_word_nbr in combined_ocr_word_nbrs:
+            # Skip these, they will be combined after we add the other GT data
+            continue
+
+        gt_word_nbr = to_match_gt_word_nbrs.pop(0)
+        word = line.words[ocr_word_nbr]
+        word.ground_truth_text = ground_truth_tuple[gt_word_nbr]
+        word.ground_truth_match_keys = {
+            "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_DIFFERENT_OCR_COUNT_COMBINED.value,
+            "match_score": word.fuzz_score_against(word.ground_truth_text),
+        }
+
+    # If there are any GT words left, add them at end of the group as 'unmatched' words
+    for gt_word_nbr in to_match_gt_word_nbrs:
+        if gt_word_nbr in combined_gt_word_nbrs:
+            continue
+        # Add unmatched GT word to the line
+        line.unmatched_ground_truth_words.append(
+            (op.ocr_word_2 - 1, ground_truth_tuple[gt_word_nbr])
+        )
+
+    # Add the combined words to the line
+    new_combined_words = [c[3] for c in combined_word_detail]
+
+    # Remove and add words to the line at the END of all the matching, so we don't mess up the other updates
+    return combined_ocr_word_nbrs, new_combined_words
+
+
+def update_combined_words_in_line(
+    line: Block,
+    combined_ocr_word_nbrs: list[int],
+    new_combined_words: list[Word],
+):
+    # If there are any combined words:
+    # - remove existing words
+    # - add combined words to the line
+
+    # Delete in reverse order
+    for ocr_word_nbr in sorted(combined_ocr_word_nbrs, reverse=True):
+        del line.items[ocr_word_nbr]
+
+    for cw in new_combined_words:
+        line.items.add(cw)
 
 
 def match_different_line_counts(op: LineDiffOpCodes, ocr_tuples, ground_truth_tuples):
@@ -370,9 +569,11 @@ def match_different_line_counts(op: LineDiffOpCodes, ocr_tuples, ground_truth_tu
     return match_scores
 
 
-def update_page_match_difflib_lines_replace_more_ocr_lines(
+def update_page_match_difflib_lines_replace_different_line_count(
     page: Page, op: LineDiffOpCodes, ocr_tuples, ground_truth_tuples
 ):
+    # More or Fewer OCR Lines than GT Lines
+    # Match best lines, add any missing GT lines to page unmatched
     match_scores: list[LineMatchScores] = match_different_line_counts(
         op, ocr_tuples, ground_truth_tuples
     )
@@ -389,7 +590,7 @@ def update_page_match_difflib_lines_replace_more_ocr_lines(
     done = False
     matched_ocr_lines = []
     while (not done) and sorted_match_scores:
-        next_score_tuple = sorted_match_scores.pop()
+        next_score_tuple = sorted_match_scores.pop(0)
         matched_ocr_lines.append(next_score_tuple)
         # remove all entries for this OCR line number
         sorted_match_scores = [
@@ -400,6 +601,7 @@ def update_page_match_difflib_lines_replace_more_ocr_lines(
         if len(matched_ocr_lines) == (op.ocr_line_2 - op.ocr_line_1):
             done = True
 
+    # Once all Matched OCR lines are found, update ground truth
     for m in matched_ocr_lines:
         ocr_line_nbr = m.ocr_line_nbr
         ground_truth_text = m.ground_truth_text
@@ -412,20 +614,14 @@ def update_page_match_difflib_lines_replace_more_ocr_lines(
             ground_truth_tuple=ground_truth_tuple,
         )
 
-
-def update_page_match_difflib_lines_replace_less_ocr_lines(
-    page: Page, op: LineDiffOpCodes, ocr_tuples, ground_truth_tuples
-):
-    # Fewer OCR Lines than GT Lines
-    # Match best lines, add missing GT lines to page unmatched
-    match_scores = match_different_line_counts(op, ocr_tuples, ground_truth_tuples)
-
-    # Order by match scores, breaking ties by ocr line number.
-    # Take best match score, then remove all matches for that ocr line, then get next, etc
-    # sort match scores by score desc and then by ocr line number ascending
-    # Only match to fairly confident lines (> 70)
-    sorted_match_scores = sorted(match_scores, key=lambda x: (-x[2], x[0]))
-    sorted_match_scores = [s for s in sorted_match_scores if s[2] >= 70]
+    # Finally, for those GT lines that are not matched to OCR lines, add them to the unmatched list
+    for gt_line_nbr in range(op.gt_line_1, op.gt_line_2):
+        # Check if this GT line is already matched
+        if any(m.gt_line_nbr == gt_line_nbr for m in matched_ocr_lines):
+            continue
+        # Add unmatched GT line to the page after the OCR lines
+        ground_truth_text = " ".join(ground_truth_tuples[gt_line_nbr])
+        page.unmatched_ground_truth_lines.append((op.ocr_line_2 - 1, ground_truth_text))
 
 
 def _build_current_work_gt_line_from_prev(

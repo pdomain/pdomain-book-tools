@@ -32,13 +32,13 @@ class Word:
         self.text = text  # Use the setter for validation or processing
         self.bounding_box = bounding_box
         self.ocr_confidence = ocr_confidence
-        if self.word_labels:
+        if word_labels:
             self.word_labels = word_labels
         else:
             self.word_labels = []
         self.ground_truth_text = ground_truth_text
         self.ground_truth_bounding_box = ground_truth_bounding_box
-        if self.ground_truth_match_keys:
+        if ground_truth_match_keys:
             self.ground_truth_match_keys = ground_truth_match_keys
         else:
             self.ground_truth_match_keys = {}

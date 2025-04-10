@@ -1,13 +1,30 @@
 import itertools
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Collection, Dict, List, Optional
 
-from numpy import ndarray, mean as np_mean, median as np_median, std as np_std
+from cv2 import rectangle as cv2_rectangle
+from numpy import mean as np_mean
+from numpy import median as np_median
+from numpy import ndarray
+from numpy import std as np_std
 from sortedcontainers import SortedList
 
 from ..geometry import BoundingBox
 from .block import Block, BlockCategory
 from .word import Word
+
+
+class BBoxColors(Enum):
+    """Enum for different colors used to draw bounding boxes"""
+
+    PAGE = (255, 0, 255)  # Magenta
+    BLOCK = (0, 255, 0)  # Green
+    PARAGRAPH = (255, 0, 0)  # Red
+    LINE = (0, 0, 255)  # Blue
+    WORD = (255, 255, 0)  # Yellow
+    GROUND_TRUTH = (0, 255, 255)  # Cyan
+    BLACK = (0, 0, 0)  # Black
 
 
 @dataclass
@@ -24,7 +41,15 @@ class Page:
         )
     )
     page_labels: Optional[list[str]] = None
-    cv2_numpy_page_image: Optional[ndarray] = None
+    _cv2_numpy_page_image: Optional[ndarray] = None
+    _cv2_numpy_page_image_page_with_bbox: Optional[ndarray] = None
+    _cv2_numpy_page_image_blocks_with_bboxes: Optional[ndarray] = None
+    _cv2_numpy_page_image_paragraph_with_bboxes: Optional[ndarray] = None
+    _cv2_numpy_page_image_line_with_bboxes: Optional[ndarray] = None
+    _cv2_numpy_page_image_word_with_bboxes: Optional[ndarray] = None
+    _cv2_numpy_page_image_word_with_bboxes_and_ocr_text: Optional[ndarray] = None
+    _cv2_numpy_page_image_word_with_bboxes_and_gt_text: Optional[ndarray] = None
+    _cv2_numpy_page_image_word_with_bboxes_and_both_text: Optional[ndarray] = None
 
     unmatched_ground_truth_lines: list[(int, str)] = field(default_factory=list)
     "List of Ground Truth Lines and the line they were found on before an OCR match"
@@ -50,7 +75,10 @@ class Page:
                 [item.bounding_box for item in self.items]
             )
         self.page_labels = page_labels
-        self.cv2_numpy_page_image = cv2_numpy_page_image
+
+        self.cv2_numpy_page_image = (
+            cv2_numpy_page_image  # Use the setter for validation or processing
+        )
 
     @property
     def items(self) -> SortedList:
@@ -68,6 +96,133 @@ class Page:
                 raise TypeError("Each item in items must be of type Block")
         self._items = SortedList(
             values, key=lambda block: block.bounding_box.top_left.y
+        )
+
+    @property
+    def cv2_numpy_page_image(self) -> ndarray:
+        return self._cv2_numpy_page_image
+
+    @cv2_numpy_page_image.setter
+    def cv2_numpy_page_image(self, value: ndarray):
+        if value is not None and not isinstance(value, ndarray):
+            raise TypeError("cv2_numpy_page_image must be a numpy ndarray")
+        self._cv2_numpy_page_image = value
+
+        self.refresh_page_images()
+
+    @property
+    def cv2_numpy_page_image_page_with_bbox(self) -> ndarray:
+        return self._cv2_numpy_page_image_page_with_bbox
+
+    @property
+    def cv2_numpy_page_image_blocks_with_bboxes(self) -> ndarray:
+        return self._cv2_numpy_page_image_blocks_with_bboxes
+
+    @property
+    def cv2_numpy_page_image_paragraph_with_bboxes(self) -> ndarray:
+        return self._cv2_numpy_page_image_paragraph_with_bboxes
+
+    @property
+    def cv2_numpy_page_image_line_with_bboxes(self) -> ndarray:
+        return self._cv2_numpy_page_image_line_with_bboxes
+
+    @property
+    def cv2_numpy_page_image_word_with_bboxes(self) -> ndarray:
+        return self._cv2_numpy_page_image_word_with_bboxes
+
+    @property
+    def cv2_numpy_page_image_word_with_bboxes_and_ocr_text(self) -> ndarray:
+        return self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text
+
+    @property
+    def cv2_numpy_page_image_word_with_bboxes_and_gt_text(self) -> ndarray:
+        return self._cv2_numpy_page_image_word_with_bboxes_and_gt_text
+
+    @property
+    def cv2_numpy_page_image_word_with_bboxes_and_both_text(self) -> ndarray:
+        return self._cv2_numpy_page_image_word_with_bboxes_and_both_text
+
+    def refresh_page_images(self):
+        if self._cv2_numpy_page_image is None:
+            return
+
+        # Rebuild all images with drawn bboxes on them
+        self._cv2_numpy_page_image_page_with_bbox = self._cv2_numpy_page_image.copy()
+        self._add_rect(self._cv2_numpy_page_image_page_with_bbox, self)
+
+        self._cv2_numpy_page_image_blocks_with_bboxes = (
+            self._cv2_numpy_page_image.copy()
+        )
+        self._add_rect_recurse(
+            self.items,
+            self._cv2_numpy_page_image_blocks_with_bboxes,
+            lambda x: isinstance(x, Block) and x.block_category == BlockCategory.BLOCK,
+        )
+
+        self._cv2_numpy_page_image_paragraph_with_bboxes = (
+            self._cv2_numpy_page_image.copy()
+        )
+        self._add_rect_recurse(
+            self.items,
+            self._cv2_numpy_page_image_paragraph_with_bboxes,
+            lambda x: isinstance(x, Block)
+            and x.block_category == BlockCategory.PARAGRAPH,
+        )
+
+        self._cv2_numpy_page_image_line_with_bboxes = self._cv2_numpy_page_image.copy()
+        self._add_rect_recurse(
+            self.items,
+            self._cv2_numpy_page_image_line_with_bboxes,
+            lambda x: isinstance(x, Block) and x.block_category == BlockCategory.LINE,
+        )
+
+        self._cv2_numpy_page_image_word_with_bboxes = self._cv2_numpy_page_image.copy()
+        self._add_rect_recurse(
+            self.items,
+            self._cv2_numpy_page_image_word_with_bboxes,
+            lambda x: isinstance(x, Word),
+        )
+
+        # TODO: Add OCR / GT Text Image Drawing Logic (add section to image above and put OCR word text / GT word text)
+
+    def _add_rect_recurse(self, items, image, item_add_lambda):
+        if image is None:
+            return
+        for item in items:
+            if item_add_lambda(item):
+                self._add_rect(image, item)
+            if hasattr(item, "items") and item.items:
+                self._add_rect_recurse(item.items, image, item_add_lambda)
+
+    @classmethod
+    def _add_rect(cls, image, item, box_color=None):
+        w, h = image.shape[1], image.shape[0]
+        if not box_color:
+            if isinstance(item, Page):
+                box_color = BBoxColors.PAGE.value
+            elif isinstance(item, Word):
+                box_color = BBoxColors.WORD.value
+            elif isinstance(item, Block):
+                if item.block_category == BlockCategory.LINE:
+                    box_color = BBoxColors.LINE.value
+                elif item.block_category == BlockCategory.PARAGRAPH:
+                    box_color = BBoxColors.PARAGRAPH.value
+                else:
+                    box_color = BBoxColors.BLOCK.value
+            else:
+                box_color = BBoxColors.BLACK.value
+
+        bbox = item.bounding_box
+        # If scaled coordinates
+        if item.bounding_box.width < 1 or item.bounding_box.height < 1:
+            bbox = item.bounding_box.scale(width=w, height=h)
+
+        cv2_rectangle(
+            img=image,
+            pt1=(bbox.top_left.x, bbox.top_left.y),
+            pt2=(bbox.bottom_right.x, bbox.bottom_right.y),
+            color=box_color,
+            thickness=2,
         )
 
     @property
