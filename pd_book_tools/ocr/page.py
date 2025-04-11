@@ -1,8 +1,11 @@
 import itertools
+import pathlib
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Collection, Dict, List, Optional
 
+from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
+from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
 from numpy import mean as np_mean
 from numpy import median as np_median
@@ -25,6 +28,10 @@ class BBoxColors(Enum):
     WORD = (255, 255, 0)  # Yellow
     GROUND_TRUTH = (0, 255, 255)  # Cyan
     BLACK = (0, 0, 0)  # Black
+    RED = (0, 0, 255)  # Red
+    DARK_YELLOW = (0, 225, 225)  # Darker Yellow
+    DARK_GREEN = (0, 128, 0)  # Dark Green
+    MAGENTA = (255, 0, 255)  # Magenta
 
 
 @dataclass
@@ -49,9 +56,9 @@ class Page:
     _cv2_numpy_page_image_word_with_bboxes: Optional[ndarray] = None
     _cv2_numpy_page_image_word_with_bboxes_and_ocr_text: Optional[ndarray] = None
     _cv2_numpy_page_image_word_with_bboxes_and_gt_text: Optional[ndarray] = None
-    _cv2_numpy_page_image_word_with_bboxes_and_both_text: Optional[ndarray] = None
+    _cv2_numpy_page_image_matched_word_with_colors: Optional[ndarray] = None
 
-    unmatched_ground_truth_lines: list[(int, str)] = field(default_factory=list)
+    unmatched_ground_truth_lines: list[(int, str)] = None
     "List of Ground Truth Lines and the line they were found on before an OCR match"
 
     def __init__(
@@ -63,6 +70,7 @@ class Page:
         bounding_box: Optional[BoundingBox] = None,
         page_labels: Optional[list[str]] = None,
         cv2_numpy_page_image: Optional[ndarray] = None,
+        unmatched_ground_truth_lines: Optional[list[(int, str)]] = None,
     ):
         self.width = width
         self.height = height
@@ -79,6 +87,11 @@ class Page:
         self.cv2_numpy_page_image = (
             cv2_numpy_page_image  # Use the setter for validation or processing
         )
+
+        if unmatched_ground_truth_lines:
+            self.unmatched_ground_truth_lines = unmatched_ground_truth_lines
+        else:
+            self.unmatched_ground_truth_lines = []
 
     @property
     def items(self) -> SortedList:
@@ -139,8 +152,8 @@ class Page:
         return self._cv2_numpy_page_image_word_with_bboxes_and_gt_text
 
     @property
-    def cv2_numpy_page_image_word_with_bboxes_and_both_text(self) -> ndarray:
-        return self._cv2_numpy_page_image_word_with_bboxes_and_both_text
+    def cv2_numpy_page_image_matched_word_with_colors(self) -> ndarray:
+        return self._cv2_numpy_page_image_matched_word_with_colors
 
     def refresh_page_images(self):
         if self._cv2_numpy_page_image is None:
@@ -183,7 +196,53 @@ class Page:
             lambda x: isinstance(x, Word),
         )
 
-        # TODO: Add OCR / GT Text Image Drawing Logic (add section to image above and put OCR word text / GT word text)
+        self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text = (
+            self._cv2_numpy_page_image.copy()
+        )
+        self._add_rect_recurse(
+            self.items,
+            self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text,
+            lambda x: isinstance(x, Word),
+        )
+        self._add_ocr_text_recurse(
+            self.items,
+            self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text,
+        )
+
+        self._cv2_numpy_page_image_word_with_bboxes_and_gt_text = (
+            self._cv2_numpy_page_image.copy()
+        )
+        self._add_rect_recurse(
+            self.items,
+            self._cv2_numpy_page_image_word_with_bboxes_and_gt_text,
+            lambda x: isinstance(x, Word),
+        )
+        self._add_gt_text_recurse(
+            self.items,
+            self._cv2_numpy_page_image_word_with_bboxes_and_gt_text,
+        )
+
+        self._cv2_numpy_page_image_matched_word_with_colors = (
+            self._cv2_numpy_page_image.copy()
+        )
+        for w in self.words:
+            if (
+                "match_score" in w.ground_truth_match_keys
+                and w.ground_truth_match_keys["match_score"] == 100
+            ):
+                continue  # Don't display a box for matched words
+
+            if not w.ground_truth_text:
+                color = BBoxColors.RED.value
+            elif w.ground_truth_match_keys["match_score"] >= 90:
+                color = BBoxColors.DARK_GREEN.value
+            elif w.ground_truth_match_keys["match_score"] >= 70:
+                color = BBoxColors.DARK_YELLOW.value
+            else:
+                color = BBoxColors.MAGENTA.value
+            self._add_rect(
+                self._cv2_numpy_page_image_matched_word_with_colors, w, color
+            )
 
     def _add_rect_recurse(self, items, image, item_add_lambda):
         if image is None:
@@ -219,11 +278,79 @@ class Page:
 
         cv2_rectangle(
             img=image,
-            pt1=(bbox.top_left.x, bbox.top_left.y),
-            pt2=(bbox.bottom_right.x, bbox.bottom_right.y),
+            pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
+            pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
             color=box_color,
             thickness=2,
         )
+
+    def _add_ocr_text_recurse(self, items, image):
+        if image is None:
+            return
+        for item in items:
+            if isinstance(item, Word):
+                self._add_ocr_text(image, item)
+            if hasattr(item, "items") and item.items:
+                self._add_ocr_text_recurse(item.items, image)
+
+    @classmethod
+    def _add_ocr_text(cls, image, item, color=None):
+        if not isinstance(item, Word):
+            raise TypeError("item must be of type Word")
+        w, h = image.shape[1], image.shape[0]
+        if not color:
+            color = (255, 0, 0)  # Blue
+
+        bbox = item.bounding_box
+        # If scaled coordinates
+        if item.bounding_box.width < 1 or item.bounding_box.height < 1:
+            bbox = item.bounding_box.scale(width=w, height=h)
+
+        x1 = int(bbox.top_left.x)
+        y1 = max(int(bbox.top_left.y), 0)
+        cv2_putText(
+            image,
+            item.text or "",
+            (x1, y1 - 5),
+            cv2_FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            1,
+        )
+
+    @classmethod
+    def _add_gt_text(cls, image, item, color=None):
+        if not isinstance(item, Word):
+            raise TypeError("item must be of type Word")
+        w, h = image.shape[1], image.shape[0]
+        if not color:
+            color = (255, 0, 0)  # Blue
+
+        bbox = item.bounding_box
+        # If scaled coordinates
+        if item.bounding_box.width < 1 or item.bounding_box.height < 1:
+            bbox = item.bounding_box.scale(width=w, height=h)
+
+        x1 = int(bbox.top_left.x)
+        y1 = max(int(bbox.top_left.y), 0)
+        cv2_putText(
+            image,
+            item.ground_truth_text or "",
+            (x1, y1 - 5),
+            cv2_FONT_HERSHEY_SIMPLEX,
+            0.5,
+            color,
+            1,
+        )
+
+    def _add_gt_text_recurse(self, items, image):
+        if image is None:
+            return
+        for item in items:
+            if isinstance(item, Word):
+                self._add_gt_text(image, item)
+            if hasattr(item, "items") and item.items:
+                self._add_gt_text_recurse(item.items, image)
 
     @property
     def text(self) -> str:
@@ -275,6 +402,9 @@ class Page:
         organized into logical sections for text generated output.
         """
         row_blocks = self.compute_text_row_blocks(self.lines)
+
+        # TODO: Add logic to detect and handle multiple columns of text
+
         reset_paragraph_blocks = []
         for b in list(row_blocks.items):
             paragraphs = self.compute_text_paragraph_blocks(b.lines)
@@ -423,6 +553,67 @@ class Page:
 
         new_block = Block(items=blocks, block_category=BlockCategory.BLOCK)
         return new_block
+
+    def convert_to_training_set(
+        matched_ocr_list, image_path: pathlib.Path, output_path: pathlib.Path
+    ):
+        """
+        Create a training set from a page image (matched_ocr data) and image bounding boxes
+        Result:
+            Files:
+            ├── images
+                ├── <image>_x1_x2_y1_y2.jpg
+                ├── img_2.jpg
+                ├── img_3.jpg
+                └── ...
+            ├── labels.json
+
+            In labels.json:
+            {
+                "image_path_1": "<either final_word value or gt value>",
+            }
+        """
+        # TODO
+        raise NotImplementedError("Not Implemented Yet")
+
+        # image = cv2.imread(image_path)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # img_height, img_width, _ = image.shape
+
+        # labels = {}
+        # for matched_ocr in matched_ocr_list:
+        #     for line_nbr, line in matched_ocr.items():
+        #         for word_data in line:
+        #             bounding_box = word_data["ocr-bounding_box"]
+        #             if bounding_box:
+        #                 x1, y1 = int(bounding_box[0][0] * img_width), int(
+        #                     bounding_box[0][1] * img_height
+        #                 )
+        #                 x2, y2 = int(bounding_box[1][0] * img_width), int(
+        #                     bounding_box[1][1] * img_height
+        #                 )
+        #                 cropped_image = image[y1:y2, x1:x2]
+        #                 cropped_image_name = "{}_{}_{}_{}_{}.jpg".format(
+        #                     image_path.stem,
+        #                     x1,
+        #                     y1,
+        #                     x2,
+        #                     y2,
+        #                 )
+        #                 cv2.imwrite(
+        #                     pathlib.Path(
+        #                         output_path, "images", cropped_image_name
+        #                     ).resolve(),
+        #                     cropped_image,
+        #                     [int(cv2.IMWRITE_JPEG_QUALITY), 100],
+        #                 )
+        #                 if word_data["match_type"] == "difflib-line-delete":
+        #                     label = word_data["final_word"].value
+        #                 else:
+        #                     label = word_data["final_word"].value or word_data["gt"]
+        #                 if label:
+        #                     labels[cropped_image_name] = label
+        # json.dump(labels, open(pathlib.Path(output_path, "labels.json"), "w"))
 
     # def compute_text_columns(lines: List[Block], tolerance=None):
     #     """

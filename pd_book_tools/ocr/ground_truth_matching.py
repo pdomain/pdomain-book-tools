@@ -83,12 +83,8 @@ class MatchType(Enum):
 
     # Word-level match types (For use with LINE_REPLACE)
     LINE_REPLACE_WORD_EQUAL = LINE_REPLACE + "-word-equal"
-    LINE_REPLACE_WORD_REPLACE_SAME_OCR_COUNT = (
-        LINE_REPLACE + "-word-replace-same-ocr-count"
-    )
-    LINE_REPLACE_WORD_REPLACE_DIFFERENT_OCR_COUNT_COMBINED = (
-        LINE_REPLACE + "-word-replace-different-ocr-count-combined"
-    )
+    LINE_REPLACE_WORD_REPLACE = LINE_REPLACE + "-word-replace"
+    LINE_REPLACE_WORD_REPLACE_COMBINED = LINE_REPLACE + "-word-replace-combined"
     LINE_REPLACE_WORD_DELETE = LINE_REPLACE + "-word-delete"
     LINE_REPLACE_WORD_INSERT = LINE_REPLACE + "-word-insert"
 
@@ -322,6 +318,9 @@ def try_matching_combined_words(
     # e.g. ["<word>", ";"] OCR might be "<word>;" GT
     # if so, merge the two words in the OCR line
     # and update the ground truth text
+
+    # TODO: Add logic to find quotation marks, ending apostrophes, and prime marks and ensure they're part of the single "word"
+
     ocr_combination_tuple = tuple(
         [
             (
@@ -387,7 +386,7 @@ def try_matching_combined_words(
             ocr_confidence=np_mean([word.ocr_confidence for word in matched_words]),
             ground_truth_text=gt_word,
             ground_truth_match_keys={
-                "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_DIFFERENT_OCR_COUNT_COMBINED.value,
+                "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_COMBINED.value,
                 "match_score": score,
             },
         )
@@ -403,7 +402,7 @@ def try_matching_combined_words(
             )
         ]
 
-    print(combined_words)
+    logger.debug("Combined words found: " + str(combined_words))
 
     return combined_words
 
@@ -417,6 +416,9 @@ def update_line_with_ground_truth_replace_words(
     """
     matched_ocr_line_tuple = ocr_line_tuple[op.ocr_word_1 : op.ocr_word_2]
     matched_ground_truth_tuple = ground_truth_tuple[op.gt_word_1 : op.gt_word_2]
+
+    logger.debug("Matched OCR Line Tuple", matched_ocr_line_tuple)
+    logger.debug("Matched GT Line Tuple", matched_ground_truth_tuple)
 
     matched_ocr_line_words = [
         word for word in line.words[op.ocr_word_1 : op.ocr_word_2]
@@ -433,6 +435,8 @@ def update_line_with_ground_truth_replace_words(
     #   OCR can misread these as short one or two character words
     #   If such a short word is in OCR but not in GT, and GT has ", ',
     #   prime or double prime, then combine the two OCR words
+    #   Also, generally, the previous GT bounding box will be "higher" and smaller than the current one - "superscripted"
+    #   Join these together as well.
 
     # Iterate over the remaining words
     # Update each word with best matched ground truth text. If there are then more
@@ -459,8 +463,14 @@ def update_line_with_ground_truth_replace_words(
     to_match_gt_word_nbrs = [
         gt_word_nbr
         for gt_word_nbr in range(op.gt_word_1, op.gt_word_2)
-        if (gt_word_nbr + op.gt_word_1) not in combined_gt_word_nbrs
+        if gt_word_nbr not in combined_gt_word_nbrs
     ]
+
+    logger.debug(
+        "To Match GT Words"
+        + str([ground_truth_tuple[w] for w in to_match_gt_word_nbrs])
+    )
+    logger.debug("Combined GT Word Nbrs" + str(combined_gt_word_nbrs))
 
     for ocr_word_nbr in range(op.ocr_word_1, op.ocr_word_2):
         if not to_match_gt_word_nbrs:
@@ -471,11 +481,14 @@ def update_line_with_ground_truth_replace_words(
             # Skip these, they will be combined after we add the other GT data
             continue
 
+        logger.debug("OCR Word Nbr for update" + str(ocr_word_nbr))
+        logger.debug("GT Word Nbr" + str(ocr_word_nbr))
+
         gt_word_nbr = to_match_gt_word_nbrs.pop(0)
         word = line.words[ocr_word_nbr]
         word.ground_truth_text = ground_truth_tuple[gt_word_nbr]
         word.ground_truth_match_keys = {
-            "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_DIFFERENT_OCR_COUNT_COMBINED.value,
+            "match_type": MatchType.LINE_REPLACE_WORD_REPLACE.value,
             "match_score": word.fuzz_score_against(word.ground_truth_text),
         }
 

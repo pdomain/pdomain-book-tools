@@ -75,10 +75,11 @@ class Block:
         else:
             self.bounding_box = None
         self.override_page_sort_order = override_page_sort_order
+
         if unmatched_ground_truth_words:
-            self.unmatched_ground_truth_words = []
-        else:
             self.unmatched_ground_truth_words = unmatched_ground_truth_words
+        else:
+            self.unmatched_ground_truth_words = []
 
     @property
     def items(self) -> SortedList:
