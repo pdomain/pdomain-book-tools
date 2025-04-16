@@ -38,14 +38,24 @@ class Point:
     def to_x_y(self) -> Tuple[float]:
         return (self.x, self.y)
 
-    def scale(self, width: int, height: int) -> Tuple[int, int]:
+    def scale(self, width: int, height: int) -> "Point":
         """
-        Return a copy of this point, with normalized
+        Return new Point, with normalized
         coordinates converted to absolute pixel coordinates
         """
         if self.x < 0 or self.x > 1 or self.y < 0 or self.y > 1:
             raise ValueError("Internal coordinates are not between 0 and 1")
         return Point(int(self.x * width), int(self.y * height))
+
+    def normalize(self, width: int, height: int) -> "Point":
+        """
+        Return new Point, with absolute coordinates converted
+        to normalized pixel coordinates
+        """
+        if not (isinstance(self.x, int), isinstance(self.y, int)):
+            raise ValueError("Internal coordinates are not integers")
+
+        return Point(float(self.x) / float(width), float(self.y) / float(height))
 
     def is_larger_than(self, other: "Point") -> bool:
         """Check if both x and y coordinates are larger than those of another point"""

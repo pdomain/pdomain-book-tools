@@ -13,6 +13,26 @@ try:
 except ImportError:
     SHAPELY_AVAILABLE = False
 
+from logging import getLogger
+
+from cv2 import (
+    CHAIN_APPROX_SIMPLE,
+    COLOR_BGR2GRAY,
+    RETR_EXTERNAL,
+    THRESH_BINARY,
+    THRESH_OTSU,
+    cvtColor,
+    findContours,
+    threshold,
+)
+from numpy import max as np_max
+from numpy import min as np_min
+from numpy import ndarray
+from numpy import vstack as np_vstack
+
+# Configure logging
+logger = getLogger(__name__)
+
 
 @dataclass
 class BoundingBox:
@@ -207,6 +227,16 @@ class BoundingBox:
             bottom_right=self.bottom_right.scale(width, height),
         )
 
+    def normalize(self, width: int, height: int) -> "BoundingBox":
+        """
+        Return new BoundingBox, with absolute coordinates converted
+        to normalized pixel coordinates
+        """
+        return BoundingBox(
+            top_left=self.top_left.normalize(width, height),
+            bottom_right=self.bottom_right.normalize(width, height),
+        )
+
     def contains_point(self, point: Point) -> bool:
         """Check if the bounding box contains the given point"""
         return (
@@ -216,12 +246,9 @@ class BoundingBox:
 
     def intersects(self, other: "BoundingBox") -> bool:
         """Check if this bounding box intersects with another"""
-        return (
-            self.top_left.x <= other.bottom_right.x
-            and self.bottom_right.x >= other.top_left.x
-            and self.top_left.y <= other.bottom_right.y
-            and self.bottom_right.y >= other.top_left.y
-        )
+        intersects_on_x_axis = self.minX <= other.maxX and self.maxX >= other.minX
+        intersects_on_y_axis = self.minY <= other.maxY and self.maxY >= other.minY
+        return intersects_on_x_axis and intersects_on_y_axis
 
     def intersection(self, other: "BoundingBox") -> Optional["BoundingBox"]:
         """Get the intersection of this bounding box with another"""
@@ -238,6 +265,20 @@ class BoundingBox:
                 min(self.bottom_right.y, other.bottom_right.y),
             ),
         )
+
+    def overlap_y_amount(self, other: "BoundingBox"):
+        """Return the amount of overlap on the y-axis (even if it doesn't directly intersect)"""
+        overlap_top = max(self.minY, other.minY)
+        overlap_bottom = min(self.maxY, other.maxY)
+
+        return max(overlap_bottom - overlap_top, 0)
+
+    def overlap_x_amount(self, other: "BoundingBox"):
+        """Return the amount of overlap on the x-axis (even if it doesn't directly intersect)"""
+        overlap_left = max(self.minX, other.minX)
+        overlap_right = min(self.maxX, other.maxX)
+
+        return max(overlap_right - overlap_left, 0)
 
     @classmethod
     def union(cls, bounding_boxes: Sequence["BoundingBox"]) -> "BoundingBox":
@@ -271,6 +312,72 @@ class BoundingBox:
             top_left=Point.from_dict(dict["top_left"]),
             bottom_right=Point.from_dict(dict["bottom_right"]),
         )
+
+    def refine(self, image: ndarray) -> "BoundingBox":
+        """
+        Returns a new bounding box to better fit the text within the given OpenCV image.
+
+        Args:
+            image (numpy.ndarray): The OpenCV image containing the text.
+
+        Returns:
+            BoundingBox: A new bounding box that tightly fits the detected text.
+        """
+        # Extract the region of interest (ROI) from the image
+        h, w = image.shape[:2]
+        x1, y1, x2, y2 = (self.scale(width=w, height=h)).to_ltrb()
+
+        logger.debug(f"Region of Interest: ({x1}, {y1}, {x2}, {y2})")
+
+        roi = image[y1:y2, x1:x2]
+
+        # Convert to grayscale if the image is not already
+        if len(roi.shape) == 3:
+            roi_gray = cvtColor(roi, COLOR_BGR2GRAY)
+        else:
+            roi_gray = roi
+
+        # Apply thresholding to isolate text
+        _, thresh = threshold(roi_gray, 0, 255, THRESH_BINARY + THRESH_OTSU)
+
+        # Find contours in the thresholded image
+        contours, _ = findContours(thresh, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+
+        # If no contours are found, return the original bounding box
+        if not contours:
+            logger.debug("No Contours Found")
+            bbox = BoundingBox.from_ltrb(self.minX, self.minY, self.maxX, self.maxY)
+        else:
+            logger.debug("Computing Min/Max for all contours")
+            # Concatenate all contours into a single array
+            # Shape is (N, 1, 2 [0=x,1=y])
+            #   N is total number of points across all countours
+            all_points = np_vstack(contours)
+
+            # Calculate the bounding box using NumPy
+            x_min = np_min(all_points[:, 0, 0])
+            y_min = np_min(all_points[:, 0, 1])
+            x_max = np_max(all_points[:, 0, 0])
+            y_max = np_max(all_points[:, 0, 1])
+
+            # Restore location of bounding box from ROI
+            x_min += x1
+            y_min += y1
+            x_max += x1
+            y_max += y1
+
+            # Return a new bounding Box
+            bbox = BoundingBox.from_ltrb(
+                x_min,
+                y_min,
+                x_max,
+                y_max,
+            )
+            logger.debug(f"New bbox: ({x_min}, {y_min}, {x_max}, {y_max})")
+
+        bbox = bbox.normalize(width=w, height=h)
+        logger.debug(f"Normalized Bbox:\n{bbox.to_dict()}")
+        return bbox
 
     # Shapely integration methods
     @classmethod
