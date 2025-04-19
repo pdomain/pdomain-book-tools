@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
+from logging import getLogger
 from pathlib import Path
 from typing import Collection, Dict, Optional, Union
 
 from pandas import DataFrame
-from sortedcontainers import SortedList
 
 from ..geometry import BoundingBox
 from .block import Block, BlockCategory, BlockChildType
 from .page import Page
 from .word import Word
+
+# Configure logging
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -21,8 +26,8 @@ class Document:
 
     source_lib: str = ""
     source_path: Optional[Path] = None
-    _pages: SortedList[Page] = field(
-        default_factory=lambda: SortedList(key=lambda page: page.page_index)
+    _pages: list[Page] = field(
+        default_factory=list,
     )
 
     def __init__(
@@ -35,15 +40,17 @@ class Document:
         self.source_path = source_path
         self.pages = pages
 
+    def _sort_pages(self):
+        self._pages.sort(key=lambda item: (item.page_index))
+
     @property
-    def pages(self) -> SortedList:
-        return self._pages
+    def pages(self) -> list[Page]:
+        """Returns a copy of the item list in this block"""
+        self._sort_pages()
+        return self._pages.copy()
 
     @pages.setter
     def pages(self, value):
-        if isinstance(value, SortedList):
-            self._pages = value
-            return
         if not isinstance(value, Collection):
             raise TypeError("pages must be a collection")
         for page in value:
@@ -51,7 +58,8 @@ class Document:
                 raise TypeError(
                     "Each item in pages must have a page_index attribute of type int"
                 )
-        self._pages = SortedList(value, key=lambda page: page.page_index)
+        self._pages = value
+        self._sort_pages()
 
     def scale(self, width: int, height: int) -> "Document":
         """Return new document with scaled bounding boxes to absolute pixel coordinates"""
@@ -69,6 +77,11 @@ class Document:
             "pages": [page.to_dict() for page in self.pages] if self.pages else [],
         }
 
+    def save_json(self, file_path: Union[str, Path]) -> None:
+        """Save OCR results to JSON file"""
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+
     @classmethod
     def from_dict(cls, dict) -> "Document":
         """Create Document from dictionary"""
@@ -77,11 +90,6 @@ class Document:
             source_path=Path(dict["source_path"]),
             pages=[Page.from_dict(page) for page in dict["pages"]],
         )
-
-    def save_json(self, file_path: Union[str, Path]) -> None:
-        """Save OCR results to JSON file"""
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
 
     @classmethod
     def from_doctr_output(
@@ -145,7 +153,9 @@ class Document:
                 height=height,
                 items=blocks,
             )
-            result.pages.add(page)
+            result._pages.append(page)
+
+        result._sort_pages()
 
         return result
 
@@ -289,5 +299,8 @@ class Document:
                 items=blocks,
                 bounding_box=page_bounding_box,
             )
-            result.pages.add(page)
+            result._pages.append(page)
+
+        result._sort_pages()
+
         return result

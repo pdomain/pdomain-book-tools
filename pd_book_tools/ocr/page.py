@@ -2,6 +2,7 @@ import itertools
 import pathlib
 from dataclasses import dataclass, field
 from enum import Enum
+from logging import getLogger
 from typing import Any, Collection, Dict, List, Optional
 
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
@@ -11,11 +12,14 @@ from numpy import mean as np_mean
 from numpy import median as np_median
 from numpy import ndarray
 from numpy import std as np_std
-from sortedcontainers import SortedList
 
 from ..geometry import BoundingBox
 from .block import Block, BlockCategory
+from .ground_truth_matching import update_page_with_ground_truth_text
 from .word import Word
+
+# Configure logging
+logger = getLogger(__name__)
 
 
 class BBoxColors(Enum):
@@ -25,7 +29,7 @@ class BBoxColors(Enum):
     BLOCK = (0, 255, 0)  # Green
     PARAGRAPH = (255, 0, 0)  # Red
     LINE = (0, 0, 255)  # Blue
-    WORD = (255, 255, 0)  # Yellow
+    WORD = (0, 128, 0)  # Dark Green
     GROUND_TRUTH = (0, 255, 255)  # Cyan
     BLACK = (0, 0, 0)  # Black
     RED = (0, 0, 255)  # Red
@@ -42,10 +46,8 @@ class Page:
     height: int
     page_index: int
     bounding_box: Optional[BoundingBox] = None
-    _items: SortedList[Block] = field(
-        default_factory=lambda: SortedList(
-            key=lambda item: item.bounding_box.top_left.y if item.bounding_box else 0
-        )
+    _items: List[Block] = field(
+        default_factory=list, init=False, repr=False, compare=False
     )
     page_labels: Optional[list[str]] = None
     _cv2_numpy_page_image: Optional[ndarray] = None
@@ -93,23 +95,45 @@ class Page:
         else:
             self.unmatched_ground_truth_lines = []
 
+    def _sort_items(self):
+        self._items.sort(
+            key=lambda item: (
+                item.bounding_box.top_left.y,
+                item.bounding_box.top_left.x,
+            ),
+        )
+
     @property
-    def items(self) -> SortedList:
-        return self._items
+    def items(self) -> List[Block]:
+        """Returns a copy of the item list in this block"""
+        self._sort_items()
+        return self._items.copy()
+
+    def add_item(self, item):
+        """Add an item to the block"""
+        if not isinstance(item, Block):
+            raise TypeError("Item must be of type Block")
+        self._items.append(item)
+        self._sort_items()
+        self.recompute_bounding_box()
+
+    def remove_item(self, item):
+        """Remove an item from the block"""
+        if item in self._items:
+            self._items.remove(item)
+            self._sort_items()
+            self.recompute_bounding_box()
+        else:
+            raise ValueError("Item not found in block")
 
     @items.setter
     def items(self, values):
-        if isinstance(values, SortedList):
-            self._items = values
-            return
         if not isinstance(values, Collection):
             raise TypeError("items must be a collection")
         for block in values:
             if not isinstance(block, Block):
                 raise TypeError("Each item in items must be of type Block")
-        self._items = SortedList(
-            values, key=lambda block: block.bounding_box.top_left.y
-        )
+        self._items = sorted(values, key=lambda block: block.bounding_box.top_left.y)
 
     @property
     def cv2_numpy_page_image(self) -> ndarray:
@@ -175,6 +199,7 @@ class Page:
         self._cv2_numpy_page_image_paragraph_with_bboxes = (
             self._cv2_numpy_page_image.copy()
         )
+
         self._add_rect_recurse(
             self.items,
             self._cv2_numpy_page_image_paragraph_with_bboxes,
@@ -233,11 +258,12 @@ class Page:
                 continue  # Don't display a box for matched words
 
             if not w.ground_truth_text:
+                logger.debug("No ground truth match for word " + w.text)
                 color = BBoxColors.RED.value
             elif w.ground_truth_match_keys["match_score"] >= 90:
                 color = BBoxColors.DARK_GREEN.value
             elif w.ground_truth_match_keys["match_score"] >= 70:
-                color = BBoxColors.DARK_YELLOW.value
+                color = BBoxColors.DARK_GREEN.value
             else:
                 color = BBoxColors.MAGENTA.value
             self._add_rect(
@@ -273,16 +299,17 @@ class Page:
 
         bbox = item.bounding_box
         # If scaled coordinates
-        if item.bounding_box.width < 1 or item.bounding_box.height < 1:
-            bbox = item.bounding_box.scale(width=w, height=h)
+        if item and item.bounding_box:
+            if item.bounding_box.width < 1 or item.bounding_box.height < 1:
+                bbox = item.bounding_box.scale(width=w, height=h)
 
-        cv2_rectangle(
-            img=image,
-            pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
-            pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
-            color=box_color,
-            thickness=2,
-        )
+            cv2_rectangle(
+                img=image,
+                pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
+                pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
+                color=box_color,
+                thickness=2,
+            )
 
     def _add_ocr_text_recurse(self, items, image):
         if image is None:
@@ -370,6 +397,13 @@ class Page:
         """Get flat list of all 'lines' in the page"""
         return list(itertools.chain.from_iterable([item.lines for item in self.items]))
 
+    @property
+    def paragraphs(self) -> List["Block"]:
+        """Get flat list of all 'paragraphs' in the page"""
+        return list(
+            itertools.chain.from_iterable([item.paragraphs for item in self.items])
+        )
+
     def scale(self, width: int, height: int) -> "Page":
         """
         Return new page with scaled bounding box
@@ -401,15 +435,43 @@ class Page:
         This is a post-processing step to ensure that the text is
         organized into logical sections for text generated output.
         """
+        logger.debug("Reorganizing Page")
+
+        # Merge lines for each block if they didn't get recognzied together
+        for block in self.items:
+            self.reorganize_lines(block)
+
         row_blocks = self.compute_text_row_blocks(self.lines)
 
         # TODO: Add logic to detect and handle multiple columns of text
 
+        if not row_blocks or len(row_blocks.items) == 0:
+            logger.debug("No blocks to reorganize")
+            return
+
+        # Recompute lines within blocks
+        for block in row_blocks.items:
+            # Recompute lines for each paragraph block
+            self.reorganize_lines(block)
+
         reset_paragraph_blocks = []
+
+        # Reoragnize into paragraph blocks
         for b in list(row_blocks.items):
-            paragraphs = self.compute_text_paragraph_blocks(b.lines)
-            reset_paragraph_blocks.append(paragraphs)
+            paragraph_blocks = self.compute_text_paragraph_blocks(b.lines)
+            reset_paragraph_blocks.append(paragraph_blocks)
         self.items = reset_paragraph_blocks
+
+        paragraph_blocks = self.paragraphs
+        logger.debug(
+            "Page Block Count after adding paragraphs:" + str(len(paragraph_blocks))
+        )
+
+        self.refresh_page_images()
+
+    def add_ground_truth(self, text: str):
+        update_page_with_ground_truth_text(self, text)
+        self.refresh_page_images()
 
     @classmethod
     def from_dict(cls, dict: Dict[str, Any]) -> "Page":
@@ -427,6 +489,135 @@ class Page:
         )
 
     @classmethod
+    def _reorganize_lines_log_debug_lines(cls, message, line1text, line2text):
+        logger.debug(
+            message
+            + "\nFirst line: "
+            + str(line1text[0:10] + ("..." if len(line1text) > 10 else ""))
+            + "\nSecond line: "
+            + str(line2text[0:10] + ("..." if len(line2text) > 10 else ""))
+        )
+
+    @classmethod
+    def _reorganize_lines_check_overlap(cls, line: Block, next_line: Block):
+        # TODO move this to the Block class
+
+        y_overlap_h = line.bounding_box.overlap_y_amount(next_line.bounding_box)
+        x_overlap_w = line.bounding_box.overlap_x_amount(next_line.bounding_box)
+
+        overlap_not_ok = False
+        if y_overlap_h < (
+            0.4 * (np_mean([line.bounding_box.height, next_line.bounding_box.height]))
+        ):
+            cls._reorganize_lines_log_debug_lines(
+                f"Lines not overlapping on Y axis enough. Overlap is {y_overlap_h}",
+                line.text,
+                next_line.text,
+            )
+            overlap_not_ok = True
+
+        if x_overlap_w > (0.1 * line.bounding_box.width):
+            cls._reorganize_lines_log_debug_lines(
+                f"Lines overlapping on X axis too much. Overlap is {x_overlap_w}",
+                line.text,
+                next_line.text,
+            )
+            overlap_not_ok = True
+        return overlap_not_ok
+
+    @classmethod
+    def reorganize_lines(cls, block: Block):
+        """
+        # TODO move this to the Block class
+
+        Reorganizes the lines of text in a given paragraph.
+        In some cases the OCR accidently creates two lines
+        in a single block for a single line of text
+
+        This is not for multi-column layouts where lines are clearly delineated
+        with a margin of space along all lines
+
+        Use hueristics of surrounding text to determine if two lines really should be one
+        """
+        if not block.items:
+            return
+        lines: List[Block] = block.items
+        if not all(hasattr(line, "block_category") for line in lines) and not all(
+            line.block_category == BlockCategory.LINE for line in lines
+        ):
+            raise TypeError("All items in lines must have a block_category of LINE")
+
+        logger.debug("Recomputing lines for block " + str(block.text[0:10] + "..."))
+
+        # Iterate through each line, finding "nearly adjacent" lines on X axis
+        if len(lines) < 2:
+            # If only one line, no need to recompute
+            return
+
+        median_line_width = np_median([line.bounding_box.width for line in lines])
+
+        i = -1
+        while True:
+            i = i + 1
+            # this is being mutated, get it each time through the loop
+            lines: List[Block] = block.items
+
+            if i >= len(lines) - 1:
+                break
+
+            line: Block = lines[i]
+            next_line: Block = lines[i + 1]
+
+            if cls._reorganize_lines_check_overlap(line, next_line):
+                continue
+
+            # Only check lines that are "approximately" the same height (to account for drop-caps)
+            # use a 10% height tolerance
+            logger.debug("line.bounding_box.height: " + str(line.bounding_box.height))
+            logger.debug(
+                "next_line.bounding_box.height: " + str(next_line.bounding_box.height)
+            )
+            logger.debug(
+                "Height difference: "
+                + str(abs(line.bounding_box.height - next_line.bounding_box.height))
+            )
+            logger.debug("Tolerance: " + str(0.50 * line.bounding_box.height))
+            if abs(line.bounding_box.height - next_line.bounding_box.height) > (
+                0.50 * line.bounding_box.height
+            ):
+                cls._reorganize_lines_log_debug_lines(
+                    "Line height difference too large.", line.text, next_line.text
+                )
+                continue
+
+            # Figure out which line should come "first" and reorder them
+            if line.bounding_box.minX > next_line.bounding_box.minX:
+                line, next_line = next_line, line
+
+            # Compute X space between lines
+            x_space_between = max(
+                next_line.bounding_box.minX - line.bounding_box.maxX, 0
+            )
+
+            # Compute 10% of line length of all lines in block
+            ten_percent_median_line_length = median_line_width * 0.10
+            if x_space_between < ten_percent_median_line_length:
+                # Merge the two lines into one. Subtract 1 from the index
+                # So that we can continue merging if there's more than two broken up lines
+                cls._reorganize_lines_log_debug_lines(
+                    "Merging Lines.", line.text, next_line.text
+                )
+                line.merge(next_line)
+                block.remove_item(next_line)
+                i = i - 1
+                continue
+            else:
+                cls._reorganize_lines_log_debug_lines(
+                    "Lines not split on X axis enough.", line.text, next_line.text
+                )
+                continue
+
+    @classmethod
     def compute_text_row_blocks(cls, lines: List[Block], tolerance=None):
         """
         Use dynamic vertical spacing to group lines into "blocks" of text.
@@ -436,9 +627,15 @@ class Page:
 
         After finding blocks, we can compute columns within each block.
         """
+        logger.debug("Computing text row blocks")
         # Single Line Block
-        if len(lines) < 2:
-            return [lines]
+        if len(lines) == 0:
+            return None
+        # if len(lines) == 1:
+        #     logger.debug("Only one line, no blocks to compute")
+        #     b = Block(items=lines, block_category=BlockCategory.PARAGRAPH)
+        #     new_block = Block(items=[b], block_category=BlockCategory.BLOCK)
+        #     return new_block
 
         # Tolerance is 20% of average line height by default
         if tolerance is None:
@@ -461,23 +658,28 @@ class Page:
         # if they are part of the same block or not. "blocks" will be separated by
         # vertical gaps larger than the norm.
 
-        # Use 1/4 of the standard deviation, or 10% of the avarage line height
+        # Use 1/2 of the standard deviation, or 15% of the avarage line height
         # as the tolerance for line spacing
         median_line_height_spacing = (
             np_median([line.bounding_box.height for line in lines]) * 0.10
         )
-        std_line_height_spacing = np_std(line_spacings) * 0.25
+        std_line_height_spacing = np_std(line_spacings) * 0.75
 
         tolerance_spacing = tolerance + max(
-            std_line_height_spacing, (median_line_height_spacing * 0.10)
+            std_line_height_spacing, (median_line_height_spacing * 0.25)
         )
+        logger.debug("Tolerance Spacing: " + str(tolerance_spacing))
 
         blocks = []
         current_block = [lines[0]]
+        logger.debug("Starting Block: " + str(current_block[0].text[0:10] + "..."))
         for i in range(1, len(lines)):
-            prev_line_space_after = line_spacings[i - 1]
-            if prev_line_space_after > 0 and prev_line_space_after > tolerance_spacing:
+            prev_line_space_after = max(line_spacings[i - 1], 0)
+            logger.debug("Line: " + str(lines[i].text[0:10] + "..."))
+            logger.debug("Previous line space after: " + str(prev_line_space_after))
+            if prev_line_space_after >= 0 and prev_line_space_after > tolerance_spacing:
                 b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
+                logger.debug("New Block: " + str(b.text[0:10] + "..."))
                 blocks.append(b)
                 current_block = [lines[i]]
             else:
@@ -488,11 +690,18 @@ class Page:
             b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
             blocks.append(b)
 
+        logger.debug("Block Count: " + str(len(blocks)))
+
+        for block in blocks:
+            logger.debug("Block: " + str(block.text[0:10] + "..."))
+
         new_block = Block(items=blocks, block_category=BlockCategory.BLOCK)
         return new_block
 
     @classmethod
     def compute_text_paragraph_blocks(cls, lines: List[Block]):
+        logger.debug("Computing Paragraph Blocks")
+
         min_x_positions = [line.bounding_box.minX for line in lines]
         max_x_positions = [line.bounding_box.maxX for line in lines]
 
@@ -502,7 +711,7 @@ class Page:
         median_right_indent = np_median(max_x_positions)
 
         left_tolerance = 0.02 * median_line_length  # np.std(min_x_positions) * 2
-        right_tolerance = 0.02 * median_line_length  # np.std(max_x_positions) * 2
+        right_tolerance = 0.15 * median_line_length  # np.std(max_x_positions) * 2
 
         left_max = median_left_indent + left_tolerance
         right_min = median_right_indent - right_tolerance
@@ -531,9 +740,10 @@ class Page:
 
         blocks = []
         current_block = [lines[0]]
+        logger.debug("First Paragraph" + str(current_block[0].text[0:10] + "..."))
         for i in range(1, len(lines)):
             # If previous line right indent is < median,
-            #   previous line is end of paragraph
+            #   previous line *might* be end of paragraph
             # If current line left indent is > median, start of paragraph
 
             prev_x_end_paragraph = max_x_positions[i - 1] <= right_min
@@ -541,6 +751,7 @@ class Page:
 
             if (prev_x_end_paragraph) or (current_x_start_paragraph):
                 b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
+                logger.debug("New Paragraph: " + str(b.text[0:10] + "..."))
                 blocks.append(b)
                 current_block = [lines[i]]
             else:
@@ -552,7 +763,29 @@ class Page:
             blocks.append(b)
 
         new_block = Block(items=blocks, block_category=BlockCategory.BLOCK)
+        logger.debug("New Block Paragraph Count: " + str(len(new_block.items)))
+        logger.debug("New Block Line Count: " + str(len(new_block.lines)))
         return new_block
+
+    def recompute_bounding_box(self):
+        """Recompute the bounding box of the page based on its items"""
+        if not self.items:
+            return
+        self.bounding_box = BoundingBox.union(
+            [item.bounding_box for item in self.items]
+        )
+
+    def refine_bounding_boxes(self, image: ndarray = None):
+        if image is None:
+            if hasattr(self, "cv2_numpy_page_image"):
+                image = self.cv2_numpy_page_image
+            else:
+                raise ValueError(
+                    "Image not provided and cv2_numpy_page_image is not set."
+                )
+        for item in self.items:
+            item.refine_bounding_boxes(image)
+        self.recompute_bounding_box()
 
     def convert_to_training_set(
         matched_ocr_list, image_path: pathlib.Path, output_path: pathlib.Path

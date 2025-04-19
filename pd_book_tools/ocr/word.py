@@ -1,9 +1,14 @@
 from dataclasses import dataclass, field
+from logging import getLogger
 from typing import Optional
 
+from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from ..geometry import BoundingBox
+
+# Configure logging
+logger = getLogger(__name__)
 
 
 @dataclass
@@ -74,7 +79,8 @@ class Word:
     def fuzz_score_against(self, ground_truth_text):
         """Scores a string as "matching" against a ground truth string
 
-        TODO: Perhaps add loose scoring for curly quotes against straight quotes, and em-dashes against hyphens to count these as "closer" to gt
+        TODO: Perhaps add loose scoring for curly quotes against straight quotes,
+        and em-dashes against hyphens to count these as "closer" to gt
 
         Args:
             ground_truth_text (_type_): 'correct' text
@@ -115,3 +121,6 @@ class Word:
             ),
             ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
         )
+
+    def refine_bounding_box(self, image: ndarray):
+        self.bounding_box = self.bounding_box.refine(image)
