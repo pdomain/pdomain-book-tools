@@ -205,9 +205,11 @@ class PGDPPage:
 
 class PGDPExport:
     pages: list[PGDPPage]
+    project_id: str
 
-    def __init__(self, pages: list[PGDPPage]):
+    def __init__(self, pages: list[PGDPPage], project_id: str):
         self.pages = pages
+        self.project_id = project_id
 
     @classmethod
     def from_json_file(cls, input_file_path: pathlib.Path | str):
@@ -229,4 +231,4 @@ class PGDPExport:
                 path_prefix = pathlib.Path(path_prefix)
             png_full_file_path = pathlib.Path(path_prefix, png_file)
             new_pages.append(PGDPPage(png_full_file_path, page_text))
-        return cls(new_pages)
+        return cls(pages=new_pages, project_id=path_prefix.stem)
