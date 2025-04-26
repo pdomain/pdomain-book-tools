@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional, Sequence, Tuple, Union
 
+import cv2
+
 from .point import Point
 
 # Try to import shapely, but don't fail if not installed
@@ -16,19 +18,14 @@ except ImportError:
 from logging import getLogger
 
 from cv2 import (
-    CHAIN_APPROX_SIMPLE,
     COLOR_BGR2GRAY,
-    RETR_EXTERNAL,
     THRESH_BINARY,
     THRESH_OTSU,
     cvtColor,
-    findContours,
+    findNonZero,
     threshold,
 )
-from numpy import max as np_max
-from numpy import min as np_min
 from numpy import ndarray
-from numpy import vstack as np_vstack
 
 # Configure logging
 logger = getLogger(__name__)
@@ -324,8 +321,8 @@ class BoundingBox:
             BoundingBox: A new bounding box that tightly fits the detected text.
         """
         # Extract the region of interest (ROI) from the image
-        h, w = image.shape[:2]
-        x1, y1, x2, y2 = (self.scale(width=w, height=h)).to_ltrb()
+        img_h, img_w = image.shape[:2]
+        x1, y1, x2, y2 = (self.scale(width=img_w, height=img_h)).to_ltrb()
 
         logger.debug(f"Region of Interest: ({x1}, {y1}, {x2}, {y2})")
 
@@ -337,45 +334,38 @@ class BoundingBox:
         else:
             roi_gray = roi
 
-        # Apply thresholding to isolate text
-        _, thresh = threshold(roi_gray, 0, 255, THRESH_BINARY + THRESH_OTSU)
+        inverted_image = cv2.bitwise_not(roi_gray)
 
-        # Find contours in the thresholded image
-        contours, _ = findContours(thresh, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        # Apply thresholding to isolate text from inverted image
+        _, thresh = threshold(inverted_image, 0, 255, THRESH_BINARY + THRESH_OTSU)
 
-        # If no contours are found, return the original bounding box
-        if not contours:
-            logger.debug("No Contours Found")
-            bbox = BoundingBox.from_ltrb(self.minX, self.minY, self.maxX, self.maxY)
-        else:
-            logger.debug("Computing Min/Max for all contours")
-            # Concatenate all contours into a single array
-            # Shape is (N, 1, 2 [0=x,1=y])
-            #   N is total number of points across all countours
-            all_points = np_vstack(contours)
+        # Find non-zero pixels in the thresholded image
+        non_zero_coords = findNonZero(thresh)
 
-            # Calculate the bounding box using NumPy
-            x_min = np_min(all_points[:, 0, 0])
-            y_min = np_min(all_points[:, 0, 1])
-            x_max = np_max(all_points[:, 0, 0])
-            y_max = np_max(all_points[:, 0, 1])
+        if non_zero_coords is None:
+            logger.debug("No non-zero pixels found")
+            # return a copy of self via serialization
+            return self.from_dict(self.to_dict())
 
-            # Restore location of bounding box from ROI
-            x_min += x1
-            y_min += y1
-            x_max += x1
-            y_max += y1
+        x, y, w, h = cv2.boundingRect(non_zero_coords)
+        logger.debug(f"Bounding Rect: ({x}, {y}, {w}, {h})")
 
-            # Return a new bounding Box
-            bbox = BoundingBox.from_ltrb(
-                x_min,
-                y_min,
-                x_max,
-                y_max,
-            )
-            logger.debug(f"New bbox: ({x_min}, {y_min}, {x_max}, {y_max})")
+        # Restore location of bounding box from ROI
+        x_min = x1 + x
+        y_min = y1 + y
+        x_max = x1 + x + w
+        y_max = y1 + y + h
 
-        bbox = bbox.normalize(width=w, height=h)
+        # Return a new bounding box
+        bbox = BoundingBox.from_ltrb(
+            x_min,
+            y_min,
+            x_max,
+            y_max,
+        )
+        logger.debug(f"New bbox: ({x_min}, {y_min}, {x_max}, {y_max})")
+
+        bbox = bbox.normalize(width=img_w, height=img_h)
         logger.debug(f"Normalized Bbox:\n{bbox.to_dict()}")
         return bbox
 
