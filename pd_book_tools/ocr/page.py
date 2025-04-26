@@ -2,10 +2,16 @@ import itertools
 import pathlib
 from dataclasses import dataclass, field
 from enum import Enum
+from json import dump as json_dump
+from json import load as json_load
 from logging import getLogger
 from typing import Any, Collection, Dict, List, Optional
 
+from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
+from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
+from cv2 import cvtColor as cv2_cvtColor
+from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
 from numpy import mean as np_mean
@@ -105,12 +111,12 @@ class Page:
 
     @property
     def items(self) -> List[Block]:
-        """Returns a copy of the item list in this block"""
+        """Returns a copy of the item list in this page"""
         self._sort_items()
         return self._items.copy()
 
     def add_item(self, item):
-        """Add an item to the block"""
+        """Add an item to the page"""
         if not isinstance(item, Block):
             raise TypeError("Item must be of type Block")
         self._items.append(item)
@@ -118,13 +124,23 @@ class Page:
         self.recompute_bounding_box()
 
     def remove_item(self, item):
-        """Remove an item from the block"""
+        """Remove a block from the page"""
         if item in self._items:
             self._items.remove(item)
             self._sort_items()
             self.recompute_bounding_box()
         else:
-            raise ValueError("Item not found in block")
+            raise ValueError("Item not found in page")
+
+    def remove_empty_items(self):
+        """Remove empty child blocks from the block."""
+        if not self.items:
+            return
+        item: Block
+        for item in self.items:
+            item.remove_empty_items()
+            if not item.items:
+                self.remove_item(item)
 
     @items.setter
     def items(self, values):
@@ -429,9 +445,13 @@ class Page:
             "items": [item.to_dict() for item in self.items] if self.items else [],
         }
 
-    def reorganize_page(self):
+    def copy(self) -> "Page":
+        # Copy the page to a new object via serialization/deserialization
+        return self.from_dict(self.to_dict())
+
+    def reorganize_page(self) -> "Page":
         """
-        Reogranize the page into paragraphs and blocks.
+        Reogranize the page into paragraphs and blocks and return a new Page.
         This is a post-processing step to ensure that the text is
         organized into logical sections for text generated output.
         """
@@ -463,6 +483,7 @@ class Page:
         self.items = reset_paragraph_blocks
 
         paragraph_blocks = self.paragraphs
+
         logger.debug(
             "Page Block Count after adding paragraphs:" + str(len(paragraph_blocks))
         )
@@ -641,6 +662,8 @@ class Page:
         if tolerance is None:
             tolerance = 0.2 * np_mean([line.bounding_box.height for line in lines])
 
+        logger.debug("Tolerance: " + str(tolerance))
+
         # Sort lines by their Y position
         lines.sort(key=lambda line: line.bounding_box.minY)
 
@@ -663,7 +686,12 @@ class Page:
         median_line_height_spacing = (
             np_median([line.bounding_box.height for line in lines]) * 0.10
         )
+        logger.debug("Median Line Height Spacing: " + str(median_line_height_spacing))
+
         std_line_height_spacing = np_std(line_spacings) * 0.75
+        logger.debug(
+            "Standard Deviation Line Height Spacing: " + str(std_line_height_spacing)
+        )
 
         tolerance_spacing = tolerance + max(
             std_line_height_spacing, (median_line_height_spacing * 0.25)
@@ -672,14 +700,14 @@ class Page:
 
         blocks = []
         current_block = [lines[0]]
-        logger.debug("Starting Block: " + str(current_block[0].text[0:10] + "..."))
+        logger.debug("Starting Block: " + str(current_block[0].text[0:25] + "..."))
         for i in range(1, len(lines)):
             prev_line_space_after = max(line_spacings[i - 1], 0)
-            logger.debug("Line: " + str(lines[i].text[0:10] + "..."))
+            logger.debug("Line: " + str(lines[i].text[0:25] + "..."))
             logger.debug("Previous line space after: " + str(prev_line_space_after))
             if prev_line_space_after >= 0 and prev_line_space_after > tolerance_spacing:
                 b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
-                logger.debug("New Block: " + str(b.text[0:10] + "..."))
+                logger.debug("New Block: " + str(b.text[0:25] + "..."))
                 blocks.append(b)
                 current_block = [lines[i]]
             else:
@@ -770,6 +798,8 @@ class Page:
     def recompute_bounding_box(self):
         """Recompute the bounding box of the page based on its items"""
         if not self.items:
+            self.bounding_box = None
+            logger.debug("No items in page to recompute bounding box")
             return
         self.bounding_box = BoundingBox.union(
             [item.bounding_box for item in self.items]
@@ -788,65 +818,100 @@ class Page:
         self.recompute_bounding_box()
 
     def convert_to_training_set(
-        matched_ocr_list, image_path: pathlib.Path, output_path: pathlib.Path
-    ):
+        self: "Page", output_path: pathlib.Path, prefix: str = ""
+    ) -> None:
         """
         Create a training set from a page image (matched_ocr data) and image bounding boxes
         Result:
             Files:
             ├── images
-                ├── <image>_x1_x2_y1_y2.jpg
-                ├── img_2.jpg
-                ├── img_3.jpg
+                ├── <prefix>_<page_index>_x1_x2_y1_y2.jpg (cropped image, x1, y1, x2, y2 are the scaled coordinates of the bounding box)
                 └── ...
             ├── labels.json
 
             In labels.json:
             {
-                "image_path_1": "<either final_word value or gt value>",
+                "image_path_1": "<gt value>",
             }
         """
-        # TODO
-        raise NotImplementedError("Not Implemented Yet")
+        if self.cv2_numpy_page_image is None:
+            raise ValueError(
+                "cv2_numpy_page_image is not set. Please set it before calling this method."
+            )
+        if not self.items:
+            logger.info("No items in the page to process.")
+            return
 
-        # image = cv2.imread(image_path)
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # img_height, img_width, _ = image.shape
+        if not output_path.parent.exists():
+            raise ValueError(
+                "Output path does not exist. Please create the parent directory first."
+            )
 
-        # labels = {}
-        # for matched_ocr in matched_ocr_list:
-        #     for line_nbr, line in matched_ocr.items():
-        #         for word_data in line:
-        #             bounding_box = word_data["ocr-bounding_box"]
-        #             if bounding_box:
-        #                 x1, y1 = int(bounding_box[0][0] * img_width), int(
-        #                     bounding_box[0][1] * img_height
-        #                 )
-        #                 x2, y2 = int(bounding_box[1][0] * img_width), int(
-        #                     bounding_box[1][1] * img_height
-        #                 )
-        #                 cropped_image = image[y1:y2, x1:x2]
-        #                 cropped_image_name = "{}_{}_{}_{}_{}.jpg".format(
-        #                     image_path.stem,
-        #                     x1,
-        #                     y1,
-        #                     x2,
-        #                     y2,
-        #                 )
-        #                 cv2.imwrite(
-        #                     pathlib.Path(
-        #                         output_path, "images", cropped_image_name
-        #                     ).resolve(),
-        #                     cropped_image,
-        #                     [int(cv2.IMWRITE_JPEG_QUALITY), 100],
-        #                 )
-        #                 if word_data["match_type"] == "difflib-line-delete":
-        #                     label = word_data["final_word"].value
-        #                 else:
-        #                     label = word_data["final_word"].value or word_data["gt"]
-        #                 if label:
-        #                     labels[cropped_image_name] = label
-        # json.dump(labels, open(pathlib.Path(output_path, "labels.json"), "w"))
+        output_path.mkdir(parents=True, exist_ok=True)
+        image_path = pathlib.Path(output_path, "images")
+        image_path.mkdir(parents=True, exist_ok=True)
+
+        image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
+        img_height, img_width, _ = image.shape
+
+        labels = {}
+
+        # Delete any existing images that match the prefix + page index in the output directory
+        for file in image_path.glob(f"{prefix}_{self.page_index}_*"):
+            if file.is_file():
+                logger.debug("Deleting existing image: " + str(file))
+                file.unlink()
+
+        for word in self.words:
+            if not word.ground_truth_text:
+                logger.warning(
+                    "Word does not have ground truth text. Please set it before calling this method. Word: "
+                    + word.text
+                )
+                # raise ValueError(
+                #     "Word does not have ground truth text. Please set it before calling this method. Word: "
+                #     + word.text
+                # )
+            bb = word.bounding_box.scale(width=img_width, height=img_height)
+            cropped_image = image[bb.minY : bb.maxY, bb.minX : bb.maxX]
+            cropped_image_name = "{}_{}_{}_{}_{}_{}.jpg".format(
+                prefix,
+                self.page_index,
+                bb.minX,
+                bb.maxX,
+                bb.minY,
+                bb.maxY,
+            )
+            logger.debug("Writing image: " + str(cropped_image_name))
+            cv2_imwrite(
+                pathlib.Path(image_path, cropped_image_name).resolve(),
+                cropped_image,
+                [int(cv2_IMWRITE_JPEG_QUALITY), 100],
+            )
+            label = word.ground_truth_text
+            labels[cropped_image_name] = label
+
+        # Read in the JSON file and add the new labels
+        try:
+            with open(pathlib.Path(output_path, "labels.json"), "r") as f:
+                existing_labels = json_load(f)
+        except FileNotFoundError:
+            # If the file doesn't exist, create an empty dictionary
+            existing_labels = {}
+
+        # remove existing labels that have prefix + page index
+        existing_labels = {
+            k: v
+            for k, v in existing_labels.items()
+            if not k.startswith(f"{prefix}_{self.page_index}_")
+        }
+
+        # Add the new labels to the existing labels
+        labels = {**existing_labels, **labels}
+
+        # Write the updated labels to the JSON file
+        with open(pathlib.Path(output_path, "labels.json"), "w") as f:
+            json_dump(labels, f)
 
     # def compute_text_columns(lines: List[Block], tolerance=None):
     #     """

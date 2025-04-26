@@ -136,6 +136,18 @@ class Block:
         else:
             raise ValueError("Item not found in block")
 
+    def remove_empty_items(self):
+        """Remove empty child blocks from the block."""
+        if not self.items:
+            return
+        if self.child_type != BlockChildType.WORDS:
+            item: Block
+            for item in self.items:
+                item.remove_empty_items()
+                if not item.items:
+                    self.remove_item(item)
+        # Empty words are directly removed with remove_item, do not need to be handled here
+
     @items.setter
     def items(self, value):
         if not isinstance(value, Collection):
@@ -326,6 +338,9 @@ class Block:
         )
 
     def refine_bounding_boxes(self, image: ndarray):
+        if not self.items:
+            self.bounding_box = None
+            return
         if self.child_type == BlockChildType.WORDS:
             item: Word
             for item in self.items:

@@ -77,7 +77,7 @@ class Document:
             "pages": [page.to_dict() for page in self.pages] if self.pages else [],
         }
 
-    def save_json(self, file_path: Union[str, Path]) -> None:
+    def to_json_file(self, file_path: Union[str, Path]) -> None:
         """Save OCR results to JSON file"""
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
@@ -158,6 +158,14 @@ class Document:
         result._sort_pages()
 
         return result
+
+    @classmethod
+    def from_json_file(cls, file_path: Union[str, Path]) -> None:
+        """Load OCR from JSON file"""
+        d: dict
+        with open(file_path, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        return cls.from_dict(d)
 
     @classmethod
     def from_tesseract(
