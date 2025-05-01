@@ -3,6 +3,7 @@ from .colors import cv2_convert_to_grayscale
 from .contours import find_and_draw_contours, remove_small_contours
 from .crop import crop_edges, crop_to_rectangle
 from .edge_finding import find_edges
+from .encoding import encode_bgr_image_as_png
 from .invert import invert_image
 from .io import write_jpg, write_png
 from .morph import morph_fill
@@ -24,6 +25,7 @@ __all__ = [
     "crop_to_rectangle",
     "create_file_thumbnail",
     "cv2_convert_to_grayscale",
+    "encode_bgr_image_as_png",
     "find_and_draw_contours",
     "find_edges",
     "invert_image",

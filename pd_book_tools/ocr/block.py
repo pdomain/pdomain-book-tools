@@ -133,8 +133,24 @@ class Block:
             self._items.remove(item)
             self._sort_items()
             self.recompute_bounding_box()
+            logger.debug(f"Empty item removed. New text: {self.text[0:10]}...")
         else:
             raise ValueError("Item not found in block")
+
+    def remove_line_if_exists(self, line):
+        """Remove a line from the page if it exists"""
+        if self.child_type == BlockChildType.WORDS:
+            return
+
+        if line in self.lines:
+            if line in self._items:
+                self.remove_item(line)
+            else:
+                for block in self._items:
+                    block.remove_line_if_exists(line)
+            logger.debug(f"Line {line.text[0:10]}... removed from block")
+        else:
+            logger.debug(f"Line {line.text[0:10]}... not found in block")
 
     def remove_empty_items(self):
         """Remove empty child blocks from the block."""
@@ -146,6 +162,7 @@ class Block:
                 item.remove_empty_items()
                 if not item.items:
                     self.remove_item(item)
+                    logger.debug("Empty block removed")
         # Empty words are directly removed with remove_item, do not need to be handled here
 
     @items.setter
@@ -178,6 +195,28 @@ class Block:
             return "\n".join(item.text for item in self.items)
         else:
             return "\n\n".join(item.text for item in self.items)
+
+    @property
+    def ground_truth_text(self) -> str:
+        """Get the ground truth text of the words in the block.
+        If child type is words, join text by spaces.
+        Otherwise join text by carriage returns.
+        This automatically adds additional CRs between blocks/paragraphs.
+        """
+        if self.child_type == BlockChildType.WORDS:
+            return " ".join(item.ground_truth_text for item in self.items)
+        elif self.block_category == BlockCategory.PARAGRAPH:
+            return "\n".join(item.ground_truth_text for item in self.items)
+        else:
+            return "\n\n".join(item.ground_truth_text for item in self.items)
+
+    @property
+    def ground_truth_exact_match(self) -> bool:
+        """Check if the ground truth text of the block matches the text"""
+        if self.child_type == BlockChildType.WORDS:
+            return all(item.ground_truth_exact_match for item in self.items)
+        else:
+            return all(item.ground_truth_exact_match for item in self.items)
 
     @property
     def word_list(self) -> list[str]:

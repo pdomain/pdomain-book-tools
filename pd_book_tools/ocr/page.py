@@ -132,14 +132,27 @@ class Page:
         else:
             raise ValueError("Item not found in page")
 
+    def remove_line_if_exists(self, line):
+        """Remove a line from the page if it exists"""
+        if line in self.lines:
+            if line in self._items:
+                self.remove_item(line)
+                logger.debug(f"Line {line.text[0:10]}... removed from page")
+            else:
+                for block in self._items:
+                    block.remove_line_if_exists(line)
+        else:
+            logger.debug(f"Line {line.text[0:10]}... not found in page")
+
     def remove_empty_items(self):
-        """Remove empty child blocks from the block."""
+        """Remove empty child blocks from the page."""
         if not self.items:
             return
         item: Block
         for item in self.items:
             item.remove_empty_items()
             if not item.items:
+                logger.debug("Empty block removed")
                 self.remove_item(item)
 
     @items.setter
@@ -404,8 +417,21 @@ class Page:
         return "\n\n".join(block.text for block in self.items) + "\n"
 
     @property
+    def ground_truth_text(self) -> str:
+        """
+        Get the full ground truth text of the page, separating each top-level block
+        by double carriage returns and one final carraige return
+        """
+        return "\n\n".join(block.ground_truth_text for block in self.items) + "\n"
+
+    @property
+    def ground_truth_exact_match(self) -> bool:
+        """Check if the ground truth text of the block matches the text"""
+        return all(item.ground_truth_exact_match for item in self.items)
+
+    @property
     def words(self) -> List[Word]:
-        """Get flat list of all words in the block"""
+        """Get flat list of all words in the page"""
         return list(itertools.chain.from_iterable([item.words for item in self.items]))
 
     @property

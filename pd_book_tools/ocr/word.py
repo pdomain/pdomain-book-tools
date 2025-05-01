@@ -64,6 +64,13 @@ class Word:
     def ground_truth_text(self, value: str) -> None:
         self._ground_truth_text = value
 
+    @property
+    def ground_truth_exact_match(self) -> bool:
+        """Check if the word matches the ground truth text exactly"""
+        if self.ground_truth_text:
+            return self.text == self.ground_truth_text
+        return False
+
     def scale(self, width, height):
         """
         Return new word with scaled bounding box

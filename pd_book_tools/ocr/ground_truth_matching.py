@@ -375,6 +375,14 @@ def try_matching_combined_words(
     if len(matched_ocr_line_words) <= 1:
         return []
 
+    # Skip cases when the first character is a quote or prime in both OCR and GT AND the word is short (matching will be poor)
+    if (
+        ocr_line_tuple[0][0] in CharacterGroups.QUOTES_AND_PRIMES.value
+        and ground_truth_tuple[0][0] in CharacterGroups.QUOTES_AND_PRIMES.value
+        and len(ocr_line_tuple[0]) <= 3
+    ):
+        return []
+
     logger.debug(
         "Matched OCR Line Words: "
         + " ".join([word.text for word in matched_ocr_line_words])
