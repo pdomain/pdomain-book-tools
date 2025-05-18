@@ -1,4 +1,3 @@
-import base64
 import pathlib
 from enum import Enum
 from logging import DEBUG as logging_DEBUG
@@ -10,13 +9,12 @@ import torch
 from doctr.io import DocumentFile
 from doctr.models import ocr_predictor
 from IPython.display import display
+from ipywidgets import Image  # GridBox,
 from ipywidgets import (
     HTML,
     BoundedIntText,
     Button,
-    # GridBox,
     HBox,
-    Image,
     Layout,
     RadioButtons,
     Tab,
@@ -27,7 +25,7 @@ from ..geometry.bounding_box import BoundingBox
 from ..image_processing.cv2_processing.encoding import encode_bgr_image_as_png
 from ..ocr.block import Block
 from ..ocr.document import Document
-from ..ocr.image_utilities import get_cropped_image
+from ..ocr.image_utilities import get_cropped_encoded_image, get_encoded_image
 from ..ocr.page import Page
 from ..ocr.word import Word
 from .pgdp_results import PGDPExport, PGDPPage
@@ -37,13 +35,50 @@ logger = getLogger(__name__)
 ui_logger = getLogger(__name__ + ".UI")
 
 
-def get_html_string_from_cropped_image(img: np.ndarray, bounding_box: BoundingBox):
-    # Encode the cropped image as PNG
-    _, _, data_src_string = get_cropped_image(img, bounding_box)
+def build_span(item, style):
+    return HTML(f"<span {style}>" + item if item else "" + "</span>")
+
+
+def get_colored_text_html(linecolor, monospace_font_name, text, font_size="12px"):
+    return HTML(
+        f"<span style='{linecolor} font-family:{monospace_font_name}; font-size: {font_size};'>{text}</span>"
+    )
+
+
+def get_html_string_from_image_src(
+    data_src_string: str,
+    height: str = "height: 14px",
+    padding: str = "",
+    border: str = "",
+):
+    # Encode the image as PNG
     img_html_string: str = (
-        f'<img style="height: 14px; padding: 2px; border: 1px solid black;" src="{data_src_string}"/>'
+        f'<img style="{height}; {padding}; {border};" src="{data_src_string}"/>'
     )
     return img_html_string
+
+
+def get_html_string_from_image(
+    img: np.ndarray,
+    height: str = "height: 14px",
+    padding: str = "",
+    border: str = "",
+):
+    # Encode the image as PNG
+    _, _, data_src_string = get_encoded_image(img)
+    return get_html_string_from_image_src(data_src_string, height, padding, border)
+
+
+def get_html_string_from_cropped_image(
+    img: np.ndarray,
+    bounding_box: BoundingBox,
+    height: str = "height: 14px",
+    padding: str = "",
+    border: str = "",
+):
+    # Encode the cropped image as PNG
+    _, _, data_src_string = get_cropped_encoded_image(img, bounding_box)
+    return get_html_string_from_image_src(data_src_string, height, padding, border)
 
 
 def get_html_widget_from_cropped_image(img: np.ndarray, bounding_box: BoundingBox):
@@ -52,12 +87,139 @@ def get_html_widget_from_cropped_image(img: np.ndarray, bounding_box: BoundingBo
     return html_widget
 
 
+def get_hbox_widget_for_cropped_image(bounding_box: BoundingBox, img: np.ndarray):
+    ImageHBox = HBox()
+    ImageHBox.children = [get_html_widget_from_cropped_image(img, bounding_box)]
+    return ImageHBox
+
+
+def get_hbox_widget_for_colored_text(linecolor, text: str):
+    TextHBox = HBox()
+    TextHBox.children = [get_colored_text_html(linecolor, text)]
+    return TextHBox
+
+
+def get_mismatched_text_html_for_line(img: np.ndarray, line: Block):
+    matches = []
+
+    logger.debug(f"Getting matches for line: {line.text[0:20]}...")
+
+    word: Word
+    for word_idx, word in enumerate(line.items):
+        gt_text = word.ground_truth_text or ""
+        ocr_text = word.text or ""
+        logger.debug(f"Word: {ocr_text} | {gt_text}")
+
+        # Encode the cropped image as PNG
+        img_html_text = get_html_string_from_cropped_image(img, word.bounding_box)
+
+        gt_html_text = gt_text
+        ocr_html_text = ocr_text
+        if "match_score" not in word.ground_truth_match_keys or (
+            word.ground_truth_match_keys["match_score"] == 0 and gt_text == ""
+        ):
+            gt_text = ""
+            gt_html_text = "&nbsp;" * len(ocr_text)
+            ocr_html_text = f"<span style='color: red;'>{ocr_text}</span>"
+        elif word.ground_truth_match_keys["match_score"] == 100:
+            gt_html_text = f"<span style='color: lightgray;'>{gt_text}</span>"
+            ocr_html_text = f"<span style='color: lightgray;'>{ocr_text}</span>"
+        else:
+            # pad ocr or gt text to be same length
+            if len(ocr_text) > len(gt_text):
+                gt_html_text = gt_text + ("&nbsp;" * (len(ocr_text) - len(gt_text)))
+            else:
+                ocr_html_text = ocr_text + ("&nbsp;" * (len(gt_text) - len(ocr_text)))
+            gt_html_text = f"<span style='color: blue;'>{gt_text}</span>"
+            ocr_html_text = f"<span style='color: blue;'>{ocr_text}</span>"
+
+        match = {
+            "line": line,
+            "word_idx": word_idx,
+            "word": word,
+            "img_numpy": img,
+            "img_html_text": img_html_text,
+            "ocr_text": ocr_text,
+            "gt_text": gt_text,
+            "ocr_html_text": ocr_html_text,
+            "gt_html_text": gt_html_text,
+        }
+
+        matches.append(match)
+
+    # Insert "unmatched" ground truth words
+    if line.unmatched_ground_truth_words:
+        # Insert unmatched ground truth words in reverse order
+        # to avoid messing up the indices of the already inserted words
+        # (since we are inserting into the same list)
+        for unmatched_words in reversed(line.unmatched_ground_truth_words):
+            unmatched_gt_word_idx = unmatched_words[0]
+            unmatched_gt_word = unmatched_words[1]
+            ocr_text = ""
+            ocr_html_text = "&nbsp;" * len(unmatched_gt_word)
+
+            match = {
+                "line": line,
+                "word_idx": unmatched_gt_word_idx + 1,
+                "word": None,
+                "img_numpy": None,
+                "img_html_text": None,
+                "ocr_text": ocr_text,
+                "gt_text": unmatched_gt_word,
+                "ocr_html_text": f"<span style='color: red;'>{ocr_html_text}</span>",
+                "gt_html_text": f"<span style='color: red;'>{unmatched_gt_word}</span>",
+            }
+
+            matches.insert(unmatched_gt_word_idx + 1, match)
+
+    # add an indexer to matches
+    for idx, match in enumerate(matches):
+        match["idx"] = idx
+
+    return matches
+
+
 no_padding_margin = Layout(padding="0px", margin="0px", flex="1 1 auto")
 
 
 class LineMatching(Enum):
     SHOW_EXACT_MATCHES = 1
     SHOW_ONLY_MISMATCHES = 2
+
+
+class IpynbLineEditor:
+    """
+    UI editing a single line
+    """
+
+    _current_pgdp_line: PGDPPage
+    _current_pgdp_line_nbr: int
+    _current_ocr_page: Page
+    _current_ocr_line: Block
+
+    GridVBox: VBox
+    line_image: Image
+
+    def init_font(
+        self,
+        monospace_font_name: str,
+        monospace_font_path: pathlib.Path | str,
+    ):
+        self.monospace_font_name = monospace_font_name
+        if isinstance(monospace_font_path, str):
+            monospace_font_path = pathlib.Path(monospace_font_path)
+        self.monospace_font_path = monospace_font_path.resolve()
+
+    def __init__(self, line: Block):
+        self.GridVBox = VBox()
+        self.GridVBox.children = []
+
+        self.line = line
+        self.line_image = None
+        self.line_text = None
+        self.line_gt_text = None
+        self.copy_ocr_to_gt_button = None
+        self.delete_line_button = None
 
 
 class IpynbPageEditor:
@@ -205,73 +367,56 @@ class IpynbPageEditor:
                 # Skip exact matches
                 continue
             # Create a new GridBox for each line
-            box = self.get_ui_for_line(line)
+            box = VBox()
+
+            self.refresh_ui_for_line(line, box)
+
             boxes.append(box)
 
         # Add the GridBox to the editor
         self.editor_line_matching_vbox_content.children = boxes
 
-    def get_ui_for_line(self, line: Block):
-        # Each Line is a Box Of:
-        # <Line Image>
-        # OCR Line Text
-        # GT Line Text
-        # Buttons: <Copy OCR to GT> <Edit All Words> <Delete Line>
-        # <Image 1> <Image 2> <Image 3> etc
-        # <OCR Word 1> <OCR Word 2> <OCR Word 3> etc
-        # <GT Word 1> <GT Word 2> <GT Word 3> etc
-        # Buttons for words: <Edit Word> <Delete Word> <Split Word> <Merge Left> <Merge Right>
+    def get_colored_text_html(self, linecolor, text, font_size="12px"):
+        return HTML(
+            f"<span style='{linecolor} font-family:{self.monospace_font_name}; font-size: {font_size};'>{text}</span>"
+        )
 
-        GridVBox = VBox()
-
+    def get_ui_lineimagehbox(self, line: Block):
         LineImageHBox = HBox()
         cropped_line_image_html = get_html_widget_from_cropped_image(
             self._current_ocr_page.cv2_numpy_page_image, line.bounding_box
         )
         LineImageHBox.children = [cropped_line_image_html]
-        LineImageHBox.layout = Layout(width="100%")
+        return LineImageHBox
 
-        linecolor = ""
-        if line.ground_truth_exact_match:
-            linecolor = "color: lightgray;"
+    def get_ui_linetexthboxes(self, linecolor, line: Block):
+        OcrLineTextHBox = HBox()
+        GTLineTextHBox = HBox()
 
-        OcrTextHBox = HBox()
-        OcrTextHBox.children = [
-            HTML(
-                f"<span style='{linecolor} font-family:{self.monospace_font_name}; font-size: 12px;'>{line.text}</span>"
-            )
+        OcrLineTextHBox.children = [self.get_colored_text_html(linecolor, line.text)]
+        GTLineTextHBox.children = [
+            self.get_colored_text_html(linecolor, line.ground_truth_text)
         ]
 
-        GTTextHBox = HBox()
+        return OcrLineTextHBox, GTLineTextHBox
 
-        def get_gt_text_html():
-            return [
-                HTML(
-                    f"<span style='{linecolor} font-family:{self.monospace_font_name}; font-size: 12px;'>{line.ground_truth_text}</span>"
-                )
-            ]
-
-        GTTextHBox.children = get_gt_text_html()
-
-        # Add buttons for line actions
-        # <Copy OCR to GT> <Edit All Words> <Delete Line>
-        CopyOCRToGTButton = Button(description="Copy OCR to GT")
+    def get_ui_copyocr_to_gt(self, linecolor: str, GTLineTextHBox: HBox, line: Block):
+        CopyOCRToGTButton = Button(description="Copy Line to GT")
 
         def copy_ocr_to_gt(event=None):
             # Copy the OCR text to the GT text
+            word: Word
             for word in line.items:
                 word.ground_truth_text = word.text
-            GTTextHBox.children = get_gt_text_html()
+            GTLineTextHBox.children = [
+                self.get_colored_text_html(linecolor, line.ground_truth_text)
+            ]
 
         CopyOCRToGTButton.on_click(copy_ocr_to_gt)
 
-        EditAllWordsButton = Button(description="Edit All Words")
+        return CopyOCRToGTButton
 
-        def edit_all_words(event=None):
-            pass
-
-        EditAllWordsButton.on_click(edit_all_words)
-
+    def get_ui_delete_line(self, line: Block, GridVBox: VBox):
         DeleteLineButton = Button(description="Delete Line")
 
         def delete_line(event=None):
@@ -282,53 +427,317 @@ class IpynbPageEditor:
             GridVBox.layout = Layout(display="none")
             if self.refresh_image_callable:
                 self.refresh_image_callable()
-            # Refresh the UI
-            # self.rebuild_content_ui()
 
         DeleteLineButton.on_click(delete_line)
 
-        ButtonsHBox = HBox(
-            [
-                CopyOCRToGTButton,
-                EditAllWordsButton,
-                DeleteLineButton,
-            ]
-        )
+        return DeleteLineButton
 
-        layout1 = Layout(
-            margin="0px",
-            padding="0px",
-            width="100%",
-            border="1px solid black",
-            flex="0",
-        )
-        LineImageHBox.layout = layout1
-        OcrTextHBox.layout = layout1
-        GTTextHBox.layout = layout1
-        ButtonsHBox.layout = layout1
-
-        GridVBox.children = [
-            LineImageHBox,
-            OcrTextHBox,
-            GTTextHBox,
-            ButtonsHBox,
+    def build_image_row_items(self, span_style, word_matches: list):
+        MatchingTableImageRowItems = [
+            build_span(img_html_text, span_style)
+            for img_html_text in [match["img_html_text"] for match in word_matches]
         ]
-        GridVBox.layout = Layout(
-            margin="0px 0px 5px 5px",
-            padding="0px",
-            width="96%",
-            border="3px solid red",
-            flex="0",
-        )
-        return GridVBox
+        if self.editing_word:
+            MatchingTableImageRowItems.insert(
+                self.editing_word_idx, build_span(self.editing_word_img, span_style)
+            )
 
+    def refresh_ui_for_line(self, line: Block, GridVBox: VBox):
+        pass
+        # Each Line is a Box Of:
+        # <Line Image>
+        # OCR Line Text
+        # GT Line Text
+        # Buttons: <Copy OCR to GT> <Delete Line>
 
-class IpynbLineEditor:
-    """
-    UI for editing an individual line of text
-    """
+        # <Image 1> <Image 2> <Image 3> etc
+        # <OCR Word 1> <OCR Word 2> <OCR Word 3> etc
+        # <GT Word 1> <GT Word 2> <GT Word 3> etc
+        # Buttons for words: <Delete Word> <Merge Left> <Merge Right>
+        #                    <Start Split / Stop Split>
 
-    pass
+        # Split (One Active Split/Edit Per Line):
+        # <Image with Vertical Red Line>
+        # <Adjust Split Left 1%> <Adjust Split Left 10%> <Adjust Split Right 1%> <Adjust Split Right 10%> <Split OK>
+
+        # Edit Bounding Box (One Active Split/Edit Per Line):
+        # <Padded Image with Red Bounding Box>
+        # <Adjust Left 1%> <Adjust Left 10%>
+        # <Adjust Top 1%> <Adjust Top 10%>
+        # <Adjust Right 1%> <Adjust Right 10%>
+        # <Adjust Bottom 1%> <Adjust Bottom 10%>
+        # <Shrink to Fit>
+        # <Edit OK>
+
+        # GridVBox.children = []
+        # LineImageHBox = self.get_ui_lineimagehbox(line)
+
+        # linecolor = ""
+        # if line.ground_truth_exact_match:
+        #     linecolor = "color: lightgray;"
+
+        # OcrLineTextHBox, GTLineTextHBox = self.get_ui_linetexthboxes(linecolor, line)
+        # CopyOCRToGTButton = self.get_ui_copyocr_to_gt(linecolor, GTLineTextHBox, line)
+        # DeleteLineButton = self.get_ui_delete_line(line, GridVBox)
+
+        # span_style = f"style='border: 1px solid gray; font-family:{self.monospace_font_name}; font-size: 12px;'"
+
+        # word_matches = get_mismatched_text_html_for_line(
+        #     self._current_ocr_page.cv2_numpy_page_image, line
+        # )
+
+        # MatchVBoxes = [VBox([HBox(), HBox(), HBox(), HBox()]) for _ in word_matches]
+
+        # MatchingTableImageRowItems = [
+        #     build_span(img_html_text, span_style)
+        #     for img_html_text in [match["img_html_text"] for match in word_matches]
+        # ]
+
+        # MatchingTableBox = HBox()
+
+        # # def build_ocr_text_box(match):
+        # #     ocr_word = match["ocr_text"]
+        # #     text_box = Text(
+        # #         value=match["ocr_text"],
+        # #         placeholder="<no ocr text>",
+        # #         layout=Layout(width="{}px".format((len(ocr_word) * 9) + 16)),
+        # #     )
+        # #     # TODO save edits on change
+        # #     return text_box
+
+        # MatchingTableOCRRowItems = [
+        #     build_span(ocr)
+        #     for ocr in [match["ocr_html_text"] for match in word_matches]
+        # ]
+
+        # def build_gt_text_box(match):
+        #     gt_word = match["gt_text"]
+        #     box_width = max(len(gt_word) * 9 + 24, len(match["ocr_text"]) * 9 + 24)
+        #     text_box = Text(
+        #         value=match["gt_text"],
+        #         placeholder="",
+        #         layout=Layout(width="{}px".format(box_width)),
+        #     )
+        #     # TODO save edits on change
+        #     return text_box
+
+        # MatchingTableGTRowItems = [build_gt_text_box(match) for match in word_matches]
+
+        # def redraw_split_line(
+        #     img,
+        #     location,
+        # ):
+        #     pass
+        #     # # Draw a vertical red line at the split location
+        #     # height, _ = img.shape[:2]
+
+        #     # img = cv2.line(img, (center_x, 0), (center_x, height), (0, 0, 255), 2)
+
+        #     # logger.debug("Redrawing split line for match at index: %s", match["idx"])
+
+        #     # MatchingTableImageRowItems[match["idx"]] = build_span(
+        #     #     get_html_string_from_image(img)
+        #     # )
+        #     # MatchingTableBox.children = [
+        #     #     VBox([img, ocr, gt, mb]) for img, ocr, gt, mb in MatchingTableColumns
+        #     # ]
+
+        # def make_buttons(match):
+        #     word = match["word"]
+        #     word_idx = match["word_idx"]
+        #     if (not word) or word.ground_truth_exact_match:
+        #         # Skip exact matches
+        #         return VBox()
+
+        #     # remove padding and margin from button
+        #     MergeLeftButton = Button(
+        #         description="ML",
+        #         layout=Layout(width="24px", padding="0px", margin="0px"),
+        #     )
+        #     MergeRightButton = Button(
+        #         description="MR",
+        #         layout=Layout(width="24px", padding="0px", margin="0px"),
+        #     )
+
+        #     def merge_left(event=None):
+        #         # Merge the word with the previous word
+        #         if word_idx > 0:
+        #             prev_word: Word = line.items[word_idx - 1]
+        #             prev_word.merge(word)
+        #             line.remove_item(word)
+        #             self.refresh_ui_for_line(line, GridVBox)
+        #             if self.refresh_image_callable:
+        #                 self.refresh_image_callable()
+
+        #     def merge_right(event=None):
+        #         # Merge the word with the next word
+        #         if word_idx < len(line.items) - 1:
+        #             next_word: Word = line.items[word_idx + 1]
+        #             word.merge(next_word)
+        #             line.remove_item(next_word)
+        #             self.refresh_ui_for_line(line, GridVBox)
+        #             if self.refresh_image_callable:
+        #                 self.refresh_image_callable()
+
+        #     MergeButtons = []
+        #     if word_idx > 0:
+        #         MergeLeftButton.on_click(merge_left)
+        #         MergeButtons.append(MergeLeftButton)
+
+        #     if word_idx < len(line.items) - 1:
+        #         MergeRightButton.on_click(merge_right)
+        #         MergeButtons.append(MergeRightButton)
+
+        #     StartSplitButton = Button(
+        #         description="SP",
+        #         layout=Layout(
+        #             width="24px",
+        #             padding="0px",
+        #             margin="1px",
+        #             border="1px",
+        #         ),
+        #     )
+        #     SplitArrowLeftButton = Button(
+        #         description="<1",
+        #         layout=Layout(
+        #             width="24px",
+        #             padding="0px",
+        #             margin="1px",
+        #             border="1px",
+        #         ),
+        #     )
+        #     SplitArrowRightButton = Button(
+        #         description=">1",
+        #         layout=Layout(
+        #             width="24px",
+        #             padding="0px",
+        #             margin="1px",
+        #             border="1px",
+        #         ),
+        #     )
+        #     SplitArrowLeft10Button = Button(
+        #         description="<10",
+        #         layout=Layout(
+        #             width="36px",
+        #             padding="0px",
+        #             margin="1px",
+        #             border="1px",
+        #         ),
+        #     )
+        #     SplitArrowRight10Button = Button(
+        #         description=">10",
+        #         layout=Layout(
+        #             width="36px",
+        #             padding="0px",
+        #             margin="1px",
+        #             border="1px",
+        #         ),
+        #     )
+        #     SplitOKButton = Button(
+        #         description="OK",
+        #         layout=Layout(
+        #             width="24px",
+        #             padding="0px",
+        #             margin="1px",
+        #             border="1px",
+        #         ),
+        #     )
+
+        #     SplitButtonsBox = HBox([StartSplitButton])
+
+        #     def start_split(event=None):
+        #         logger.debug(f"Start split for word: {match['ocr_text']}")
+        #         # Draw a red line at 50% vertically in the word image
+        #         img = match["img_numpy"]
+
+        #         # Draw a vertical red line at 50% horizontally (center)
+        #         _, width = img.shape[:2]
+        #         self.split_line_location = width // 2
+
+        #         redraw_split_line()
+        #         logger.debug(f"Split line drawn at: {self.split_line_location}")
+
+        #         SplitButtonsBox.children = [
+        #             StartSplitButton,
+        #             SplitArrowLeftButton,
+        #             SplitArrowRightButton,
+        #             SplitArrowLeft10Button,
+        #             SplitArrowRight10Button,
+        #             SplitOKButton,
+        #         ]
+
+        #         StartSplitButton.on_click(stop_split)
+        #         logger.debug("Buttons Set to Display")
+
+        #         logger.debug(f"Split line location: {self.split_line_location}")
+
+        #     def stop_split(event=None):
+
+        #         # Remove the red line
+        #         img = match["img_numpy"]
+        #         MatchingTableImageRowItems[match["idx"]] = build_span(
+        #             get_html_string_from_image(img)
+        #         )
+        #         StartSplitButton.on_click(start_split)
+        #         SplitButtonsBox.children = [
+        #             StartSplitButton,
+        #         ]
+
+        #     StartSplitButton.on_click(start_split)
+
+        #     MergeButtonsBox = HBox(MergeButtons)
+
+        #     button_box_children = [MergeButtonsBox, SplitButtonsBox]
+        #     result = VBox(button_box_children)
+
+        #     return result
+
+        # MatchingTableButtonRowItems = [make_buttons(match) for match in word_matches]
+
+        # MatchingTableColumns = zip(
+        #     MatchingTableImageRowItems,
+        #     MatchingTableOCRRowItems,
+        #     MatchingTableGTRowItems,
+        #     MatchingTableButtonRowItems,
+        # )
+
+        # MatchingTableBox.children = [
+        #     VBox([img, ocr, gt, mb]) for img, ocr, gt, mb in MatchingTableColumns
+        # ]
+
+        # ButtonsHBox = HBox(
+        #     [
+        #         CopyOCRToGTButton,
+        #         DeleteLineButton,
+        #     ]
+        # )
+
+        # layout1 = Layout(
+        #     margin="0px",
+        #     padding="0px",
+        #     width="100%",
+        #     border="1px solid black",
+        #     flex="0",
+        # )
+        # LineImageHBox.layout = layout1
+        # OcrLineTextHBox.layout = layout1
+        # GTLineTextHBox.layout = layout1
+        # ButtonsHBox.layout = layout1
+
+        # GridVBox.children = [
+        #     LineImageHBox,
+        #     OcrLineTextHBox,
+        #     GTLineTextHBox,
+        #     ButtonsHBox,
+        #     MatchingTableBox,
+        # ]
+        # GridVBox.layout = Layout(
+        #     margin="0px 0px 5px 5px",
+        #     padding="0px",
+        #     width="96%",
+        #     border="3px solid red",
+        #     flex="0",
+        # )
 
 
 class IpynbLabeler:
@@ -778,65 +1187,6 @@ class IpynbLabeler:
                     html_widget,
                 )
             )
-
-    def get_mismatched_text_html_for_line(self, line: Block):
-        ocr_line = []
-        gt_line = []
-        image_line = []
-        img = self.current_ocr_page.cv2_numpy_page_image
-        h, w = img.shape[:2]
-        w: Word
-        for _, word in enumerate(line.items):
-            gt_text = word.ground_truth_text or ""
-            ocr_text = word.text or ""
-            logger.debug(f"Word: {ocr_text} | {gt_text}")
-
-            # Get the bounding box of the word
-            x1, y1, x2, y2 = word.bounding_box.scale(w, h).to_ltrb()
-            # Crop the image to the bounding box
-            word_img = img[y1:y2, x1:x2]
-            # Encode the cropped image as PNG
-            encoded_img = encode_bgr_image_as_png(word_img)
-            encoded_string = base64.b64encode(encoded_img).decode("utf-8")
-            # logger.debug("Encoded image string: {}".format(encoded_string))
-            html = '<img style="height: 14px; padding: 2px; border: 1px solid black;" src="data:image/png;base64,{}"/>'.format(
-                encoded_string
-            )
-            # Append the encoded image to the list
-            image_line.append((encoded_img, html))
-
-            if "match_score" not in word.ground_truth_match_keys or (
-                word.ground_truth_match_keys["match_score"] == 0 and gt_text == ""
-            ):
-                gt_text = "&nbsp;" * len(ocr_text)
-                ocr_text = f"<span style='color: red;'>{ocr_text}</span>"
-            elif word.ground_truth_match_keys["match_score"] == 100:
-                gt_text = f"<span style='color: lightgray;'>{gt_text}</span>"
-                ocr_text = f"<span style='color: lightgray;'>{ocr_text}</span>"
-            else:
-                # pad ocr or gt text to be same length
-                if len(ocr_text) > len(gt_text):
-                    gt_text = gt_text + ("&nbsp;" * (len(ocr_text) - len(gt_text)))
-                else:
-                    ocr_text = ocr_text + ("&nbsp;" * (len(gt_text) - len(ocr_text)))
-                gt_text = f"<span style='color: blue;'>{gt_text}</span>"
-                ocr_text = f"<span style='color: blue;'>{ocr_text}</span>"
-            ocr_line.append(ocr_text)
-            gt_line.append(gt_text)
-        # Insert "unmatched" ground truth words
-        if line.unmatched_ground_truth_words:
-            # Insert unmatched ground truth words in reverse order
-            # to avoid messing up the indices of the already inserted words
-            # (since we are inserting into the same list)
-            for word in reversed(line.unmatched_ground_truth_words):
-                # Insert into both arrays at the correct point
-                ocr_text = "&nbsp;" * len(word[1])
-                ocr_line.insert(word[0] + 1, "&nbsp;" * len(word[1]))
-                image_line.insert(word[0] + 1, "&nbsp;" * len(word[1]))
-                gt_text = f"<span style='color: red;'>{word[1]}</span>"
-                gt_line.insert(word[0] + 1, gt_text)
-
-        return ocr_line, gt_line, image_line
 
     def get_editor_for_line(self, line: Block):
         pass

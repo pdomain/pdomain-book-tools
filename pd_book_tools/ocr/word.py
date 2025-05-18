@@ -131,3 +131,37 @@ class Word:
 
     def refine_bounding_box(self, image: ndarray):
         self.bounding_box = self.bounding_box.refine(image)
+
+    def merge(self, word_to_merge: "Word"):
+        """Merge this word with another word"""
+        if not isinstance(word_to_merge, Word):
+            raise TypeError("word_to_merge must be an instance of Word")
+
+        word_order_left_to_right = True
+        if self.bounding_box.top_left.x > word_to_merge.bounding_box.top_left.x:
+            word_order_left_to_right = False
+
+        self.bounding_box = BoundingBox.union(
+            [self.bounding_box, word_to_merge.bounding_box]
+        )
+
+        if word_order_left_to_right:
+            self.text = (self.text or "") + (word_to_merge.text or "")
+            self.ground_truth_text = (self.ground_truth_text or "") + (
+                word_to_merge.ground_truth_text or ""
+            )
+        else:
+            self.text = (word_to_merge.text or "") + self.text
+            self.ground_truth_text = (word_to_merge.ground_truth_text or "") + (
+                self.ground_truth_text or ""
+            )
+
+        self.ocr_confidence = (self.ocr_confidence + word_to_merge.ocr_confidence) / 2
+        self.word_labels.extend(word_to_merge.word_labels)
+
+        self.ground_truth_match_keys.update(word_to_merge.ground_truth_match_keys)
+        self.ground_truth_match_keys.update(self.ground_truth_match_keys)
+        self.word_labels.extend(word_to_merge.word_labels)
+        self.word_labels = list(set(self.word_labels))
+        # Remove duplicates
+        self.word_labels = list(dict.fromkeys(self.word_labels))

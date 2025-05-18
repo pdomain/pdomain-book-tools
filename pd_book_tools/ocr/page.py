@@ -286,8 +286,12 @@ class Page:
             ):
                 continue  # Don't display a box for matched words
 
-            if not w.ground_truth_text:
-                logger.debug("No ground truth match for word " + w.text)
+            if (
+                not w.ground_truth_text
+                or not w.ground_truth_match_keys
+                or "match_score" not in w.ground_truth_match_keys
+            ):
+                logger.debug("No ground truth match/match score for word " + w.text)
                 color = BBoxColors.RED.value
             elif w.ground_truth_match_keys["match_score"] >= 90:
                 color = BBoxColors.DARK_GREEN.value
