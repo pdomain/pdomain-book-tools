@@ -27,7 +27,7 @@ def get_cropped_encoded_image(
     # Crop the image to the bounding box
     cropped_img = img[y1:y2, x1:x2]
     # Encode the cropped image as PNG
-    return cropped_img, get_encoded_image(cropped_img)
+    return cropped_img, *get_encoded_image(cropped_img)
 
 
 def get_cropped_word_image(

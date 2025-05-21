@@ -42,6 +42,7 @@ class Block:
     child_type: Optional[BlockChildType] = BlockChildType.BLOCKS
     block_category: Optional[BlockCategory] = BlockCategory.BLOCK
     block_labels: Optional[list[str]] = None
+    additional_block_attributes: Optional[dict] = None
 
     # TODO: Override page sort order for multi-column page layouts
     override_page_sort_order: Optional[int] = field(default=None)
@@ -65,6 +66,7 @@ class Block:
         block_labels: Optional[list[str]] = None,
         override_page_sort_order: Optional[int] = None,
         unmatched_ground_truth_words: Optional[list[(int, str)]] = None,
+        additional_block_attributes: Optional[dict] = None,
     ):
         self.child_type = child_type
         self.block_category = block_category
@@ -84,6 +86,11 @@ class Block:
             self.unmatched_ground_truth_words = unmatched_ground_truth_words
         else:
             self.unmatched_ground_truth_words = []
+
+        if additional_block_attributes:
+            self.additional_block_attributes = additional_block_attributes
+        else:
+            self.additional_block_attributes = {}
 
     def _sort_items(self):
         if self.child_type == BlockChildType.WORDS:
@@ -204,11 +211,36 @@ class Block:
         This automatically adds additional CRs between blocks/paragraphs.
         """
         if self.child_type == BlockChildType.WORDS:
-            return " ".join(item.ground_truth_text for item in self.items)
+            # If the block is a line, use the ground truth text of the words
+            matched_words = []
+            for word in self.items:
+                matched_words.append(word.ground_truth_text)
+
+            # Also, add unmatched ground truth words to the text
+            for unmatched_gt_word_idx, unmatched_gt_word in reversed(
+                self.unmatched_ground_truth_words
+            ):
+                matched_words.insert(unmatched_gt_word_idx + 1, unmatched_gt_word)
+            return " ".join(matched_words)
         elif self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(item.ground_truth_text for item in self.items)
         else:
             return "\n\n".join(item.ground_truth_text for item in self.items)
+
+    @property
+    def ground_truth_text_only_ocr(self) -> str:
+        """Get the ground truth text of the words in the block.
+        Only include words that have associated OCR text.
+        If child type is words, join text by spaces.
+        Otherwise join text by carriage returns.
+        This automatically adds additional CRs between blocks/paragraphs.
+        """
+        if self.child_type == BlockChildType.WORDS:
+            return " ".join(item.ground_truth_text_only_ocr for item in self.items)
+        elif self.block_category == BlockCategory.PARAGRAPH:
+            return "\n".join(item.ground_truth_text_only_ocr for item in self.items)
+        else:
+            return "\n\n".join(item.ground_truth_text_only_ocr for item in self.items)
 
     @property
     def ground_truth_exact_match(self) -> bool:
@@ -353,6 +385,7 @@ class Block:
             "block_labels": self.block_labels,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
+            "additional_block_attributes": self.additional_block_attributes,
         }
 
     @classmethod
@@ -374,6 +407,7 @@ class Block:
             child_type=child_type,
             block_category=BlockCategory(dict.get("block_category")),
             block_labels=dict.get("block_labels", []),
+            additional_block_attributes=dict.get("additional_block_attributes", {}),
         )
 
     def refine_bounding_boxes(self, image: ndarray):

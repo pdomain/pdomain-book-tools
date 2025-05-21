@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import cv2
 
@@ -76,6 +76,17 @@ class BoundingBox:
     @property
     def lrwh(self) -> Tuple[float, float, float, float]:
         return self.minX, self.minY, self.width, self.height
+
+    def get_four_point_scaled_polygon_list(
+        self, width: int, height: int
+    ) -> List[List[float]]:
+        """Get four points of the box"""
+        return [
+            [int(self.minX * width), int(self.minY * height)],
+            [int(self.maxX * width), int(self.minY * height)],
+            [int(self.maxX * width), int(self.maxY * height)],
+            [int(self.minX * width), int(self.maxY * height)],
+        ]
 
     @property
     def area(self) -> float:

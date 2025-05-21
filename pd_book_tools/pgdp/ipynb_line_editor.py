@@ -2,9 +2,11 @@ import pathlib
 from enum import Enum
 from logging import getLogger
 
+from cv2 import line as cv2_line
 from ipywidgets import HTML, Button, HBox
-from ipywidgets import Image as ipywidgets_Image  # GridBox,
-from ipywidgets import Layout, VBox
+from ipywidgets import Image as ipywidgets_Image
+from ipywidgets import Layout, Text, VBox
+from numpy import ndarray  # GridBox,
 
 from pd_book_tools.utility.ipynb_widgets import (
     get_formatted_text_html_span,
@@ -13,7 +15,7 @@ from pd_book_tools.utility.ipynb_widgets import (
 )
 
 from ..ocr.block import Block
-from ..ocr.image_utilities import get_cropped_word_image
+from ..ocr.image_utilities import get_cropped_word_image, get_encoded_image
 from ..ocr.page import Page
 from ..ocr.word import Word
 from .pgdp_results import PGDPPage
@@ -38,7 +40,8 @@ class IpynbLineEditor:
     _current_ocr_page: Page
     _current_ocr_line: Block
     line_matches: list[dict]
-    page_change_callback: callable
+    page_image_change_callback: callable = None
+    line_change_callback: callable = None
 
     monospace_font_name: str
 
@@ -54,21 +57,30 @@ class IpynbLineEditor:
 
     task_type: EditorTaskType = EditorTaskType.NONE
     split_task_match_idx: int = -1
+    split_task_x_coordinate: int = -1
+    split_task_word_split_idx: int = -1
 
-    basic_box_layout = Layout(
+    basic_box_layout: Layout = Layout(
         margin="0px",
-        padding="0px",
-        width="100%",
+        padding="1px",
         border="1px solid black",
-        flex="0",
+        # flex="1 0",
     )
 
-    overall_layout = Layout(
+    red_editor_layout: Layout = Layout(
         margin="0px 0px 5px 5px",
         padding="0px",
-        width="98%",
         border="3px solid red",
-        flex="0",
+    )
+    gray_editor_layout: Layout = Layout(
+        margin="0px 0px 5px 5px",
+        padding="0px",
+        border="3px solid gray",
+    )
+    green_editor_layout: Layout = Layout(
+        margin="0px 0px 5px 5px",
+        padding="0px",
+        border="3px solid green",
     )
 
     def init_font(
@@ -79,29 +91,66 @@ class IpynbLineEditor:
         self.monospace_font_name = monospace_font_name
         if isinstance(monospace_font_path, str):
             monospace_font_path = pathlib.Path(monospace_font_path)
-        self.monospace_font_path = monospace_font_path.resolve()
+        self.monospace_font_path = monospace_font_path
 
     def __init__(
         self,
         page: Page,
         pgdp_page: PGDPPage,
         line: Block,
-        page_change_callback: callable = None,
+        page_image_change_callback: callable = None,
+        line_change_callback: callable = None,
+        monospace_font_name: str = "Courier New",
+        monospace_font_path: pathlib.Path | str = None,
     ):
+        self.init_font(
+            monospace_font_name=monospace_font_name,
+            monospace_font_path=monospace_font_path,
+        )
+
         self.GridVBox = VBox()
         self.GridVBox.children = []
-        self.GridVBox.layout = self.overall_layout
+        self.GridVBox.layout = self.gray_editor_layout
 
         self._current_ocr_page = page
         self._current_pgdp_page = pgdp_page
         self._current_ocr_line = line
         self.line_matches = []
-        self.page_change_callback = page_change_callback
+        self.page_image_change_callback = page_image_change_callback
+        self.line_change_callback = line_change_callback
 
         self.redraw_ui()
 
     def redraw_ui(self):
+        ui_logger.debug(f"Redrawing UI for line: {self._current_ocr_line.text[:20]}...")
         self.calculate_line_matches()
+        if not self.line_matches:
+            ui_logger.debug(
+                f"Line {self._current_ocr_line.text} has no matches. Hiding UI."
+            )
+            # If there are no matches, don't display the UI
+            self.GridVBox.children = []
+            self.GridVBox.layout = Layout(display="none")
+            return
+        else:
+            ui_logger.debug(f"Line {self._current_ocr_line.text} has matches.")
+            if self._current_ocr_line.ground_truth_exact_match:
+                self.GridVBox.layout = self.gray_editor_layout
+            else:
+                self.GridVBox.layout = self.red_editor_layout
+
+        if self._current_ocr_line.additional_block_attributes.get(
+            "line_editor_validated"
+        ):
+            ui_logger.debug(
+                f"Line {self._current_ocr_line.text} is marked as validated."
+            )
+            self.GridVBox.layout = self.green_editor_layout
+            ui_logger.debug(f"Line {self._current_ocr_line.text} green border added.")
+
+        ui_logger.debug(
+            f"Redrawing components for line: {self._current_ocr_line.text[:20]}..."
+        )
 
         self.draw_ui_fullline_image_hbox()
         self.draw_ui_fullline_ocr_text_hbox()
@@ -112,7 +161,12 @@ class IpynbLineEditor:
 
         self.rebuild_gridbox_children()
 
+        ui_logger.debug("Line UI redrawn.")
+
     def rebuild_gridbox_children(self):
+        ui_logger.debug(
+            f"Rebuilding GridVBox children for line: {self._current_ocr_line.text[:20]}..."
+        )
         # Rebuild the GridVBox children
         self.GridVBox.children = []
         self.GridVBox.children = [
@@ -123,8 +177,12 @@ class IpynbLineEditor:
             self.WordMatchingTableHBox,
             self.TaskHBox,
         ]
+        ui_logger.debug(
+            f"GridVBox children rebuilt for line: {self._current_ocr_line.text[:20]}."
+        )
 
     def draw_ui_fullline_image_hbox(self):
+        ui_logger.debug("Drawing UI for full line image.")
         self.LineImageHBox = HBox()
         self.LineImageHBox.layout = self.basic_box_layout
         cropped_line_image_html = get_html_widget_from_cropped_image(
@@ -134,6 +192,7 @@ class IpynbLineEditor:
         self.LineImageHBox.children = [cropped_line_image_html]
 
     def draw_ui_fullline_ocr_text_hbox(self):
+        ui_logger.debug("Drawing UI for full line OCR text.")
         self.OcrLineTextHBox = HBox()
         self.OcrLineTextHBox.layout = self.basic_box_layout
         if self._current_ocr_line.ground_truth_exact_match:
@@ -143,11 +202,15 @@ class IpynbLineEditor:
 
         self.OcrLineTextHBox.children = [
             get_formatted_text_html_span(
-                linecolor_css=linecolor_css, text=self._current_ocr_line.text
+                linecolor_css=linecolor_css,
+                text=self._current_ocr_line.text,
+                font_family_css=self.monospace_font_name,
+                font_size_css="14px",
             )
         ]
 
     def draw_ui_fullline_gt_text_hbox(self):
+        ui_logger.debug("Drawing UI for full line GT text.")
         self.GTLineTextHBox = HBox()
         self.GTLineTextHBox.layout = self.basic_box_layout
         if self._current_ocr_line.ground_truth_exact_match:
@@ -158,30 +221,302 @@ class IpynbLineEditor:
         self.GTLineTextHBox.children = [
             get_formatted_text_html_span(
                 linecolor_css=linecolor_css,
-                text=self._current_ocr_line.ground_truth_text,
+                text=(self._current_ocr_line.ground_truth_text or "&nbsp;"),
+                font_family_css=self.monospace_font_name,
+                font_size_css="14px",
             )
         ]
 
     def draw_ui_line_actions_hbox(self):
+        ui_logger.debug("Drawing UI for line actions.")
         CopyOCRToGTButton = Button(description="Copy Line to GT")
         CopyOCRToGTButton.on_click(self.copy_ocr_to_gt)
 
-        DeleteLineButton = Button(description="Copy Line to GT")
+        DeleteLineButton = Button(description="Delete Line")
         DeleteLineButton.on_click(self.delete_line)
+
+        MarkValidatedButton = Button(description="Mark as Validated")
+        MarkValidatedButton.on_click(self.mark_validated)
 
         self.LineActionButtonsHBox = HBox()
         self.LineActionButtonsHBox.layout = self.basic_box_layout
         self.LineActionButtonsHBox.children = [
             CopyOCRToGTButton,
             DeleteLineButton,
+            MarkValidatedButton,
         ]
 
     def draw_ui_active_task(self):
-        # TODO
-        pass
+        ui_logger.debug("Drawing UI for active task.")
+        self.TaskHBox = HBox()
+        self.TaskHBox.layout = self.basic_box_layout
+        self.TaskHBox.children = []
+
+        if self.task_type == EditorTaskType.SPLIT:
+            ui_logger.debug("Split task active.")
+            self.draw_ui_split_task()
+
+        elif self.task_type == EditorTaskType.EDITBBOX:
+            ui_logger.debug("Edit BBox task active.")
+            self.draw_ui_edit_bbox_task()
+
+        return
+
+    def get_split_image_html_widget(self):
+        ui_logger.debug("Getting split image.")
+        img_ndarray: ndarray = self.line_matches[self.split_task_match_idx][
+            "img_ndarray"
+        ]
+
+        h, w = img_ndarray.shape[:2]
+
+        if self.split_task_x_coordinate == -1:
+            # Get the x coordinate of the split
+            self.split_task_x_coordinate = int(w / 2)
+
+        # use cv2 to draw a vertical red line on the image based on the split location
+        ui_logger.debug("Drawing Line on image.")
+        split_img = cv2_line(
+            img=img_ndarray.copy(),
+            pt1=(self.split_task_x_coordinate, 0),
+            pt2=(self.split_task_x_coordinate, h),
+            color=(255, 0, 0),
+            thickness=1,
+        )
+
+        # Encode the split image as PNG and get a <img> tag string
+        ui_logger.debug("Getting encoded image.")
+        _, _, data_src_string = get_encoded_image(split_img)
+
+        ui_logger.debug("Returning HTML widget.")
+        return HTML(
+            get_html_string_from_image_src(
+                data_src_string=data_src_string, height="height: 36px;"
+            )
+        )
+
+    def update_split_image(self):
+        ui_logger.debug("Updating split image.")
+        # Get the split image HTML widget
+        split_image_html = self.get_split_image_html_widget()
+
+        ui_logger.debug("Setting up HBox for split image.")
+        self.SplitImageHBox.children = [split_image_html]
+
+        ui_logger.debug("Split image updated.")
+        return
+
+    def update_split_text(self):
+        ui_logger.debug("Updating split ocr text.")
+
+        # Get the split text HTML widget
+        ocr_text: str = self.line_matches[self.split_task_match_idx]["ocr_text"]
+
+        if self.split_task_word_split_idx == -1:
+            # half of the word length
+            self.split_task_word_split_idx = int(len(ocr_text) / 2)
+
+        # insert | at the split location
+        ocr_text = (
+            ocr_text[: self.split_task_word_split_idx]
+            + "\u00a0"  # non-breaking space
+            + ocr_text[self.split_task_word_split_idx :]
+        )
+
+        ocr_text = "\u00a0".join(ocr_text) if ocr_text else ""
+
+        splitTextHTML = get_formatted_text_html_span(
+            font_family_css=self.monospace_font_name,
+            font_size_css="16px",
+            text=ocr_text,
+        )
+        splitTextHTML.layout = Layout(margin="0px 2px 0px 2px")
+
+        ui_logger.debug("Setting up HBox for split image.")
+        self.SplitTextHBox.children = [splitTextHTML]
+
+        ui_logger.debug("Split text updated.")
+        return
+
+    def split_move_text_callback(self, amount):
+        # Move the split line left by <amount> characters
+        ui_logger.debug(f"Moving split word by {amount} characters.")
+        ui_logger.debug(
+            f"Current split character position: {self.split_task_word_split_idx}"
+        )
+        w = len(self.line_matches[self.split_task_match_idx]["ocr_text"])
+        self.split_task_word_split_idx = int(
+            min(max(self.split_task_word_split_idx + amount, 0), w)
+        )
+        ui_logger.debug(
+            f"New split character position: {self.split_task_word_split_idx}"
+        )
+        self.update_split_text()
+        return
+
+    def split_move_pixels_callback(self, amount):
+        # Move the split line left by <amount> pixels
+        w = self.line_matches[self.split_task_match_idx]["img_ndarray"].shape[1]
+        ui_logger.debug(f"Moving split line by {amount} pixels.")
+        ui_logger.debug(f"Current split line position: {self.split_task_x_coordinate}")
+        self.split_task_x_coordinate = int(
+            min(max(self.split_task_x_coordinate + amount, 0), w)
+        )
+        ui_logger.debug(f"New split line position: {self.split_task_x_coordinate}")
+        self.update_split_image()
+        return
+
+    def split_move_percent_callback(self, amount):
+        # Move the split line left by <amount> percent
+        w = self.line_matches[self.split_task_match_idx]["img_ndarray"].shape[1]
+        ui_logger.debug(f"Moving split line by {amount} percent.")
+        ui_logger.debug(f"Current split line position: {self.split_task_x_coordinate}")
+        self.split_task_x_coordinate = int(
+            min(max(self.split_task_x_coordinate + int(w * amount), 0), w)
+        )
+        ui_logger.debug(f"New split line position: {self.split_task_x_coordinate}")
+        self.update_split_image()
+        return
+
+    def draw_ui_split_task(self):
+        ui_logger.debug("Drawing UI for split task.")
+
+        self.SplitImageHBox = HBox()
+        self.SplitImageHBox.layout = Layout(margin="0px 0px 10px 0px")
+
+        self.update_split_image()
+
+        ui_logger.debug("Generating Buttons for split task.")
+        self.CancelSplitButton = Button(
+            description="X",
+            layout=Layout(width="16px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowLeftButton = Button(
+            description="<1p",
+            layout=Layout(width="30px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowLeftButton.on_click(
+            lambda _: self.split_move_pixels_callback(-1)
+        )
+
+        self.SplitArrowRightButton = Button(
+            description=">1p",
+            layout=Layout(width="30px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowRightButton.on_click(
+            lambda _: self.split_move_pixels_callback(1)
+        )
+
+        self.SplitArrowLeft5Button = Button(
+            description="<5%",
+            layout=Layout(width="30px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowLeft5Button.on_click(
+            lambda _: self.split_move_percent_callback(-0.05)
+        )
+        self.SplitArrowRight5Button = Button(
+            description=">5%",
+            layout=Layout(width="30px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowRight5Button.on_click(
+            lambda _: self.split_move_percent_callback(0.05)
+        )
+        self.SplitArrowLeft20Button = Button(
+            description="<20%",
+            layout=Layout(width="40px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowLeft20Button.on_click(
+            lambda _: self.split_move_percent_callback(-0.2)
+        )
+        self.SplitArrowRight20Button = Button(
+            description=">20%",
+            layout=Layout(width="40px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitArrowRight20Button.on_click(
+            lambda _: self.split_move_percent_callback(0.2)
+        )
+        self.SplitOKButton = Button(
+            description="Execute Split",
+        )
+        self.CancelSplitButton.on_click(lambda _: self.cancel_split_task())
+
+        self.SplitTextHBox = HBox()
+        self.SplitTextHBox.layout = Layout(margin="0px 0px 10px 0px")
+
+        self.update_split_text()
+
+        self.SplitWordArrowLeftButton = Button(
+            description="<",
+            layout=Layout(width="14px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitWordArrowLeftButton.on_click(
+            lambda _: self.split_move_text_callback(-1)
+        )
+
+        self.SplitWordArrowRightButton = Button(
+            description=">",
+            layout=Layout(width="14px", margin="0px 2px 0px 2px", padding="1px"),
+        )
+        self.SplitWordArrowRightButton.on_click(
+            lambda _: self.split_move_text_callback(1)
+        )
+
+        self.SplitVBoxLine1: HBox = HBox()
+        self.SplitVBoxLine2: HBox = HBox()
+
+        self.SplitVBoxLine1.children = [
+            self.SplitImageHBox,
+            self.CancelSplitButton,
+            self.SplitArrowLeftButton,
+            self.SplitArrowRightButton,
+            self.SplitArrowLeft5Button,
+            self.SplitArrowRight5Button,
+            self.SplitArrowLeft20Button,
+            self.SplitArrowRight20Button,
+            self.SplitOKButton,
+        ]
+
+        self.SplitVBoxLine2.children = [
+            self.SplitTextHBox,
+            self.SplitWordArrowLeftButton,
+            self.SplitWordArrowRightButton,
+        ]
+
+        self.SplitVBox: VBox = VBox(layout=Layout(margin="0px 0px 0px 10px"))
+        self.SplitVBox.children = [
+            self.SplitVBoxLine1,
+            self.SplitVBoxLine2,
+        ]
+
+        self.TaskHBox.children = [self.SplitVBox]
+
+        ui_logger.debug("Split task UI drawn.")
+        return
+
+    def start_split_task(self, match):
+        ui_logger.debug("Starting split task.")
+        self.task_type = EditorTaskType.SPLIT
+        self.split_task_x_coordinate = -1
+        self.split_task_match_idx = match["idx"]
+        self.redraw_ui()
+        return
+
+    def cancel_split_task(self):
+        ui_logger.debug("Canceling split task.")
+        self.task_type = EditorTaskType.NONE
+        self.split_task_match_idx = None
+        self.split_task_x_coordinate = -1
+        self.redraw_ui()
+        return
+
+    def draw_ui_edit_bbox_task(self):
+        ui_logger.debug("Drawing UI for edit bounding box task.")
+        return
 
     def create_ui_word_match_widgets(self):
+        ui_logger.debug("Creating UI word match widgets...")
         match_VBox = VBox()
+        match_VBox.layout = Layout(padding="0px", margin="0px", flex="0 0 auto")
 
         image_HBox = HBox()
         ocr_HBox = HBox()
@@ -198,35 +533,74 @@ class IpynbLineEditor:
         self.WordMatchingTableVBoxes.append(match_VBox)
 
     def load_word_match_image(self, match):
+        logger.debug(f"Loading word match image for match: {match['idx']}...")
         image_HBox = self.WordMatchingTableVBoxes[match["idx"]].children[0]
-        image_HBox.children = [
-            HTML(match["img_tag_text"]),
-        ]
+        if match["img_tag_text"]:
+            image_HBox.children = [
+                HTML(match["img_tag_text"]),
+            ]
+        else:
+            image_HBox.children = [
+                HTML("No Image"),
+            ]
+        image_HBox.layout = self.basic_box_layout
 
     def load_word_match_text(self, match):
+        logger.debug(f"Loading word match text for match: {match['idx']}...")
         # Set the word match text
         ocr_HBox = self.WordMatchingTableVBoxes[match["idx"]].children[1]
         gt_HBox = self.WordMatchingTableVBoxes[match["idx"]].children[2]
 
-        ocr_HBox.children = [
-            get_formatted_text_html_span(
-                linecolor_css=match["ocr_text_color"],
-                text=match["ocr_text"],
-            )
-        ]
-        # TODO make this a editable text box
+        if match["ocr_text"]:
+            ocr_HBox.children = [
+                get_formatted_text_html_span(
+                    linecolor_css=match["ocr_text_color"],
+                    text=match["ocr_text"],
+                    font_family_css=self.monospace_font_name,
+                )
+            ]
+        else:
+            ocr_HBox.children = [
+                get_formatted_text_html_span(
+                    linecolor_css=match["ocr_text_color"],
+                    text="No OCR",
+                    font_family_css=self.monospace_font_name,
+                )
+            ]
+        ocr_HBox.layout = self.basic_box_layout
+
+        gt_width = max(len(match["gt_text"]) * 9 + 16, 100)
+
+        gt_TextBox = Text(
+            value=match["gt_text"],
+            description="",
+            disabled=False,
+            continuous_update=False,
+            style={"font-family": self.monospace_font_name},
+            layout=Layout(
+                width=f"{gt_width}px",
+                padding="0px",
+                margin="0px",
+            ),
+        )
         gt_HBox.children = [
-            get_formatted_text_html_span(
-                linecolor_css=match["gt_text_color"],
-                text=match["gt_text"],
-            )
+            gt_TextBox,
         ]
+        # listen to changes in the text box
+        gt_TextBox.observe(
+            lambda change, match=match: self.update_gt_text(change, match),
+            names="value",
+        )
 
     def load_word_action_buttons(self, match):
+        logger.debug(f"Loading word action buttons for match: {match['idx']}...")
         action_buttons_HBox = self.WordMatchingTableVBoxes[match["idx"]].children[3]
-        action_buttons_HBox.children = []
+        action_buttons_HBox_children = []
 
         if self.task_type != EditorTaskType.NONE:
+            ui_logger.debug(
+                f"Task is active: {self.task_type.name}. No Buttons will be displayed."
+            )
             # If an editor task is active, don't display action buttons
             return
 
@@ -234,28 +608,26 @@ class IpynbLineEditor:
             description="X",
             layout=Layout(width="16px", padding="0px", margin="0px"),
         )
-        action_buttons_HBox.children.append(delete_button)
-        # TODO add delete match action
-        # delete_button.on_click(lambda _: self.delete_match(match))
+        delete_button.on_click(lambda _: self.delete_match(match))
+        action_buttons_HBox_children.append(delete_button)
 
         word = match["word"]
         if word:
-            if not word.ground_truth_exact_match:
-                if match["word_idx"] > 0:
-                    ml_button = Button(
-                        description="ML",
-                        layout=Layout(width="22px", padding="0px", margin="0px"),
-                    )
-                    ml_button.on_click(lambda _: self.merge_left(match))
-                    action_buttons_HBox.children.append(ml_button)
+            if match["word_idx"] > 0:
+                ml_button = Button(
+                    description="ML",
+                    layout=Layout(width="22px", padding="0px", margin="0px"),
+                )
+                ml_button.on_click(lambda _: self.merge_left(match))
+                action_buttons_HBox_children.append(ml_button)
 
-                if match["word_idx"] < len(self._current_ocr_line.items) - 1:
-                    mr_button = Button(
-                        description="MR",
-                        layout=Layout(width="22px", padding="0px", margin="0px"),
-                    )
-                    mr_button.on_click(lambda _: self.merge_right(match))
-                    action_buttons_HBox.children.append(mr_button)
+            if match["word_idx"] < len(self._current_ocr_line.items) - 1:
+                mr_button = Button(
+                    description="MR",
+                    layout=Layout(width="22px", padding="0px", margin="0px"),
+                )
+                mr_button.on_click(lambda _: self.merge_right(match))
+                action_buttons_HBox_children.append(mr_button)
 
             edit_bbox_button = Button(
                 description="EB",
@@ -263,15 +635,30 @@ class IpynbLineEditor:
             )
             # TODO add edit bbox action
             # edit_bbox_button.on_click(lambda _: self.start_edit_bbox_task(match))
-            action_buttons_HBox.children.append(edit_bbox_button)
+            action_buttons_HBox_children.append(edit_bbox_button)
 
             split_button = Button(
                 description="SP",
                 layout=Layout(width="22px", padding="0px", margin="0px"),
             )
-            # TODO add split action
-            # split_button.on_click(lambda _: self.start_split_task(match))
-            action_buttons_HBox.children.append(split_button)
+            split_button.on_click(lambda _: self.start_split_task(match))
+            action_buttons_HBox_children.append(split_button)
+
+            # Split (One Active Split/Edit Per Line):
+            # <Image with Vertical Red Line>
+            # <Adjust Split Left 1%> <Adjust Split Left 10%> <Adjust Split Right 1%> <Adjust Split Right 10%> <Split OK>
+
+            # Edit Bounding Box (One Active Split/Edit Per Line):
+            # <Padded Image with Red Bounding Box>
+            # <Adjust Left 1%> <Adjust Left 10%>
+            # <Adjust Top 1%> <Adjust Top 10%>
+            # <Adjust Right 1%> <Adjust Right 10%>
+            # <Adjust Bottom 1%> <Adjust Bottom 10%>
+            # <Shrink to Fit>
+            # <Edit OK>
+
+        action_buttons_HBox.children = action_buttons_HBox_children
+        action_buttons_HBox.layout = Layout(flex_wrap="wrap")
 
     def load_word_match_widgets(self, match):
         self.load_word_match_image(match)
@@ -279,6 +666,7 @@ class IpynbLineEditor:
         self.load_word_action_buttons(match)
 
     def draw_ui_word_matching_table(self):
+        ui_logger.debug("Drawing UI for word matching table.")
         self.WordMatchingTableHBox = HBox()
         self.WordMatchingTableVBoxes = []
 
@@ -289,17 +677,87 @@ class IpynbLineEditor:
         self.WordMatchingTableHBox.children = [
             match_vbox for match_vbox in self.WordMatchingTableVBoxes
         ]
+        self.WordMatchingTableHBox.layout
 
     ####################################################################
     # ACTIONS
     ####################################################################
 
+    def mark_validated(self, event=None):
+        logger.debug(f"Marking line as validated: {self._current_ocr_line.text[:20]}")
+        # Mark the line as validated
+        if self._current_ocr_line.unmatched_ground_truth_words:
+            logger.debug(
+                f"Error marking line as validated: {self._current_ocr_line.text} has unmatched ground truth words."
+            )
+            # Display Error Message
+            error_message = HTML(
+                "<span style='color:red;'>Error Marking as Validated: Line has unmatched ground truth words.</span>"
+            )
+            self.TaskHBox.children = [error_message]
+            self.TaskHBox.layout = self.basic_box_layout
+            return
+        if self._current_ocr_line.ground_truth_text == "":
+            logger.debug(
+                f"Error marking line as validated: {self._current_ocr_line.text} has no ground truth text."
+            )
+            # Display Error Message
+            error_message = HTML(
+                "<span style='color:red;'>Error Marking as Validated: Line has no ground truth text.</span>"
+            )
+            self.TaskHBox.children = [error_message]
+            self.TaskHBox.layout = self.basic_box_layout
+            return
+
+        logger.debug("Setting line_editor_validated to True")
+        self._current_ocr_line.additional_block_attributes["line_editor_validated"] = (
+            True
+        )
+
+        logger.debug("Calling line_change_callback")
+        if self.line_change_callback:
+            self.line_change_callback()
+
+        logger.debug("Redrawing UI")
+        self.redraw_ui()
+
+    def delete_match(self, match):
+        # Delete the match from the line
+        word: Word = match["word"]
+        if word:
+            self._current_ocr_line.remove_item(word)
+            self._current_ocr_page.remove_empty_items()
+        else:
+            self._current_ocr_line.unmatched_ground_truth_words = [
+                unmatched_gt_word
+                for unmatched_gt_word in self._current_ocr_line.unmatched_ground_truth_words
+                if unmatched_gt_word[0] != match["word_idx"]
+                and unmatched_gt_word[1] != match["gt_text"]
+            ]
+        self.redraw_ui()
+        if self.page_image_change_callback:
+            self.page_image_change_callback()
+
+    def update_gt_text(self, change, match):
+        # Update the ground truth text in the word
+        word: Word = match["word"]
+        if word:
+            word.ground_truth_text = change["new"]
+            word.ground_truth_match_keys["match_score"] = word.fuzz_score_against(
+                word.ground_truth_text
+            )
+            self.redraw_ui()
+            if self.page_image_change_callback:
+                self.page_image_change_callback()
+
     def copy_ocr_to_gt(self, event=None):
-        # Copy all of the the OCR text into the GT text
+        # Copy all of the the OCR text into the GT text for each OCR word
         word: Word
         for word in self._current_ocr_line.items:
             word.ground_truth_text = word.text
-
+            word.ground_truth_match_keys["match_score"] = word.fuzz_score_against(
+                word.ground_truth_text
+            )
         # Redraw the UI after update
         self.redraw_ui()
 
@@ -309,8 +767,11 @@ class IpynbLineEditor:
         self._current_ocr_page.remove_empty_items()
         self.GridVBox.children = []
         self.GridVBox.layout = Layout(display="none")
-        if self.page_change_callback:
-            self.page_change_callback()
+        #        if self.line_change_callback:
+        #            self.line_change_callback()
+
+        if self.page_image_change_callback:
+            self.page_image_change_callback()
 
     def merge_left(self, match):
         word: Word = match["word"]
@@ -321,8 +782,8 @@ class IpynbLineEditor:
             prev_word.merge(word)
             self._current_ocr_line.remove_item(word)
             self.redraw_ui()
-            if self.page_change_callback:
-                self.page_change_callback()
+            if self.page_image_change_callback:
+                self.page_image_change_callback()
 
     def merge_right(self, match):
         word: Word = match["word"]
@@ -333,8 +794,10 @@ class IpynbLineEditor:
             word.merge(next_word)
             self._current_ocr_line.remove_item(next_word)
             self.redraw_ui()
-            if self.page_change_callback:
-                self.page_change_callback()
+            if self.line_change_callback:
+                self.line_change_callback()
+            if self.page_image_change_callback:
+                self.page_image_change_callback()
 
     def calculate_line_matches(self):
         matches = []
@@ -349,24 +812,23 @@ class IpynbLineEditor:
             ocr_text = word.text or ""
             logger.debug(f"Word: {ocr_text} | {gt_text}")
 
-            ocr_text_color = "lightgray"
-            gt_text_color = "lightgray"
-
             img_ndarray, _, _, data_src_string = get_cropped_word_image(
                 img=self._current_ocr_page.cv2_numpy_page_image,
-                bounding_box=word.bounding_box,
+                word=word,
             )
 
             # Encode the cropped image as PNG and get a <img> tag string
             img_tag_text = get_html_string_from_image_src(
-                data_src_string=data_src_string
+                data_src_string=data_src_string, height="height: 14px;"
             )
 
+            ocr_text_color = "lightgray"
+            gt_text_color = "lightgray"
             if "match_score" not in word.ground_truth_match_keys or (
                 word.ground_truth_match_keys["match_score"] == 0 and gt_text == ""
             ):
                 ocr_text_color = "red"
-            else:
+            elif word.ground_truth_match_keys["match_score"] != 100:
                 ocr_text_color = "blue"
                 gt_text_color = "blue"
 
@@ -374,6 +836,7 @@ class IpynbLineEditor:
                 "word_idx": word_idx,
                 "word": word,
                 "img_ndarray": img_ndarray,
+                "data_src_string": data_src_string,
                 "img_tag_text": img_tag_text,
                 "ocr_text": ocr_text,
                 "gt_text": gt_text,
@@ -382,6 +845,8 @@ class IpynbLineEditor:
             }
 
             matches.append(match)
+
+        logger.debug("Adding unmatched ground truth words to matches...")
 
         # Insert "unmatched" ground truth words
         if self._current_ocr_line.unmatched_ground_truth_words:
@@ -398,6 +863,7 @@ class IpynbLineEditor:
                     "word_idx": unmatched_gt_word_idx + 1,
                     "word": None,
                     "img_ndarray": None,
+                    "data_src_string": None,
                     "img_tag_text": None,
                     "ocr_text": "",
                     "gt_text": unmatched_gt_word,
@@ -407,8 +873,12 @@ class IpynbLineEditor:
 
                 matches.insert(unmatched_gt_word_idx + 1, match)
 
+        logger.debug("Adding Indexer")
+
         # add an indexer to matches
         for idx, match in enumerate(matches):
             match["idx"] = idx
 
         self.line_matches = matches
+
+        logger.debug(f"Line matching complete: {self._current_ocr_line.text[0:20]}...")

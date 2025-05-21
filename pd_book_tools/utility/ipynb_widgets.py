@@ -32,38 +32,45 @@ def get_hbox_widget_for_colored_text(linecolor_css, text: str):
 
 def get_html_string_from_image_src(
     data_src_string: str,
-    height: str = "height: 14px",
+    height: str = "",
+    width: str = "",
     padding: str = "",
     border: str = "",
 ):
     # Encode the image as PNG
     img_html_string: str = (
-        f'<img style="{height}; {padding}; {border};" src="{data_src_string}"/>'
+        f'<img style="{height} {width} {padding} {border}" src="{data_src_string}"/>'
     )
     return img_html_string
 
 
 def get_html_string_from_image(
     img: ndarray,
-    height: str = "height: 14px",
+    height: str = "",
+    width: str = "",
     padding: str = "",
     border: str = "",
 ):
     # Encode the image as PNG
     _, _, data_src_string = get_encoded_image(img)
-    return get_html_string_from_image_src(data_src_string, height, padding, border)
+    return get_html_string_from_image_src(
+        data_src_string, height, width, padding, border
+    )
 
 
 def get_html_string_from_cropped_image(
     img: ndarray,
     bounding_box: BoundingBox,
-    height: str = "height: 14px",
+    height: str = "",
+    width: str = "",
     padding: str = "",
     border: str = "",
 ):
     # Encode the cropped image as PNG
-    _, _, data_src_string = get_cropped_encoded_image(img, bounding_box)
-    return get_html_string_from_image_src(data_src_string, height, padding, border)
+    _, _, _, data_src_string = get_cropped_encoded_image(img, bounding_box)
+    return get_html_string_from_image_src(
+        data_src_string, height, width, padding, border
+    )
 
 
 def get_html_widget_from_cropped_image(img: ndarray, bounding_box: BoundingBox):
@@ -76,3 +83,9 @@ def get_hbox_widget_for_cropped_image(bounding_box: BoundingBox, img: ndarray):
     ImageHBox = HBox()
     ImageHBox.children = [get_html_widget_from_cropped_image(img, bounding_box)]
     return ImageHBox
+
+
+# def get_hbox_widget_for_colored_text(linecolor, text: str):
+#     TextHBox = HBox()
+#     TextHBox.children = [get_colored_text_html(linecolor, text)]
+#     return TextHBox

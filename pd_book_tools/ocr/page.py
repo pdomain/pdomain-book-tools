@@ -2,6 +2,7 @@ import itertools
 import pathlib
 from dataclasses import dataclass, field
 from enum import Enum
+from hashlib import sha256
 from json import dump as json_dump
 from json import load as json_load
 from logging import getLogger
@@ -9,7 +10,9 @@ from typing import Any, Collection, Dict, List, Optional
 
 from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
-from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
+
+# from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
+from cv2 import IMWRITE_PNG_COMPRESSION as cv2_IMWRITE_PNG_COMPRESSION
 from cv2 import cvtColor as cv2_cvtColor
 from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
@@ -847,23 +850,7 @@ class Page:
             item.refine_bounding_boxes(image)
         self.recompute_bounding_box()
 
-    def convert_to_training_set(
-        self: "Page", output_path: pathlib.Path, prefix: str = ""
-    ) -> None:
-        """
-        Create a training set from a page image (matched_ocr data) and image bounding boxes
-        Result:
-            Files:
-            ├── images
-                ├── <prefix>_<page_index>_x1_x2_y1_y2.jpg (cropped image, x1, y1, x2, y2 are the scaled coordinates of the bounding box)
-                └── ...
-            ├── labels.json
-
-            In labels.json:
-            {
-                "image_path_1": "<gt value>",
-            }
-        """
+    def generate_doctr_checks(self, output_path: pathlib.Path):
         if self.cv2_numpy_page_image is None:
             raise ValueError(
                 "cv2_numpy_page_image is not set. Please set it before calling this method."
@@ -876,21 +863,132 @@ class Page:
             raise ValueError(
                 "Output path does not exist. Please create the parent directory first."
             )
-
         output_path.mkdir(parents=True, exist_ok=True)
-        image_path = pathlib.Path(output_path, "images")
-        image_path.mkdir(parents=True, exist_ok=True)
+
+    def generate_doctr_detection_training_set(
+        self: "Page", output_path: pathlib.Path, prefix: str = ""
+    ) -> None:
+        """
+        Create a DocTR text detection training set from a page image (matched_ocr data) and image bounding boxes
+        Result:
+            Files:
+            ├── detection
+              ├── images
+                ├──── <prefix>_<page_index>.png (image)
+                └──── ...
+              ├── labels.json
+
+           Detection labels.json:
+            {
+                "image_path_1": {
+                    'img_dimensions': (x, y),
+                    'img_hash': "theimagedumpmyhash",
+                    'polygons': [[[x10, y10], [x20, y20], [x30, y30], [x40, y40]], ...]
+                }
+            }
+        """
+        self.generate_doctr_checks(output_path)
+
+        # Create the detection directory
+        detection_path = pathlib.Path(output_path, "detection")
+        detection_path.mkdir(parents=True, exist_ok=True)
+        detection_image_path = pathlib.Path(detection_path, "images")
+        detection_image_path.mkdir(parents=True, exist_ok=True)
 
         image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
         img_height, img_width, _ = image.shape
 
-        labels = {}
+        detection_labels = {}
+
+        image_name = "{}_{}.png".format(prefix, self.page_index)
+        logger.debug("Writing image: " + str(image_name))
+        cv2_imwrite(
+            pathlib.Path(detection_image_path, image_name).resolve(),
+            image,
+            [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
+        )
+
+        # compute sha-256 hash of the image file
+        # read the image file back in as bytes
+        with open(pathlib.Path(detection_image_path, image_name), "rb") as f:
+            image_buffer = f.read()
+            image_hash = sha256(image_buffer).hexdigest()
+
+        detection_labels[image_name] = {
+            "img_dimensions": (img_width, img_height),
+            "img_hash": image_hash,
+            "polygons": [
+                word.bounding_box.get_four_point_scaled_polygon_list(
+                    img_width, img_height
+                )
+                for word in self.words
+            ],
+        }
+
+        # Read in the JSON file and add the new labels
+        try:
+            with open(pathlib.Path(detection_path, "labels.json"), "r") as f:
+                existing_detection_labels = json_load(f)
+        except FileNotFoundError:
+            # If the file doesn't exist, create an empty dictionary
+            existing_detection_labels = {}
+
+        # remove existing labels that have prefix + page index
+        existing_detection_labels = {
+            k: v
+            for k, v in existing_detection_labels.items()
+            if not k.startswith(f"{prefix}_{self.page_index}")
+        }
+
+        # Add the new labels to the existing labels
+        detection_labels = {**existing_detection_labels, **detection_labels}
+
+        # Write the labels to the JSON file
+        with open(pathlib.Path(detection_path, "labels.json"), "w") as f:
+            json_dump(detection_labels, f, indent=4, ensure_ascii=False)
+
+    def generate_doctr_recognition_training_set(
+        self: "Page", output_path: pathlib.Path, prefix: str = ""
+    ) -> None:
+        """
+        Create a text recognition training set from a page image (matched_ocr data) and image bounding boxes
+        Result:
+            Files:
+            ├── recognition
+              ├── images
+                ├──── <prefix>_<page_index>_x1_x2_y1_y2.jpg (cropped image, x1, y1, x2, y2 are the scaled coordinates of the bounding box)
+                └──── ...
+              ├── labels.json
+
+            Recognition labels.json:
+            {
+                "image_path_1": "<gt value>",
+            }
+
+
+        Args:
+            self (Page): _description_
+            output_path (pathlib.Path): _description_
+            prefix (str, optional): _description_. Defaults to "".
+        """
+        self.generate_doctr_checks(output_path)
+
+        # Create the recognition directory
+        recognition_path = pathlib.Path(output_path, "recognition")
+        recognition_path.mkdir(parents=True, exist_ok=True)
+        recognition_image_path = pathlib.Path(recognition_path, "images")
+        recognition_image_path.mkdir(parents=True, exist_ok=True)
+
+        image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
+        img_height, img_width, _ = image.shape
 
         # Delete any existing images that match the prefix + page index in the output directory
-        for file in image_path.glob(f"{prefix}_{self.page_index}_*"):
+        for file in recognition_image_path.glob(f"{prefix}_{self.page_index}_*"):
             if file.is_file():
                 logger.debug("Deleting existing image: " + str(file))
                 file.unlink()
+
+        recognition_labels = {}
 
         for word in self.words:
             if not word.ground_truth_text:
@@ -904,7 +1002,7 @@ class Page:
                 # )
             bb = word.bounding_box.scale(width=img_width, height=img_height)
             cropped_image = image[bb.minY : bb.maxY, bb.minX : bb.maxX]
-            cropped_image_name = "{}_{}_{}_{}_{}_{}.jpg".format(
+            cropped_image_name = "{}_{}_{}_{}_{}_{}.png".format(
                 prefix,
                 self.page_index,
                 bb.minX,
@@ -914,16 +1012,17 @@ class Page:
             )
             logger.debug("Writing image: " + str(cropped_image_name))
             cv2_imwrite(
-                pathlib.Path(image_path, cropped_image_name).resolve(),
+                pathlib.Path(recognition_image_path, cropped_image_name).resolve(),
                 cropped_image,
-                [int(cv2_IMWRITE_JPEG_QUALITY), 100],
+                [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
+                # [int(cv2_IMWRITE_JPEG_QUALITY), 100],
             )
             label = word.ground_truth_text
-            labels[cropped_image_name] = label
+            recognition_labels[cropped_image_name] = label
 
         # Read in the JSON file and add the new labels
         try:
-            with open(pathlib.Path(output_path, "labels.json"), "r") as f:
+            with open(pathlib.Path(recognition_path, "labels.json"), "r") as f:
                 existing_labels = json_load(f)
         except FileNotFoundError:
             # If the file doesn't exist, create an empty dictionary
@@ -937,11 +1036,24 @@ class Page:
         }
 
         # Add the new labels to the existing labels
-        labels = {**existing_labels, **labels}
+        recognition_labels = {**existing_labels, **recognition_labels}
 
         # Write the updated labels to the JSON file
-        with open(pathlib.Path(output_path, "labels.json"), "w") as f:
-            json_dump(labels, f)
+        with open(pathlib.Path(recognition_path, "labels.json"), "w") as f:
+            json_dump(recognition_labels, f, indent=4, ensure_ascii=False)
+
+    def convert_to_training_set(
+        self: "Page", output_path: pathlib.Path, prefix: str = ""
+    ) -> None:
+        """
+        Create a recognition and detection training sets from a page image (matched_ocr data) and image bounding boxes
+        """
+        self.generate_doctr_detection_training_set(
+            output_path=output_path, prefix=prefix
+        )
+        self.generate_doctr_recognition_training_set(
+            output_path=output_path, prefix=prefix
+        )
 
     # def compute_text_columns(lines: List[Block], tolerance=None):
     #     """
