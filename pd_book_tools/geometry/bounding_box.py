@@ -101,6 +101,38 @@ class BoundingBox:
             (self.top_left.y + self.bottom_right.y) / 2,
         )
 
+    def split_x_offset(self, x_offset: float) -> Tuple["BoundingBox", "BoundingBox"]:
+        """Split the bounding box into two boxes using the given x offset"""
+        if x_offset < 0 or x_offset > self.width:
+            raise ValueError("x_offset is out of range for bounding box")
+
+        left_box = BoundingBox(
+            top_left=self.top_left,
+            bottom_right=Point(self.top_left.x + x_offset, self.bottom_right.y),
+        )
+        right_box = BoundingBox(
+            top_left=Point(self.top_left.x + x_offset, self.top_left.y),
+            bottom_right=self.bottom_right,
+        )
+        return left_box, right_box
+
+    def split_x_absolute(
+        self, x_absolute: float
+    ) -> Tuple["BoundingBox", "BoundingBox"]:
+        """Split the bounding box into two boxes at the given x index"""
+        if x_absolute < self.top_left.x or x_absolute > self.bottom_right.x:
+            raise ValueError("index is out of range for bounding box")
+
+        left_box = BoundingBox(
+            top_left=self.top_left,
+            bottom_right=Point(x_absolute, self.bottom_right.y),
+        )
+        right_box = BoundingBox(
+            top_left=Point(x_absolute, self.top_left.y),
+            bottom_right=self.bottom_right,
+        )
+        return left_box, right_box
+
     # Initialization Checks
     def __post_init__(self):
         """Validate the bounding box coordinates"""

@@ -27,6 +27,7 @@ dependencies = [
     "thefuzz (>=0.22.1,<0.23.0)",
     "regex (>=2024.11.6,<2025.0.0)",
     "flake8-bugbear (>=24.12.12,<25.0.0)",
+    "voila (>=0.5.8,<0.6.0)",
 ]
 
 [project.urls]

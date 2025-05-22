@@ -8,6 +8,7 @@ from ipywidgets import Image as ipywidgets_Image
 from ipywidgets import Layout, Text, VBox
 from numpy import ndarray  # GridBox,
 
+from pd_book_tools.ocr.ground_truth_matching import update_line_with_ground_truth
 from pd_book_tools.utility.ipynb_widgets import (
     get_formatted_text_html_span,
     get_html_string_from_image_src,
@@ -39,6 +40,7 @@ class IpynbLineEditor:
     _current_pgdp_page: PGDPPage
     _current_ocr_page: Page
     _current_ocr_line: Block
+    _current_ocr_line_p3_gt_text: str
     line_matches: list[dict]
     page_image_change_callback: callable = None
     line_change_callback: callable = None
@@ -391,6 +393,8 @@ class IpynbLineEditor:
             description="X",
             layout=Layout(width="16px", margin="0px 2px 0px 2px", padding="1px"),
         )
+        self.CancelSplitButton.on_click(lambda _: self.cancel_split_task())
+
         self.SplitArrowLeftButton = Button(
             description="<1p",
             layout=Layout(width="30px", margin="0px 2px 0px 2px", padding="1px"),
@@ -438,7 +442,7 @@ class IpynbLineEditor:
         self.SplitOKButton = Button(
             description="Execute Split",
         )
-        self.CancelSplitButton.on_click(lambda _: self.cancel_split_task())
+        self.SplitOKButton.on_click(lambda _: self.execute_split())
 
         self.SplitTextHBox = HBox()
         self.SplitTextHBox.layout = Layout(margin="0px 0px 10px 0px")
@@ -497,6 +501,7 @@ class IpynbLineEditor:
         ui_logger.debug("Starting split task.")
         self.task_type = EditorTaskType.SPLIT
         self.split_task_x_coordinate = -1
+        self.split_task_image_width = -1
         self.split_task_match_idx = match["idx"]
         self.redraw_ui()
         return
@@ -506,7 +511,78 @@ class IpynbLineEditor:
         self.task_type = EditorTaskType.NONE
         self.split_task_match_idx = None
         self.split_task_x_coordinate = -1
+        self.split_task_image_width = -1
         self.redraw_ui()
+        return
+
+    def execute_split(self):
+        ui_logger.debug("Executing split task.")
+
+        # Get the match
+        match = self.line_matches[self.split_task_match_idx]
+        split_word_idx = match["word_idx"]
+        ui_logger.debug(
+            f"Executing split task for match: {match['idx']} | word index: {split_word_idx}"
+        )
+
+        # Convert X coordinate into normalized form
+        # convert bbox width to pixels
+        w = match["img_ndarray"].shape[1]
+        ui_logger.debug(f"word image width: {w}")
+        full_w = self._current_ocr_page.cv2_numpy_page_image.shape[1]
+        ui_logger.debug(f"full image width: {full_w}")
+        ratio = float(w) / float(full_w)
+        ui_logger.debug(f"w ratio: {ratio}")
+        # convert split x coordinate from pixels to normalized form
+        ui_logger.debug(f"Pixel offset: {self.split_task_x_coordinate}")
+        normalized_split_x_offset = float(self.split_task_x_coordinate) / float(full_w)
+        ui_logger.debug(f"Normalized split offset: {normalized_split_x_offset}")
+
+        # Split the word in the OCR object
+        self._current_ocr_line.split_word(
+            split_word_index=split_word_idx,
+            bbox_split_offset=normalized_split_x_offset,
+            character_split_index=self.split_task_word_split_idx,
+        )
+        ui_logger.debug(
+            f"Word has now been split.\nNew Line:\n{self._current_ocr_line.text}\n"
+        )
+
+        # Shrink the word bounding boxes to fit the text
+        self._current_ocr_line.refine_bounding_boxes(
+            image=self._current_ocr_page.cv2_numpy_page_image
+        )
+        ui_logger.debug("Word bounding boxes have been refined.")
+
+        # Rematch the words in the line to the associated line ground truth in the page
+        ocr_line_tuple = tuple([w.text for w in self._current_ocr_line.items])
+        ground_truth_tuple = tuple(
+            self._current_ocr_line.base_ground_truth_text.split(" ")
+        )
+
+        update_line_with_ground_truth(
+            self._current_ocr_line,
+            ocr_line_tuple=ocr_line_tuple,
+            ground_truth_tuple=ground_truth_tuple,
+        )
+
+        ui_logger.debug(
+            f"Line has been rematched with ground truth.\nNew Line:\n{self._current_ocr_line.text}\nGround Truth:\n{self._current_ocr_line.ground_truth_text}\n"
+        )
+
+        # if self.line_change_callback:
+        #     self.line_change_callback()
+
+        if self.page_image_change_callback:
+            self.page_image_change_callback()
+
+        self.task_type = EditorTaskType.NONE
+        self.split_task_match_idx = None
+        self.split_task_x_coordinate = -1
+        self.split_task_image_width = -1
+
+        self.redraw_ui()
+        ui_logger.debug("Split task executed.")
         return
 
     def draw_ui_edit_bbox_task(self):

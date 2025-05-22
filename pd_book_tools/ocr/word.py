@@ -132,6 +132,69 @@ class Word:
     def refine_bounding_box(self, image: ndarray):
         self.bounding_box = self.bounding_box.refine(image)
 
+    def split(self, bbox_split_offset: float, character_split_index: int):
+        """Split a word into two words at the given indices"""
+        logger.debug(
+            f"Splitting word '{self.text}' at bbox_split_offset {bbox_split_offset} and character_split_index {character_split_index}"
+        )
+        if bbox_split_offset < 0 or character_split_index < 0:
+            raise ValueError(
+                "bbox_split_index and character_split_index must be non-negative"
+            )
+
+        if character_split_index >= len(self.text):
+            raise IndexError("character_split_index is out of range for text")
+
+        # Split the bounding box
+        left_bbox, right_bbox = self.bounding_box.split_x_offset(bbox_split_offset)
+        logger.debug(
+            f"Left bounding box: {left_bbox}, Right bounding box: {right_bbox}"
+        )
+
+        # Split the text
+        left_text, right_text = (
+            self.text[:character_split_index],
+            self.text[character_split_index:],
+        )
+        logger.debug(f"Left text: {left_text}, Right text: {right_text}")
+
+        left_ground_truth_text = (
+            self.ground_truth_text[:character_split_index]
+            if self.ground_truth_text
+            else None
+        )
+        right_ground_truth_text = (
+            self.ground_truth_text[character_split_index:]
+            if self.ground_truth_text
+            else None
+        )
+        logger.debug(
+            f"Left ground truth text: {left_ground_truth_text}, Right ground truth text: {right_ground_truth_text}"
+        )
+
+        left_word = Word(
+            text=left_text,
+            bounding_box=left_bbox,
+            ocr_confidence=None,
+            word_labels=self.word_labels,
+            ground_truth_text=left_ground_truth_text,
+            ground_truth_match_keys={
+                "split": True,
+            },
+        )
+        right_word = Word(
+            text=right_text,
+            bounding_box=right_bbox,
+            ocr_confidence=None,
+            word_labels=self.word_labels,
+            ground_truth_text=right_ground_truth_text,
+            ground_truth_match_keys={
+                "split": True,
+            },
+        )
+        logger.debug(f"Left word: {left_word.text}, Right word: {right_word.text}")
+        return left_word, right_word
+
     def merge(self, word_to_merge: "Word"):
         """Merge this word with another word"""
         if not isinstance(word_to_merge, Word):

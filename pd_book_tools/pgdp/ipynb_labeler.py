@@ -5,8 +5,16 @@ from logging import getLogger
 
 import cv2
 import torch
+from torch import load as torch_load
 from doctr.io import DocumentFile
-from doctr.models import ocr_predictor
+from doctr.models import (
+    ocr_predictor,
+    detection_predictor,
+    recognition_predictor,
+    db_resnet50,
+    crnn_vgg16_bn,
+)
+from doctr.datasets.vocabs import VOCABS
 from IPython.display import display
 from ipywidgets import Image  # GridBox,
 from ipywidgets import HTML, BoundedIntText, Button, HBox, Layout, Tab, VBox
@@ -303,17 +311,57 @@ class IpynbLabeler:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Using {device} for OCR")
 
-        self.ocr_models = {
-            ("db_resnet50", "crnn_vgg16_bn"): ocr_predictor(
-                "db_resnet50",
-                "crnn_vgg16_bn",
-                pretrained=True,
-                assume_straight_pages=True,
-                disable_crop_orientation=True,
-            ).to(device),
-        }
+        finetuned_detection = "training-output/detection-model-finetuned.pt"
+        finetuned_recognition = "training-output/recognition-model-finetuned.pt"
 
-        self.main_ocr_predictor = self.ocr_models[("db_resnet50", "crnn_vgg16_bn")]
+        det_model = db_resnet50(pretrained=True).to("cuda")
+        det_params = torch_load(finetuned_detection, map_location="cuda:0")
+        det_model.load_state_dict(det_params)
+
+        reco_model = crnn_vgg16_bn(
+            pretrained=True,
+            pretrained_backbone=True,
+            vocab=VOCABS[
+                "multilingual"
+            ],  # model was retrained on multilingual data with some additional unicode characters
+        ).to("cuda")
+        reco_params = torch_load(finetuned_recognition, map_location="cuda:0")
+        reco_model.load_state_dict(reco_params)
+
+        full_predictor = ocr_predictor(
+            det_arch=det_model,
+            reco_arch=reco_model,
+            pretrained=True,
+            assume_straight_pages=True,
+            disable_crop_orientation=True,
+        )
+
+        det_predictor = detection_predictor(
+            arch=det_model,
+            pretrained=True,
+            assume_straight_pages=True,
+        )
+
+        reco_predictor = recognition_predictor(
+            arch=reco_model,
+            pretrained=True,
+        )
+
+        full_predictor.det_predictor = det_predictor
+        full_predictor.reco_predictor = reco_predictor
+
+        # self.ocr_models = {
+        #     ("db_resnet50", "crnn_vgg16_bn"): ocr_predictor(
+        #         "db_resnet50",
+        #         "crnn_vgg16_bn",
+        #         pretrained=True,
+        #         assume_straight_pages=True,
+        #         disable_crop_orientation=True,
+        #     ).to(device),
+        # }
+
+        # self.main_ocr_predictor = self.ocr_models[("db_resnet50", "crnn_vgg16_bn")]
+        self.main_ocr_predictor = full_predictor
 
     def __init__(
         self,

@@ -992,7 +992,11 @@ class Page:
 
         for word in self.words:
             if not word.ground_truth_text:
-                logger.warning(
+                logger.critical(
+                    "Word does not have ground truth text. Please set it before calling this method. Word: "
+                    + word.text
+                )
+                raise ValueError(
                     "Word does not have ground truth text. Please set it before calling this method. Word: "
                     + word.text
                 )

@@ -134,3 +134,6 @@ cython_debug/
 
 
 training-output/
+
+# doctr package (git clone https://github.com/mindee/doctr.git doctr_package)
+doctr_package/

@@ -44,6 +44,11 @@ class Block:
     block_labels: Optional[list[str]] = None
     additional_block_attributes: Optional[dict] = None
 
+    base_ground_truth_text: Optional[str] = None
+    """
+    The "base" ground truth text of the block, not having been matched up to individual words or lines.
+    """
+
     # TODO: Override page sort order for multi-column page layouts
     override_page_sort_order: Optional[int] = field(default=None)
 
@@ -305,6 +310,37 @@ class Block:
     #     # Use the median to ignore descenders like 'p' and 'q'
     #     baseline_y = int(np.median(bottom_edges))
     #     return baseline_y
+
+    def split_word(
+        self,
+        split_word_index: int,
+        bbox_split_offset: float,
+        character_split_index: int,
+    ):
+        """Split a word in the line into two parts and replace it with the new words"""
+        logger.debug(
+            f"Line Splitting word at index {split_word_index} with bbox_split_offset {bbox_split_offset} and character_split_index {character_split_index}"
+        )
+
+        if self.child_type != BlockChildType.WORDS:
+            raise ValueError("Cannot split a word in a block of blocks")
+        if split_word_index < 0 or split_word_index >= len(self.items):
+            raise IndexError("Index out of range")
+        word = self.items[split_word_index]
+        if not isinstance(word, Word):
+            raise TypeError("Item must be of type Word")
+
+        word_1, word_2 = word.split(
+            bbox_split_offset=bbox_split_offset,
+            character_split_index=character_split_index,
+        )
+        logger.debug("Word Split. New words: %s, %s", word_1.text, word_2.text)
+        self.remove_item(word)
+        self.add_item(word_1)
+        self.add_item(word_2)
+        self.remove_empty_items()
+        self.recompute_bounding_box()
+        logger.debug(f"Line after split:\n{self.text}")
 
     def merge(self, block_to_merge: "Block"):
         """Merge another block into this one"""

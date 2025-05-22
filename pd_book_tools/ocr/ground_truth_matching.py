@@ -300,7 +300,10 @@ def update_line_with_best_matched_ground_truth_text(
     )
 
 
-def update_line_with_ground_truth(line: Block, ocr_line_tuple, ground_truth_tuple):
+def update_line_with_ground_truth(
+    line: Block, ocr_line_tuple, ground_truth_tuple, auto_combine=True
+):
+    line.base_ground_truth_text = " ".join(ground_truth_tuple)
 
     logger.debug("OCR Line Tuple: " + str(ocr_line_tuple))
     logger.debug("GT Line Tuple: " + str(ground_truth_tuple))
@@ -344,6 +347,7 @@ def update_line_with_ground_truth(line: Block, ocr_line_tuple, ground_truth_tupl
                 op=op,
                 ocr_line_tuple=ocr_line_tuple,
                 ground_truth_tuple=ground_truth_tuple,
+                auto_combine=auto_combine,
             )
             combined_ocr_word_nbrs.extend(c)
             new_combined_words.extend(n)
@@ -382,6 +386,11 @@ def try_matching_combined_words(
         and len(ocr_line_tuple[0]) <= 3
     ):
         return []
+
+    # Skip words that have been marked as split manually
+    for w in matched_ocr_line_words:
+        if w.ground_truth_match_keys.get("split"):
+            return []
 
     logger.debug(
         "Matched OCR Line Words: "
@@ -519,6 +528,8 @@ def try_matching_combined_words(
 
             match_scores.append(match_score)
 
+    logger.debug("Match Scores computed")
+
     # Only match to fairly confident words (> 70)
     sorted_match_scores = sorted(
         match_scores,
@@ -536,9 +547,13 @@ def try_matching_combined_words(
         or s[6]
         or s[7]
     ]
+    logger.debug("Match Scores sorted")
 
+    loop_idx = -1
     combined_words = []
     while True:
+        loop_idx = loop_idx + 1
+        logger.debug(f"Sorted Match Scores Loop: index {loop_idx}")
         if not sorted_match_scores:
             break
         # Get the best match score
@@ -564,7 +579,9 @@ def try_matching_combined_words(
         combined_word = Word(
             text=combined_word_text,
             bounding_box=combined_word_bbox,
-            ocr_confidence=np_mean([word.ocr_confidence for word in matched_words]),
+            ocr_confidence=np_mean(
+                [word.ocr_confidence or 0 for word in matched_words]
+            ),
             ground_truth_text=gt_word,
             ground_truth_match_keys={
                 "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_COMBINED.value,
@@ -593,7 +610,11 @@ def try_matching_combined_words(
 
 
 def update_line_with_ground_truth_replace_words(
-    line: Block, op: WordDiffOpCodes, ocr_line_tuple, ground_truth_tuple
+    line: Block,
+    op: WordDiffOpCodes,
+    ocr_line_tuple,
+    ground_truth_tuple,
+    auto_combine=True,
 ):
     """
     Update the line with the best matched ground truth text
@@ -610,31 +631,36 @@ def update_line_with_ground_truth_replace_words(
         word for word in line.words[op.ocr_word_1 : op.ocr_word_2]
     ]
 
-    combined_word_detail = try_matching_combined_words(
-        matched_ocr_line_words, matched_ocr_line_tuple, matched_ground_truth_tuple
-    )
-
-    # Iterate over the remaining words
-    # Update each word with best matched ground truth text. If there are then more
-    # GT words than OCR words, append them to the unmatched list.
-    combined_ocr_word_nbrs = list(
-        set(
-            [
-                (r + op.ocr_word_1)
-                for combination_start, combination_end, _, _ in combined_word_detail
-                for r in range(combination_start, combination_end)
-            ]
+    if auto_combine:
+        combined_word_detail = try_matching_combined_words(
+            matched_ocr_line_words, matched_ocr_line_tuple, matched_ground_truth_tuple
         )
-    )
 
-    combined_gt_word_nbrs = list(
-        set(
-            [
-                (gt_word_nbr + op.gt_word_1)
-                for _, _, gt_word_nbr, _ in combined_word_detail
-            ]
+        # Iterate over the remaining words
+        # Update each word with best matched ground truth text. If there are then more
+        # GT words than OCR words, append them to the unmatched list.
+        combined_ocr_word_nbrs = list(
+            set(
+                [
+                    (r + op.ocr_word_1)
+                    for combination_start, combination_end, _, _ in combined_word_detail
+                    for r in range(combination_start, combination_end)
+                ]
+            )
         )
-    )
+
+        combined_gt_word_nbrs = list(
+            set(
+                [
+                    (gt_word_nbr + op.gt_word_1)
+                    for _, _, gt_word_nbr, _ in combined_word_detail
+                ]
+            )
+        )
+    else:
+        combined_ocr_word_nbrs = []
+        combined_gt_word_nbrs = []
+        combined_word_detail = []
 
     to_match_gt_word_nbrs = [
         gt_word_nbr
@@ -673,7 +699,10 @@ def update_line_with_ground_truth_replace_words(
         }
 
     # If there are any GT words left, add them at end of the group as 'unmatched' words
+    line.unmatched_ground_truth_words = []
+
     for gt_word_nbr in to_match_gt_word_nbrs:
+        logger.debug("GT Word Nbr for unmatched" + str(gt_word_nbr))
         if gt_word_nbr in combined_gt_word_nbrs:
             continue
         # Add unmatched GT word to the line
