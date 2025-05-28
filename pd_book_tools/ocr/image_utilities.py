@@ -18,6 +18,17 @@ def get_encoded_image(
     return encoded_img, b64_encoded_string, data_src_string
 
 
+def get_cropped_encoded_image_scaled_bbox(
+    img: ndarray, bounding_box_scaled: BoundingBox
+) -> tuple[ndarray, ndarray, str, str]:
+    # Get the bounding box of the word
+    x1, y1, x2, y2 = bounding_box_scaled.to_ltrb()
+    # Crop the image to the bounding box
+    cropped_img = img[y1:y2, x1:x2]
+    # Encode the cropped image as PNG
+    return cropped_img, *get_encoded_image(cropped_img)
+
+
 def get_cropped_encoded_image(
     img: ndarray, bounding_box: BoundingBox
 ) -> tuple[ndarray, ndarray, str, str]:

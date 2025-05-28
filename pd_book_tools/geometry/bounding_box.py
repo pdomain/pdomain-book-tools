@@ -396,8 +396,8 @@ class BoundingBox:
         # Restore location of bounding box from ROI
         x_min = x1 + x
         y_min = y1 + y
-        x_max = x1 + x + w
-        y_max = y1 + y + h
+        x_max = x1 + x + w + 1  # +1 to include the right edge
+        y_max = y1 + y + h + 1  # +1 to include the bottom edge
 
         # Return a new bounding box
         bbox = BoundingBox.from_ltrb(

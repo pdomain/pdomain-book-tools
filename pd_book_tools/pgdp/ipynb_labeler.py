@@ -5,7 +5,6 @@ from logging import getLogger
 
 import cv2
 import torch
-from torch import load as torch_load
 from doctr.io import DocumentFile
 from doctr.models import (
     ocr_predictor,
@@ -14,7 +13,6 @@ from doctr.models import (
     db_resnet50,
     crnn_vgg16_bn,
 )
-from doctr.datasets.vocabs import VOCABS
 from IPython.display import display
 from ipywidgets import Image  # GridBox,
 from ipywidgets import HTML, BoundedIntText, Button, HBox, Layout, Tab, VBox
@@ -83,6 +81,7 @@ class IpynbLabeler:
 
     pgdp_export: PGDPExport
     training_set_output_path: pathlib.Path
+    validation_set_output_path: pathlib.Path
 
     page_indexby_name: dict
     page_indexby_nbr: dict
@@ -130,10 +129,15 @@ class IpynbLabeler:
         )
         # TODO: Add Onclick to Save OCR as dict to a file
 
-        self.export_page_button = Button(
-            description="Export Training Data",
+        self.export_training_button = Button(
+            description="Export to ML Training",
         )
-        self.export_page_button.on_click(self.save_validations_button)
+        self.export_training_button.on_click(self.save_training_button)
+
+        self.export_validation_button = Button(
+            description="Export to ML Validation",
+        )
+        self.export_validation_button.on_click(self.save_validations_button)
 
         self.reset_ocr_button = Button(description="Reset Page OCR")
 
@@ -159,7 +163,8 @@ class IpynbLabeler:
                 HBox(
                     [
                         self.save_page_changes_button,
-                        self.export_page_button,
+                        self.export_training_button,
+                        self.export_validation_button,
                         self.reset_ocr_button,
                     ]
                 ),
@@ -307,26 +312,20 @@ class IpynbLabeler:
         self.footer_hbox = HBox()
 
     def init_ocr(self):
+        if self.doctr_predictor:
+            # Use the provided doctr predictor if available
+            self.main_ocr_predictor = self.doctr_predictor
+            return
+        # Otherwise, use the default doctr models
+
         # Check if GPU is available
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device, device_nbr = (
+            ("cuda", "cuda:0") if torch.cuda.is_available() else ("cpu", "cpu")
+        )
         logger.info(f"Using {device} for OCR")
 
-        finetuned_detection = "training-output/detection-model-finetuned.pt"
-        finetuned_recognition = "training-output/recognition-model-finetuned.pt"
-
-        det_model = db_resnet50(pretrained=True).to("cuda")
-        det_params = torch_load(finetuned_detection, map_location="cuda:0")
-        det_model.load_state_dict(det_params)
-
-        reco_model = crnn_vgg16_bn(
-            pretrained=True,
-            pretrained_backbone=True,
-            vocab=VOCABS[
-                "multilingual"
-            ],  # model was retrained on multilingual data with some additional unicode characters
-        ).to("cuda")
-        reco_params = torch_load(finetuned_recognition, map_location="cuda:0")
-        reco_model.load_state_dict(reco_params)
+        det_model = db_resnet50(pretrained=True).to(device)
+        reco_model = crnn_vgg16_bn(pretrained=True, pretrained_backbone=True).to(device)
 
         full_predictor = ocr_predictor(
             det_arch=det_model,
@@ -350,28 +349,20 @@ class IpynbLabeler:
         full_predictor.det_predictor = det_predictor
         full_predictor.reco_predictor = reco_predictor
 
-        # self.ocr_models = {
-        #     ("db_resnet50", "crnn_vgg16_bn"): ocr_predictor(
-        #         "db_resnet50",
-        #         "crnn_vgg16_bn",
-        #         pretrained=True,
-        #         assume_straight_pages=True,
-        #         disable_crop_orientation=True,
-        #     ).to(device),
-        # }
-
-        # self.main_ocr_predictor = self.ocr_models[("db_resnet50", "crnn_vgg16_bn")]
         self.main_ocr_predictor = full_predictor
 
     def __init__(
         self,
         pgdp_export: PGDPExport,
         training_set_output_path: pathlib.Path | str,
+        validation_set_output_path: pathlib.Path | str,
         monospace_font_name: str,
         monospace_font_path: pathlib.Path | str,
         start_page_name="",
         start_page_idx=0,
+        doctr_predictor=None,
     ):
+        self.doctr_predictor = doctr_predictor
         self.pgdp_export = pgdp_export
 
         if isinstance(training_set_output_path, str):
@@ -379,6 +370,12 @@ class IpynbLabeler:
         self.training_set_output_path = training_set_output_path
         if not self.training_set_output_path.exists():
             self.training_set_output_path.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(validation_set_output_path, str):
+            validation_set_output_path = pathlib.Path(validation_set_output_path)
+        self.validation_set_output_path = validation_set_output_path
+        if not self.validation_set_output_path.exists():
+            self.validation_set_output_path.mkdir(parents=True, exist_ok=True)
 
         self.page_indexby_name = {
             item.png_file: i for i, item in enumerate(self.pgdp_export.pages)
@@ -563,6 +560,14 @@ class IpynbLabeler:
         self.update_text()
 
     def save_validations_button(self, event=None):
+        # Save the current page
+        prefix = self.pgdp_export.project_id + "_" + str(self.current_page_idx)
+        self.current_ocr_page.convert_to_training_set(
+            output_path=self.validation_set_output_path,
+            prefix=prefix,
+        )
+
+    def save_training_button(self, event=None):
         # Save the current page
         prefix = self.pgdp_export.project_id + "_" + str(self.current_page_idx)
         self.current_ocr_page.convert_to_training_set(

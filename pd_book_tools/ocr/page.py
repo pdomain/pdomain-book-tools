@@ -869,7 +869,7 @@ class Page:
         self: "Page", output_path: pathlib.Path, prefix: str = ""
     ) -> None:
         """
-        Create a DocTR text detection training set from a page image (matched_ocr data) and image bounding boxes
+        Create a DocTR text detection training or validation set from a page image (matched_ocr data) and image bounding boxes
         Result:
             Files:
             ├── detection
@@ -951,7 +951,7 @@ class Page:
         self: "Page", output_path: pathlib.Path, prefix: str = ""
     ) -> None:
         """
-        Create a text recognition training set from a page image (matched_ocr data) and image bounding boxes
+        Create a text recognition training or validation set from a page image (matched_ocr data) and image bounding boxes
         Result:
             Files:
             ├── recognition

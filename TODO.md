@@ -1,8 +1,9 @@
 TODO:
 
+Fix font in train_pgdp_ocr
+
 Bounding Box Adjustment buttons
-    - left, top, right, bottom adjust buttons (show surrounding image as well)
-    - fit to text button
+    - more options as to number of pixels to move
 
 Persist OCR changes to a dictionary/file, load back changes from dictionary/file
 
