@@ -47,7 +47,6 @@ def test_from_dict():
 
 
 def test_shapely_not_available(monkeypatch):
-
     monkeypatch.setattr(Point, "is_shapely_available", lambda: False)
 
     with pytest.raises(ImportError):

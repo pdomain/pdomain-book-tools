@@ -178,8 +178,7 @@ def test_bounding_box_shapely_not_available(monkeypatch):
 def test_bounding_box_from_shapely():
     if not SHAPELY_AVAILABLE:
         raise ImportError(
-            "Shapely is required for this test. "
-            "Install it with 'pip install shapely'."
+            "Shapely is required for this test. Install it with 'pip install shapely'."
         )
     shapely_box = box(0, 0, 1, 1)
     bbox = BoundingBox.from_shapely(shapely_box)
@@ -190,8 +189,7 @@ def test_bounding_box_from_shapely():
 def test_bounding_box_as_shapely():
     if not SHAPELY_AVAILABLE:
         raise ImportError(
-            "Shapely is required for this test. "
-            "Install it with 'pip install shapely'."
+            "Shapely is required for this test. Install it with 'pip install shapely'."
         )
     bbox = BoundingBox(Point(0, 0), Point(1, 1))
     shapely_box = bbox.as_shapely()

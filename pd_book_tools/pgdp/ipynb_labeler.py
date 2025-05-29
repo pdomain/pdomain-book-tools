@@ -7,11 +7,11 @@ import cv2
 import torch
 from doctr.io import DocumentFile
 from doctr.models import (
-    ocr_predictor,
-    detection_predictor,
-    recognition_predictor,
-    db_resnet50,
     crnn_vgg16_bn,
+    db_resnet50,
+    detection_predictor,
+    ocr_predictor,
+    recognition_predictor,
 )
 from IPython.display import display
 from ipywidgets import Image  # GridBox,

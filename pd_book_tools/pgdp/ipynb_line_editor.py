@@ -15,6 +15,7 @@ from pd_book_tools.utility.ipynb_widgets import (
     get_html_widget_from_cropped_image,
 )
 
+from ..geometry import BoundingBox
 from ..ocr.block import Block
 from ..ocr.image_utilities import (
     get_cropped_encoded_image_scaled_bbox,
@@ -24,7 +25,6 @@ from ..ocr.image_utilities import (
 from ..ocr.page import Page
 from ..ocr.word import Word
 from .pgdp_results import PGDPPage
-from ..geometry import BoundingBox
 
 # Configure logging
 logger = getLogger(__name__)

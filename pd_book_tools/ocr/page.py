@@ -8,10 +8,9 @@ from json import load as json_load
 from logging import getLogger
 from typing import Any, Collection, Dict, List, Optional
 
+# from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
 from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
-
-# from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
 from cv2 import IMWRITE_PNG_COMPRESSION as cv2_IMWRITE_PNG_COMPRESSION
 from cv2 import cvtColor as cv2_cvtColor
 from cv2 import imwrite as cv2_imwrite
