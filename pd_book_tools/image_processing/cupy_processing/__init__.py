@@ -1,4 +1,4 @@
-from .colorToGray import colorToGray, np_uint8_float_colorToGray
+from .colorToGray import cupy_colorToGray, np_uint8_float_colorToGray
 from .crop import crop_edges, crop_to_rectangle
 from .invert import invert_image
 from .morph import morph_fill
@@ -6,7 +6,7 @@ from .threshold import np_uint8_float_binary_thresh, otsu_binary_thresh
 
 # Get all available modules in this package
 __all__ = [
-    "colorToGray",
+    "cupy_colorToGray",
     "np_uint8_float_colorToGray",
     "crop_edges",
     "crop_to_rectangle",

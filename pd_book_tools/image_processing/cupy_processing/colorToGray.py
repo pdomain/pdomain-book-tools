@@ -59,7 +59,7 @@ def cupy_colorToGray(
         y_range = cp.arange(y_start, y_end)
 
         min_val, max_val, pixels = _compute_envelopes(
-            img, radius, samples, iterations, 2.0, y_range
+            img, radius, samples, iterations, y_range
         )
 
         if enhance_shadows:
