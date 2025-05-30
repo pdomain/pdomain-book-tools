@@ -837,7 +837,7 @@ class Page:
             [item.bounding_box for item in self.items]
         )
 
-    def refine_bounding_boxes(self, image: ndarray = None):
+    def refine_bounding_boxes(self, image: ndarray = None, padding_px: int = 0):
         if image is None:
             if hasattr(self, "cv2_numpy_page_image"):
                 image = self.cv2_numpy_page_image
@@ -846,7 +846,7 @@ class Page:
                     "Image not provided and cv2_numpy_page_image is not set."
                 )
         for item in self.items:
-            item.refine_bounding_boxes(image)
+            item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
 
     def generate_doctr_checks(self, output_path: pathlib.Path):

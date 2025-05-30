@@ -353,7 +353,7 @@ class BoundingBox:
             bottom_right=Point.from_dict(dict["bottom_right"]),
         )
 
-    def refine(self, image: ndarray) -> "BoundingBox":
+    def refine(self, image: ndarray, padding_px: int = 0) -> "BoundingBox":
         """
         Returns a new bounding box to better fit the text within the given OpenCV image.
 
@@ -399,6 +399,12 @@ class BoundingBox:
         x_max = x1 + x + w + 1  # +1 to include the right edge
         y_max = y1 + y + h + 1  # +1 to include the bottom edge
 
+        # Apply padding to the bounding box
+        x_min = max(0, x_min - padding_px)
+        y_min = max(0, y_min - padding_px)
+        x_max = min(img_w, x_max + padding_px)
+        y_max = min(img_h, y_max + padding_px)
+
         # Return a new bounding box
         bbox = BoundingBox.from_ltrb(
             x_min,
@@ -410,6 +416,124 @@ class BoundingBox:
 
         bbox = bbox.normalize(width=img_w, height=img_h)
         logger.debug(f"Normalized Bbox:\n{bbox.to_dict()}")
+        return bbox
+
+    def expand_to_content(
+        self, image: ndarray, recurse_depth: int = 0
+    ) -> "BoundingBox":
+        """
+        Expand the bounding box to include additional pixels connected to the text within the given OpenCV image.
+        Args:
+            image (numpy.ndarray): The OpenCV image containing the text.
+        Returns:
+            BoundingBox: A new bounding box that includes the pixels that are connected to the existing pixels of the bounding box.
+        """
+        # iterate over the bounding box X and Y coordinates, checking for non-zero pixels
+
+        img_h, img_w = image.shape[:2]
+        x1, y1, x2, y2 = (self.scale(width=img_w, height=img_h)).to_ltrb()
+
+        logger.debug(f"Expanding bounding box: ({x1}, {y1}, {x2}, {y2})")
+
+        # Extract ROI
+        roi = image[y1:y2, x1:x2]
+
+        # Convert the ROI to grayscale if needed
+        if len(roi.shape) == 3:
+            roi_gray = cvtColor(roi, COLOR_BGR2GRAY)
+        else:
+            roi_gray = roi
+
+        if len(image.shape) == 3:
+            image = cvtColor(image, COLOR_BGR2GRAY)
+        else:
+            image = image
+        _, image = threshold(image, 0, 255, THRESH_BINARY + THRESH_OTSU)
+
+        # Invert and threshold
+        inverted_roi = cv2.bitwise_not(roi_gray)
+        _, thresh = threshold(inverted_roi, 0, 255, THRESH_BINARY + THRESH_OTSU)
+
+        # Find nonzero pixels in ROI
+        non_zero_coords = findNonZero(thresh)
+        if non_zero_coords is None:
+            logger.debug("No non-zero pixels found")
+            return BoundingBox.from_dict(self.to_dict())
+
+        non_zero_coords = non_zero_coords.reshape(-1, 2)  # (N, 2)
+
+        roi_h, roi_w = thresh.shape
+
+        # Check edges of ROI
+        top_edge = non_zero_coords[non_zero_coords[:, 1] == 0]
+        bottom_edge = non_zero_coords[non_zero_coords[:, 1] == roi_h - 1]
+        left_edge = non_zero_coords[non_zero_coords[:, 0] == 0]
+        right_edge = non_zero_coords[non_zero_coords[:, 0] == roi_w - 1]
+
+        # Expand bbox in image coordinates
+        expand_top = False
+        if y1 > 0:
+            for x, y in top_edge:
+                if image[y1 - 1, x1 + x] > 0:
+                    expand_top = True
+                    break
+
+        expand_bottom = False
+        if y2 < img_h:
+            for x, y in bottom_edge:
+                if image[y2, x1 + x] > 0:
+                    expand_bottom = True
+                    break
+
+        expand_left = False
+        if x1 > 0:
+            for x, y in left_edge:
+                if image[y1 + y, x1 - 1] > 0:
+                    expand_left = True
+                    break
+
+        expand_right = False
+        if x2 < img_w:
+            for x, y in right_edge:
+                if image[y1 + y, x2] > 0:
+                    expand_right = True
+                    break
+
+        if expand_top:
+            y1 = max(0, y1 - 1)
+        if expand_bottom:
+            y2 = min(img_h, y2 + 1)
+        if expand_left:
+            x1 = max(0, x1 - 1)
+        if expand_right:
+            x2 = min(img_w, x2 + 1)
+        ox1, oy1, ox2, oy2 = self.scale(width=img_w, height=img_h).to_ltrb()
+
+        logger.debug(f"Expanded bbox: ({x1}, {y1}, {x2}, {y2})")
+        logger.debug(f"Original bbox: ({ox1}, {oy1}, {ox2}, {oy2})")
+
+        # if the bounding box has not changed, return a copy of self
+        if (x1, y1, x2, y2) == (ox1, oy1, ox2, oy2):
+            logger.debug("Bounding box has not changed, returning a copy of self")
+            return BoundingBox.from_dict(self.to_dict())
+
+        # Return a new bounding box
+        bbox = BoundingBox.from_ltrb(
+            x1,
+            y1,
+            x2,
+            y2,
+        ).normalize(width=img_w, height=img_h)
+
+        logger.debug("BBox expanded. Recursing to check next iteration")
+
+        # recursively call expand to ensure all connected pixels are included
+        recurse_depth = recurse_depth + 1
+        if recurse_depth < 10:
+            # Only go up to 10 pixels. Any worse and it's probably a bad bbox
+            bbox = bbox.expand_to_content(image, recurse_depth=recurse_depth)
+        else:
+            logger.debug("Max recursion depth reached, returning bounding box")
         return bbox
 
     # Shapely integration methods

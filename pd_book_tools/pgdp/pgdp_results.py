@@ -87,21 +87,26 @@ class PGDPPage:
         logger.debug("Converting straight quotes to curly quotes")
 
         s = text
-        # Convert double quotes first
-        s = regex.sub(r'(?<!\w)"(?=\w)', "“", s)  # Opening double quote
-        s = regex.sub(r'"', "”", s)  # Closing double quote
-
         s = regex.sub(r"(?<=\s|^)'Tis", "’", s)  # "Tis"
 
-        # Convert single quotes
-        s = regex.sub(r"(?<=\s|^)'(?=\w)", "‘", s)  # Opening single quote
-        s = regex.sub(
-            r"(?<=\w)(?<=[.,!?;:)])'(?=\s|$|[.,!?;:)]|\Z)", "’", s
-        )  # Closing single quote
+        # Double quotes
+        s = regex.sub(r'(^|[\s(\[{<\(])"', r"\1“", s)  # Opening double quote
+        s = regex.sub(r'"', "”", s)  # Remaining are closing
 
-        # Handle apostrophes in contractions and possessives
-        # This might not always be correct. There's edge cases with
-        # single quote marks used for Glottal stops: ʻ (U+02BB)
+        # Single quotes
+        # Opening single quote (start of line, after whitespace, or after opening punctuation)
+        s = regex.sub(r"(^|[\s(\[{<\(])'", r"\1‘", s)
+
+        # opening single quote after em-dash or long dash and immediately before word character
+        s = regex.sub(r"(?<=[—⸺])'(?=\w)", "‘", s)
+
+        # Closing single quote (after word character or punctuation, before whitespace, punctuation, or end of line)
+        s = regex.sub(r"(?<=[\w.,!?;:])'(?=\s|$|[.,!?;:)\]}>])", "’", s)
+
+        # closing single quote after em-dash or long dash and before end of line or whitespace
+        s = regex.sub(r"(?<=[—⸺])'(?=\s|$)", "’", s)
+
+        # Apostrophes in contractions (between word characters)
         s = regex.sub(r"(?<=\w)'(?=\w)", "’", s)
 
         return s

@@ -129,8 +129,9 @@ class Word:
             ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
         )
 
-    def refine_bounding_box(self, image: ndarray):
-        self.bounding_box = self.bounding_box.refine(image)
+    def refine_bounding_box(self, image: ndarray, padding_px: int = 0):
+        """Refine the bounding box of the word based on the image content"""
+        self.bounding_box = self.bounding_box.refine(image, padding_px=padding_px)
 
     def split(self, bbox_split_offset: float, character_split_index: int):
         """Split a word into two words at the given indices"""

@@ -446,16 +446,16 @@ class Block:
             additional_block_attributes=dict.get("additional_block_attributes", {}),
         )
 
-    def refine_bounding_boxes(self, image: ndarray):
+    def refine_bounding_boxes(self, image: ndarray, padding_px: int = 0):
         if not self.items:
             self.bounding_box = None
             return
         if self.child_type == BlockChildType.WORDS:
             item: Word
             for item in self.items:
-                item.refine_bounding_box(image)
+                item.refine_bounding_box(image, padding_px=padding_px)
         else:
             item: Block
             for item in self.items:
-                item.refine_bounding_boxes(image)
+                item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
