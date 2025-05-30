@@ -4,6 +4,9 @@ Python tools for working with public domain book scans.
 
 ## Installation
 
+Install Nvidia CUDA toolkit if you want to use GPU functions.
+https://developer.nvidia.com/cuda-toolkit
+
 Install the 'uv' tooling to manage project dependencies:
 
 https://docs.astral.sh/uv/getting-started/installation/
