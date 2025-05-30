@@ -448,6 +448,8 @@ class BoundingBox:
             image = cvtColor(image, COLOR_BGR2GRAY)
         else:
             image = image
+
+        image = cv2.bitwise_not(image)
         _, image = threshold(image, 0, 255, THRESH_BINARY + THRESH_OTSU)
 
         # Invert and threshold
