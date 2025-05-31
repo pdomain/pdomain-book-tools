@@ -478,6 +478,9 @@ class BoundingBox:
             for x, y in top_edge:
                 if image[y1 - 1, x1 + x] > 0:
                     expand_top = True
+                    logger.debug(
+                        f"found non-zero pixel above top edge at {x1 + x}, {y1 - 1}"
+                    )
                     break
 
         expand_bottom = False
@@ -485,6 +488,9 @@ class BoundingBox:
             for x, y in bottom_edge:
                 if image[y2, x1 + x] > 0:
                     expand_bottom = True
+                    logger.debug(
+                        f"found non-zero pixel below bottom edge at {x1 + x}, {y2}"
+                    )
                     break
 
         expand_left = False
@@ -492,6 +498,9 @@ class BoundingBox:
             for x, y in left_edge:
                 if image[y1 + y, x1 - 1] > 0:
                     expand_left = True
+                    logger.debug(
+                        f"found non-zero pixel left of left edge at {x1 - 1}, {y1 + y}"
+                    )
                     break
 
         expand_right = False
@@ -499,6 +508,9 @@ class BoundingBox:
             for x, y in right_edge:
                 if image[y1 + y, x2] > 0:
                     expand_right = True
+                    logger.debug(
+                        f"found non-zero pixel right of right edge at {x2}, {y1 + y}"
+                    )
                     break
 
         if expand_top:
@@ -536,6 +548,111 @@ class BoundingBox:
             bbox = bbox.expand_to_content(image, recurse_depth=recurse_depth)
         else:
             logger.debug("Max recursion depth reached, returning bounding box")
+
+        return bbox
+
+    def crop_bottom(self, image: ndarray) -> "BoundingBox":
+        """
+        Crop the bounding box to only include text (nonzero pixels) that are vertically
+        contiguous with pixels that can be reached from the center row of the bounding box.
+        This method starts from the center row of the bounding box, checks for non-zero pixels,
+        and for each row below, only keeps pixels that are directly below at least one pixel
+        from the previous row. This effectively crops the bounding box to the vertically-connected
+        center word in the image.
+
+        Args:
+            image (numpy.ndarray): The OpenCV image containing the text.
+
+        Returns:
+            BoundingBox: A new bounding box with bottom cropped.
+        """
+
+        logger.debug("Cropping bottom of bounding box to vertically connected text")
+
+        img_h, img_w = image.shape[:2]
+        x1, y1, x2, y2 = (self.scale(width=img_w, height=img_h)).to_ltrb()
+
+        # Extract ROI
+        roi = image[y1:y2, x1:x2]
+
+        # Convert ROI to grayscale if needed
+        if len(roi.shape) == 3:
+            roi_gray = cvtColor(roi, COLOR_BGR2GRAY)
+        else:
+            roi_gray = roi
+
+        # Invert and threshold to get text as white on black
+        inverted_roi = cv2.bitwise_not(roi_gray)
+        _, thresh = threshold(inverted_roi, 0, 255, THRESH_BINARY + THRESH_OTSU)
+
+        roi_h, roi_w = thresh.shape
+
+        # Find nonzero pixels in ROI
+        non_zero_coords = findNonZero(thresh)
+        if non_zero_coords is None:
+            logger.debug("No non-zero pixels found")
+            return BoundingBox.from_dict(self.to_dict())
+
+        non_zero_coords = non_zero_coords.reshape(-1, 2)  # (N, 2)
+
+        center_y = roi_h // 2
+
+        # drop all pixels above the center row
+        non_zero_coords = non_zero_coords[non_zero_coords[:, 1] >= center_y]
+        if non_zero_coords.size == 0:
+            logger.debug("No non-zero pixels found below the center row")
+            return BoundingBox.from_dict(self.to_dict())
+
+        logger.debug(
+            f"Center row: {center_y}, non-zero pixels below center: {non_zero_coords.shape[0]}"
+        )
+
+        # itearate over the rows below the center row
+        for y in range(center_y + 1, roi_h):
+            logger.debug("Checking row with pixes for non-zero pixels")
+            # get all pixels in the current row
+            current_row_coords = non_zero_coords[non_zero_coords[:, 1] == y]
+            logger.debug(f"Row {y} has {current_row_coords.shape[0]} pixels")
+            # get all pixels in the previous row
+            previous_row_coords = non_zero_coords[non_zero_coords[:, 1] == y - 1]
+            if previous_row_coords.size == 0:
+                continue
+            # check each pixel in the current row, compare to the pixel directly above it
+            # if any pixel in the current row is directly below a pixel in the previous row, keep it
+            match = False
+            if not (current_row_coords.size == 0):
+                for cx, cy in current_row_coords:
+                    # check if there is a pixel directly above the current pixel in the previous row
+                    for px, py in previous_row_coords:
+                        if px == cx and py == cy - 1:
+                            # we have a match, keep the current row
+                            logger.debug(
+                                f"Row {cy} has pixel ({cx}, {cy}) directly below row {cy - 1} pixel ({px}, {py}), keeping current row"
+                            )
+                            match = True
+                            break
+                    if match:
+                        break
+                    # keep the current row
+            if match:
+                logger.debug(f"Row {y} has matching pixel, continuing search")
+                continue
+
+            # this means there are no pixels directly below the previous row, so we stop
+            logger.debug(f"No pixels found below row {y - 1}, stopping crop")
+            y2 = y1 + y
+            logger.debug(f"New bottom y-coordinate: {y2}")
+            break
+
+        bbox = BoundingBox.from_ltrb(
+            x1,
+            y1,
+            x2,
+            y2,
+        ).normalize(width=img_w, height=img_h)
+
+        logger.debug(f"Cropped bounding box: ({x1}, {y1}, {x2}, {y2})")
+
         return bbox
 
     # Shapely integration methods

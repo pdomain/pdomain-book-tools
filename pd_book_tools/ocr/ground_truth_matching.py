@@ -376,20 +376,44 @@ def try_matching_combined_words(
 
     # TODO: Add logic to find quotation marks, ending apostrophes, and prime marks and ensure they're part of the single "word"
 
-    if len(matched_ocr_line_words) <= 1:
+    logger.debug("Trying to match combined words in OCR line")
+    logger.debug(
+        "Matched OCR Line Words: "
+        + " ".join([word.text for word in matched_ocr_line_words])
+    )
+    logger.debug("OCR Line Tuple: " + " ".join(ocr_line_tuple))
+    logger.debug("Ground Truth Tuple: " + " ".join(ground_truth_tuple))
+
+    if not matched_ocr_line_words or len(matched_ocr_line_words) <= 1:
+        logger.debug("Not enough words in OCR line to combine, returning empty list")
         return []
 
+    logger.debug("Skipping quotes/primes")
     # Skip cases when the first character is a quote or prime in both OCR and GT AND the word is short (matching will be poor)
     if (
-        ocr_line_tuple[0][0] in CharacterGroups.QUOTES_AND_PRIMES.value
-        and ground_truth_tuple[0][0] in CharacterGroups.QUOTES_AND_PRIMES.value
+        (
+            ocr_line_tuple[0]
+            and ocr_line_tuple[0][0] in CharacterGroups.QUOTES_AND_PRIMES.value
+        )
+        and (
+            ground_truth_tuple[0]
+            and ground_truth_tuple[0][0] in CharacterGroups.QUOTES_AND_PRIMES.value
+        )
         and len(ocr_line_tuple[0]) <= 3
     ):
+        logger.debug("First character is a quote or prime in both OCR and GT, skipping")
         return []
 
+    logger.debug("Iterating over matched OCR line words")
     # Skip words that have been marked as split manually
-    for w in matched_ocr_line_words:
+    for w in matched_ocr_line_words or []:
+        logger.debug(
+            f"Checking word '{w.text}' for manual split: {w.ground_truth_match_keys.get('split')}"
+        )
         if w.ground_truth_match_keys.get("split"):
+            logger.debug(
+                f"Skipping word '{w.text}' as it has been marked as split manually"
+            )
             return []
 
     logger.debug(
@@ -429,7 +453,19 @@ def try_matching_combined_words(
 
     match_scores = []
     for ocr_combination_nbr in range(0, len(ocr_combination_tuple)):
+        logger.debug(
+            "Checking OCR Combination Nbr: "
+            + str(ocr_combination_nbr)
+            + " of "
+            + str(len(ocr_combination_tuple))
+        )
         for gt_word_nbr in range(0, len(ground_truth_tuple)):
+            logger.debug(
+                "Checking GT Word Nbr: "
+                + str(gt_word_nbr)
+                + " of "
+                + str(len(ground_truth_tuple))
+            )
             ratio = fuzz_ratio(
                 ocr_combination_tuple[ocr_combination_nbr][2].strip(),
                 ground_truth_tuple[gt_word_nbr].strip(),
@@ -632,6 +668,7 @@ def update_line_with_ground_truth_replace_words(
     ]
 
     if auto_combine:
+        logger.debug("Auto Combine Words in Line")
         combined_word_detail = try_matching_combined_words(
             matched_ocr_line_words, matched_ocr_line_tuple, matched_ground_truth_tuple
         )
@@ -658,6 +695,7 @@ def update_line_with_ground_truth_replace_words(
             )
         )
     else:
+        logger.debug("Auto Combine Is Off")
         combined_ocr_word_nbrs = []
         combined_gt_word_nbrs = []
         combined_word_detail = []

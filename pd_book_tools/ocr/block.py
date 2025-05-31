@@ -43,7 +43,6 @@ class Block:
     block_category: Optional[BlockCategory] = BlockCategory.BLOCK
     block_labels: Optional[list[str]] = None
     additional_block_attributes: Optional[dict] = None
-
     base_ground_truth_text: Optional[str] = None
     """
     The "base" ground truth text of the block, not having been matched up to individual words or lines.
@@ -72,6 +71,7 @@ class Block:
         override_page_sort_order: Optional[int] = None,
         unmatched_ground_truth_words: Optional[list[(int, str)]] = None,
         additional_block_attributes: Optional[dict] = None,
+        base_ground_truth_text: Optional[str] = None,
     ):
         self.child_type = child_type
         self.block_category = block_category
@@ -91,11 +91,16 @@ class Block:
             self.unmatched_ground_truth_words = unmatched_ground_truth_words
         else:
             self.unmatched_ground_truth_words = []
+        logger.debug(
+            "unmatched_ground_truth_words: %s", str(self.unmatched_ground_truth_words)
+        )
 
         if additional_block_attributes:
             self.additional_block_attributes = additional_block_attributes
         else:
             self.additional_block_attributes = {}
+
+        self.base_ground_truth_text = base_ground_truth_text
 
     def _sort_items(self):
         if self.child_type == BlockChildType.WORDS:
@@ -219,13 +224,19 @@ class Block:
             # If the block is a line, use the ground truth text of the words
             matched_words = []
             for word in self.items:
-                matched_words.append(word.ground_truth_text)
+                matched_words.append(word.ground_truth_text or "")
 
             # Also, add unmatched ground truth words to the text
             for unmatched_gt_word_idx, unmatched_gt_word in reversed(
                 self.unmatched_ground_truth_words
             ):
+                logger.debug(
+                    f"Adding unmatched ground truth word '{unmatched_gt_word}' at index {unmatched_gt_word_idx}"
+                )
                 matched_words.insert(unmatched_gt_word_idx + 1, unmatched_gt_word)
+            logger.debug(
+                f"Matched words after adding unmatched ground truth words: {matched_words}"
+            )
             return " ".join(matched_words)
         elif self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(item.ground_truth_text for item in self.items)
@@ -421,7 +432,10 @@ class Block:
             "block_labels": self.block_labels,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
-            "additional_block_attributes": self.additional_block_attributes,
+            "override_page_sort_order": self.override_page_sort_order,
+            "unmatched_ground_truth_words": self.unmatched_ground_truth_words or [],
+            "additional_block_attributes": self.additional_block_attributes or {},
+            "base_ground_truth_text": self.base_ground_truth_text or "",
         }
 
     @classmethod
@@ -443,7 +457,10 @@ class Block:
             child_type=child_type,
             block_category=BlockCategory(dict.get("block_category")),
             block_labels=dict.get("block_labels", []),
+            override_page_sort_order=dict.get("override_page_sort_order", None),
+            unmatched_ground_truth_words=dict.get("unmatched_ground_truth_words", []),
             additional_block_attributes=dict.get("additional_block_attributes", {}),
+            base_ground_truth_text=dict.get("base_ground_truth_text", None),
         )
 
     def refine_bounding_boxes(self, image: ndarray, padding_px: int = 0):
