@@ -1,7 +1,7 @@
 from collections import namedtuple
 from difflib import SequenceMatcher
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 from numpy import mean as np_mean
 from thefuzz.fuzz import ratio as fuzz_ratio
@@ -185,7 +185,7 @@ def update_page_match_difflib_lines_delete(page: "Page", op: LineDiffOpCodes):
 
 
 def update_page_match_difflib_lines_equal(
-    page: "Page", op: LineDiffOpCodes, ground_truth_tuples: tuple[tuple[str]]
+    page: "Page", op: LineDiffOpCodes, ground_truth_tuples: Sequence[Sequence[str]]
 ):
     """
     Add Ground Truth Data to lines that are equal between OCR and ground truth.
@@ -201,33 +201,59 @@ def update_page_match_difflib_lines_equal(
         update_line_match_difflib_lines_equal(line, ground_truth_line)
 
 
-def update_line_match_difflib_lines_equal(line: Block, ground_truth_line: tuple[str]):
+def update_line_match_difflib_lines_equal(
+    line: Block, ground_truth_line: Sequence[str]
+):
     """
     Add Ground Truth Data to a line where the line and ground truth are known to be equivalent
     """
     logger.debug("Update Line: " + line.text[0:20] + " ...")
+    logger.debug(
+        "With Ground Truth Line: " + " ".join(ground_truth_line[0:20]) + " ..."
+    )
+
+    if not hasattr(line, "block_category"):
+        raise ValueError("Line does not have a block_category attribute")
 
     if line.block_category != BlockCategory.LINE:
         raise ValueError("Line is not a line block")
+
+    if not hasattr(line, "words"):
+        raise ValueError("Line does not have a words attribute")
+
     if len(line.words) != len(ground_truth_line):
         raise ValueError(
             f"Line word count mismatch: {len(line.words)} vs {len(ground_truth_line)}"
         )
+
     word: Word
     for word_idx, word in enumerate(line.words):
+        logger.debug(
+            f"Updating word {word_idx}: {word.text} with ground truth: {ground_truth_line[word_idx]}"
+        )
         if word.text != ground_truth_line[word_idx]:
             raise ValueError(
                 f"Word mismatch: {word.text} vs {ground_truth_line[word_idx]}"
             )
+
+        if word_idx >= len(ground_truth_line):
+            raise ValueError(
+                f"Word index {word_idx} out of range for ground truth line: {ground_truth_line}"
+            )
+
         word.ground_truth_text = ground_truth_line[word_idx]
         word.ground_truth_match_keys = {
             "match_type": MatchType.LINE_EQUAL.value,
             "match_score": 100,
         }
+    logger.debug("Line updated.")
 
 
 def update_page_match_difflib_lines_insert(
-    page: "Page", op: LineDiffOpCodes, ground_truth_tuples
+    page: "Page",
+    op: LineDiffOpCodes,
+    ground_truth_tuples: Sequence[Sequence[str]],
+    ocr_tuples: Sequence[Sequence[str]],
 ):
     """
     Entire Lines that exist in Ground Truth for a page, but do NOT exist in OCR.
@@ -240,9 +266,12 @@ def update_page_match_difflib_lines_insert(
             "GT Line Nbr: "
             + str(gt_line_nbr)
             + ", line text: "
-            + str(ground_truth_tuples[gt_line_nbr][0:20] + "...")
+            + str(str(ground_truth_tuples[gt_line_nbr][0:20]) + "...")
         )
-        ocr_line_nbr = op.ocr_line_1 + ocr_line_offset
+        ocr_line_nbr: int = int(op.ocr_line_1 + ocr_line_offset)
+        if not page.unmatched_ground_truth_lines:
+            page.unmatched_ground_truth_lines = []
+
         page.unmatched_ground_truth_lines.append(
             (ocr_line_nbr, " ".join(ground_truth_tuples[gt_line_nbr]))
         )

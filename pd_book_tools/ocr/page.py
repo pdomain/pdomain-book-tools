@@ -68,7 +68,7 @@ class Page:
     _cv2_numpy_page_image_word_with_bboxes_and_gt_text: Optional[ndarray] = None
     _cv2_numpy_page_image_matched_word_with_colors: Optional[ndarray] = None
 
-    unmatched_ground_truth_lines: "list[(int, str)]" = None
+    unmatched_ground_truth_lines: Optional[List] = None
     "List of Ground Truth Lines and the line they were found on before an OCR match"
 
     def __init__(
