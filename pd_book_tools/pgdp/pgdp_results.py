@@ -87,7 +87,7 @@ class PGDPPage:
         logger.debug("Converting straight quotes to curly quotes")
 
         s = text
-        s = regex.sub(r"(?<=\s|^)'Tis", "’", s)  # "Tis"
+        s = regex.sub(r"(?<=\s|^)'(?=[Tt]is)", "’", s)  # "Tis"
 
         # Double quotes
         s = regex.sub(r'(^|[\s(\[{<\(])"', r"\1“", s)  # Opening double quote
