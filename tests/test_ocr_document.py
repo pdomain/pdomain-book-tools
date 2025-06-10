@@ -79,12 +79,12 @@ def test_document_from_dict():
     assert len(doc.pages) == 1
 
 
-def test_document_save_json(tmp_path):
+def test_document_to_json_file(tmp_path):
     doc = Document(source_lib="test_lib", source_path=Path("test_path"), pages=[])
     page = Page(page_index=0, width=800, height=1000, items=[])
     doc._pages.append(page)
     file_path = tmp_path / "test.json"
-    doc.save_json(file_path)
+    doc.to_json_file(file_path)
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     assert data["source_lib"] == "test_lib"

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Sequence, Tuple
+from typing import Dict, Sequence, Tuple
 
 # Try to import shapely, but don't fail if not installed
 try:
@@ -35,7 +35,9 @@ class Point:
 
     # Standard Instance methods
 
-    def to_x_y(self) -> Tuple[float]:
+    def to_x_y(self) -> Tuple[float | int, float | int]:
+        if not (isinstance(self.x, (int, float)) and isinstance(self.y, (int, float))):
+            raise ValueError("Internal coordinates are not numbers")        
         return (self.x, self.y)
 
     def scale(self, width: int, height: int) -> "Point":
@@ -65,7 +67,8 @@ class Point:
         """Convert to JSON-serializable dictionary"""
         return {"x": self.x, "y": self.y}
 
-    def from_dict(dict) -> "Point":
+    @classmethod
+    def from_dict(cls, dict: Dict) -> "Point":
         """Create Point from dictionary"""
         return Point(x=dict["x"], y=dict["y"])
 
@@ -108,4 +111,4 @@ class Point:
             ImportError: If shapely is not installed
         """
         self._fail_if_shapely_not_available()
-        return ShapelyPoint(self.x, self.y)
+        return ShapelyPoint(self.x, self.y)  # type: ignore

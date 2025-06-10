@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import cv2
 
-from .point import Point
+from pd_book_tools.geometry.point import Point
 
 # Try to import shapely, but don't fail if not installed
 try:
@@ -171,12 +171,15 @@ class BoundingBox:
                 if "x" not in p or "y" not in p:
                     raise ValueError("Dictionary should have 'x' and 'y' keys")
                 converted_points.append(Point(p["x"], p["y"]))
-            elif cls.is_shapely_available() and isinstance(p, ShapelyPoint):
-                converted_points.append(Point(p.x, p.y))
+            elif cls.is_shapely_available() and isinstance(p, ShapelyPoint):  # type: ignore
+                if hasattr(p, "x") and hasattr(p, "y"):
+                    converted_points.append(Point(p.x, p.y))  # type: ignore
+                else:
+                    raise ValueError("ShapelyPoint should have 'x' and 'y' attributes")
             elif isinstance(p, Point):
                 converted_points.append(p)
-            elif len(p) == 2:
-                converted_points.append(Point(p[0], p[1]))
+            elif len(p) == 2:  # type: ignore
+                converted_points.append(Point(p[0], p[1]))  # type: ignore
 
         if not (
             converted_points[1].x > converted_points[0].x
@@ -242,10 +245,11 @@ class BoundingBox:
             self.bottom_right.y,
         )
 
-    def to_ltwh(self) -> Tuple["Point", float, float]:
-        """Convert to ((left, top), width, height) format"""
+    def to_ltwh(self) -> Tuple[float, float, float, float]:
+        """Convert to (left, top, width, height) format"""
         return (
-            self.top_left,
+            self.top_left.x,
+            self.top_left.y,
             self.bottom_right.x - self.top_left.x,
             self.bottom_right.y - self.top_left.y,
         )
@@ -254,8 +258,8 @@ class BoundingBox:
         self, width: int, height: int
     ) -> Tuple[float, float, float, float]:
         """Convert to (left, top, width, height) format with absolute pixel coordinates"""
-        lt, width, height = self.to_ltwh()
-        return lt.scale(width, height) + (width * width, height * height)
+        scaled: BoundingBox = self.scale(width, height)
+        return scaled.to_ltwh()
 
     def scale(self, width: int, height: int) -> "BoundingBox":
         """
@@ -346,7 +350,8 @@ class BoundingBox:
             "bottom_right": self.bottom_right.to_dict(),
         }
 
-    def from_dict(dict) -> "BoundingBox":
+    @classmethod
+    def from_dict(cls, dict: Dict) -> "BoundingBox":
         """Create BoundingBox from dictionary"""
         return BoundingBox(
             top_left=Point.from_dict(dict["top_left"]),
@@ -476,7 +481,7 @@ class BoundingBox:
         expand_top = False
         if y1 > 0:
             for x, y in top_edge:
-                if image[y1 - 1, x1 + x] > 0:
+                if image[int(y1 - 1), int(x1 + x)] > 0:
                     expand_top = True
                     logger.debug(
                         f"found non-zero pixel above top edge at {x1 + x}, {y1 - 1}"
@@ -486,7 +491,7 @@ class BoundingBox:
         expand_bottom = False
         if y2 < img_h:
             for x, y in bottom_edge:
-                if image[y2, x1 + x] > 0:
+                if image[int(y2), int(x1 + x)] > 0:
                     expand_bottom = True
                     logger.debug(
                         f"found non-zero pixel below bottom edge at {x1 + x}, {y2}"
@@ -496,7 +501,7 @@ class BoundingBox:
         expand_left = False
         if x1 > 0:
             for x, y in left_edge:
-                if image[y1 + y, x1 - 1] > 0:
+                if image[int(y1 + y), int(x1 - 1)] > 0:
                     expand_left = True
                     logger.debug(
                         f"found non-zero pixel left of left edge at {x1 - 1}, {y1 + y}"
@@ -506,7 +511,7 @@ class BoundingBox:
         expand_right = False
         if x2 < img_w:
             for x, y in right_edge:
-                if image[y1 + y, x2] > 0:
+                if image[int(y1 + y), int(x2)] > 0:
                     expand_right = True
                     logger.debug(
                         f"found non-zero pixel right of right edge at {x2}, {y1 + y}"
@@ -554,11 +559,14 @@ class BoundingBox:
     def crop_bottom(self, image: ndarray) -> "BoundingBox":
         """
         Crop the bounding box to only include text (nonzero pixels) that are vertically
-        contiguous with pixels that can be reached from the center row of the bounding box.
+        contiguous with pixels that can be reached below the center row of the bounding box.
         This method starts from the center row of the bounding box, checks for non-zero pixels,
         and for each row below, only keeps pixels that are directly below at least one pixel
         from the previous row. This effectively crops the bounding box to the vertically-connected
-        center word in the image.
+        center character(s) in the image.
+
+        Unfortunately, this method is not useful for text that is not vertically connected below in some scripts.
+        But for english text, it works well to crop the bottom of the bounding box.
 
         Args:
             image (numpy.ndarray): The OpenCV image containing the text.
@@ -609,39 +617,143 @@ class BoundingBox:
 
         # itearate over the rows below the center row
         for y in range(center_y + 1, roi_h):
-            logger.debug("Checking row with pixes for non-zero pixels")
-            # get all pixels in the current row
-            current_row_coords = non_zero_coords[non_zero_coords[:, 1] == y]
-            logger.debug(f"Row {y} has {current_row_coords.shape[0]} pixels")
-            # get all pixels in the previous row
-            previous_row_coords = non_zero_coords[non_zero_coords[:, 1] == y - 1]
-            if previous_row_coords.size == 0:
+            logger.debug("Checking row with pixels for non-zero pixels")
+
+            current_row_x = set(non_zero_coords[non_zero_coords[:, 1] == y][:, 0])
+            prev_row_x = set(non_zero_coords[non_zero_coords[:, 1] == y - 1][:, 0])
+            if not prev_row_x and current_row_x:
+                logger.debug(
+                    "Prev Row has no pixels, current row has at least one pixel, continuing search"
+                )
                 continue
-            # check each pixel in the current row, compare to the pixel directly above it
-            # if any pixel in the current row is directly below a pixel in the previous row, keep it
-            match = False
-            if not (current_row_coords.size == 0):
-                for cx, cy in current_row_coords:
-                    # check if there is a pixel directly above the current pixel in the previous row
-                    for px, py in previous_row_coords:
-                        if px == cx and py == cy - 1:
-                            # we have a match, keep the current row
-                            logger.debug(
-                                f"Row {cy} has pixel ({cx}, {cy}) directly below row {cy - 1} pixel ({px}, {py}), keeping current row"
-                            )
-                            match = True
-                            break
-                    if match:
-                        break
-                    # keep the current row
-            if match:
+            # Check if any x in current_row_x is also in prev_row_x
+            if current_row_x & prev_row_x:
                 logger.debug(f"Row {y} has matching pixel, continuing search")
                 continue
-
-            # this means there are no pixels directly below the previous row, so we stop
-            logger.debug(f"No pixels found below row {y - 1}, stopping crop")
+            # No connectivity, crop here
             y2 = y1 + y
             logger.debug(f"New bottom y-coordinate: {y2}")
+            break
+
+            # # get all pixels in the current row
+            # current_row_coords = non_zero_coords[non_zero_coords[:, 1] == y]
+            # logger.debug(f"Row {y} has {current_row_coords.shape[0]} pixels")
+            # # get all pixels in the previous row
+            # previous_row_coords = non_zero_coords[non_zero_coords[:, 1] == y - 1]
+
+            # if previous_row_coords.size == 0:
+            #     continue
+            # # check each pixel in the current row, compare to the pixel directly above it
+            # # if any pixel in the current row is directly below a pixel in the previous row, keep it
+            # match = False
+            # if not (current_row_coords.size == 0):
+            #     for cx, cy in current_row_coords:
+            #         # check if there is a pixel directly above the current pixel in the previous row
+            #         for px, py in previous_row_coords:
+            #             if px == cx and py == cy - 1:
+            #                 # we have a match, keep the current row
+            #                 logger.debug(
+            #                     f"Row {cy} has pixel ({cx}, {cy}) directly below row {cy - 1} pixel ({px}, {py}), keeping current row"
+            #                 )
+            #                 match = True
+            #                 break
+            #         if match:
+            #             break
+            #         # keep the current row
+            # if match:
+            #     logger.debug(f"Row {y} has matching pixel, continuing search")
+            #     continue
+
+            # # this means there are no pixels directly below the previous row, so we stop
+            # logger.debug(f"No pixels found below row {y - 1}, stopping crop")
+            # y2 = y1 + y
+            # logger.debug(f"New bottom y-coordinate: {y2}")
+            # break
+
+        bbox = BoundingBox.from_ltrb(
+            x1,
+            y1,
+            x2,
+            y2,
+        ).normalize(width=img_w, height=img_h)
+
+        logger.debug(f"Cropped bounding box: ({x1}, {y1}, {x2}, {y2})")
+
+        return bbox
+
+    def crop_top(self, image: ndarray) -> "BoundingBox":
+        """
+        Crop the bounding box to only include text (nonzero pixels) that are vertically
+        contiguous with pixels that can be reached above the center row of the bounding box.
+        This method starts from the center row of the bounding box, checks for non-zero pixels,
+        and for each row above, only keeps pixels that are directly above at least one pixel
+        from the previous row. This effectively crops the bounding box to the vertically-connected
+        center character(s) in the image.
+
+        Unfortunately, this method is not useful for text that is not vertically connected above in some scripts.
+        But for english text, it works well to crop the top of the bounding box, except for "i", "j", and any characters with diacritics.
+
+        Args:
+            image (numpy.ndarray): The OpenCV image containing the text.
+
+        Returns:
+            BoundingBox: A new bounding box with top cropped.
+        """
+
+        logger.debug("Cropping top of bounding box to vertically connected text")
+
+        img_h, img_w = image.shape[:2]
+        x1, y1, x2, y2 = (self.scale(width=img_w, height=img_h)).to_ltrb()
+
+        # Extract ROI
+        roi = image[y1:y2, x1:x2]
+
+        # Convert ROI to grayscale if needed
+        if len(roi.shape) == 3:
+            roi_gray = cvtColor(roi, COLOR_BGR2GRAY)
+        else:
+            roi_gray = roi
+
+        # Invert and threshold to get text as white on black
+        inverted_roi = cv2.bitwise_not(roi_gray)
+        _, thresh = threshold(inverted_roi, 0, 255, THRESH_BINARY + THRESH_OTSU)
+
+        roi_h, roi_w = thresh.shape
+
+        # Find nonzero pixels in ROI
+        non_zero_coords = findNonZero(thresh)
+        if non_zero_coords is None:
+            logger.debug("No non-zero pixels found")
+            return BoundingBox.from_dict(self.to_dict())
+
+        non_zero_coords = non_zero_coords.reshape(-1, 2)
+
+        center_y = roi_h // 2
+        # drop all pixels below the center row
+        non_zero_coords = non_zero_coords[non_zero_coords[:, 1] <= center_y]
+        if non_zero_coords.size == 0:
+            logger.debug("No non-zero pixels found above the center row")
+            return BoundingBox.from_dict(self.to_dict())
+        logger.debug(
+            f"Center row: {center_y}, non-zero pixels above center: {non_zero_coords.shape[0]}"
+        )
+        # iterate over the rows above the center row
+        for y in range(center_y - 1, -1, -1):
+            logger.debug("Checking row with pixels for non-zero pixels")
+
+            current_row_x = set(non_zero_coords[non_zero_coords[:, 1] == y][:, 0])
+            prev_row_x = set(non_zero_coords[non_zero_coords[:, 1] == y + 1][:, 0])
+            if not prev_row_x and current_row_x:
+                logger.debug(
+                    "Prev Row has no pixels, current row has at least one pixel, continuing search"
+                )
+                continue
+            if current_row_x & prev_row_x:
+                logger.debug(f"Row {y} has matching pixel, continuing search")
+                continue
+            logger.debug(f"No pixels found above row {y + 1}, stopping crop")
+            y1 = y1 + y
+            logger.debug(f"New top y-coordinate: {y1}")
             break
 
         bbox = BoundingBox.from_ltrb(
@@ -693,7 +805,7 @@ class BoundingBox:
         """
         self._fail_if_shapely_not_available()
 
-        return shapely_box(
+        return shapely_box(  # type: ignore
             self.top_left.x,
             self.top_left.y,
             self.bottom_right.x,

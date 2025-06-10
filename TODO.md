@@ -7,8 +7,6 @@ TODO:
 
 Add ability to label a word as in Italics, Bold, Blackletter
 
-"All Lines" is refreshing itself after Go To Page # a second time
-
 Add Logic for General Lists/Tables, Tables of Contents, Plate lists, figure lists, etc:
  - scan line for ". . . ." and in post-processing expand line horizontally to connect
  - find if multiple items on right are very short compared to other lines they're probably page numbers

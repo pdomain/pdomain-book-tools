@@ -6,7 +6,7 @@ from hashlib import sha256
 from json import dump as json_dump
 from json import load as json_load
 from logging import getLogger
-from typing import Any, Collection, Dict, List, Optional
+from typing import Any, Collection, Dict, List, Optional, Tuple
 
 # from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
 from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
@@ -21,10 +21,10 @@ from numpy import median as np_median
 from numpy import ndarray
 from numpy import std as np_std
 
-from ..geometry import BoundingBox
-from .block import Block, BlockCategory
-from .ground_truth_matching import update_page_with_ground_truth_text
-from .word import Word
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.block import Block, BlockCategory
+from pd_book_tools.ocr.ground_truth_matching import update_page_with_ground_truth_text
+from pd_book_tools.ocr.word import Word
 
 # Configure logging
 logger = getLogger(__name__)
@@ -80,7 +80,7 @@ class Page:
         bounding_box: Optional[BoundingBox] = None,
         page_labels: Optional[list[str]] = None,
         cv2_numpy_page_image: Optional[ndarray] = None,
-        unmatched_ground_truth_lines: Optional[list[(int, str)]] = None,
+        unmatched_ground_truth_lines: Optional[List[Tuple[int, str]]] = None,
     ):
         self.width = width
         self.height = height
@@ -94,9 +94,13 @@ class Page:
             )
         self.page_labels = page_labels
 
-        self.cv2_numpy_page_image = (
-            cv2_numpy_page_image  # Use the setter for validation or processing
-        )
+        if cv2_numpy_page_image is not None:
+            if not isinstance(cv2_numpy_page_image, ndarray):
+                raise TypeError("cv2_numpy_page_image must be a numpy ndarray")
+
+            self.cv2_numpy_page_image = (
+                cv2_numpy_page_image  # Use the setter for validation or processing
+            )
 
         if unmatched_ground_truth_lines:
             self.unmatched_ground_truth_lines = unmatched_ground_truth_lines
@@ -106,8 +110,8 @@ class Page:
     def _sort_items(self):
         self._items.sort(
             key=lambda item: (
-                item.bounding_box.top_left.y,
-                item.bounding_box.top_left.x,
+                item.bounding_box.top_left.y if item.bounding_box else 0,
+                item.bounding_box.top_left.x if item.bounding_box else 0,
             ),
         )
 
@@ -164,10 +168,10 @@ class Page:
         for block in values:
             if not isinstance(block, Block):
                 raise TypeError("Each item in items must be of type Block")
-        self._items = sorted(values, key=lambda block: block.bounding_box.top_left.y)
+        self._items = sorted(values, key=lambda block: block.bounding_box.top_left.y if block.bounding_box else 0)
 
     @property
-    def cv2_numpy_page_image(self) -> ndarray:
+    def cv2_numpy_page_image(self) -> ndarray | None:
         return self._cv2_numpy_page_image
 
     @cv2_numpy_page_image.setter
@@ -179,35 +183,35 @@ class Page:
         self.refresh_page_images()
 
     @property
-    def cv2_numpy_page_image_page_with_bbox(self) -> ndarray:
+    def cv2_numpy_page_image_page_with_bbox(self) -> ndarray | None:
         return self._cv2_numpy_page_image_page_with_bbox
 
     @property
-    def cv2_numpy_page_image_blocks_with_bboxes(self) -> ndarray:
+    def cv2_numpy_page_image_blocks_with_bboxes(self) -> ndarray | None:
         return self._cv2_numpy_page_image_blocks_with_bboxes
 
     @property
-    def cv2_numpy_page_image_paragraph_with_bboxes(self) -> ndarray:
+    def cv2_numpy_page_image_paragraph_with_bboxes(self) -> ndarray | None:
         return self._cv2_numpy_page_image_paragraph_with_bboxes
 
     @property
-    def cv2_numpy_page_image_line_with_bboxes(self) -> ndarray:
+    def cv2_numpy_page_image_line_with_bboxes(self) -> ndarray | None:
         return self._cv2_numpy_page_image_line_with_bboxes
 
     @property
-    def cv2_numpy_page_image_word_with_bboxes(self) -> ndarray:
+    def cv2_numpy_page_image_word_with_bboxes(self) -> ndarray | None:
         return self._cv2_numpy_page_image_word_with_bboxes
 
     @property
-    def cv2_numpy_page_image_word_with_bboxes_and_ocr_text(self) -> ndarray:
+    def cv2_numpy_page_image_word_with_bboxes_and_ocr_text(self) -> ndarray | None:
         return self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text
 
     @property
-    def cv2_numpy_page_image_word_with_bboxes_and_gt_text(self) -> ndarray:
+    def cv2_numpy_page_image_word_with_bboxes_and_gt_text(self) -> ndarray | None:
         return self._cv2_numpy_page_image_word_with_bboxes_and_gt_text
 
     @property
-    def cv2_numpy_page_image_matched_word_with_colors(self) -> ndarray:
+    def cv2_numpy_page_image_matched_word_with_colors(self) -> ndarray | None:
         return self._cv2_numpy_page_image_matched_word_with_colors
 
     def refresh_page_images(self):
@@ -338,13 +342,14 @@ class Page:
             if item.bounding_box.width < 1 or item.bounding_box.height < 1:
                 bbox = item.bounding_box.scale(width=w, height=h)
 
-            cv2_rectangle(
-                img=image,
-                pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
-                pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
-                color=box_color,
-                thickness=2,
-            )
+            if bbox is not None:
+                cv2_rectangle(
+                    img=image,
+                    pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
+                    pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
+                    color=box_color,
+                    thickness=2,
+                )
 
     def _add_ocr_text_recurse(self, items, image):
         if image is None:
@@ -352,7 +357,7 @@ class Page:
         for item in items:
             if isinstance(item, Word):
                 self._add_ocr_text(image, item)
-            if hasattr(item, "items") and item.items:
+            elif hasattr(item, "items") and item.items:
                 self._add_ocr_text_recurse(item.items, image)
 
     @classmethod
@@ -411,7 +416,7 @@ class Page:
         for item in items:
             if isinstance(item, Word):
                 self._add_gt_text(image, item)
-            if hasattr(item, "items") and item.items:
+            elif hasattr(item, "items") and item.items:
                 self._add_gt_text_recurse(item.items, image)
 
     @property
@@ -462,7 +467,7 @@ class Page:
             height=height,
             page_index=self.page_index,
             items=[item.scale(width, height) for item in self.items],
-            bounding_box=self.bounding_box.scale(width, height),
+            bounding_box=self.bounding_box.scale(width, height) if self.bounding_box else None,
             page_labels=self.page_labels,
         )
 
@@ -481,9 +486,9 @@ class Page:
         # Copy the page to a new object via serialization/deserialization
         return self.from_dict(self.to_dict())
 
-    def reorganize_page(self) -> "Page":
+    def reorganize_page(self):
         """
-        Reogranize the page into paragraphs and blocks and return a new Page.
+        Reogranize the page into paragraphs and blocks.
         This is a post-processing step to ensure that the text is
         organized into logical sections for text generated output.
         """
@@ -519,7 +524,6 @@ class Page:
         logger.debug(
             "Page Block Count after adding paragraphs:" + str(len(paragraph_blocks))
         )
-
         self.refresh_page_images()
 
     def add_ground_truth(self, text: str):
@@ -555,6 +559,21 @@ class Page:
     def _reorganize_lines_check_overlap(cls, line: Block, next_line: Block):
         # TODO move this to the Block class
 
+        if not line.bounding_box:
+            cls._reorganize_lines_log_debug_lines(
+                "First Line has no bounding box.",
+                line.text,
+                next_line.text,
+            )
+            return False
+        if not next_line.bounding_box:
+            cls._reorganize_lines_log_debug_lines(
+                "Second Line has no bounding box.",
+                line.text,
+                next_line.text,
+            )
+            return False
+        
         y_overlap_h = line.bounding_box.overlap_y_amount(next_line.bounding_box)
         x_overlap_w = line.bounding_box.overlap_x_amount(next_line.bounding_box)
 
@@ -606,8 +625,8 @@ class Page:
         if len(lines) < 2:
             # If only one line, no need to recompute
             return
-
-        median_line_width = np_median([line.bounding_box.width for line in lines])
+                        
+        median_line_width = np_median([line.bounding_box.width if line.bounding_box else 0 for line in lines])
 
         i = -1
         while True:
@@ -622,6 +641,9 @@ class Page:
             next_line: Block = lines[i + 1]
 
             if cls._reorganize_lines_check_overlap(line, next_line):
+                continue
+
+            if not line.bounding_box or not next_line.bounding_box:
                 continue
 
             # Only check lines that are "approximately" the same height (to account for drop-caps)
@@ -646,6 +668,9 @@ class Page:
             # Figure out which line should come "first" and reorder them
             if line.bounding_box.minX > next_line.bounding_box.minX:
                 line, next_line = next_line, line
+
+            if not line.bounding_box or not next_line.bounding_box:
+                continue
 
             # Compute X space between lines
             x_space_between = max(
@@ -692,16 +717,16 @@ class Page:
 
         # Tolerance is 20% of average line height by default
         if tolerance is None:
-            tolerance = 0.2 * np_mean([line.bounding_box.height for line in lines])
+            tolerance = 0.2 * np_mean([line.bounding_box.height if line.bounding_box else 0 for line in lines])
 
         logger.debug("Tolerance: " + str(tolerance))
 
         # Sort lines by their Y position
-        lines.sort(key=lambda line: line.bounding_box.minY)
+        lines.sort(key=lambda line: line.bounding_box.minY if line.bounding_box else 0)
 
         # Compute spacing after each line
-        min_y_positions = [line.bounding_box.minY for line in lines]
-        max_y_positions = [line.bounding_box.maxY for line in lines]
+        min_y_positions = [line.bounding_box.minY if line.bounding_box else 0 for line in lines]
+        max_y_positions = [line.bounding_box.maxY if line.bounding_box else 0 for line in lines]
 
         # Compute difference between the max Y of the previous line and the min Y of the current line
         line_spacings = [
@@ -715,8 +740,8 @@ class Page:
 
         # Use 1/2 of the standard deviation, or 15% of the avarage line height
         # as the tolerance for line spacing
-        median_line_height_spacing = (
-            np_median([line.bounding_box.height for line in lines]) * 0.10
+        median_line_height_spacing = float(
+            np_median([line.bounding_box.height if line.bounding_box else 0 for line in lines]) * 0.10
         )
         logger.debug("Median Line Height Spacing: " + str(median_line_height_spacing))
 
@@ -726,7 +751,7 @@ class Page:
         )
 
         tolerance_spacing = tolerance + max(
-            std_line_height_spacing, (median_line_height_spacing * 0.25)
+            float(std_line_height_spacing), (median_line_height_spacing * 0.25)
         )
         logger.debug("Tolerance Spacing: " + str(tolerance_spacing))
 
@@ -762,10 +787,10 @@ class Page:
     def compute_text_paragraph_blocks(cls, lines: List[Block]):
         logger.debug("Computing Paragraph Blocks")
 
-        min_x_positions = [line.bounding_box.minX for line in lines]
-        max_x_positions = [line.bounding_box.maxX for line in lines]
+        min_x_positions = [line.bounding_box.minX if line.bounding_box else 0 for line in lines]
+        max_x_positions = [line.bounding_box.maxX if line.bounding_box else 0 for line in lines]
 
-        median_line_length = np_median([line.bounding_box.width for line in lines])
+        median_line_length = np_median([line.bounding_box.width if line.bounding_box else 0 for line in lines])
 
         median_left_indent = np_median(min_x_positions)
         median_right_indent = np_median(max_x_positions)
@@ -832,12 +857,12 @@ class Page:
         if not self.items:
             self.bounding_box = None
             logger.debug("No items in page to recompute bounding box")
-            return
+            return        
         self.bounding_box = BoundingBox.union(
-            [item.bounding_box for item in self.items]
+            [item.bounding_box for item in self.items if item.bounding_box]
         )
 
-    def refine_bounding_boxes(self, image: ndarray = None, padding_px: int = 0):
+    def refine_bounding_boxes(self, image: ndarray | None = None, padding_px: int = 0):
         if image is None:
             if hasattr(self, "cv2_numpy_page_image"):
                 image = self.cv2_numpy_page_image
@@ -894,6 +919,10 @@ class Page:
         detection_image_path = pathlib.Path(detection_path, "images")
         detection_image_path.mkdir(parents=True, exist_ok=True)
 
+        if self.cv2_numpy_page_image is None:
+            raise ValueError(
+                "cv2_numpy_page_image is not set. Please set it before calling this method."
+            )
         image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
         img_height, img_width, _ = image.shape
 
@@ -902,7 +931,7 @@ class Page:
         image_name = "{}_{}.png".format(prefix, self.page_index)
         logger.debug("Writing image: " + str(image_name))
         cv2_imwrite(
-            pathlib.Path(detection_image_path, image_name).resolve(),
+            str(pathlib.Path(detection_image_path, image_name).resolve()),
             image,
             [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
         )
@@ -978,6 +1007,10 @@ class Page:
         recognition_image_path = pathlib.Path(recognition_path, "images")
         recognition_image_path.mkdir(parents=True, exist_ok=True)
 
+        if self.cv2_numpy_page_image is None:
+            raise ValueError(
+                "cv2_numpy_page_image is not set. Please set it before calling this method."
+            )
         image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
         img_height, img_width, _ = image.shape
 
@@ -1015,7 +1048,7 @@ class Page:
             )
             logger.debug("Writing image: " + str(cropped_image_name))
             cv2_imwrite(
-                pathlib.Path(recognition_image_path, cropped_image_name).resolve(),
+                str(pathlib.Path(recognition_image_path, cropped_image_name).resolve()),
                 cropped_image,
                 [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
                 # [int(cv2_IMWRITE_JPEG_QUALITY), 100],

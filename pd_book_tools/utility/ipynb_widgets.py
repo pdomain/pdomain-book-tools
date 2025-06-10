@@ -3,8 +3,8 @@ from numpy import ndarray
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 
-from ..ocr.image_utilities import get_cropped_encoded_image, get_encoded_image
-
+from pd_book_tools.ocr.image_utilities import get_cropped_encoded_image, get_encoded_image
+# TODO move those image utilities to a more appropriate location
 
 def get_html_styled_span(item: str = "", css_style: str = "") -> HTML:
     return HTML(f"<span {css_style}>" + item if item else "" + "</span>")

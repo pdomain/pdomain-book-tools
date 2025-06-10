@@ -1,7 +1,7 @@
 import pytest
 
-import pd_book_tools.geometry as geometry
-import pd_book_tools.ocr as ocr
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.word import Word
 
 
 def test_word_to_dict(sample_word1):
@@ -34,9 +34,9 @@ def test_word_from_dict(sample_word1):
         "ocr_confidence": 0.99,
         "word_labels": ["label1"],
     }
-    word = ocr.Word.from_dict(word_dict)
+    word = Word.from_dict(word_dict)
 
     assert word.text == "test"
-    assert word.bounding_box == geometry.BoundingBox.from_dict(bounding_box_dict)
+    assert word.bounding_box == BoundingBox.from_dict(bounding_box_dict)
     assert word.ocr_confidence == pytest.approx(0.99)
     assert word.word_labels == ["label1"]

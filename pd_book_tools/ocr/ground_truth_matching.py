@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Sequence
 from numpy import mean as np_mean
 from thefuzz.fuzz import ratio as fuzz_ratio
 
-from pd_book_tools.geometry import BoundingBox
+from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.word import Word
 
@@ -101,11 +101,13 @@ def clear_page_ground_truth_text(page: "Page"):
     ground truth text that has been added.
     """
     for line in page.lines:
-        line.unmatched_ground_truth_words.clear()
+        if line.unmatched_ground_truth_words:
+            line.unmatched_ground_truth_words.clear()
         for word in line.words:
             word.ground_truth_text = ""
             word.ground_truth_match_keys = {}
-    page.unmatched_ground_truth_lines.clear()
+    if page.unmatched_ground_truth_lines:
+        page.unmatched_ground_truth_lines.clear()
 
 
 def update_page_with_ground_truth_text(
@@ -366,6 +368,8 @@ def update_line_with_ground_truth(
                 + str(ground_truth_tuple[op.gt_word_1 : op.gt_word_2])
             )
             for gt_idx in range(op.gt_word_1, op.gt_word_2):
+                if line.unmatched_ground_truth_words is None:
+                    line.unmatched_ground_truth_words = []
                 line.unmatched_ground_truth_words.append(
                     (gt_idx, ground_truth_tuple[gt_idx])
                 )
@@ -639,14 +643,14 @@ def try_matching_combined_words(
         # Then remove the words from the line
         combined_word_text = "".join([word.text for word in matched_words])
         combined_word_bbox = BoundingBox.union(
-            word.bounding_box for word in matched_words
+            [word.bounding_box for word in matched_words]
         )
         combined_word = Word(
             text=combined_word_text,
             bounding_box=combined_word_bbox,
-            ocr_confidence=np_mean(
+            ocr_confidence=float(np_mean(
                 [word.ocr_confidence or 0 for word in matched_words]
-            ),
+            )),
             ground_truth_text=gt_word,
             ground_truth_match_keys={
                 "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_COMBINED.value,
@@ -915,18 +919,20 @@ def update_page_match_difflib_lines_replace_different_line_count(
             continue
         # Add unmatched GT line to the page after the OCR lines
         ground_truth_text = " ".join(ground_truth_tuples[gt_line_nbr])
+        if not page.unmatched_ground_truth_lines:
+            page.unmatched_ground_truth_lines = []
         page.unmatched_ground_truth_lines.append((op.ocr_line_2 - 1, ground_truth_text))
 
 
 def _build_current_work_gt_line_from_prev(
     prev_char_count, previous_ground_truth_text, ground_truth_text
-):
+) -> str:
     """
     Build a working ground truth line by adding characters from the previous line.
     """
     if prev_char_count != 0:
         if previous_ground_truth_text[-prev_char_count] == " ":
-            return None
+            return ""
         logger.debug(
             "Add Prev | %s | %s",
             previous_ground_truth_text[-prev_char_count],

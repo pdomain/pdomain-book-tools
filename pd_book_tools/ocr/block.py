@@ -2,13 +2,13 @@ import itertools
 from dataclasses import dataclass, field
 from enum import Enum
 from logging import getLogger
-from typing import Collection, List, Optional, Union
+from typing import Collection, List, Optional, Tuple, Union
 
 from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
-from ..geometry import BoundingBox
-from .word import Word
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.word import Word
 
 # Configure logging
 logger = getLogger(__name__)
@@ -51,7 +51,7 @@ class Block:
     # TODO: Override page sort order for multi-column page layouts
     override_page_sort_order: Optional[int] = field(default=None)
 
-    unmatched_ground_truth_words: Optional[list[(int, str)]] = field(
+    unmatched_ground_truth_words: Optional[List[Tuple[int, str]]] = field(
         default_factory=list
     )
     """
@@ -69,7 +69,7 @@ class Block:
         block_category: Optional[BlockCategory] = BlockCategory.BLOCK,
         block_labels: Optional[list[str]] = None,
         override_page_sort_order: Optional[int] = None,
-        unmatched_ground_truth_words: Optional[list[(int, str)]] = None,
+        unmatched_ground_truth_words: Optional[List[Tuple[int, str]]] = None,
         additional_block_attributes: Optional[dict] = None,
         base_ground_truth_text: Optional[str] = None,
     ):
@@ -103,18 +103,32 @@ class Block:
         self.base_ground_truth_text = base_ground_truth_text
 
     def _sort_items(self):
+        # TODO: Implement a more robust sorting mechanism.
+        
+        # Blocks should be sorted:
+        # Header & Page Number
+        # Left Sidenotes
+        # Body Text
+        #    Within Body Text, sort by:
+        #    Blocks, top to bottom
+        #      Blocks within Blocks (Columns), left to right
+        #      Within Columns, sort by Paragraphs, top to bottom
+        #        Within Paragraphs, sort by Lines, top to bottom
+        #          Within Lines, sort by Words, left to right
+
+        # Right Sidenotes
         if self.child_type == BlockChildType.WORDS:
             self._items.sort(
                 key=lambda item: (
-                    item.bounding_box.top_left.x,
-                    item.bounding_box.top_left.y,
+                    item.bounding_box.top_left.x if item.bounding_box and item.bounding_box.top_left else 0,
+                    item.bounding_box.top_left.y if item.bounding_box and item.bounding_box.top_left else 0,
                 ),
             )
         else:
             self._items.sort(
                 key=lambda item: (
-                    item.bounding_box.top_left.y,
-                    item.bounding_box.top_left.x,
+                    item.bounding_box.top_left.y if item.bounding_box and item.bounding_box.top_left else 0,
+                    item.bounding_box.top_left.x if item.bounding_box and item.bounding_box.top_left else 0,
                 ),
             )
 
@@ -164,6 +178,8 @@ class Block:
                 self.remove_item(line)
             else:
                 for block in self._items:
+                    if isinstance(block, Word):
+                        raise TypeError("Block must be of type Block")
                     block.remove_line_if_exists(line)
             logger.debug(f"Line {line.text[0:10]}... removed from block")
         else:
@@ -227,16 +243,17 @@ class Block:
                 matched_words.append(word.ground_truth_text or "")
 
             # Also, add unmatched ground truth words to the text
-            for unmatched_gt_word_idx, unmatched_gt_word in reversed(
-                self.unmatched_ground_truth_words
-            ):
+            if self.unmatched_ground_truth_words:
+                for unmatched_gt_word_idx, unmatched_gt_word in reversed(
+                    self.unmatched_ground_truth_words
+                ):
+                    logger.debug(
+                        f"Adding unmatched ground truth word '{unmatched_gt_word}' at index {unmatched_gt_word_idx}"
+                    )
+                    matched_words.insert(unmatched_gt_word_idx + 1, unmatched_gt_word)
                 logger.debug(
-                    f"Adding unmatched ground truth word '{unmatched_gt_word}' at index {unmatched_gt_word_idx}"
+                    f"Matched words after adding unmatched ground truth words: {matched_words}"
                 )
-                matched_words.insert(unmatched_gt_word_idx + 1, unmatched_gt_word)
-            logger.debug(
-                f"Matched words after adding unmatched ground truth words: {matched_words}"
-            )
             return " ".join(matched_words)
         elif self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(item.ground_truth_text for item in self.items)
@@ -359,7 +376,7 @@ class Block:
             raise ValueError("Cannot merge blocks with different child types")
         if self.block_category != block_to_merge.block_category:
             raise ValueError("Cannot merge blocks with different block categories")
-        if self.bounding_box:
+        if self.bounding_box and block_to_merge.bounding_box:
             self.bounding_box = BoundingBox.union(
                 [self.bounding_box, block_to_merge.bounding_box]
             )
@@ -367,9 +384,10 @@ class Block:
             self.bounding_box = block_to_merge.bounding_box
         self._items.extend(block_to_merge.items)
         self._sort_items()
-        self.unmatched_ground_truth_words.extend(
-            block_to_merge.unmatched_ground_truth_words
-        )
+        if self.unmatched_ground_truth_words and block_to_merge.unmatched_ground_truth_words:
+            self.unmatched_ground_truth_words.extend(
+                block_to_merge.unmatched_ground_truth_words
+            )
         if self.block_labels is None:
             self.block_labels = block_to_merge.block_labels
         else:
@@ -407,7 +425,7 @@ class Block:
         """
         return Block(
             items=[item.scale(width, height) for item in self.items],
-            bounding_box=self.bounding_box.scale(width, height),
+            bounding_box=self.bounding_box.scale(width, height) if self.bounding_box else None,
             child_type=self.child_type,
             block_category=self.block_category,
             block_labels=self.block_labels,
@@ -427,8 +445,8 @@ class Block:
         """Convert to JSON-serializable dictionary"""
         return {
             "type": "Block",
-            "child_type": self.child_type.value,
-            "block_category": self.block_category.value,
+            "child_type": self.child_type.value if self.child_type else None,
+            "block_category": self.block_category.value if self.block_category else None,
             "block_labels": self.block_labels,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
@@ -463,14 +481,21 @@ class Block:
             base_ground_truth_text=dict.get("base_ground_truth_text", None),
         )
 
-    def refine_bounding_boxes(self, image: ndarray, padding_px: int = 0):
+    def refine_bounding_boxes(self, image: ndarray | None, padding_px: int = 0):
         if not self.items:
             self.bounding_box = None
             return
         if self.child_type == BlockChildType.WORDS:
-            item: Word
-            for item in self.items:
-                item.refine_bounding_box(image, padding_px=padding_px)
+            for item in self.items:                
+                if hasattr(item, "refine_bounding_box") and callable(getattr(item, "refine_bounding_box", None)) and not isinstance(item, Block):
+                    item.refine_bounding_box(image, padding_px=padding_px)
+                else:
+                    logger.critical(
+                        f"Item '{getattr(item, 'text', str(item))}' does not have a refine_bounding_box method"
+                    )
+                    raise NotImplementedError(
+                        "Item does not implement refine_bounding_box method"
+                    )
         else:
             item: Block
             for item in self.items:

@@ -4,14 +4,14 @@ import json
 from dataclasses import dataclass, field
 from logging import getLogger
 from pathlib import Path
-from typing import Collection, Dict, Optional, Union
+from typing import Collection, Dict, List, Optional, Union
 
-from pandas import DataFrame
+from pandas import DataFrame, to_numeric as pd_to_numeric
 
-from ..geometry import BoundingBox
-from .block import Block, BlockCategory, BlockChildType
-from .page import Page
-from .word import Word
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pd_book_tools.ocr.page import Page
+from pd_book_tools.ocr.word import Word
 
 # Configure logging
 logger = getLogger(__name__)
@@ -26,17 +26,19 @@ class Document:
 
     source_lib: str = ""
     source_path: Optional[Path] = None
-    _pages: list[Page] = field(
+    _pages: List[Page] = field(
         default_factory=list,
     )
 
     def __init__(
         self,
         source_lib: str,
-        source_path: Path,
-        pages: Collection,
+        source_path: Path | str | None,
+        pages: Collection ,
     ):
         self.source_lib = source_lib
+        if isinstance(source_path, str):
+            source_path = Path(source_path)
         self.source_path = source_path
         self.pages = pages
 
@@ -58,7 +60,7 @@ class Document:
                 raise TypeError(
                     "Each item in pages must have a page_index attribute of type int"
                 )
-        self._pages = value
+        self._pages = list(value)
         self._sort_pages()
 
     def scale(self, width: int, height: int) -> "Document":
@@ -95,7 +97,7 @@ class Document:
     def from_doctr_output(
         cls,
         doctr_output: Dict,
-        source_path: Union[str, Path],
+        source_path: Union[str, Path, None] = None,
     ) -> "Document":
         """Create Document from docTR output"""
         if isinstance(source_path, str):
@@ -111,6 +113,8 @@ class Document:
                     block_bounding_box = BoundingBox.from_nested_float(
                         block_data["geometry"]
                     )
+                else:
+                    block_bounding_box = None
 
                 lines = []
                 for line_data in block_data.get("lines", []):
@@ -118,6 +122,8 @@ class Document:
                         line_bounding_box = BoundingBox.from_nested_float(
                             line_data["geometry"]
                         )
+                    else:
+                        line_bounding_box = None
 
                     words = []
                     for word_data in line_data.get("words", []):
@@ -160,7 +166,7 @@ class Document:
         return result
 
     @classmethod
-    def from_json_file(cls, file_path: Union[str, Path]) -> None:
+    def from_json_file(cls, file_path: Union[str, Path]) -> Document:
         """Load OCR from JSON file"""
         d: dict
         with open(file_path, "r", encoding="utf-8") as f:
@@ -168,10 +174,21 @@ class Document:
         return cls.from_dict(d)
 
     @classmethod
+    def safe_float(cls, val):
+        if val is None:
+            return 0.0
+        if hasattr(val, "item"):
+            val = val.item()
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @classmethod
     def from_tesseract(
         cls,
         tesseract_output: DataFrame,
-        source_path: Union[str, Path],
+        source_path: Union[str, Path, None] = None,
     ) -> "Document":
         """Create Document from PyTesseract output (pandas dataframe)"""
         if isinstance(source_path, str):
@@ -179,14 +196,20 @@ class Document:
 
         result = cls(source_lib="tesseract", source_path=source_path, pages=[])
 
+        tesseract_output["left"] = pd_to_numeric(tesseract_output["left"], errors="coerce")
+        tesseract_output["top"] = pd_to_numeric(tesseract_output["top"], errors="coerce")
+        tesseract_output["width"] = pd_to_numeric(tesseract_output["width"], errors="coerce")
+        tesseract_output["height"] = pd_to_numeric(tesseract_output["height"], errors="coerce")
+
         page_filter = tesseract_output["level"] == 1.0
         page_filtered = tesseract_output.where(page_filter).dropna(how="all")
         for page_idx, page_row in enumerate(page_filtered.itertuples()):
+
             left, top, width, height = (
-                page_row.left,
-                page_row.top,
-                page_row.width,
-                page_row.height,
+                cls.safe_float(page_row.left),
+                cls.safe_float(page_row.top),
+                cls.safe_float(page_row.width),
+                cls.safe_float(page_row.height),
             )
             page_bounding_box = BoundingBox.from_ltwh(left, top, width, height)
 
@@ -197,10 +220,10 @@ class Document:
             block_filtered = tesseract_output.where(block_filter).dropna(how="all")
             for block_idx, block_row in enumerate(block_filtered.itertuples()):
                 left, top, width, height = (
-                    block_row.left,
-                    block_row.top,
-                    block_row.width,
-                    block_row.height,
+                    cls.safe_float(block_row.left),
+                    cls.safe_float(block_row.top),
+                    cls.safe_float(block_row.width),
+                    cls.safe_float(block_row.height),
                 )
                 block_bounding_box = BoundingBox.from_ltwh(left, top, width, height)
 
@@ -217,10 +240,10 @@ class Document:
                     paragraph_filtered.itertuples()
                 ):
                     left, top, width, height = (
-                        paragraph_row.left,
-                        paragraph_row.top,
-                        paragraph_row.width,
-                        paragraph_row.height,
+                        cls.safe_float(paragraph_row.left),
+                        cls.safe_float(paragraph_row.top),
+                        cls.safe_float(paragraph_row.width),
+                        cls.safe_float(paragraph_row.height),
                     )
                     paragraph_bounding_box = BoundingBox.from_ltwh(
                         left, top, width, height
@@ -238,10 +261,10 @@ class Document:
                     )
                     for line_idx, line_row in enumerate(line_filtered.itertuples()):
                         left, top, width, height = (
-                            line_row.left,
-                            line_row.top,
-                            line_row.width,
-                            line_row.height,
+                            cls.safe_float(line_row.left),
+                            cls.safe_float(line_row.top),
+                            cls.safe_float(line_row.width),
+                            cls.safe_float(line_row.height),
                         )
                         line_bounding_box = BoundingBox.from_ltwh(
                             left, top, width, height
@@ -260,19 +283,19 @@ class Document:
                         )
                         for word_row in word_filtered.itertuples():
                             left, top, width, height = (
-                                word_row.left,
-                                word_row.top,
-                                word_row.width,
-                                word_row.height,
+                                cls.safe_float(word_row.left),
+                                cls.safe_float(word_row.top),
+                                cls.safe_float(word_row.width),
+                                cls.safe_float(word_row.height),
                             )
                             word_bounding_box = BoundingBox.from_ltwh(
                                 left, top, width, height
                             )
 
                             word = Word(
-                                text=word_row.text,
+                                text=str(word_row.text),
                                 bounding_box=word_bounding_box,
-                                ocr_confidence=word_row.conf,
+                                ocr_confidence=cls.safe_float(word_row.conf),
                             )
                             words.append(word)
 
@@ -302,8 +325,8 @@ class Document:
 
             page = Page(
                 page_index=page_idx,
-                width=page_bounding_box.width,
-                height=page_bounding_box.height,
+                width=int(page_bounding_box.width),
+                height=int(page_bounding_box.height),
                 items=blocks,
                 bounding_box=page_bounding_box,
             )

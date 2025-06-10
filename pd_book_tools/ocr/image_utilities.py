@@ -2,10 +2,10 @@ from base64 import b64encode
 
 from numpy import ndarray
 
-from ..geometry import BoundingBox
-from ..image_processing.cv2_processing import encode_bgr_image_as_png
-from ..ocr.block import Block
-from ..ocr.word import Word
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.image_processing.cv2_processing import encode_bgr_image_as_png
+from pd_book_tools.ocr.block import Block
+from pd_book_tools.ocr.word import Word
 
 
 def get_encoded_image(
@@ -50,4 +50,6 @@ def get_cropped_word_image(
 def get_cropped_block_image(
     img: ndarray, line: Block
 ) -> tuple[ndarray, ndarray, str, str]:
+    if not line.bounding_box:
+        raise ValueError("Line bounding box is not defined.")
     return get_cropped_encoded_image(img, line.bounding_box)

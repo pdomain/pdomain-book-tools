@@ -53,7 +53,7 @@ def test_shapely_not_available(monkeypatch):
         Point._fail_if_shapely_not_available()
 
     with pytest.raises(ImportError):
-        Point.from_shapely(Point(0, 0))
+        Point.from_shapely(ShapelyPoint(0, 0)) # type: ignore
 
     point = Point(0, 0)
 
@@ -72,6 +72,6 @@ def test_shapely_methods():
     assert shapely_point.x == 0.5
     assert shapely_point.y == 0.5
 
-    point2 = Point.from_shapely(ShapelyPoint(0.5, 0.5))
+    point2 = Point.from_shapely(ShapelyPoint(0.5, 0.5)) # type: ignore
     assert point2.x == 0.5
     assert point2.y == 0.5

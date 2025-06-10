@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Optional
+from typing import Dict, Optional
 
 from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
-from ..geometry import BoundingBox
+from pd_book_tools.geometry.bounding_box import BoundingBox
 
 # Configure logging
 logger = getLogger(__name__)
@@ -17,7 +17,7 @@ class Word:
 
     _text: str
     bounding_box: BoundingBox
-    ocr_confidence: float
+    ocr_confidence: float | None
     word_labels: list[str] = field(default_factory=list)
 
     _ground_truth_text: Optional[str] = None
@@ -28,7 +28,7 @@ class Word:
         self,
         text: str,
         bounding_box: BoundingBox,
-        ocr_confidence: float,
+        ocr_confidence: Optional[float] = None,
         word_labels: Optional[list[str]] = None,
         ground_truth_text: Optional[str] = None,
         ground_truth_bounding_box: Optional[BoundingBox] = None,
@@ -41,7 +41,7 @@ class Word:
             self.word_labels = word_labels
         else:
             self.word_labels = []
-        self.ground_truth_text = ground_truth_text
+        self.ground_truth_text = ground_truth_text or ""
         self.ground_truth_bounding_box = ground_truth_bounding_box
         if ground_truth_match_keys:
             self.ground_truth_match_keys = ground_truth_match_keys
@@ -58,7 +58,7 @@ class Word:
 
     @property
     def ground_truth_text(self) -> str:
-        return self._ground_truth_text
+        return self._ground_truth_text or ""
 
     @ground_truth_text.setter
     def ground_truth_text(self, value: str) -> None:
@@ -113,7 +113,8 @@ class Word:
             "ground_truth_match_keys": self.ground_truth_match_keys,
         }
 
-    def from_dict(dict) -> "Word":
+    @classmethod
+    def from_dict(cls, dict: Dict) -> "Word":
         """Create OCRWord from dictionary"""
         return Word(
             text=dict["text"],
@@ -129,7 +130,10 @@ class Word:
             ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
         )
 
-    def refine_bounding_box(self, image: ndarray, padding_px: int = 0):
+    def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0):
+        if not image:
+            logger.warning("Image is None, skipping bounding box refinement")
+            return
         """Refine the bounding box of the word based on the image content"""
         self.bounding_box = self.bounding_box.refine(image, padding_px=padding_px)
 
@@ -220,7 +224,17 @@ class Word:
                 self.ground_truth_text or ""
             )
 
-        self.ocr_confidence = (self.ocr_confidence + word_to_merge.ocr_confidence) / 2
+        if self.ocr_confidence is not None and word_to_merge.ocr_confidence is not None:
+            self.ocr_confidence = (
+                self.ocr_confidence + word_to_merge.ocr_confidence
+            ) / 2
+        elif self.ocr_confidence is None and word_to_merge.ocr_confidence is not None:
+            self.ocr_confidence = word_to_merge.ocr_confidence
+        elif self.ocr_confidence is not None and word_to_merge.ocr_confidence is None:
+            self.ocr_confidence = self.ocr_confidence
+        else:
+            self.ocr_confidence = None
+
         self.word_labels.extend(word_to_merge.word_labels)
 
         self.ground_truth_match_keys.update(word_to_merge.ground_truth_match_keys)
