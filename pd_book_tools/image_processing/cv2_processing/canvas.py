@@ -16,22 +16,22 @@ class Alignment(Enum):
 
 
 def map_content_onto_scaled_canvas(
-    image: np.array,
+    image: np.ndarray,
     force_align: Alignment = Alignment.DEFAULT,
     height_width_ratio: float = 1.65,
     whitespace_add: float = 0.051,
-) -> np.array:
+) -> np.ndarray:
     """
     Maps an image onto a larger canvas with a fixed aspect ratio and adjustable alignment.
 
     Parameters:
-        image (np.array): Input image array.
+        image (np.ndarray): Input image array.
         force_align (Alignment): Alignment option (Alignment.TOP, Alignment.CENTER, Alignment.BOTTOM, or Alignment.DEFAULT).
         height_width_ratio (float): Desired height-to-width ratio of the new canvas.
         whitespace_add (float): Percentage of additional whitespace to add.
 
     Returns:
-        np.array: Processed image on a larger canvas.
+        np.ndarray: Processed image on a larger canvas.
     """
     logger.debug("map_content_onto_scaled_canvas - Start")
 
@@ -52,7 +52,7 @@ def map_content_onto_scaled_canvas(
     logger.debug("new_height={} new_width={}".format(new_height, new_width))
 
     # Create a blank white canvas
-    canvas: np.array = np.full((new_height, new_width), 255, dtype=np.uint8)
+    canvas: np.ndarray = np.full((new_height, new_width), 255, dtype=np.uint8)
     canvas_height, canvas_width = canvas.shape[:2]
     logger.debug("canvas_height={} canvas_width={}".format(canvas_height, canvas_width))
 

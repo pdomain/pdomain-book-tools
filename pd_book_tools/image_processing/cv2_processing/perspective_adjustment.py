@@ -37,9 +37,9 @@ def auto_deskew(img, pct=0.30):
     X2 = img_w - 1
     Y1 = 0
     Y2 = min(maxY, (minY + h_percent))
-    top_of_img: np.array = img[Y1:Y2, X1:X2]
+    top_of_img: np.ndarray = img[Y1:Y2, X1:X2]
     logger.debug("Top of Img: {}:{},{}:{}".format(X1, X2, Y1, Y2))
-    columns: np.array = np.sum(top_of_img, axis=0)
+    columns: np.ndarray = np.sum(top_of_img, axis=0)
 
     top_left_column = 0
     for idx, _ in enumerate(columns):
@@ -55,10 +55,10 @@ def auto_deskew(img, pct=0.30):
     X2 = img_w - 1
     Y1 = min(maxY, (maxY - h_percent))
     Y2 = maxY
-    bottom_of_img: np.array = img[Y1:Y2, X1:X2]
+    bottom_of_img: np.ndarray = img[Y1:Y2, X1:X2]
     logger.debug("Bottom of Img: {}:{},{}:{}".format(X1, X2, Y1, Y2))
 
-    columns2: np.array = np.sum(bottom_of_img, axis=0)
+    columns2: np.ndarray = np.sum(bottom_of_img, axis=0)
 
     bottom_left_column = 0
     for idx2, _ in enumerate(columns2):

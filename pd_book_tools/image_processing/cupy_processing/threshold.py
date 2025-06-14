@@ -54,16 +54,16 @@ def otsu_binary_thresh(img_cp_float: cp.array) -> cp.array:
 
 
 def np_uint8_float_binary_thresh(
-    img: np.array,
+    img: np.ndarray,
 ):
     img_float = img.astype(np.float32) / 255.0
     src: cp.array = cp.asarray(img_float)
 
     cupy_result = otsu_binary_thresh(img_cp_float=src)
 
-    np_result: np.array = cupy_result.get()  # Move result back to CPU
+    np_result: np.ndarray = cupy_result.get()  # Move result back to CPU
 
-    uint8_image: np.array = (
+    uint8_image: np.ndarray = (
         (np_result * 255).clip(0, 255).astype(np.uint8)
     )  # Ensure proper range
 

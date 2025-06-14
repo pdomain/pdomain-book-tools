@@ -4,9 +4,10 @@ import json
 from dataclasses import dataclass, field
 from logging import getLogger
 from pathlib import Path
-from typing import Collection, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Collection, Dict, List, Optional, Sequence, Union
 
-from pandas import DataFrame, to_numeric as pd_to_numeric
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
@@ -34,7 +35,7 @@ class Document:
         self,
         source_lib: str,
         source_path: Path | str | None,
-        pages: Collection ,
+        pages: Collection,
     ):
         self.source_lib = source_lib
         if isinstance(source_path, str):
@@ -94,12 +95,28 @@ class Document:
         )
 
     @classmethod
+    def from_doctr_result(
+        cls,
+        doctr_result,
+        source_path: Union[str, Path, None] = None,
+    ) -> "Document":
+        """Create Document from docTR result object"""
+        doctr_text = doctr_result.render()
+        doctr_output: Dict = doctr_result.export()
+        return cls.from_doctr_output(
+            doctr_output=doctr_output,
+            original_text=doctr_text,
+            source_path=source_path,
+        )
+
+    @classmethod
     def from_doctr_output(
         cls,
         doctr_output: Dict,
+        original_text: Optional[Sequence[str]] = None,
         source_path: Union[str, Path, None] = None,
     ) -> "Document":
-        """Create Document from docTR output"""
+        """Create Document from docTR dictionary"""
         if isinstance(source_path, str):
             source_path = Path(source_path)
 
@@ -153,11 +170,16 @@ class Document:
                 )
                 blocks.append(block)
 
+            original_ocr_tool_text = None
+            if original_text is not None and page_idx < len(original_text):
+                original_ocr_tool_text = original_text[page_idx]
+
             page = Page(
                 page_index=page_idx,
                 width=width,
                 height=height,
                 items=blocks,
+                original_ocr_tool_text=original_ocr_tool_text,
             )
             result._pages.append(page)
 
@@ -187,24 +209,39 @@ class Document:
     @classmethod
     def from_tesseract(
         cls,
-        tesseract_output: DataFrame,
+        tesseract_output: "DataFrame",
+        tesseract_string: Optional[str] = None,
         source_path: Union[str, Path, None] = None,
     ) -> "Document":
+        try:
+            from pandas import to_numeric as pd_to_numeric
+        except ImportError:
+            raise ImportError(
+                "pandas library is required for from_tesseract function. Please install pandas."
+            )
+
         """Create Document from PyTesseract output (pandas dataframe)"""
         if isinstance(source_path, str):
             source_path = Path(source_path)
 
         result = cls(source_lib="tesseract", source_path=source_path, pages=[])
 
-        tesseract_output["left"] = pd_to_numeric(tesseract_output["left"], errors="coerce")
-        tesseract_output["top"] = pd_to_numeric(tesseract_output["top"], errors="coerce")
-        tesseract_output["width"] = pd_to_numeric(tesseract_output["width"], errors="coerce")
-        tesseract_output["height"] = pd_to_numeric(tesseract_output["height"], errors="coerce")
+        tesseract_output["left"] = pd_to_numeric(
+            tesseract_output["left"], errors="coerce"
+        )
+        tesseract_output["top"] = pd_to_numeric(
+            tesseract_output["top"], errors="coerce"
+        )
+        tesseract_output["width"] = pd_to_numeric(
+            tesseract_output["width"], errors="coerce"
+        )
+        tesseract_output["height"] = pd_to_numeric(
+            tesseract_output["height"], errors="coerce"
+        )
 
         page_filter = tesseract_output["level"] == 1.0
         page_filtered = tesseract_output.where(page_filter).dropna(how="all")
         for page_idx, page_row in enumerate(page_filtered.itertuples()):
-
             left, top, width, height = (
                 cls.safe_float(page_row.left),
                 cls.safe_float(page_row.top),
@@ -333,5 +370,10 @@ class Document:
             result._pages.append(page)
 
         result._sort_pages()
+
+        if tesseract_string is not None:
+            # If a string is provided, we can add it to the first page
+            if result.pages:
+                result.pages[0].original_ocr_tool_text = tesseract_string
 
         return result

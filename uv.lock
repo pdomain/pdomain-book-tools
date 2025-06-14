@@ -405,6 +405,22 @@ wheels = [
 ]
 
 [[package]]
+name = "hatchling"
+version = "1.27.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "pathspec" },
+    { name = "pluggy" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "trove-classifiers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8f/8a/cc1debe3514da292094f1c3a700e4ca25442489731ef7c0814358816bb03/hatchling-1.27.0.tar.gz", hash = "sha256:971c296d9819abb3811112fc52c7a9751c8d381898f36533bb16f9791e941fd6", size = 54983, upload-time = "2024-12-15T17:08:11.894Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/e7/ae38d7a6dfba0533684e0b2136817d667588ae3ec984c1a4e5df5eb88482/hatchling-1.27.0-py3-none-any.whl", hash = "sha256:d3a2f3567c4f926ea39849cdf924c7e99e6686c9c8e288ae1037c8fa2a5d937b", size = 75794, upload-time = "2024-12-15T17:08:10.364Z" },
+]
+
+[[package]]
 name = "hf-xet"
 version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1190,11 +1206,21 @@ wheels = [
 ]
 
 [[package]]
+name = "pathspec"
+version = "0.12.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/bc/f35b8446f4531a7cb215605d100cd88b7ac6f44ab3fc94870c120ab3adbf/pathspec-0.12.1.tar.gz", hash = "sha256:a482d51503a1ab33b1c67a6c3813a26953dbdc71c31dacaef9a838c4e29f5712", size = 51043, upload-time = "2023-12-10T22:30:45Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cc/20/ff623b09d963f88bfde16306a54e12ee5ea43e9b597108672ff3a408aad6/pathspec-0.12.1-py3-none-any.whl", hash = "sha256:a0d503e138a4c123b27490a4f7beda6a01c6f288df0e4a8b79c7eb0dc7b4cc08", size = 31191, upload-time = "2023-12-10T22:30:43.14Z" },
+]
+
+[[package]]
 name = "pd-book-tools"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "cupy-cuda12x" },
+    { name = "hatchling" },
     { name = "ipython", version = "8.36.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "ipywidgets" },
@@ -1203,15 +1229,24 @@ dependencies = [
     { name = "numpy" },
     { name = "opencv-cuda" },
     { name = "opencv-python" },
-    { name = "pandas" },
     { name = "pre-commit" },
-    { name = "pytesseract" },
     { name = "pytest" },
-    { name = "python-doctr", extra = ["torch"] },
+    { name = "python-doctr" },
     { name = "regex" },
     { name = "ruff" },
-    { name = "shapely" },
     { name = "thefuzz" },
+]
+
+[package.optional-dependencies]
+shapely = [
+    { name = "shapely" },
+]
+tesseract = [
+    { name = "pandas" },
+    { name = "pytesseract" },
+]
+torch = [
+    { name = "python-doctr", extra = ["torch"] },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
@@ -1220,6 +1255,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "cupy-cuda12x", specifier = ">=13.4.1" },
+    { name = "hatchling", specifier = ">=1.27.0" },
     { name = "ipython", specifier = ">=8.34" },
     { name = "ipywidgets", specifier = ">=8.1" },
     { name = "isort", specifier = ">=6.0" },
@@ -1227,19 +1263,21 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2,<3" },
     { name = "opencv-cuda", specifier = ">=0.0.2" },
     { name = "opencv-python", specifier = ">=4.11.0" },
-    { name = "pandas", specifier = ">=2.2.3" },
+    { name = "pandas", marker = "extra == 'tesseract'", specifier = ">=2.2.3" },
     { name = "pre-commit", specifier = ">=4.2.0,<5.0.0" },
-    { name = "pytesseract", specifier = ">=0.3.13,<0.4.0" },
+    { name = "pytesseract", marker = "extra == 'tesseract'", specifier = ">=0.3.13,<0.4.0" },
     { name = "pytest", specifier = ">=8.3" },
-    { name = "python-doctr", extras = ["torch"], git = "https://github.com/mindee/doctr.git" },
+    { name = "python-doctr", git = "https://github.com/mindee/doctr.git" },
+    { name = "python-doctr", extras = ["torch"], marker = "extra == 'torch'", git = "https://github.com/mindee/doctr.git" },
     { name = "regex", specifier = ">=2024.11.6,<2025.0.0" },
     { name = "ruff", specifier = ">=0.11.12" },
-    { name = "shapely", specifier = ">=2.0" },
+    { name = "shapely", marker = "extra == 'shapely'", specifier = ">=2.0" },
     { name = "thefuzz", specifier = ">=0.22.1,<0.23.0" },
-    { name = "torch", specifier = ">=2.6" },
-    { name = "torchaudio", specifier = ">=2.7.0" },
-    { name = "torchvision", specifier = ">=0.22.0" },
+    { name = "torch", marker = "extra == 'torch'", specifier = ">=2.6" },
+    { name = "torchaudio", marker = "extra == 'torch'", specifier = ">=2.7.0" },
+    { name = "torchvision", marker = "extra == 'torch'", specifier = ">=0.22.0" },
 ]
+provides-extras = ["tesseract", "torch", "shapely"]
 
 [[package]]
 name = "pexpect"
@@ -2140,6 +2178,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/11/53/ce18470914ab6cfbec9384ee565d23c4d1c55f0548160b1c7b33000b11fd/triton-3.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b68c778f6c4218403a6bd01be7484f6dc9e20fe2083d22dd8aef33e3b87a10a3", size = 156504509, upload-time = "2025-04-09T20:27:40.413Z" },
     { url = "https://files.pythonhosted.org/packages/7d/74/4bf2702b65e93accaa20397b74da46fb7a0356452c1bb94dbabaf0582930/triton-3.3.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:47bc87ad66fa4ef17968299acacecaab71ce40a238890acc6ad197c3abe2b8f1", size = 156516468, upload-time = "2025-04-09T20:27:48.196Z" },
     { url = "https://files.pythonhosted.org/packages/0a/93/f28a696fa750b9b608baa236f8225dd3290e5aff27433b06143adc025961/triton-3.3.0-cp313-cp313t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ce4700fc14032af1e049005ae94ba908e71cd6c2df682239aed08e49bc71b742", size = 156580729, upload-time = "2025-04-09T20:27:55.424Z" },
+]
+
+[[package]]
+name = "trove-classifiers"
+version = "2025.5.9.12"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/04/1cd43f72c241fedcf0d9a18d0783953ee301eac9e5d9db1df0f0f089d9af/trove_classifiers-2025.5.9.12.tar.gz", hash = "sha256:7ca7c8a7a76e2cd314468c677c69d12cc2357711fcab4a60f87994c1589e5cb5", size = 16940, upload-time = "2025-05-09T12:04:48.829Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/ef/c6deb083748be3bcad6f471b6ae983950c161890bf5ae1b2af80cc56c530/trove_classifiers-2025.5.9.12-py3-none-any.whl", hash = "sha256:e381c05537adac78881c8fa345fd0e9970159f4e4a04fcc42cfd3129cca640ce", size = 14119, upload-time = "2025-05-09T12:04:46.38Z" },
 ]
 
 [[package]]

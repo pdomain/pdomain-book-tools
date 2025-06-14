@@ -19,6 +19,12 @@ Deactivate any current venv (`deactivate`), then activate the venv `source .venv
 
 Install dependencies.
 `uv sync`
+or
+`uv sync --all-extras`
+If you want to use tesseract (it needs pandas and pytesseract) & pytorch functionality (for loading trained models)
+
+Also, if you want to use tesseract, you have to install it on your system.
+https://tesseract-ocr.github.io/tessdoc/Installation.html
 
 Try to build
 `uv build`

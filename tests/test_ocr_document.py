@@ -93,7 +93,7 @@ def test_document_to_json_file(tmp_path):
 
 
 def test_document_from_doctr_output(sample_doctr_output):
-    doc = Document.from_doctr_output(sample_doctr_output, "test_path")
+    doc = Document.from_doctr_output(sample_doctr_output, source_path="test_path")
     assert doc.source_lib == "doctr"
     assert doc.source_path == Path("test_path")
     assert len(doc.pages) == 1
@@ -102,7 +102,7 @@ def test_document_from_doctr_output(sample_doctr_output):
 
 
 def test_document_from_tesseract(sample_tesseract_output):
-    doc = Document.from_tesseract(sample_tesseract_output, "test_path")
+    doc = Document.from_tesseract(sample_tesseract_output, source_path="test_path")
     assert doc.source_lib == "tesseract"
     assert doc.source_path == Path("test_path")
     assert len(doc.pages) == 1

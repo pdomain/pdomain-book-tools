@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def find_edges(
-    img: np.array,
+    img: np.ndarray,
     fuzzy_pct=0.02,
     pixel_count_columns=150,
     pixel_count_rows=75,

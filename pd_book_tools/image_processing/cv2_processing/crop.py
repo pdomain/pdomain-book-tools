@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def crop_to_rectangle(
-    img: np.array,
+    img: np.ndarray,
     minX,
     maxX,
     minY,
@@ -17,14 +17,14 @@ def crop_to_rectangle(
     Crops an image to the given bounding box coordinates, ensuring they are within bounds.
 
     Args:
-        img (np.array): The input image.
+        img (np.ndarray): The input image.
         minX (int): Minimum X coordinate.
         maxX (int): Maximum X coordinate.
         minY (int): Minimum Y coordinate.
         maxY (int): Maximum Y coordinate.
 
     Returns:
-        np.array: Cropped image.
+        np.ndarray: Cropped image.
     """
     log_prefix = "crop_to_rectangle - "
 

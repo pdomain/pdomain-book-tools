@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def _compute_envelopes(
-    img: cp.array,
+    img: cp.array, # type: ignore
     radius,
     samples,
     iterations,
@@ -42,13 +42,13 @@ def _compute_envelopes(
 
 
 def cupy_colorToGray(
-    img: cp.array,
+    img: cp.array, # type: ignore
     radius=300,
     samples=4,
     iterations=10,
     enhance_shadows=False,
     batch_size=100,
-) -> cp.array:
+) -> cp.array: # type: ignore
     height, width, _ = img.shape
 
     dst = cp.zeros((height, width), dtype=cp.float32)
@@ -77,7 +77,7 @@ def cupy_colorToGray(
 
 
 def np_uint8_float_colorToGray(
-    img: np.array,
+    img: np.ndarray,
     radius=300,
     samples=4,
     iterations=10,
@@ -87,7 +87,7 @@ def np_uint8_float_colorToGray(
     img_float = img.astype(np.float32) / 255.0
 
     # Move source image to GPU
-    src: cp.array = cp.asarray(img_float)
+    src: cp.array = cp.asarray(img_float) # type: ignore
 
     cupy_result = cupy_colorToGray(
         img=src,
@@ -98,9 +98,9 @@ def np_uint8_float_colorToGray(
         batch_size=batch_size,
     )
 
-    np_result: np.array = cupy_result.get()  # Move result back to CPU
+    np_result: np.ndarray = cupy_result.get()  # Move result back to CPU
 
-    uint8_image: np.array = (
+    uint8_image: np.ndarray = (
         (np_result * 255).clip(0, 255).astype(np.uint8)
     )  # Ensure proper range
 

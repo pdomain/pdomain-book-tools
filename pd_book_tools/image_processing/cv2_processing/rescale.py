@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def rescale_image(
-    img: np.array, aspect_ratio: float = 1.65, target_short_side: int = 1000
+    img: np.ndarray, aspect_ratio: float = 1.65, target_short_side: int = 1000
 ):
     height, width = img.shape[:2]
 

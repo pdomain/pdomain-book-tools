@@ -7,7 +7,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def find_and_draw_contours(img: np.array):
+def find_and_draw_contours(img: np.ndarray):
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # TODO: Optimize the rectangle drawing by using Numpy
     if contours:
