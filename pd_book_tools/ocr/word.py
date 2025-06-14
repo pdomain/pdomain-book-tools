@@ -131,9 +131,12 @@ class Word:
         )
 
     def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0):
-        if not image:
+        if image is None:
             logger.warning("Image is None, skipping bounding box refinement")
             return
+        logger.debug(
+            f"Refining bounding box for word '{self.text}' with padding {padding_px} pixels"
+        )
         """Refine the bounding box of the word based on the image content"""
         self.bounding_box = self.bounding_box.refine(image, padding_px=padding_px)
 

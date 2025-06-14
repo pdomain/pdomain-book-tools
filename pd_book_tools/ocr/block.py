@@ -482,11 +482,20 @@ class Block:
         )
 
     def refine_bounding_boxes(self, image: ndarray | None, padding_px: int = 0):
+        logger.debug(
+            f"Refining bounding boxes for block with {len(self.items)} items"
+        )
         if not self.items:
             self.bounding_box = None
             return
         if self.child_type == BlockChildType.WORDS:
-            for item in self.items:                
+            logger.debug(
+                f"Refining bounding boxes for {len(self.items)} words in block"
+            )
+            for item in self.items:
+                logger.debug(
+                    f"Refining bounding box for item: {getattr(item, 'text', str(item))}"
+                )
                 if hasattr(item, "refine_bounding_box") and callable(getattr(item, "refine_bounding_box", None)) and not isinstance(item, Block):
                     item.refine_bounding_box(image, padding_px=padding_px)
                 else:
@@ -497,6 +506,9 @@ class Block:
                         "Item does not implement refine_bounding_box method"
                     )
         else:
+            logger.debug(
+                f"Refining bounding boxes for {len(self.items)} blocks in block"
+            )
             item: Block
             for item in self.items:
                 item.refine_bounding_boxes(image, padding_px=padding_px)
