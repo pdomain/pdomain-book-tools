@@ -2,12 +2,14 @@ from numpy import ndarray
 from cv2 import cvtColor, COLOR_BGR2GRAY
 from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.page import Page
+
 try:
     from pytesseract import image_to_data, image_to_string, Output as pytesseract_Output
 except ImportError:
     raise ImportError(
         "pytesseract is not installed. Please install extra dependency [tesseract]"
     )
+
 
 def tesseract_ocr_cv2_image(
     image: ndarray,
@@ -43,8 +45,11 @@ def tesseract_ocr_cv2_image(
         output_type=pytesseract_Output.STRING,
     )
 
-    ocr_doc = Document.from_tesseract(tesseract_output=dataframe, tesseract_string=result_string, source_path=source_path if source_path else None)    
+    ocr_doc = Document.from_tesseract(
+        tesseract_output=dataframe,
+        tesseract_string=result_string,
+        source_path=source_path if source_path else None,
+    )
     ocr_page: Page = ocr_doc.pages[0]
 
     return ocr_page
-

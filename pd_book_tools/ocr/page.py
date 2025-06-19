@@ -173,7 +173,12 @@ class Page:
         for block in values:
             if not isinstance(block, Block):
                 raise TypeError("Each item in items must be of type Block")
-        self._items = sorted(values, key=lambda block: block.bounding_box.top_left.y if block.bounding_box else 0)
+        self._items = sorted(
+            values,
+            key=lambda block: block.bounding_box.top_left.y
+            if block.bounding_box
+            else 0,
+        )
 
     @property
     def cv2_numpy_page_image(self) -> ndarray | None:
@@ -472,7 +477,9 @@ class Page:
             height=height,
             page_index=self.page_index,
             items=[item.scale(width, height) for item in self.items],
-            bounding_box=self.bounding_box.scale(width, height) if self.bounding_box else None,
+            bounding_box=self.bounding_box.scale(width, height)
+            if self.bounding_box
+            else None,
             page_labels=self.page_labels,
         )
 
@@ -578,7 +585,7 @@ class Page:
                 next_line.text,
             )
             return False
-        
+
         y_overlap_h = line.bounding_box.overlap_y_amount(next_line.bounding_box)
         x_overlap_w = line.bounding_box.overlap_x_amount(next_line.bounding_box)
 
@@ -630,8 +637,10 @@ class Page:
         if len(lines) < 2:
             # If only one line, no need to recompute
             return
-                        
-        median_line_width = np_median([line.bounding_box.width if line.bounding_box else 0 for line in lines])
+
+        median_line_width = np_median(
+            [line.bounding_box.width if line.bounding_box else 0 for line in lines]
+        )
 
         i = -1
         while True:
@@ -722,7 +731,9 @@ class Page:
 
         # Tolerance is 20% of average line height by default
         if tolerance is None:
-            tolerance = 0.2 * np_mean([line.bounding_box.height if line.bounding_box else 0 for line in lines])
+            tolerance = 0.2 * np_mean(
+                [line.bounding_box.height if line.bounding_box else 0 for line in lines]
+            )
 
         logger.debug("Tolerance: " + str(tolerance))
 
@@ -730,8 +741,12 @@ class Page:
         lines.sort(key=lambda line: line.bounding_box.minY if line.bounding_box else 0)
 
         # Compute spacing after each line
-        min_y_positions = [line.bounding_box.minY if line.bounding_box else 0 for line in lines]
-        max_y_positions = [line.bounding_box.maxY if line.bounding_box else 0 for line in lines]
+        min_y_positions = [
+            line.bounding_box.minY if line.bounding_box else 0 for line in lines
+        ]
+        max_y_positions = [
+            line.bounding_box.maxY if line.bounding_box else 0 for line in lines
+        ]
 
         # Compute difference between the max Y of the previous line and the min Y of the current line
         line_spacings = [
@@ -746,7 +761,10 @@ class Page:
         # Use 1/2 of the standard deviation, or 15% of the avarage line height
         # as the tolerance for line spacing
         median_line_height_spacing = float(
-            np_median([line.bounding_box.height if line.bounding_box else 0 for line in lines]) * 0.10
+            np_median(
+                [line.bounding_box.height if line.bounding_box else 0 for line in lines]
+            )
+            * 0.10
         )
         logger.debug("Median Line Height Spacing: " + str(median_line_height_spacing))
 
@@ -792,10 +810,16 @@ class Page:
     def compute_text_paragraph_blocks(cls, lines: List[Block]):
         logger.debug("Computing Paragraph Blocks")
 
-        min_x_positions = [line.bounding_box.minX if line.bounding_box else 0 for line in lines]
-        max_x_positions = [line.bounding_box.maxX if line.bounding_box else 0 for line in lines]
+        min_x_positions = [
+            line.bounding_box.minX if line.bounding_box else 0 for line in lines
+        ]
+        max_x_positions = [
+            line.bounding_box.maxX if line.bounding_box else 0 for line in lines
+        ]
 
-        median_line_length = np_median([line.bounding_box.width if line.bounding_box else 0 for line in lines])
+        median_line_length = np_median(
+            [line.bounding_box.width if line.bounding_box else 0 for line in lines]
+        )
 
         median_left_indent = np_median(min_x_positions)
         median_right_indent = np_median(max_x_positions)
@@ -862,7 +886,7 @@ class Page:
         if not self.items:
             self.bounding_box = None
             logger.debug("No items in page to recompute bounding box")
-            return        
+            return
         self.bounding_box = BoundingBox.union(
             [item.bounding_box for item in self.items if item.bounding_box]
         )

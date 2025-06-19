@@ -132,7 +132,7 @@ def test_bounding_box_intersection():
     intersection = bbox1.intersection(bbox2)
     assert intersection
     assert intersection.top_left
-    assert intersection.bottom_right    
+    assert intersection.bottom_right
     assert intersection.top_left == Point(0.5, 0.5)
     assert intersection.bottom_right == Point(1, 1)
 
@@ -184,7 +184,7 @@ def test_bounding_box_from_shapely():
         raise ImportError(
             "Shapely is required for this test. Install it to the environment."
         )
-    shapely_box = box(0, 0, 1, 1) # type: ignore
+    shapely_box = box(0, 0, 1, 1)  # type: ignore
     bbox = BoundingBox.from_shapely(shapely_box)
     assert bbox.top_left == Point(0, 0)
     assert bbox.bottom_right == Point(1, 1)

@@ -1,7 +1,7 @@
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import Block, BlockChildType, BlockCategory
+from pd_book_tools.ocr.block import BlockChildType, BlockCategory
 
 
 def test_block_initialization(sample_block1):
@@ -71,9 +71,7 @@ def test_paragraph(
     assert sample_paragraph_block1.ocr_confidence_scores() == pytest.approx(
         [0.9, 0.8, 0.9, 0.8, 0.9, 0.8]
     )
-    assert sample_paragraph_block1.bounding_box == BoundingBox.from_ltrb(
-        0, 0, 20, 30
-    )
+    assert sample_paragraph_block1.bounding_box == BoundingBox.from_ltrb(0, 0, 20, 30)
     assert sample_paragraph_block1.child_type == BlockChildType.BLOCKS
     assert sample_paragraph_block1.block_category == BlockCategory.PARAGRAPH
     assert sample_paragraph_block1.block_labels == ["labelparagraph1"]

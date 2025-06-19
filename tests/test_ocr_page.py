@@ -3,6 +3,7 @@ from pd_book_tools.ocr.word import Word
 from pd_book_tools.ocr.block import Block
 from pd_book_tools.ocr.page import Page
 
+
 def test_page_initialization(sample_page):
     assert sample_page.width == 100
     assert sample_page.height == 200

@@ -246,3 +246,33 @@ class Word:
         self.word_labels = list(set(self.word_labels))
         # Remove duplicates
         self.word_labels = list(dict.fromkeys(self.word_labels))
+
+    def crop_bottom(self, img_ndarray):
+        """Crop the bottom of the word using bounding box crop_bottom method"""
+        if not self.bounding_box:
+            logger.warning("Bounding box is None, cannot crop bottom")
+            raise ValueError("Bounding box is None, cannot crop bottom")
+
+        if img_ndarray is None:
+            logger.warning("Image ndarray is None, cannot crop bottom")
+            raise ValueError("Image ndarray is None, cannot crop bottom")
+
+        cropped_bbox = self.bounding_box.crop_bottom(img_ndarray)
+        if cropped_bbox is None:
+            logger.warning("Cropped bounding box is None, cannot crop bottom")
+        self.bounding_box = cropped_bbox
+
+    def crop_top(self, img_ndarray):
+        """Crop the top of the word using bounding box crop_top method"""
+        if not self.bounding_box:
+            logger.warning("Bounding box is None, cannot crop top")
+            raise ValueError("Bounding box is None, cannot crop top")
+
+        if img_ndarray is None:
+            logger.warning("Image ndarray is None, cannot crop top")
+            raise ValueError("Image ndarray is None, cannot crop top")
+
+        cropped_bbox = self.bounding_box.crop_top(img_ndarray)
+        if cropped_bbox is None:
+            logger.warning("Cropped bounding box is None, cannot crop top")
+        self.bounding_box = cropped_bbox

@@ -648,9 +648,9 @@ def try_matching_combined_words(
         combined_word = Word(
             text=combined_word_text,
             bounding_box=combined_word_bbox,
-            ocr_confidence=float(np_mean(
-                [word.ocr_confidence or 0 for word in matched_words]
-            )),
+            ocr_confidence=float(
+                np_mean([word.ocr_confidence or 0 for word in matched_words])
+            ),
             ground_truth_text=gt_word,
             ground_truth_match_keys={
                 "match_type": MatchType.LINE_REPLACE_WORD_REPLACE_COMBINED.value,

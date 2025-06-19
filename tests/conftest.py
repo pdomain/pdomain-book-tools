@@ -5,6 +5,7 @@ from pd_book_tools.ocr.word import Word
 from pd_book_tools.ocr.block import Block, BlockChildType, BlockCategory
 from pd_book_tools.ocr.page import Page
 
+
 @pytest.fixture
 def sample_word1():
     return Word(

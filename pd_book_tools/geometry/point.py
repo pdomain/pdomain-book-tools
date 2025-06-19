@@ -37,7 +37,7 @@ class Point:
 
     def to_x_y(self) -> Tuple[float | int, float | int]:
         if not (isinstance(self.x, (int, float)) and isinstance(self.y, (int, float))):
-            raise ValueError("Internal coordinates are not numbers")        
+            raise ValueError("Internal coordinates are not numbers")
         return (self.x, self.y)
 
     def scale(self, width: int, height: int) -> "Point":

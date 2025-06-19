@@ -104,7 +104,7 @@ class Block:
 
     def _sort_items(self):
         # TODO: Implement a more robust sorting mechanism.
-        
+
         # Blocks should be sorted:
         # Header & Page Number
         # Left Sidenotes
@@ -120,15 +120,23 @@ class Block:
         if self.child_type == BlockChildType.WORDS:
             self._items.sort(
                 key=lambda item: (
-                    item.bounding_box.top_left.x if item.bounding_box and item.bounding_box.top_left else 0,
-                    item.bounding_box.top_left.y if item.bounding_box and item.bounding_box.top_left else 0,
+                    item.bounding_box.top_left.x
+                    if item.bounding_box and item.bounding_box.top_left
+                    else 0,
+                    item.bounding_box.top_left.y
+                    if item.bounding_box and item.bounding_box.top_left
+                    else 0,
                 ),
             )
         else:
             self._items.sort(
                 key=lambda item: (
-                    item.bounding_box.top_left.y if item.bounding_box and item.bounding_box.top_left else 0,
-                    item.bounding_box.top_left.x if item.bounding_box and item.bounding_box.top_left else 0,
+                    item.bounding_box.top_left.y
+                    if item.bounding_box and item.bounding_box.top_left
+                    else 0,
+                    item.bounding_box.top_left.x
+                    if item.bounding_box and item.bounding_box.top_left
+                    else 0,
                 ),
             )
 
@@ -384,7 +392,10 @@ class Block:
             self.bounding_box = block_to_merge.bounding_box
         self._items.extend(block_to_merge.items)
         self._sort_items()
-        if self.unmatched_ground_truth_words and block_to_merge.unmatched_ground_truth_words:
+        if (
+            self.unmatched_ground_truth_words
+            and block_to_merge.unmatched_ground_truth_words
+        ):
             self.unmatched_ground_truth_words.extend(
                 block_to_merge.unmatched_ground_truth_words
             )
@@ -425,7 +436,9 @@ class Block:
         """
         return Block(
             items=[item.scale(width, height) for item in self.items],
-            bounding_box=self.bounding_box.scale(width, height) if self.bounding_box else None,
+            bounding_box=self.bounding_box.scale(width, height)
+            if self.bounding_box
+            else None,
             child_type=self.child_type,
             block_category=self.block_category,
             block_labels=self.block_labels,
@@ -446,7 +459,9 @@ class Block:
         return {
             "type": "Block",
             "child_type": self.child_type.value if self.child_type else None,
-            "block_category": self.block_category.value if self.block_category else None,
+            "block_category": self.block_category.value
+            if self.block_category
+            else None,
             "block_labels": self.block_labels,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
@@ -482,9 +497,7 @@ class Block:
         )
 
     def refine_bounding_boxes(self, image: ndarray | None, padding_px: int = 0):
-        logger.debug(
-            f"Refining bounding boxes for block with {len(self.items)} items"
-        )
+        logger.debug(f"Refining bounding boxes for block with {len(self.items)} items")
         if not self.items:
             self.bounding_box = None
             return
@@ -496,7 +509,11 @@ class Block:
                 logger.debug(
                     f"Refining bounding box for item: {getattr(item, 'text', str(item))}"
                 )
-                if hasattr(item, "refine_bounding_box") and callable(getattr(item, "refine_bounding_box", None)) and not isinstance(item, Block):
+                if (
+                    hasattr(item, "refine_bounding_box")
+                    and callable(getattr(item, "refine_bounding_box", None))
+                    and not isinstance(item, Block)
+                ):
                     item.refine_bounding_box(image, padding_px=padding_px)
                 else:
                     logger.critical(
