@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def read_image(src: pathlib.Path) -> np.ndarray:
-    return cv2.imread(filename=src.resolve())
+    return cv2.imread(filename=str(src.resolve()))
 
 
 def write_jpg(img: np.ndarray, f: pathlib.Path, quality: int = 100):
