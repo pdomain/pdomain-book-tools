@@ -60,33 +60,28 @@ def test_page_remove_ground_truth():
         ocr_confidence=0.9,
         ground_truth_text="gt_word1",
         ground_truth_bounding_box=BoundingBox.from_ltrb(1, 1, 11, 11),
-        ground_truth_match_keys={"match_score": 95}
+        ground_truth_match_keys={"match_score": 95},
     )
-    
+
     word2 = Word(
         text="word2",
         bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
         ocr_confidence=0.8,
         ground_truth_text="gt_word2",
         ground_truth_bounding_box=BoundingBox.from_ltrb(11, 1, 21, 11),
-        ground_truth_match_keys={"match_score": 87}
+        ground_truth_match_keys={"match_score": 87},
     )
-    
+
     # Create blocks containing these words
     block1 = Block(
         items=[word1, word2],
         child_type=BlockChildType.WORDS,
         block_category=BlockCategory.LINE,
     )
-    
+
     # Create a page with these blocks
-    page = Page(
-        width=100,
-        height=200,
-        page_index=1,
-        items=[block1]
-    )
-    
+    page = Page(width=100, height=200, page_index=1, items=[block1])
+
     # Verify ground truth data exists before removal
     words = page.words
     assert len(words) == 2
@@ -96,10 +91,10 @@ def test_page_remove_ground_truth():
     assert words[1].ground_truth_bounding_box is not None
     assert words[0].ground_truth_match_keys == {"match_score": 95}
     assert words[1].ground_truth_match_keys == {"match_score": 87}
-    
+
     # Call remove_ground_truth
     page.remove_ground_truth()
-    
+
     # Verify all ground truth data has been removed
     words_after = page.words
     assert len(words_after) == 2
@@ -109,7 +104,7 @@ def test_page_remove_ground_truth():
     assert words_after[1].ground_truth_bounding_box is None
     # Note: ground_truth_match_keys are not cleared in the remove_ground_truth method
     # This might be intentional to preserve match history
-    
+
     # Verify that the original text and bounding boxes remain unchanged
     assert words_after[0].text == "word1"
     assert words_after[1].text == "word2"
@@ -120,16 +115,11 @@ def test_page_remove_ground_truth():
 def test_page_remove_ground_truth_empty_page():
     """Test that remove_ground_truth works correctly on an empty page"""
     # Create an empty page
-    page = Page(
-        width=100,
-        height=200,
-        page_index=1,
-        items=[]
-    )
-    
+    page = Page(width=100, height=200, page_index=1, items=[])
+
     # Should not raise any errors
     page.remove_ground_truth()
-    
+
     # Page should still be empty
     assert len(page.items) == 0
     assert len(page.words) == 0
@@ -141,30 +131,25 @@ def test_page_remove_ground_truth_no_ground_truth_data():
     word1 = Word(
         text="word1",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
-        ocr_confidence=0.9
+        ocr_confidence=0.9,
     )
-    
+
     word2 = Word(
         text="word2",
         bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
-        ocr_confidence=0.8
+        ocr_confidence=0.8,
     )
-    
+
     # Create blocks containing these words
     block1 = Block(
         items=[word1, word2],
         child_type=BlockChildType.WORDS,
         block_category=BlockCategory.LINE,
     )
-    
+
     # Create a page with these blocks
-    page = Page(
-        width=100,
-        height=200,
-        page_index=1,
-        items=[block1]
-    )
-    
+    page = Page(width=100, height=200, page_index=1, items=[block1])
+
     # Verify no ground truth data exists
     words = page.words
     assert len(words) == 2
@@ -172,10 +157,10 @@ def test_page_remove_ground_truth_no_ground_truth_data():
     assert words[1].ground_truth_text == ""
     assert words[0].ground_truth_bounding_box is None
     assert words[1].ground_truth_bounding_box is None
-    
+
     # Should not raise any errors
     page.remove_ground_truth()
-    
+
     # Verify everything remains the same
     words_after = page.words
     assert len(words_after) == 2

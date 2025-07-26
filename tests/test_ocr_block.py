@@ -132,20 +132,20 @@ def test_remove_ground_truth_words_block(sample_block1):
     word1.ground_truth_bounding_box = BoundingBox.from_ltrb(0, 0, 10, 10)
     word2.ground_truth_text = "truth2"
     word2.ground_truth_bounding_box = BoundingBox.from_ltrb(10, 0, 20, 10)
-    
+
     # Add unmatched ground truth words to the block
     sample_block1.unmatched_ground_truth_words = [(0, "unmatched1"), (2, "unmatched2")]
-    
+
     # Verify ground truth data is present before removal
     assert word1.ground_truth_text == "truth1"
     assert word1.ground_truth_bounding_box is not None
     assert word2.ground_truth_text == "truth2"
     assert word2.ground_truth_bounding_box is not None
     assert len(sample_block1.unmatched_ground_truth_words) == 2
-    
+
     # Call remove_ground_truth
     sample_block1.remove_ground_truth()
-    
+
     # Verify ground truth data is removed
     assert word1.ground_truth_text == ""
     assert word1.ground_truth_bounding_box is None
@@ -162,27 +162,37 @@ def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1):
             for word in line.items:
                 word.ground_truth_text = f"gt_{word.text}"
                 word.ground_truth_bounding_box = word.bounding_box
-    
+
     # Add unmatched ground truth words to various levels
     sample_two_paragraph_block1.unmatched_ground_truth_words = [(0, "top_unmatched")]
     for paragraph in sample_two_paragraph_block1.items:
         paragraph.unmatched_ground_truth_words = [(1, "para_unmatched")]
         for line in paragraph.items:
             line.unmatched_ground_truth_words = [(0, "line_unmatched")]
-    
+
     # Verify ground truth data is present before removal
-    assert any(word.ground_truth_text != "" for word in sample_two_paragraph_block1.words)
-    assert any(word.ground_truth_bounding_box is not None for word in sample_two_paragraph_block1.words)
+    assert any(
+        word.ground_truth_text != "" for word in sample_two_paragraph_block1.words
+    )
+    assert any(
+        word.ground_truth_bounding_box is not None
+        for word in sample_two_paragraph_block1.words
+    )
     assert len(sample_two_paragraph_block1.unmatched_ground_truth_words) == 1
-    
+
     # Call remove_ground_truth on the top-level block
     sample_two_paragraph_block1.remove_ground_truth()
-    
+
     # Verify all ground truth data is removed recursively
-    assert all(word.ground_truth_text == "" for word in sample_two_paragraph_block1.words)
-    assert all(word.ground_truth_bounding_box is None for word in sample_two_paragraph_block1.words)
+    assert all(
+        word.ground_truth_text == "" for word in sample_two_paragraph_block1.words
+    )
+    assert all(
+        word.ground_truth_bounding_box is None
+        for word in sample_two_paragraph_block1.words
+    )
     assert len(sample_two_paragraph_block1.unmatched_ground_truth_words) == 0
-    
+
     # Verify nested blocks also have their unmatched ground truth words cleared
     for paragraph in sample_two_paragraph_block1.items:
         assert len(paragraph.unmatched_ground_truth_words) == 0
@@ -193,14 +203,14 @@ def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1):
 def test_remove_ground_truth_empty_block():
     """Test remove_ground_truth method on an empty block"""
     from pd_book_tools.ocr.block import Block, BlockChildType, BlockCategory
-    
+
     empty_block = Block(
         items=[],
         child_type=BlockChildType.WORDS,
         block_category=BlockCategory.LINE,
     )
     empty_block.unmatched_ground_truth_words = [(0, "some_unmatched")]
-    
+
     # Should not raise an error and should clear unmatched ground truth words
     empty_block.remove_ground_truth()
     assert len(empty_block.unmatched_ground_truth_words) == 0
