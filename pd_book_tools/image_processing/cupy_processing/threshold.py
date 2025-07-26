@@ -7,7 +7,7 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def otsu_binary_thresh(img_cp_float: cp.array) -> cp.array:
+def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     """
     Performs Otsu's thresholding on a CuPy GPU array without converting to uint8.
 
@@ -31,7 +31,7 @@ def otsu_binary_thresh(img_cp_float: cp.array) -> cp.array:
     # Compute histogram (auto-detect range)
     min_val, max_val = img_cp_float.min(), img_cp_float.max()
     hist, bin_edges = cp.histogram(img_cp_float, bins=256, range=(min_val, max_val))
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Midpoints of bins
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # type: ignore # Midpoints of bins
 
     # Compute cumulative sums and means
     weight1 = cp.cumsum(hist)
@@ -57,7 +57,7 @@ def np_uint8_float_binary_thresh(
     img: np.ndarray,
 ):
     img_float = img.astype(np.float32) / 255.0
-    src: cp.array = cp.asarray(img_float)
+    src: cp.ndarray = cp.asarray(img_float)
 
     cupy_result = otsu_binary_thresh(img_cp_float=src)
 

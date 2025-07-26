@@ -5,7 +5,7 @@ import cupy as cp
 logger = logging.getLogger(__name__)
 
 
-def crop_to_rectangle(img: cp.array, minX, maxX, minY, maxY):
+def crop_to_rectangle(img: cp.ndarray, minX, maxX, minY, maxY):
     """
     Crops a cupy image to the given bounding box coordinates, ensuring they are within bounds.
 
