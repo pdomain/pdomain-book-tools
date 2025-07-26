@@ -3,16 +3,23 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from logging import getLogger
+from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Collection, Dict, List, Optional, Sequence, Union
 
+from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
+from numpy import array, ndarray
+
 if TYPE_CHECKING:
     from pandas import DataFrame
+    from PIL.Image import Image as PILImage
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
+
+from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
 
 # Configure logging
 logger = getLogger(__name__)
@@ -26,6 +33,7 @@ class Document:
     """
 
     source_lib: str = ""
+    source_identifier: str = ""
     source_path: Optional[Path] = None
     _pages: List[Page] = field(
         default_factory=list,
@@ -36,12 +44,14 @@ class Document:
         source_lib: str,
         source_path: Path | str | None,
         pages: Collection,
+        source_identifier: str = "",
     ):
         self.source_lib = source_lib
         if isinstance(source_path, str):
             source_path = Path(source_path)
         self.source_path = source_path
         self.pages = pages
+        self.source_identifier = source_identifier
 
     def _sort_pages(self):
         self._pages.sort(key=lambda item: (item.page_index))
@@ -76,6 +86,7 @@ class Document:
         """Convert to a JSON-serializable dictionary"""
         return {
             "source_lib": self.source_lib,
+            "source_identifier": self.source_identifier,
             "source_path": str(self.source_path),
             "pages": [page.to_dict() for page in self.pages] if self.pages else [],
         }
@@ -89,16 +100,104 @@ class Document:
     def from_dict(cls, dict) -> "Document":
         """Create Document from dictionary"""
         return cls(
-            source_lib=dict["source_lib"],
-            source_path=Path(dict["source_path"]),
-            pages=[Page.from_dict(page) for page in dict["pages"]],
+            source_lib=dict.get("source_lib", ""),
+            source_identifier=dict.get("source_identifier", ""),
+            source_path=Path(dict.get("source_path"))
+            if dict.get("source_path")
+            else None,
+            pages=[Page.from_dict(page) for page in dict.get("pages", [])],
         )
+
+    @classmethod
+    def from_image_ocr_via_doctr(
+        cls,
+        image: Union[str, PathLike, ndarray, PILImage],
+        source_identifier: str = "",
+        predictor=None,
+    ) -> "Document":
+        """
+        Perform OCR on a single cv2 image using the doctr library.
+        :param image: The input image as:
+           - A file path (str or PathLike, will use cv2 to load the image)
+           - numpy ndarray (usually from cv2, as BGR, RGB, or Grayscale)
+           - PIL Image
+        :param image_path_override: The source image path or identifier for the OCR results.
+        :param predictor: The DocTR OCR predictor to use. If None, it will use the default pre-trained model.
+        :return: Document containing the OCR results.
+        """
+        if predictor is None:
+            predictor = get_default_doctr_predictor()
+
+        has_PIL = False
+        try:
+            from PIL.Image import Image as PILImage
+
+            has_PIL = True
+        except ImportError:
+            has_PIL = False
+            PILImage = None
+
+        source_path = None
+
+        image_ndarray: ndarray
+
+        # Handle different input types
+        if isinstance(image, ndarray):
+            # Already a numpy array (cv2 format)
+            image_ndarray = image
+        elif has_PIL and PILImage is not None and isinstance(image, PILImage):
+            # Convert PIL Image to numpy array
+            # PIL Images are typically in RGB format
+            image_ndarray = array(image)
+            # Convert from RGB to BGR for cv2 compatibility if it's a color image
+            if len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
+                image_ndarray = cvtColor(image_ndarray, COLOR_RGB2BGR)
+        else:
+            # Handle path-like objects (str, Path, or any PathLike)
+            try:
+                image_ndarray = imread(str(image))
+                source_path = Path(str(image))
+                if image_ndarray is None:
+                    raise ValueError(f"Could not load image from path: {image}")
+            except Exception as e:
+                raise ValueError(f"Failed to load image from path '{image}': {e}")
+
+        # Convert to RGB format for doctr processing
+        if len(image_ndarray.shape) == 2:
+            # Grayscale image - convert to RGB
+            image_rgb = cvtColor(image_ndarray, COLOR_GRAY2RGB)
+        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
+            # Color image (BGR) - convert to RGB
+            image_rgb = cvtColor(image_ndarray, COLOR_BGR2RGB)
+        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 1:
+            # Single channel image with shape (H, W, 1) - squeeze and convert to RGB
+            image_gray = image_ndarray.squeeze()
+            image_rgb = cvtColor(image_gray, COLOR_GRAY2RGB)
+        else:
+            # Already in RGB or unsupported format - use as is
+            image_rgb = image_ndarray
+
+        image_list = [image_rgb]
+
+        doctr_result = predictor(image_list)
+        ocr_doc: Document = cls.from_doctr_result(
+            doctr_result=doctr_result,
+            source_path=source_path,
+            source_identifier=source_identifier,
+        )
+
+        # Always 1 page per OCR in this case
+        ocr_page: Page = ocr_doc.pages[0]
+        ocr_page.cv2_numpy_page_image = image_ndarray
+
+        return ocr_doc
 
     @classmethod
     def from_doctr_result(
         cls,
         doctr_result,
         source_path: Union[str, Path, None] = None,
+        source_identifier: str = "",
     ) -> "Document":
         """Create Document from docTR result object"""
         doctr_text = doctr_result.render()
@@ -107,6 +206,7 @@ class Document:
             doctr_output=doctr_output,
             original_text=doctr_text,
             source_path=source_path,
+            source_identifier=source_identifier,
         )
 
     @classmethod
@@ -115,12 +215,18 @@ class Document:
         doctr_output: Dict,
         original_text: Optional[Sequence[str]] = None,
         source_path: Union[str, Path, None] = None,
+        source_identifier: str = "",
     ) -> "Document":
         """Create Document from docTR dictionary"""
         if isinstance(source_path, str):
             source_path = Path(source_path)
 
-        result = cls(source_lib="doctr", source_path=source_path, pages=[])
+        result = cls(
+            source_lib="doctr",
+            source_path=source_path,
+            source_identifier=source_identifier,
+            pages=[],
+        )
 
         for page_idx, page_data in enumerate(doctr_output.get("pages", [])):
             height, width = page_data.get("dimensions", (0, 0))
