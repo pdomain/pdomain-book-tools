@@ -7,7 +7,9 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def rotate_image(img: np.ndarray, angle, borderValue=0):
+def rotate_image(
+    img: np.ndarray, angle, borderValue: cv2.typing.Scalar = (0.0, 0.0, 0.0)
+):
     h, w = img.shape[:2]
     center = (w / 2.0, h / 2.0)
 
