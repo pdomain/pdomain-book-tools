@@ -542,6 +542,12 @@ class Page:
         update_page_with_ground_truth_text(self, text)
         self.refresh_page_images()
 
+    def remove_ground_truth(self):
+        """Remove ground truth text from the page"""
+        for item in self.items:
+            item.remove_ground_truth()
+        self.refresh_page_images()
+
     @classmethod
     def from_dict(cls, dict: Dict[str, Any]) -> "Page":
         """Create OCRPage from dictionary"""
