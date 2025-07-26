@@ -176,6 +176,19 @@ class Block:
         else:
             raise ValueError("Item not found in block")
 
+    def remove_ground_truth(self):
+        """Remove the ground truth text from the block"""
+        self.unmatched_ground_truth_words = []
+        if self.child_type == BlockChildType.WORDS:
+            word: Word
+            for word in self.items:
+                word.ground_truth_text = ""
+                word.ground_truth_bounding_box = None
+        else:
+            for block in self.items:
+                block.remove_ground_truth()
+        logger.debug("Ground truth text removed from block")
+
     def remove_line_if_exists(self, line):
         """Remove a line from the page if it exists"""
         if self.child_type == BlockChildType.WORDS:
