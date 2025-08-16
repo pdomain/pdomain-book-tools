@@ -1,114 +1,67 @@
 from dataclasses import dataclass
-from typing import Dict, Sequence, Tuple
+from typing import Tuple
 
-# Try to import shapely, but don't fail if not installed
-try:
-    from shapely.geometry import Point as ShapelyPoint
-
-    SHAPELY_AVAILABLE = True
-except ImportError:
-    SHAPELY_AVAILABLE = False
+from shapely.geometry import Point as ShapelyPoint  # type: ignore
 
 
 @dataclass
 class Point:
-    """Point class to represent a Normalized 2D point in format [x, y]"""
+    """Point wrapper around a Shapely ``Point``.
+
+    Simplified: all legacy factory constructors (``from_float_points``,
+    ``from_dict`` and ``from_shapely``) have been removed. Use direct
+    construction ``Point(x, y)`` everywhere and access the underlying
+    shapely geometry via ``as_shapely()`` when needed.
+    """
 
     x: float
     y: float
 
+    # ------------------------------------------------------------------
+    # Shapely availability helpers (retained for compatibility/tests)
+    # ------------------------------------------------------------------
     @classmethod
-    def is_shapely_available(cls):
-        return SHAPELY_AVAILABLE
-
-    @classmethod
-    def _fail_if_shapely_not_available(cls):
-        if not cls.is_shapely_available():
-            raise ImportError(
-                "Shapely is required for this operation. "
-                "Install it with 'pip install shapely'."
-            )
+    def is_shapely_available(cls) -> bool:  # pragma: no cover - trivial
+        return True
 
     @classmethod
-    def from_float_points(cls, points: Sequence[float]):
-        return cls(points[0], points[1])
+    def _fail_if_shapely_not_available(cls) -> None:  # pragma: no cover - trivial
+        if not cls.is_shapely_available():  # pragma: no cover
+            raise ImportError("Shapely is required. Install with 'pip install shapely'.")
 
-    # Standard Instance methods
-
-    def to_x_y(self) -> Tuple[float | int, float | int]:
+    def __post_init__(self):
+        # Validate numeric input early (tests rely on ValueError for non-numeric)
         if not (isinstance(self.x, (int, float)) and isinstance(self.y, (int, float))):
-            raise ValueError("Internal coordinates are not numbers")
+            raise ValueError("Point coordinates must be numeric")
+        self._geom = ShapelyPoint(float(self.x), float(self.y))  # type: ignore
+
+    # Delegation to shapely -------------------------------------------------
+    def __getattr__(self, item):  # delegate unknown attrs to shapely geometry
+        return getattr(self._geom, item)
+
+    # Basic helpers --------------------------------------------------------
+    def to_x_y(self) -> Tuple[float | int, float | int]:
         return (self.x, self.y)
 
     def scale(self, width: int, height: int) -> "Point":
-        """
-        Return new Point, with normalized
-        coordinates converted to absolute pixel coordinates
-        """
-        if self.x < 0 or self.x > 1 or self.y < 0 or self.y > 1:
+        if not (0 <= self.x <= 1 and 0 <= self.y <= 1):
             raise ValueError("Internal coordinates are not between 0 and 1")
         return Point(int(self.x * width), int(self.y * height))
 
     def normalize(self, width: int, height: int) -> "Point":
-        """
-        Return new Point, with absolute coordinates converted
-        to normalized pixel coordinates
-        """
-        if not (isinstance(self.x, int), isinstance(self.y, int)):
+        if not (isinstance(self.x, int) and isinstance(self.y, int)):
             raise ValueError("Internal coordinates are not integers")
-
         return Point(float(self.x) / float(width), float(self.y) / float(height))
 
     def is_larger_than(self, other: "Point") -> bool:
-        """Check if both x and y coordinates are larger than those of another point"""
         return self.x > other.x and self.y > other.y
 
     def to_dict(self) -> dict:
-        """Convert to JSON-serializable dictionary"""
         return {"x": self.x, "y": self.y}
 
-    @classmethod
-    def from_dict(cls, dict: Dict) -> "Point":
-        """Create Point from dictionary"""
-        return Point(x=dict["x"], y=dict["y"])
-
-    # Shapely Methods
-
-    @classmethod
-    def from_shapely(
-        cls,
-        shapely_pixel_point: "ShapelyPoint",
-    ) -> "Point":
-        """
-        Create a Point from a Shapely Point.
-
-        Args:
-            shapely_point: Shapely Point geometry
-
-        Returns:
-            Point instance
-
-        Raises:
-            ImportError: If shapely is not installed
-            ValueError: If input is not a valid Shapely Point
-        """
-        cls._fail_if_shapely_not_available()
-        try:
-            return cls(shapely_pixel_point.x, shapely_pixel_point.y)
-        except AttributeError:
-            raise ValueError(
-                "Input must be a valid Shapely Point with x and y attributes"
-            )
-
+    # Shapely access -------------------------------------------------------
     def as_shapely(self) -> "ShapelyPoint":
-        """
-        Convert to Shapely Point geometry.
+        return self._geom  # type: ignore
 
-        Returns:
-            Shapely Point if shapely is installed, otherwise None
-
-        Raises:
-            ImportError: If shapely is not installed
-        """
-        self._fail_if_shapely_not_available()
-        return ShapelyPoint(self.x, self.y)  # type: ignore
+    def distance_to(self, other: "Point") -> float:
+        return float(self._geom.distance(other.as_shapely()))

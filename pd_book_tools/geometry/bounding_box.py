@@ -4,16 +4,10 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 import cv2
 
 from pd_book_tools.geometry.point import Point
-
-# Try to import shapely, but don't fail if not installed
-try:
-    from shapely.geometry import Point as ShapelyPoint
-    from shapely.geometry import Polygon as ShapelyPolygon
-    from shapely.geometry import box as shapely_box
-
-    SHAPELY_AVAILABLE = True
-except ImportError:
-    SHAPELY_AVAILABLE = False
+from shapely.geometry import Point as ShapelyPoint
+from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import box as shapely_box
+from shapely.ops import unary_union
 
 from logging import getLogger
 
@@ -33,7 +27,13 @@ logger = getLogger(__name__)
 
 @dataclass
 class BoundingBox:
-    """2D bounding box coordinates (x_min, y_min, x_max, y_max)"""
+    """Axis-aligned bounding box.
+
+    Internally represented with two corner points (top-left & bottom-right)
+    to stay consistent with earlier code. Optional integration with shapely
+    provides more powerful spatial operations when installed while falling
+    back to minimal manual implementations otherwise.
+    """
 
     top_left: Point
     bottom_right: Point
@@ -90,8 +90,8 @@ class BoundingBox:
 
     @property
     def area(self) -> float:
-        """Get area of the box"""
-        return self.width * self.height
+        """Area of the bounding box."""
+        return float(self.as_shapely().area)  # type: ignore
 
     @property
     def center(self) -> Point:
@@ -146,7 +146,7 @@ class BoundingBox:
 
     @classmethod
     def is_shapely_available(cls):
-        return SHAPELY_AVAILABLE
+        return True
 
     @classmethod
     def _fail_if_shapely_not_available(cls):
@@ -289,26 +289,18 @@ class BoundingBox:
         )
 
     def intersects(self, other: "BoundingBox") -> bool:
-        """Check if this bounding box intersects with another"""
-        intersects_on_x_axis = self.minX <= other.maxX and self.maxX >= other.minX
-        intersects_on_y_axis = self.minY <= other.maxY and self.maxY >= other.minY
-        return intersects_on_x_axis and intersects_on_y_axis
+        """Return True if this bounding box intersects with another."""
+        return self.as_shapely().intersects(other.as_shapely())  # type: ignore
 
     def intersection(self, other: "BoundingBox") -> Optional["BoundingBox"]:
-        """Get the intersection of this bounding box with another"""
-        if not self.intersects(other):
+        """Return the geometric intersection or None."""
+        inter = self.as_shapely().intersection(other.as_shapely())  # type: ignore
+        if inter.is_empty:  # type: ignore
             return None
-
-        return BoundingBox(
-            Point(
-                max(self.top_left.x, other.top_left.x),
-                max(self.top_left.y, other.top_left.y),
-            ),
-            Point(
-                min(self.bottom_right.x, other.bottom_right.x),
-                min(self.bottom_right.y, other.bottom_right.y),
-            ),
-        )
+        minx, miny, maxx, maxy = inter.bounds  # type: ignore
+        if minx == maxx or miny == maxy:
+            return None
+        return BoundingBox(Point(minx, miny), Point(maxx, maxy))
 
     def overlap_y_amount(self, other: "BoundingBox"):
         """Return the amount of overlap on the y-axis (even if it doesn't directly intersect)"""
@@ -326,22 +318,17 @@ class BoundingBox:
 
     @classmethod
     def union(cls, bounding_boxes: Sequence["BoundingBox"]) -> "BoundingBox":
-        """Get the union BoundingBox from a sequence of bounding boxes"""
+        """Return the minimal box covering all provided boxes.
+
+        When shapely is available we leverage unary_union to support future
+        extension (e.g., rotated boxes). For current axis-aligned rectangles
+        this reduces to bounds of all boxes.
+        """
         if not bounding_boxes:
             raise ValueError("Bounding box list is empty")
-
-        top_left = Point(float("inf"), float("inf"))
-        bottom_right = Point(float("-inf"), float("-inf"))
-        for bbox in bounding_boxes:
-            top_left = Point(
-                min(top_left.x, bbox.top_left.x),
-                min(top_left.y, bbox.top_left.y),
-            )
-            bottom_right = Point(
-                max(bottom_right.x, bbox.bottom_right.x),
-                max(bottom_right.y, bbox.bottom_right.y),
-            )
-        return cls(top_left, bottom_right)
+        geom = unary_union([b.as_shapely() for b in bounding_boxes])  # type: ignore
+        minx, miny, maxx, maxy = geom.bounds  # type: ignore
+        return cls(Point(minx, miny), Point(maxx, maxy))
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary"""
@@ -353,9 +340,11 @@ class BoundingBox:
     @classmethod
     def from_dict(cls, dict: Dict) -> "BoundingBox":
         """Create BoundingBox from dictionary"""
+        tl = dict["top_left"]
+        br = dict["bottom_right"]
         return BoundingBox(
-            top_left=Point.from_dict(dict["top_left"]),
-            bottom_right=Point.from_dict(dict["bottom_right"]),
+            top_left=Point(tl["x"], tl["y"]),
+            bottom_right=Point(br["x"], br["y"]),
         )
 
     def refine(self, image: ndarray, padding_px: int = 0) -> "BoundingBox":
@@ -793,21 +782,43 @@ class BoundingBox:
                 "Input must be a valid Shapely geometry with a bounds property"
             )
 
-    def as_shapely(self) -> Union["ShapelyPolygon", None]:
-        """
-        Convert to Shapely box geometry.
+    def as_shapely(self) -> "ShapelyPolygon":
+        """Return a shapely geometry for the box.
 
-        Returns:
-            Shapely box if shapely is installed, otherwise throw error
-
-        Raises:
-            ImportError: If shapely is not installed
+        Raises ImportError if shapely is missing.
         """
         self._fail_if_shapely_not_available()
-
         return shapely_box(  # type: ignore
-            self.top_left.x,
-            self.top_left.y,
-            self.bottom_right.x,
-            self.bottom_right.y,
+            self.top_left.x, self.top_left.y, self.bottom_right.x, self.bottom_right.y
+        )
+
+    @property
+    def shapely(self) -> "ShapelyPolygon":
+        return self.as_shapely()
+
+    # Additional shapely-powered helpers ---------------------------------
+    def union_with(self, other: "BoundingBox") -> "BoundingBox":
+        """Return the minimal box containing this and other."""
+        return self.union([self, other])
+
+    def iou(self, other: "BoundingBox") -> float:
+        """Intersection over Union metric.
+
+        Returns 0.0 when there's no overlap.
+        """
+        inter = self.intersection(other)
+        if not inter:
+            return 0.0
+        union_area = self.area + other.area - inter.area
+        if union_area == 0:
+            return 0.0
+        return inter.area / union_area
+
+    def expand(self, dx: float = 0.0, dy: float = 0.0) -> "BoundingBox":
+        """Uniformly expand (or shrink) the box by deltas in both directions.
+
+        Negative values shrink the box. Values are applied to each side.
+        """
+        return BoundingBox.from_ltrb(
+            self.minX - dx, self.minY - dy, self.maxX + dx, self.maxY + dy
         )

@@ -1,16 +1,7 @@
 import pytest
-
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
-from shapely import Polygon
-
-# Try to import shapely, but don't fail if not installed
-try:
-    from shapely.geometry import box
-
-    SHAPELY_AVAILABLE = True
-except ImportError:
-    SHAPELY_AVAILABLE = False
+from shapely.geometry import box  # type: ignore
 
 
 # various ways to initialize
@@ -164,26 +155,11 @@ def test_bounding_box_from_dict():
     assert bbox.bottom_right == Point(1, 1)
 
 
-def test_bounding_box_shapely_not_available(monkeypatch):
-    monkeypatch.setattr(BoundingBox, "is_shapely_available", lambda: False)
-
-    with pytest.raises(ImportError):
-        BoundingBox._fail_if_shapely_not_available()
-
-    with pytest.raises(ImportError):
-        BoundingBox.from_shapely(Polygon(shell=[(0, 0), (1, 0), (1, 1), (0, 1)]))
-
-    bbox = BoundingBox(Point(0, 0), Point(1, 1))
-
-    with pytest.raises(ImportError):
-        bbox.as_shapely()
+def test_bounding_box_is_shapely_always_available():
+    assert BoundingBox.is_shapely_available() is True
 
 
 def test_bounding_box_from_shapely():
-    if not SHAPELY_AVAILABLE:
-        raise ImportError(
-            "Shapely is required for this test. Install it to the environment."
-        )
     shapely_box = box(0, 0, 1, 1)  # type: ignore
     bbox = BoundingBox.from_shapely(shapely_box)
     assert bbox.top_left == Point(0, 0)
@@ -191,11 +167,7 @@ def test_bounding_box_from_shapely():
 
 
 def test_bounding_box_as_shapely():
-    if not SHAPELY_AVAILABLE:
-        raise ImportError(
-            "Shapely is required for this test. Install it to the environment."
-        )
     bbox = BoundingBox(Point(0, 0), Point(1, 1))
-    shapely_box = bbox.as_shapely()
-    assert shapely_box
-    assert shapely_box.bounds == (0, 0, 1, 1)
+    shapely_geom = bbox.as_shapely()
+    assert shapely_geom
+    assert shapely_geom.bounds == (0, 0, 1, 1)
