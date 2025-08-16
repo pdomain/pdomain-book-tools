@@ -155,9 +155,6 @@ def test_bounding_box_from_dict():
     assert bbox.bottom_right == Point(1, 1)
 
 
-def test_bounding_box_is_shapely_always_available():
-    assert BoundingBox.is_shapely_available() is True
-
 
 def test_bounding_box_from_shapely():
     shapely_box = box(0, 0, 1, 1)  # type: ignore

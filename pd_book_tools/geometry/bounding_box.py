@@ -144,17 +144,6 @@ class BoundingBox:
                 "Invalid bounding box coordinates: x_min must be <= x_max and y_min must be <= y_max"
             )
 
-    @classmethod
-    def is_shapely_available(cls):
-        return True
-
-    @classmethod
-    def _fail_if_shapely_not_available(cls):
-        if not cls.is_shapely_available():
-            raise ImportError(
-                "Shapely is required for this operation. "
-                "Install it with 'pip install shapely'."
-            )
 
     @classmethod
     def from_points(
@@ -171,7 +160,7 @@ class BoundingBox:
                 if "x" not in p or "y" not in p:
                     raise ValueError("Dictionary should have 'x' and 'y' keys")
                 converted_points.append(Point(p["x"], p["y"]))
-            elif cls.is_shapely_available() and isinstance(p, ShapelyPoint):  # type: ignore
+            elif isinstance(p, ShapelyPoint):  # type: ignore
                 if hasattr(p, "x") and hasattr(p, "y"):
                     converted_points.append(Point(p.x, p.y))  # type: ignore
                 else:
@@ -772,8 +761,6 @@ class BoundingBox:
             ImportError: If shapely is not installed
             ValueError: If input is not a valid Shapely geometry
         """
-        cls._fail_if_shapely_not_available()
-
         try:
             minx, miny, maxx, maxy = shapely_box.bounds
             return cls(Point(minx, miny), Point(maxx, maxy))
@@ -787,7 +774,6 @@ class BoundingBox:
 
         Raises ImportError if shapely is missing.
         """
-        self._fail_if_shapely_not_available()
         return shapely_box(  # type: ignore
             self.top_left.x, self.top_left.y, self.bottom_right.x, self.bottom_right.y
         )

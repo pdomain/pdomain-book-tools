@@ -1,69 +1,169 @@
-from dataclasses import dataclass
 from typing import Tuple
 
 from shapely.geometry import Point as ShapelyPoint  # type: ignore
 
 
-@dataclass
 class Point:
-    """Point wrapper around a Shapely ``Point``.
+    """2D point backed by a Shapely ``Point`` with an inferred or overridable
+    ``is_normalized`` flag describing coordinate semantics.
 
-    Simplified: all legacy factory constructors (``from_float_points``,
-    ``from_dict`` and ``from_shapely``) have been removed. Use direct
-    construction ``Point(x, y)`` everywhere and access the underlying
-    shapely geometry via ``as_shapely()`` when needed.
+    Classification:
+        * Normalized (``is_normalized=True``): both coordinates lie in [0,1].
+        * Pixel (``is_normalized=False``): any other non‑negative coordinates.
+
+    The flag is inferred on construction and after x/y mutation, unless explicitly
+    overridden via the constructor argument or the ``is_normalized`` property.
+
+    Ordering (>, <, >=, <=) is lexicographic on the tuple (x, y) and only permitted
+    when both points share the same normalization state; otherwise a TypeError is
+    raised. Equality is exact on x, y, and the normalization flag. Use a helper for
+    approximate comparison if needed.
+
+    Serialization: ``to_dict()`` / ``from_dict()`` round‑trip x, y and
+    ``is_normalized`` (older dicts without the flag still infer it).
     """
 
-    x: float
-    y: float
+    __slots__ = ("_geom", "_is_normalized")
 
-    # ------------------------------------------------------------------
-    # Shapely availability helpers (retained for compatibility/tests)
-    # ------------------------------------------------------------------
-    @classmethod
-    def is_shapely_available(cls) -> bool:  # pragma: no cover - trivial
-        return True
+    def __init__(self, x: float | int, y: float | int, is_normalized: bool | None = None):
+        """Create a point backed directly by a Shapely Point.
 
-    @classmethod
-    def _fail_if_shapely_not_available(cls) -> None:  # pragma: no cover - trivial
-        if not cls.is_shapely_available():  # pragma: no cover
-            raise ImportError(
-                "Shapely is required. Install with 'pip install shapely'."
-            )
+        Args:
+            x: X coordinate (int/float or numeric string)
+            y: Y coordinate (int/float or numeric string)
+            is_normalized: Optional explicit override of the inferred normalized flag.
+        """
+        fx, fy = self._coerce_number(x), self._coerce_number(y)
+        self._geom = ShapelyPoint(float(fx), float(fy))
+        self._classify()
+        if is_normalized is not None:
+            self._is_normalized = bool(is_normalized)
 
-    def __post_init__(self):
-        # Validate numeric input early (tests rely on ValueError for non-numeric)
-        if not (isinstance(self.x, (int, float)) and isinstance(self.y, (int, float))):
-            raise ValueError("Point coordinates must be numeric")
-        self._geom = ShapelyPoint(float(self.x), float(self.y))  # type: ignore
+    # Internal -----------------------------------------------------------
+    def _coerce_number(self, value: float | int | str) -> float | int:
+        try:
+            f = float(value)
+        except (TypeError, ValueError):
+            raise ValueError("Point coordinates must be able to be coerced to real numbers")
+        # Preserve int type when exact
+        return int(f) if f.is_integer() else f
 
-    # Delegation to shapely -------------------------------------------------
-    def __getattr__(self, item):  # delegate unknown attrs to shapely geometry
+    def _classify(self) -> None:
+        fx = float(self._geom.x)
+        fy = float(self._geom.y)
+        EPS = 1e-9
+        if -EPS <= fx <= 1 + EPS and -EPS <= fy <= 1 + EPS:
+            if fx < 0 or fy < 0:
+                raise ValueError("Pixel point coordinates must be non-negative")
+            self._is_normalized = True
+        else:
+            if fx < 0 or fy < 0:
+                raise ValueError("Pixel point coordinates must be non-negative")
+            self._is_normalized = False
+
+    # Properties ---------------------------------------------------------
+    @property
+    def x(self) -> float | int:
+        # Return int when representable exactly
+        return int(self._geom.x) if float(self._geom.x).is_integer() else self._geom.x
+
+    @x.setter
+    def x(self, value: float | int) -> None:
+        fx = self._coerce_number(value)
+        self._geom = ShapelyPoint(float(fx), float(self.y))
+        self._classify()
+
+    @property
+    def y(self) -> float | int:
+        return int(self._geom.y) if float(self._geom.y).is_integer() else self._geom.y
+
+    @y.setter
+    def y(self, value: float | int) -> None:
+        fy = self._coerce_number(value)
+        self._geom = ShapelyPoint(float(self.x), float(fy))
+        self._classify()
+
+    @property
+    def is_normalized(self) -> bool:
+        return self._is_normalized
+
+    @is_normalized.setter
+    def is_normalized(self, value: bool) -> None:
+        # Allow manual override; coerce to bool
+        self._is_normalized = bool(value)
+
+    def __getattr__(self, item):
         return getattr(self._geom, item)
 
-    # Basic helpers --------------------------------------------------------
+    def __repr__(self) -> str:  # pragma: no cover - trivial representation
+        return f"Point(x={self.x}, y={self.y}, normalized={self.is_normalized})"
+
     def to_x_y(self) -> Tuple[float | int, float | int]:
         return (self.x, self.y)
 
     def scale(self, width: int, height: int) -> "Point":
-        if not (0 <= self.x <= 1 and 0 <= self.y <= 1):
-            raise ValueError("Internal coordinates are not between 0 and 1")
-        return Point(int(self.x * width), int(self.y * height))
+        if not self.is_normalized:
+            raise ValueError("scale() expected a normalized point (values in [0,1])")
+        return Point(int(round(self.x * width)), int(round(self.y * height)), is_normalized=False)
 
     def normalize(self, width: int, height: int) -> "Point":
-        if not (isinstance(self.x, int) and isinstance(self.y, int)):
-            raise ValueError("Internal coordinates are not integers")
-        return Point(float(self.x) / float(width), float(self.y) / float(height))
-
-    def is_larger_than(self, other: "Point") -> bool:
-        return self.x > other.x and self.y > other.y
+        if self.is_normalized:
+            raise ValueError("normalize() expected a pixel point (non-normalized)")
+        return Point(float(self.x) / float(width), float(self.y) / float(height), is_normalized=True)
 
     def to_dict(self) -> dict:
-        return {"x": self.x, "y": self.y}
+        # Include normalization state for round‑trip serialization
+        return {"x": self.x, "y": self.y, "is_normalized": self.is_normalized}
 
-    # Shapely access -------------------------------------------------------
+    @classmethod
+    def from_dict(cls, data: dict) -> "Point":
+        """Create a Point from a dict produced by ``to_dict``.
+
+        Accepts legacy dicts without ``is_normalized`` (falls back to inference).
+        """
+        x = data["x"]
+        y = data["y"]
+        is_norm = data.get("is_normalized")
+        return cls(x, y, is_normalized=is_norm)
+
     def as_shapely(self) -> "ShapelyPoint":
         return self._geom  # type: ignore
 
     def distance_to(self, other: "Point") -> float:
         return float(self._geom.distance(other.as_shapely()))
+
+    # Comparisons ------------------------------------------------------
+    def __gt__(self, other: object) -> bool:
+        if not isinstance(other, Point):
+            return NotImplemented  # type: ignore[return-value]
+        if self.is_normalized != other.is_normalized:
+            raise TypeError("Cannot compare points with different normalization state")
+        return (self.x, self.y) > (other.x, other.y)
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, Point):
+            return NotImplemented  # type: ignore[return-value]
+        if self.is_normalized != other.is_normalized:
+            raise TypeError("Cannot compare points with different normalization state")
+        return (self.x, self.y) < (other.x, other.y)
+
+    def __ge__(self, other: object) -> bool:
+        if not isinstance(other, Point):
+            return NotImplemented  # type: ignore[return-value]
+        if self.is_normalized != other.is_normalized:
+            raise TypeError("Cannot compare points with different normalization state")
+        return (self.x, self.y) >= (other.x, other.y)
+
+    def __le__(self, other: object) -> bool:
+        if not isinstance(other, Point):
+            return NotImplemented  # type: ignore[return-value]
+        if self.is_normalized != other.is_normalized:
+            raise TypeError("Cannot compare points with different normalization state")
+        return (self.x, self.y) <= (other.x, other.y)
+
+    def __eq__(self, other: object) -> bool:  # type: ignore[override]
+        if not isinstance(other, Point):
+            return NotImplemented  # type: ignore[return-value]
+        if self.is_normalized != other.is_normalized:
+            raise TypeError("Cannot compare points with different normalization state")
+        return (self.x, self.y) == (other.x, other.y)

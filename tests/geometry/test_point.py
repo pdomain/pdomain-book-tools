@@ -11,10 +11,16 @@ def test_direct_construction_and_to_x_y():
 
 
 def test_numeric_validation():
+    # Numeric strings now accepted
+    p = Point("1", 2)  # type: ignore
+    assert p.x == 1.0 or p.x == 1  # Depending on dataclass storage
+    p2 = Point(1, "2")  # type: ignore
+    assert p2.y == 2.0 or p2.y == 2
+    # Non-numeric strings still rejected
     with pytest.raises(ValueError):
-        Point("1", 2)  # type: ignore
+        Point("abc", 2)  # type: ignore
     with pytest.raises(ValueError):
-        Point(1, "2")  # type: ignore
+        Point(1, "two")  # type: ignore
 
 
 # Scaling / normalization -----------------------------------------------------
@@ -54,11 +60,26 @@ def test_normalize_with_non_ints_raises():
 # Comparison / helpers -------------------------------------------------------
 
 
-def test_is_larger_than():
-    p1 = Point(0.6, 0.6)
-    p2 = Point(0.5, 0.5)
-    assert p1.is_larger_than(p2)
-    assert not p2.is_larger_than(p1)
+def test_ordering_lexicographic():
+    a = Point(0.2, 0.9)
+    b = Point(0.3, 0.1)
+    c = Point(0.3, 0.5)
+    # a < b because x smaller
+    assert a < b
+    # b < c because x equal, y smaller
+    assert b < c
+    # c > b
+    assert c > b
+    # equality requires both coords and normalization
+    assert not (b == c)
+
+def test_ordering_mismatch_normalization_raises():
+    norm = Point(0.5, 0.4)              # normalized
+    pix = Point(50, 40)                 # pixel
+    with pytest.raises(TypeError):
+        _ = norm < pix
+    with pytest.raises(TypeError):
+        _ = pix > norm
 
 
 def test_distance_to():
@@ -75,9 +96,13 @@ def test_distance_to():
 def test_to_dict_round_trip():
     p = Point(0.5, 0.5)
     d = p.to_dict()
-    assert d == {"x": 0.5, "y": 0.5}
-    p2 = Point(d["x"], d["y"])
+    assert d == {"x": 0.5, "y": 0.5, "is_normalized": True}
+    # Legacy construction from dict fields
+    p2 = Point(d["x"], d["y"], is_normalized=d["is_normalized"])
     assert p2 == p
+    # New from_dict helper
+    p3 = Point.from_dict(d)
+    assert p3 == p
 
 
 # Shapely integration --------------------------------------------------------
