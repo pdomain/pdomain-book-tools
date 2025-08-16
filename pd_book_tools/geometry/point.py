@@ -16,8 +16,9 @@ class Point:
 
     Ordering (>, <, >=, <=) is lexicographic on the tuple (x, y) and only permitted
     when both points share the same normalization state; otherwise a TypeError is
-    raised. Equality is exact on x, y, and the normalization flag. Use a helper for
-    approximate comparison if needed.
+    raised. Equality likewise requires matching normalization; attempting to compare
+    points whose normalization flags differ raises TypeError. Equality is otherwise
+    exact on (x, y). Use a helper for approximate comparison if needed.
 
     Serialization: ``to_dict()`` / ``from_dict()`` round‑trip x, y and
     ``is_normalized`` (older dicts without the flag still infer it).
@@ -109,6 +110,8 @@ class Point:
     def normalize(self, width: int, height: int) -> "Point":
         if self.is_normalized:
             raise ValueError("normalize() expected a pixel point (non-normalized)")
+        if not (self._is_int_like(self.x) and self._is_int_like(self.y)):
+            raise ValueError("normalize() requires integer-like pixel coordinates (e.g., 10 or 10.0)")
         return Point(float(self.x) / float(width), float(self.y) / float(height), is_normalized=True)
 
     def to_dict(self) -> dict:
@@ -131,6 +134,10 @@ class Point:
 
     def distance_to(self, other: "Point") -> float:
         return float(self._geom.distance(other.as_shapely()))
+
+    # Helpers ----------------------------------------------------------
+    def _is_int_like(self, value: float | int) -> bool:
+        return isinstance(value, int) or (isinstance(value, float) and float(value).is_integer())
 
     # Comparisons ------------------------------------------------------
     def __gt__(self, other: object) -> bool:

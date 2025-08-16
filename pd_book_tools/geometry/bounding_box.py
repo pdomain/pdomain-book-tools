@@ -321,10 +321,10 @@ class BoundingBox:
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary"""
-        return {
-            "top_left": self.top_left.to_dict(),
-            "bottom_right": self.bottom_right.to_dict(),
-        }
+        # Provide backward-compatible shape (omit point normalization flag)
+        tl = {"x": self.top_left.x, "y": self.top_left.y}
+        br = {"x": self.bottom_right.x, "y": self.bottom_right.y}
+        return {"top_left": tl, "bottom_right": br}
 
     @classmethod
     def from_dict(cls, dict: Dict) -> "BoundingBox":
@@ -332,8 +332,8 @@ class BoundingBox:
         tl = dict["top_left"]
         br = dict["bottom_right"]
         return BoundingBox(
-            top_left=Point(tl["x"], tl["y"]),
-            bottom_right=Point(br["x"], br["y"]),
+            top_left=Point(tl["x"], tl["y"], is_normalized=tl.get("is_normalized")),
+            bottom_right=Point(br["x"], br["y"], is_normalized=br.get("is_normalized")),
         )
 
     def refine(self, image: ndarray, padding_px: int = 0) -> "BoundingBox":

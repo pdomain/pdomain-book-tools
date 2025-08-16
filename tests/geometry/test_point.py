@@ -39,7 +39,8 @@ def test_scale_invalid_out_of_range():
 
 
 def test_scale_boundary_values():
-    assert Point(0.0, 0.0).scale(100, 200) == Point(0, 0)
+    # Expect pixel point; (0,0) would infer normalized so override
+    assert Point(0.0, 0.0).scale(100, 200) == Point(0, 0, is_normalized=False)
     assert Point(1.0, 1.0).scale(100, 200) == Point(100, 200)
 
 
@@ -55,6 +56,11 @@ def test_normalize_with_non_ints_raises():
         Point(10.5, 20).normalize(100, 200)
     with pytest.raises(ValueError):
         Point(10, 20.1).normalize(100, 200)
+    # int-like floats should work
+    p = Point(10.0, 20.0)
+    n = p.normalize(100, 200)
+    assert pytest.approx(n.x) == 0.1
+    assert pytest.approx(n.y) == 0.1
 
 
 # Comparison / helpers -------------------------------------------------------
@@ -80,6 +86,12 @@ def test_ordering_mismatch_normalization_raises():
         _ = norm < pix
     with pytest.raises(TypeError):
         _ = pix > norm
+
+def test_equality_mismatch_normalization_raises():
+    norm = Point(0.2, 0.3)          # normalized
+    pix = Point(20, 30)             # pixel
+    with pytest.raises(TypeError):
+        _ = (norm == pix)
 
 
 def test_distance_to():
