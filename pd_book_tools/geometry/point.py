@@ -27,7 +27,9 @@ class Point:
     @classmethod
     def _fail_if_shapely_not_available(cls) -> None:  # pragma: no cover - trivial
         if not cls.is_shapely_available():  # pragma: no cover
-            raise ImportError("Shapely is required. Install with 'pip install shapely'.")
+            raise ImportError(
+                "Shapely is required. Install with 'pip install shapely'."
+            )
 
     def __post_init__(self):
         # Validate numeric input early (tests rely on ValueError for non-numeric)
