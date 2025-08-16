@@ -4,6 +4,7 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.word import Word
 from pd_book_tools.ocr.block import Block, BlockChildType, BlockCategory
 from pd_book_tools.ocr.page import Page
+from pd_book_tools.geometry.point import Point
 
 
 @pytest.fixture
@@ -163,3 +164,22 @@ def sample_page(sample_two_paragraph_block1, sample_block4):
         items=[sample_two_paragraph_block1, sample_block4],
         page_labels=["labelpage1"],
     )
+
+
+# Geometry fixtures -----------------------------------------------------------
+
+@pytest.fixture
+def norm_point():
+    return Point(0.5, 0.5)
+
+
+@pytest.fixture
+def pixel_point():
+    return Point(10, 20)
+
+
+@pytest.fixture
+def point_factory():
+    def _make(x: float | int, y: float | int, is_normalized: bool | None = None):
+        return Point(x, y, is_normalized=is_normalized)
+    return _make

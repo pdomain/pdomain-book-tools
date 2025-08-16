@@ -1,4 +1,3 @@
-from typing import Tuple
 
 from shapely.geometry import Point as ShapelyPoint  # type: ignore
 
@@ -38,6 +37,10 @@ class Point:
         self._geom = ShapelyPoint(float(fx), float(fy))
         self._classify()
         if is_normalized is not None:
+            if is_normalized and not (self._within_unit(fx) and self._within_unit(fy)):
+                raise ValueError(
+                    "Cannot mark as normalized: coordinates must lie within [0,1]"
+                )
             self._is_normalized = bool(is_normalized)
 
     # Internal -----------------------------------------------------------
@@ -62,36 +65,28 @@ class Point:
                 raise ValueError("Pixel point coordinates must be non-negative")
             self._is_normalized = False
 
+    def _within_unit(self, v: float | int) -> bool:
+        EPS = 1e-9
+        fv = float(v)
+        return -EPS <= fv <= 1 + EPS and fv >= 0
+
     # Properties ---------------------------------------------------------
     @property
     def x(self) -> float | int:
         # Return int when representable exactly
         return int(self._geom.x) if float(self._geom.x).is_integer() else self._geom.x
 
-    @x.setter
-    def x(self, value: float | int) -> None:
-        fx = self._coerce_number(value)
-        self._geom = ShapelyPoint(float(fx), float(self.y))
-        self._classify()
-
     @property
     def y(self) -> float | int:
         return int(self._geom.y) if float(self._geom.y).is_integer() else self._geom.y
-
-    @y.setter
-    def y(self, value: float | int) -> None:
-        fy = self._coerce_number(value)
-        self._geom = ShapelyPoint(float(self.x), float(fy))
-        self._classify()
 
     @property
     def is_normalized(self) -> bool:
         return self._is_normalized
 
     @is_normalized.setter
-    def is_normalized(self, value: bool) -> None:
-        # Allow manual override; coerce to bool
-        self._is_normalized = bool(value)
+    def is_normalized(self, value: bool) -> None:  # pragma: no cover - defensive
+        raise AttributeError("Point is immutable; use factory methods instead of mutating is_normalized")
 
     def __getattr__(self, item):
         return getattr(self._geom, item)
@@ -99,20 +94,36 @@ class Point:
     def __repr__(self) -> str:  # pragma: no cover - trivial representation
         return f"Point(x={self.x}, y={self.y}, normalized={self.is_normalized})"
 
-    def to_x_y(self) -> Tuple[float | int, float | int]:
-        return (self.x, self.y)
+    # (to_x_y removed; use (p.x, p.y) directly)
 
     def scale(self, width: int, height: int) -> "Point":
+        """
+        Scale the point to pixel coordinates based on the given width and height.
+        """
         if not self.is_normalized:
             raise ValueError("scale() expected a normalized point (values in [0,1])")
-        return Point(int(round(self.x * width)), int(round(self.y * height)), is_normalized=False)
+        return Point.pixel(int(round(self.x * width)), int(round(self.y * height)))
 
     def normalize(self, width: int, height: int) -> "Point":
+        """
+        Normalize the point to [0,1] unit square coordinates based on the given width and height.
+        """
         if self.is_normalized:
             raise ValueError("normalize() expected a pixel point (non-normalized)")
         if not (self._is_int_like(self.x) and self._is_int_like(self.y)):
             raise ValueError("normalize() requires integer-like pixel coordinates (e.g., 10 or 10.0)")
-        return Point(float(self.x) / float(width), float(self.y) / float(height), is_normalized=True)
+        return Point.normalized(float(self.x) / float(width), float(self.y) / float(height))
+
+    # (with_* helpers removed; construct new instances directly)
+
+    # Alternative constructors --------------------------------------------
+    @classmethod
+    def normalized(cls, x: float | int, y: float | int) -> "Point":
+        return cls(x, y, is_normalized=True)
+
+    @classmethod
+    def pixel(cls, x: float | int, y: float | int) -> "Point":
+        return cls(x, y, is_normalized=False)
 
     def to_dict(self) -> dict:
         # Include normalization state for round‑trip serialization
@@ -174,3 +185,6 @@ class Point:
         if self.is_normalized != other.is_normalized:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) == (other.x, other.y)
+
+    def __hash__(self) -> int:  # Allow use in sets / dicts
+        return hash((float(self.x), float(self.y), self.is_normalized))
