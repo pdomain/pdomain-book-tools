@@ -37,6 +37,7 @@ class BoundingBox:
 
     top_left: Point
     bottom_right: Point
+    is_normalized: bool | None = None  # explicit override; inferred when None
 
     @property
     def minX(self) -> float:
@@ -143,12 +144,26 @@ class BoundingBox:
             raise ValueError(
                 "Invalid bounding box coordinates: x_min must be <= x_max and y_min must be <= y_max"
             )
+        coords = [float(self.top_left.x), float(self.top_left.y), float(self.bottom_right.x), float(self.bottom_right.y)]
+        inferred = all(0 <= c <= 1 for c in coords)
+        if self.is_normalized is None:
+            self.is_normalized = inferred
+        else:
+            if self.is_normalized and not inferred:
+                raise ValueError(
+                    "Cannot mark bounding box as normalized: coordinates must lie within [0,1]"
+                )
+        # Rebuild points if their flags differ from box-level flag
+        if self.top_left.is_normalized != self.is_normalized or self.bottom_right.is_normalized != self.is_normalized:
+            self.top_left = Point(self.top_left.x, self.top_left.y, is_normalized=self.is_normalized)
+            self.bottom_right = Point(self.bottom_right.x, self.bottom_right.y, is_normalized=self.is_normalized)
 
 
     @classmethod
     def from_points(
         cls,
         points: Sequence[Union[dict, "Point", "ShapelyPoint", Sequence[float]]],
+        is_normalized: bool | None = None,
     ):
         """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats"""
         if len(points) != 2:
@@ -177,10 +192,10 @@ class BoundingBox:
             raise ValueError(
                 "Second point should have larger x and y coordinates than the first point"
             )
-        return cls(converted_points[0], converted_points[1])
+        return cls(converted_points[0], converted_points[1], is_normalized=is_normalized)
 
     @classmethod
-    def from_float(cls, points: Sequence[float]):
+    def from_float(cls, points: Sequence[float], is_normalized: bool | None = None):
         """Create from [x_min, y_min, x_max, y_max] format"""
         if len(points) != 4:
             raise ValueError(
@@ -190,10 +205,17 @@ class BoundingBox:
             raise ValueError(
                 "Bounding box coordinates are not in correct order. x_min < x_max and y_min < y_max"
             )
-        return cls(Point(points[0], points[1]), Point(points[2], points[3]))
+        vals = points
+        inferred = all(0 <= v <= 1 for v in vals)
+        norm = inferred if is_normalized is None else is_normalized
+        return cls(
+            Point(points[0], points[1], is_normalized=norm),
+            Point(points[2], points[3], is_normalized=norm),
+            is_normalized=norm,
+        )
 
     @classmethod
-    def from_nested_float(cls, points: Sequence[Sequence[float]]):
+    def from_nested_float(cls, points: Sequence[Sequence[float]], is_normalized: bool | None = None):
         """Create from [[x_min, y_min], [x_max, y_max]] format"""
         if len(points) != 2:
             raise ValueError("Bounding box should have exactly 2 points")
@@ -203,23 +225,46 @@ class BoundingBox:
             raise ValueError(
                 "Bounding box coordinates are not in correct order. x_min < x_max and y_min < y_max"
             )
-        return cls(Point(points[0][0], points[0][1]), Point(points[1][0], points[1][1]))
+        vals = [points[0][0], points[0][1], points[1][0], points[1][1]]
+        inferred = all(0 <= v <= 1 for v in vals)
+        norm = inferred if is_normalized is None else is_normalized
+        return cls(
+            Point(points[0][0], points[0][1], is_normalized=norm),
+            Point(points[1][0], points[1][1], is_normalized=norm),
+            is_normalized=norm,
+        )
 
     @classmethod
-    def from_ltrb(cls, left: float, top: float, right: float, bottom: float):
+    def from_ltrb(cls, left: float, top: float, right: float, bottom: float, is_normalized: bool | None = None):
         """Create from left, top, right, bottom format"""
         if left > right or top > bottom:
             raise ValueError(
                 "Bounding box coordinates are not in correct order. left < right and top < bottom"
             )
-        return cls(Point(left, top), Point(right, bottom))
+        vals = [left, top, right, bottom]
+        inferred = all(0 <= v <= 1 for v in vals)
+        norm = inferred if is_normalized is None else is_normalized
+        return cls(
+            Point(left, top, is_normalized=norm),
+            Point(right, bottom, is_normalized=norm),
+            is_normalized=norm,
+        )
 
     @classmethod
-    def from_ltwh(cls, left: float, top: float, width: float, height: float):
+    def from_ltwh(cls, left: float, top: float, width: float, height: float, is_normalized: bool | None = None):
         """Create from left, top, width, height format"""
         if width < 0 or height < 0:
             raise ValueError("Bounding box width and height must be non-negative")
-        return cls(Point(left, top), Point(left + width, top + height))
+        right = left + width
+        bottom = top + height
+        vals = [left, top, right, bottom]
+        inferred = all(0 <= v <= 1 for v in vals)
+        norm = inferred if is_normalized is None else is_normalized
+        return cls(
+            Point(left, top, is_normalized=norm),
+            Point(right, bottom, is_normalized=norm),
+            is_normalized=norm,
+        )
 
     def to_points(self) -> Tuple["Point", "Point"]:
         """Convert to (Point,Point) format (top left point, bottom right point)"""
@@ -252,22 +297,38 @@ class BoundingBox:
 
     def scale(self, width: int, height: int) -> "BoundingBox":
         """
-        Return new BoundingBox, with normalized coordinates converted
-        to absolute pixel coordinates
+        Return a new BoundingBox with normalized coordinates converted
+        to absolute pixel coordinates.
+
+        Requires this box to be normalized. Raises ValueError if the box
+        is already in pixel space (``is_normalized`` is False).
         """
+        if not self.is_normalized:
+            raise ValueError(
+                "scale() expected a normalized bounding box (values in [0,1]); this box is pixel coordinates"
+            )
         return BoundingBox(
             top_left=self.top_left.scale(width, height),
             bottom_right=self.bottom_right.scale(width, height),
+            is_normalized=False,
         )
 
     def normalize(self, width: int, height: int) -> "BoundingBox":
         """
-        Return new BoundingBox, with absolute coordinates converted
-        to normalized pixel coordinates
+        Return a new BoundingBox with absolute (pixel) coordinates converted
+        to normalized coordinates in the unit square.
+
+        Requires this box to be in pixel space. Raises ValueError if the box
+        is already normalized.
         """
+        if self.is_normalized:
+            raise ValueError(
+                "normalize() expected a pixel bounding box (non-normalized); this box is already normalized"
+            )
         return BoundingBox(
             top_left=self.top_left.normalize(width, height),
             bottom_right=self.bottom_right.normalize(width, height),
+            is_normalized=True,
         )
 
     def contains_point(self, point: Point) -> bool:
@@ -279,17 +340,36 @@ class BoundingBox:
 
     def intersects(self, other: "BoundingBox") -> bool:
         """Return True if this bounding box intersects with another."""
+        if self.is_normalized != other.is_normalized:
+            raise ValueError(
+                "Bounding boxes must share coordinate system (both normalized or both pixel) for intersects"
+            )
         return self.as_shapely().intersects(other.as_shapely())  # type: ignore
 
     def intersection(self, other: "BoundingBox") -> Optional["BoundingBox"]:
         """Return the geometric intersection or None."""
+        if self.is_normalized != other.is_normalized:
+            raise ValueError(
+                "Bounding boxes must share coordinate system (both normalized or both pixel) for intersection"
+            )
         inter = self.as_shapely().intersection(other.as_shapely())  # type: ignore
         if inter.is_empty:  # type: ignore
             return None
         minx, miny, maxx, maxy = inter.bounds  # type: ignore
         if minx == maxx or miny == maxy:
             return None
-        return BoundingBox(Point(minx, miny), Point(maxx, maxy))
+        coords = [minx, miny, maxx, maxy]
+        # Intersection can only be considered normalized if BOTH operands are normalized
+        is_norm = (
+            self.is_normalized
+            and other.is_normalized
+            and all(0 <= c <= 1 for c in coords)
+        )
+        return BoundingBox(
+            Point(minx, miny, is_normalized=is_norm),
+            Point(maxx, maxy, is_normalized=is_norm),
+            is_normalized=is_norm,
+        )
 
     def overlap_y_amount(self, other: "BoundingBox"):
         """Return the amount of overlap on the y-axis (even if it doesn't directly intersect)"""
@@ -315,25 +395,55 @@ class BoundingBox:
         """
         if not bounding_boxes:
             raise ValueError("Bounding box list is empty")
+        first_norm = bounding_boxes[0].is_normalized
+        if any(b.is_normalized != first_norm for b in bounding_boxes[1:]):
+            raise ValueError(
+                "All bounding boxes must share coordinate system (all normalized or all pixel) for union"
+            )
         geom = unary_union([b.as_shapely() for b in bounding_boxes])  # type: ignore
         minx, miny, maxx, maxy = geom.bounds  # type: ignore
-        return cls(Point(minx, miny), Point(maxx, maxy))
+        coords = [minx, miny, maxx, maxy]
+        # Normalized only if all source boxes are normalized AND bounds lie in [0,1]
+        is_norm = all(b.top_left.is_normalized and b.bottom_right.is_normalized for b in bounding_boxes) and all(
+            0 <= c <= 1 for c in coords
+        )
+        return cls(
+            Point(minx, miny, is_normalized=is_norm),
+            Point(maxx, maxy, is_normalized=is_norm),
+            is_normalized=is_norm,
+        )
 
     def to_dict(self) -> dict:
-        """Convert to JSON-serializable dictionary"""
-        # Provide backward-compatible shape (omit point normalization flag)
-        tl = {"x": self.top_left.x, "y": self.top_left.y}
-        br = {"x": self.bottom_right.x, "y": self.bottom_right.y}
-        return {"top_left": tl, "bottom_right": br}
+        """Convert to JSON-serializable dictionary.
+
+        Includes each corner point's normalization state (``is_normalized``) so
+        consumers can distinguish whether the coordinates are unit-normalized
+        (in [0,1]) or absolute pixel values. Older serialized forms omitted this
+        flag; :meth:`from_dict` remains backward compatible and will infer the
+        state when the flag is absent.
+        """
+        tl = {
+            "x": self.top_left.x,
+            "y": self.top_left.y,
+            "is_normalized": self.top_left.is_normalized,
+        }
+        br = {
+            "x": self.bottom_right.x,
+            "y": self.bottom_right.y,
+            "is_normalized": self.bottom_right.is_normalized,
+        }
+        return {"top_left": tl, "bottom_right": br, "is_normalized": self.is_normalized}
 
     @classmethod
     def from_dict(cls, dict: Dict) -> "BoundingBox":
         """Create BoundingBox from dictionary"""
         tl = dict["top_left"]
         br = dict["bottom_right"]
+        box_norm = dict.get("is_normalized")
         return BoundingBox(
             top_left=Point(tl["x"], tl["y"], is_normalized=tl.get("is_normalized")),
             bottom_right=Point(br["x"], br["y"], is_normalized=br.get("is_normalized")),
+            is_normalized=box_norm,
         )
 
     def refine(self, image: ndarray, padding_px: int = 0) -> "BoundingBox":
@@ -348,7 +458,16 @@ class BoundingBox:
         """
         # Extract the region of interest (ROI) from the image
         img_h, img_w = image.shape[:2]
-        x1, y1, x2, y2 = (self.scale(width=img_w, height=img_h)).to_ltrb()
+
+        # Work in pixel space internally. If this box is normalized scale it first.
+        original_is_normalized = bool(self.is_normalized)
+        if original_is_normalized:
+            scaled_self = self.scale(width=img_w, height=img_h)
+        else:
+            scaled_self = self
+
+        x1, y1, x2, y2 = scaled_self.to_ltrb()
+        orig_x1, orig_y1, orig_x2, orig_y2 = x1, y1, x2, y2
 
         logger.debug(f"Region of Interest: ({x1}, {y1}, {x2}, {y2})")
 
@@ -369,36 +488,38 @@ class BoundingBox:
         non_zero_coords = findNonZero(thresh)
 
         if non_zero_coords is None:
-            logger.debug("No non-zero pixels found")
-            # return a copy of self via serialization
-            return self.from_dict(self.to_dict())
+            logger.debug("No non-zero pixels found during refine(); returning copy")
+            return BoundingBox.from_dict(self.to_dict())
 
         x, y, w, h = cv2.boundingRect(non_zero_coords)
         logger.debug(f"Bounding Rect: ({x}, {y}, {w}, {h})")
 
-        # Restore location of bounding box from ROI
+        # Translate rect back into full-image coordinates
         x_min = x1 + x
         y_min = y1 + y
-        x_max = x1 + x + w + 1  # +1 to include the right edge
-        y_max = y1 + y + h + 1  # +1 to include the bottom edge
+        x_max = x1 + x + w
+        y_max = y1 + y + h
 
-        # Apply padding to the bounding box
+        # Apply optional padding
         x_min = max(0, x_min - padding_px)
         y_min = max(0, y_min - padding_px)
         x_max = min(img_w, x_max + padding_px)
         y_max = min(img_h, y_max + padding_px)
 
-        # Return a new bounding box
-        bbox = BoundingBox.from_ltrb(
-            x_min,
-            y_min,
-            x_max,
-            y_max,
-        )
-        logger.debug(f"New bbox: ({x_min}, {y_min}, {x_max}, {y_max})")
+        # Clamp to original (never expand outside the original box)
+        x_min = max(orig_x1, x_min)
+        y_min = max(orig_y1, y_min)
+        x_max = min(orig_x2, x_max)
+        y_max = min(orig_y2, y_max)
 
-        bbox = bbox.normalize(width=img_w, height=img_h)
-        logger.debug(f"Normalized Bbox:\n{bbox.to_dict()}")
+        bbox = BoundingBox.from_ltrb(x_min, y_min, x_max, y_max)
+        logger.debug(f"Refined pixel bbox: ({x_min}, {y_min}, {x_max}, {y_max})")
+
+        if original_is_normalized:
+            bbox = bbox.normalize(width=img_w, height=img_h)
+            logger.debug(f"Refined normalized bbox: {bbox.to_dict()}")
+        else:
+            logger.debug("Refined bbox kept in pixel coordinates")
         return bbox
 
     def expand_to_content(
@@ -763,7 +884,13 @@ class BoundingBox:
         """
         try:
             minx, miny, maxx, maxy = shapely_box.bounds
-            return cls(Point(minx, miny), Point(maxx, maxy))
+            coords = [minx, miny, maxx, maxy]
+            is_norm = all(0 <= c <= 1 for c in coords)
+            return cls(
+                Point(minx, miny, is_normalized=is_norm),
+                Point(maxx, maxy, is_normalized=is_norm),
+                is_normalized=is_norm,
+            )
         except AttributeError:
             raise ValueError(
                 "Input must be a valid Shapely geometry with a bounds property"
