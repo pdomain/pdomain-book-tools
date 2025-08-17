@@ -5,6 +5,53 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.word import Word
 
 
+###############################################################################
+# Fixtures (shared test data)
+###############################################################################
+
+
+@pytest.fixture
+def pixel_bbox():
+    """Pixel-space bounding box used for simple word construction."""
+    return BoundingBox.from_ltrb(0, 0, 10, 10)
+
+
+@pytest.fixture
+def normalized_bbox():
+    """Normalized bounding box (0-1) for scale tests."""
+    return BoundingBox.from_ltrb(0.1, 0.2, 0.3, 0.4)
+
+
+@pytest.fixture
+def hello_word(pixel_bbox):
+    """Word whose ground truth matches exactly (true path)."""
+    return Word(text="Hello", bounding_box=pixel_bbox, ground_truth_text="Hello")
+
+
+@pytest.fixture
+def hello_world_words():
+    """Pair of adjacent words (left, right) used for merge (left->right) tests."""
+    return (
+        Word(
+            text="hello",
+            bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
+            ocr_confidence=0.9,
+            ground_truth_text="HELLO",
+        ),
+        Word(
+            text="world",
+            bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
+            ocr_confidence=0.7,
+            ground_truth_text="WORLD",
+        ),
+    )
+
+
+###############################################################################
+# Serialization (to_dict / from_dict)
+###############################################################################
+
+
 def test_word_to_dict(sample_word1):
     word_dict = sample_word1.to_dict()
 
@@ -24,97 +71,189 @@ def test_word_to_dict(sample_word1):
     }
 
 
-def test_word_from_dict(sample_word1):
-    bounding_box_dict = {
+@pytest.fixture
+def word_from_dict_case():
+    bbox_dict = {
         "top_left": {"x": 0, "y": 0, "is_normalized": False},
         "bottom_right": {"x": 10, "y": 10, "is_normalized": False},
         "is_normalized": False,
     }
-    word_dict = {
-        "type": "Word",
-        "text": "test",
-        "bounding_box": bounding_box_dict,
-        "ocr_confidence": 0.99,
-        "word_labels": ["label1"],
-    }
-    word = Word.from_dict(word_dict)
-
-    assert word.text == "test"
-    assert word.bounding_box == BoundingBox.from_dict(bounding_box_dict)
-    assert word.ocr_confidence == pytest.approx(0.99)
-    assert word.word_labels == ["label1"]
-
-
-def test_ground_truth_exact_match():
-    w = Word(
-        text="Hello",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1),
-        ground_truth_text="Hello",
+    w = Word.from_dict(
+        {
+            "type": "Word",
+            "text": "test",
+            "bounding_box": bbox_dict,
+            "ocr_confidence": 0.99,
+            "word_labels": ["label1"],
+        }
     )
-    assert w.ground_truth_exact_match is True
-    w.ground_truth_text = "World"
+    return w, bbox_dict
+
+
+def test_word_from_dict_text(word_from_dict_case):
+    w, _ = word_from_dict_case
+    assert w.text == "test"
+
+
+def test_word_from_dict_bbox(word_from_dict_case):
+    w, bbox_dict = word_from_dict_case
+    assert w.bounding_box.to_ltrb() == BoundingBox.from_dict(bbox_dict).to_ltrb()
+
+
+def test_word_from_dict_confidence(word_from_dict_case):
+    w, _ = word_from_dict_case
+    assert w.ocr_confidence == pytest.approx(0.99)
+
+
+def test_word_from_dict_labels(word_from_dict_case):
+    w, _ = word_from_dict_case
+    assert w.word_labels == ["label1"]
+
+
+###############################################################################
+# Ground truth exact match flag
+###############################################################################
+
+
+def test_ground_truth_exact_match_true(hello_word):
+    assert hello_word.ground_truth_exact_match is True
+
+
+def test_ground_truth_exact_match_false(pixel_bbox):
+    w = Word(text="Hello", bounding_box=pixel_bbox, ground_truth_text="World")
     assert w.ground_truth_exact_match is False
 
 
-def test_scale_returns_scaled_word():
-    # bounding box with normalized coordinates
-    bbox = BoundingBox.from_ltrb(0.1, 0.2, 0.3, 0.4)
-    w = Word(text="hi", bounding_box=bbox, ocr_confidence=0.5)
-    scaled = w.scale(100, 200)
-    # Expect pixel coordinates (int) after scaling
+###############################################################################
+# Scaling (normalized -> pixel, pixel no-op, deep copy semantics)
+###############################################################################
+
+
+@pytest.fixture
+def scaled_word_case(normalized_bbox):
+    """Original normalized word and its scaled pixel copy."""
+    w = Word(text="hi", bounding_box=normalized_bbox, ocr_confidence=0.5)
+    return w, w.scale(100, 200)
+
+
+def test_scale_returns_scaled_word_scaled_bbox(scaled_word_case):
+    _, scaled = scaled_word_case
     assert scaled.bounding_box.to_ltrb() == (10, 40, 30, 80)
-    # Original unchanged
-    assert w.bounding_box.to_ltrb() == (0.1, 0.2, 0.3, 0.4)
 
 
-def test_scale_noop_when_pixel(caplog):
-    bbox = BoundingBox.from_ltrb(0, 0, 50, 20)  # pixel box (not normalized)
-    w = Word(text="pix", bounding_box=bbox, ocr_confidence=0.7, ground_truth_text="PIX")
+def test_scale_returns_scaled_word_original_preserved(scaled_word_case):
+    original, _ = scaled_word_case
+    assert original.bounding_box.to_ltrb() == (0.1, 0.2, 0.3, 0.4)
+
+
+@pytest.fixture
+def scale_pixel_noop_case(caplog):
+    """Pixel-space word; scaling should be a no-op copy with log message."""
+    w = Word(
+        text="pix",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 50, 20),
+        ocr_confidence=0.7,
+        ground_truth_text="PIX",
+    )
     with caplog.at_level("INFO"):
         scaled = w.scale(200, 400)
-    # Bounding box unchanged
+    return w, scaled, caplog.records
+
+
+def test_scale_noop_when_pixel_bbox(scale_pixel_noop_case):
+    _, scaled, _ = scale_pixel_noop_case
     assert scaled.bounding_box.to_ltrb() == (0, 0, 50, 20)
-    # Object is new instance (copy) not the same
+
+
+def test_scale_noop_when_pixel_new_instance(scale_pixel_noop_case):
+    w, scaled, _ = scale_pixel_noop_case
     assert scaled is not w
-    # Ground truth carried over
+
+
+def test_scale_noop_when_pixel_ground_truth(scale_pixel_noop_case):
+    _, scaled, _ = scale_pixel_noop_case
     assert scaled.ground_truth_text == "PIX"
-    # Log message emitted
-    assert any("pixel-space bounding box" in rec.message for rec in caplog.records)
 
 
-def test_scale_pixel_deep_copy_independence():
-    bbox = BoundingBox.from_ltrb(0, 0, 10, 10)
+def test_scale_noop_when_pixel_logs(scale_pixel_noop_case):
+    _, _, records = scale_pixel_noop_case
+    assert any("pixel-space bounding box" in r.message for r in records)
+
+
+@pytest.fixture
+def scale_pixel_copy_case():
+    """Pixel-space deep copy independence test case."""
     w = Word(
-        text="abc", bounding_box=bbox, ocr_confidence=0.5, word_labels=["L"]
-    )  # pixel
+        text="abc",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
+        ocr_confidence=0.5,
+        word_labels=["L"],
+    )
     scaled = w.scale(100, 200)
-    # mutate original after scaling
     w.text = "changed"
     w.word_labels.append("M")
-    # scaled copy should remain unchanged
+    return w, scaled
+
+
+def test_scale_pixel_deep_copy_text(scale_pixel_copy_case):
+    _, scaled = scale_pixel_copy_case
     assert scaled.text == "abc"
+
+
+def test_scale_pixel_deep_copy_labels(scale_pixel_copy_case):
+    _, scaled = scale_pixel_copy_case
     assert scaled.word_labels == ["L"]
 
 
-def test_fuzz_score_against_identical():
-    w = Word(text="test", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    assert w.fuzz_score_against("test") == 100
+def test_fuzz_score_against_identical_single_assert():
+    assert (
+        Word(text="test", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)).fuzz_score_against("test")
+    ) == 100
 
 
-def test_split_basic():
+###############################################################################
+# Splitting (word -> two words) & related flags
+###############################################################################
+
+
+@pytest.fixture
+def split_basic_case():
+    """Split a word in the middle for width/text ground truth validation."""
     w = Word(
         text="hello",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
         ground_truth_text="hello",
     )
-    left, right = w.split(bbox_split_offset=4, character_split_index=2)
+    return w.split(bbox_split_offset=4, character_split_index=2)
+
+
+def test_split_basic_left_text(split_basic_case):
+    left, _ = split_basic_case
     assert left.text == "he"
+
+
+def test_split_basic_right_text(split_basic_case):
+    _, right = split_basic_case
     assert right.text == "llo"
-    # bounding box widths reflect the split offset
+
+
+def test_split_basic_left_width(split_basic_case):
+    left, _ = split_basic_case
     assert left.bounding_box.width == 4
+
+
+def test_split_basic_right_width(split_basic_case):
+    _, right = split_basic_case
     assert right.bounding_box.width == 6
-    # ground truth texts also split
+
+
+def test_split_basic_left_gt(split_basic_case):
+    left, _ = split_basic_case
     assert left.ground_truth_text == "he"
+
+
+def test_split_basic_right_gt(split_basic_case):
+    _, right = split_basic_case
     assert right.ground_truth_text == "llo"
 
 
@@ -136,22 +275,45 @@ def test_split_errors(bbox_split_offset, character_split_index, exc):
         )
 
 
-def test_split_sets_split_flag_and_labels():
+@pytest.fixture
+def split_flags_case():
+    """Split capturing split flag propagation & label copying."""
     w = Word(
         text="abcd",
         bounding_box=BoundingBox.from_ltrb(0, 0, 8, 8),
         word_labels=["x", "y"],
     )
-    left, right = w.split(bbox_split_offset=3, character_split_index=2)
+    return w.split(bbox_split_offset=3, character_split_index=2)
+
+
+def test_split_sets_split_flag_left(split_flags_case):
+    left, _ = split_flags_case
     assert left.ground_truth_match_keys.get("split") is True
+
+
+def test_split_sets_split_flag_right(split_flags_case):
+    _, right = split_flags_case
     assert right.ground_truth_match_keys.get("split") is True
-    # Labels copied (not necessarily deep-copied, but contents preserved)
+
+
+def test_split_labels_left(split_flags_case):
+    left, _ = split_flags_case
     assert set(left.word_labels) == {"x", "y"}
+
+
+def test_split_labels_right(split_flags_case):
+    _, right = split_flags_case
     assert set(right.word_labels) == {"x", "y"}
 
 
-def test_merge_reversed_order_and_confidence_and_labels():
-    # self is to the right of the other; should prepend other's text
+###############################################################################
+# Merging (concatenation of adjacent words) – order, confidence, labels
+###############################################################################
+
+
+@pytest.fixture
+def merge_reversed_case():
+    """Merge where 'self' starts to the right, exercising reversed order path."""
     right = Word(
         text="world",
         bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
@@ -167,65 +329,70 @@ def test_merge_reversed_order_and_confidence_and_labels():
         ground_truth_text="HELLO",
     )
     right.merge(left)
-    # Text & ground truth concatenated in left->right reading order
-    assert right.text == "helloworld"
-    assert right.ground_truth_text == "HELLOWORLD"
-    # Confidence averaged
-    assert right.ocr_confidence == pytest.approx((0.8 + 0.6) / 2)
-    # Labels deduped (order not guaranteed due to set usage)
-    assert set(right.word_labels) == {"foo", "bar"}
-    # Bounding box spans both
-    assert right.bounding_box.to_ltrb() == (0, 0, 20, 10)
+    return right
 
 
-def test_merge_left_to_right():
-    left = Word(
-        text="hello",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
-        ocr_confidence=0.9,
-        ground_truth_text="HELLO",
-    )
-    right = Word(
-        text="world",
-        bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
-        ocr_confidence=0.7,
-        ground_truth_text="WORLD",
-    )
+def test_merge_reversed_text(merge_reversed_case):
+    assert merge_reversed_case.text == "helloworld"
+
+
+def test_merge_reversed_ground_truth(merge_reversed_case):
+    assert merge_reversed_case.ground_truth_text == "HELLOWORLD"
+
+
+def test_merge_reversed_confidence(merge_reversed_case):
+    assert merge_reversed_case.ocr_confidence == pytest.approx((0.8 + 0.6) / 2)
+
+
+def test_merge_reversed_labels(merge_reversed_case):
+    assert set(merge_reversed_case.word_labels) == {"foo", "bar"}
+
+
+def test_merge_reversed_bbox(merge_reversed_case):
+    assert merge_reversed_case.bounding_box.to_ltrb() == (0, 0, 20, 10)
+
+
+@pytest.fixture
+def merge_left_to_right_case(hello_world_words):
+    """Standard left->right merge path case."""
+    left, right = hello_world_words
     left.merge(right)
-    assert left.text == "helloworld"
-    assert left.ground_truth_text == "HELLOWORLD"
-    assert left.ocr_confidence == pytest.approx((0.9 + 0.7) / 2)
-    assert left.bounding_box.to_ltrb() == (0, 0, 20, 10)
+    return left
 
 
-def test_merge_confidence_cases():
-    # both None
-    a = Word(
-        text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
-    )
-    b = Word(
-        text="b", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None
-    )
+def test_merge_left_to_right_text(merge_left_to_right_case):
+    assert merge_left_to_right_case.text == "helloworld"
+
+
+def test_merge_left_to_right_ground_truth(merge_left_to_right_case):
+    assert merge_left_to_right_case.ground_truth_text == "HELLOWORLD"
+
+
+def test_merge_left_to_right_confidence(merge_left_to_right_case):
+    assert merge_left_to_right_case.ocr_confidence == pytest.approx((0.9 + 0.7) / 2)
+
+
+def test_merge_left_to_right_bbox(merge_left_to_right_case):
+    assert merge_left_to_right_case.bounding_box.to_ltrb() == (0, 0, 20, 10)
+
+
+def test_merge_confidence_both_none():
+    a = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None)
+    b = Word(text="b", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None)
     a.merge(b)
     assert a.ocr_confidence is None
 
-    # self None, other has value
-    c = Word(
-        text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
-    )
-    d = Word(
-        text="d", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=0.4
-    )
+
+def test_merge_confidence_self_none_other_value():
+    c = Word(text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None)
+    d = Word(text="d", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=0.4)
     c.merge(d)
     assert c.ocr_confidence == pytest.approx(0.4)
 
-    # self has value, other None
-    e = Word(
-        text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7
-    )
-    f = Word(
-        text="f", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None
-    )
+
+def test_merge_confidence_other_none():
+    e = Word(text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7)
+    f = Word(text="f", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None)
     e.merge(f)
     assert e.ocr_confidence == pytest.approx(0.7)
 
@@ -243,20 +410,39 @@ def test_refine_bounding_box_none_image_no_change():
     assert w.bounding_box.to_ltrb() == (0, 0, 10, 10)
 
 
-def test_refine_bounding_box_shrinks_to_content():
-    # Full-image bounding box normalized
+###############################################################################
+# Bounding box refinement (content-driven shrink) & cropping
+###############################################################################
+
+
+@pytest.fixture
+def refine_bbox_case():
+    """Word covering full normalized image refined to tight content rectangle."""
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    img_h, img_w = 40, 80
-    # White background (255), black rectangle (0) to represent text before inversion
-    image = np.full((img_h, img_w), 255, dtype=np.uint8)
+    image = np.full((40, 80), 255, dtype=np.uint8)
     image[5:15, 10:30] = 0
     w.refine_bounding_box(image)
-    # Expect normalized bbox approx (10/80,5/40,30/80,15/40) after refine (no +1 expansion, clamped)
-    left_, t, r, b = w.bounding_box.to_ltrb()
-    assert left_ == pytest.approx(10 / 80, rel=1e-3)
-    assert t == pytest.approx(5 / 40, rel=1e-3)
-    assert r == pytest.approx(30 / 80, rel=1e-3)
-    assert b == pytest.approx(15 / 40, rel=1e-3)
+    return w
+
+
+def test_refine_bounding_box_left(refine_bbox_case):
+    left, _, _, _ = refine_bbox_case.bounding_box.to_ltrb()
+    assert left == pytest.approx(10 / 80, rel=1e-3)
+
+
+def test_refine_bounding_box_top(refine_bbox_case):
+    _, top, _, _ = refine_bbox_case.bounding_box.to_ltrb()
+    assert top == pytest.approx(5 / 40, rel=1e-3)
+
+
+def test_refine_bounding_box_right(refine_bbox_case):
+    _, _, right, _ = refine_bbox_case.bounding_box.to_ltrb()
+    assert right == pytest.approx(30 / 80, rel=1e-3)
+
+
+def test_refine_bounding_box_bottom(refine_bbox_case):
+    _, _, _, bottom = refine_bbox_case.bounding_box.to_ltrb()
+    assert bottom == pytest.approx(15 / 40, rel=1e-3)
 
 
 def test_crop_bottom_none_image_error():
@@ -271,17 +457,17 @@ def test_crop_top_none_image_error():
         w.crop_top(None)
 
 
-def test_ground_truth_exact_match_no_gt():
-    w = Word(text="abc", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    assert w.ground_truth_exact_match is False
+def test_ground_truth_exact_match_no_gt_single_assert():
+    assert Word(text="abc", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)).ground_truth_exact_match is False
 
 
-def test_to_from_dict_with_ground_truth_and_keys():
-    bbox = BoundingBox.from_ltrb(0, 0, 1, 1)
+@pytest.fixture
+def to_from_dict_gt_case():
+    """Serialized + deserialized word including ground truth box & keys."""
     gt_bbox = BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2)
     w = Word(
         text="abc",
-        bounding_box=bbox,
+        bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1),
         ocr_confidence=0.5,
         word_labels=["l1"],
         ground_truth_text="abc",
@@ -289,43 +475,85 @@ def test_to_from_dict_with_ground_truth_and_keys():
         ground_truth_match_keys={"k": 1},
     )
     d = w.to_dict()
-    assert d["ground_truth_text"] == "abc"
-    assert d["ground_truth_bounding_box"]["top_left"]["x"] == pytest.approx(0.1)
-    assert d["ground_truth_match_keys"] == {"k": 1}
     round_trip = Word.from_dict(d)
-    assert round_trip.text == "abc"
-    assert round_trip.ground_truth_text == "abc"
-    assert round_trip.ground_truth_match_keys == {"k": 1}
+    return d, round_trip
 
 
-def test_scale_normalized_keeps_ground_truth_and_keys_deep_copy():
-    bbox = BoundingBox.from_ltrb(0.1, 0.2, 0.4, 0.5)  # normalized
-    gt_bbox = BoundingBox.from_ltrb(0.15, 0.25, 0.35, 0.45)  # normalized
+def test_to_from_dict_gt_text(to_from_dict_gt_case):
+    d, _ = to_from_dict_gt_case
+    assert d["ground_truth_text"] == "abc"
+
+
+def test_to_from_dict_gt_bbox_x(to_from_dict_gt_case):
+    d, _ = to_from_dict_gt_case
+    assert d["ground_truth_bounding_box"]["top_left"]["x"] == pytest.approx(0.1)
+
+
+def test_to_from_dict_gt_keys(to_from_dict_gt_case):
+    d, _ = to_from_dict_gt_case
+    assert d["ground_truth_match_keys"] == {"k": 1}
+
+
+def test_to_from_dict_round_trip_text(to_from_dict_gt_case):
+    _, rt = to_from_dict_gt_case
+    assert rt.text == "abc"
+
+
+def test_to_from_dict_round_trip_gt_text(to_from_dict_gt_case):
+    _, rt = to_from_dict_gt_case
+    assert rt.ground_truth_text == "abc"
+
+
+def test_to_from_dict_round_trip_keys(to_from_dict_gt_case):
+    _, rt = to_from_dict_gt_case
+    assert rt.ground_truth_match_keys == {"k": 1}
+
+
+@pytest.fixture
+def scale_normalized_case():
+    """Scaling normalized word: main bbox -> pixel; GT bbox stays normalized (deep copy)."""
     w = Word(
         text="abc",
-        bounding_box=bbox,
+        bounding_box=BoundingBox.from_ltrb(0.1, 0.2, 0.4, 0.5),
         ocr_confidence=0.8,
         word_labels=["L1"],
         ground_truth_text="abc",
-        ground_truth_bounding_box=gt_bbox,
+        ground_truth_bounding_box=BoundingBox.from_ltrb(0.15, 0.25, 0.35, 0.45),
         ground_truth_match_keys={"k": 1},
     )
-    scaled = w.scale(200, 100)  # width, height
-    # scaled bbox should now be pixel (0.1*200=20, etc.)
-    assert scaled.bounding_box.to_ltrb() == (20, 20, 80, 50)
-    assert scaled.bounding_box.is_normalized is False
-    # ground truth bbox unchanged & still normalized
-    assert scaled.ground_truth_bounding_box.to_ltrb() == pytest.approx(
-        (0.15, 0.25, 0.35, 0.45)
-    )
-    assert scaled.ground_truth_bounding_box.is_normalized is True
-    # deep copy: mutate original
+    scaled = w.scale(200, 100)
     w.text = "changed"
     w.word_labels.append("L2")
     w.ground_truth_match_keys["k2"] = 2
-    assert scaled.text == "abc"
-    assert scaled.word_labels == ["L1"]
-    assert scaled.ground_truth_match_keys == {"k": 1}
+    return scaled
+
+
+def test_scale_normalized_bbox(scale_normalized_case):
+    assert scale_normalized_case.bounding_box.to_ltrb() == (20, 20, 80, 50)
+
+
+def test_scale_normalized_bbox_category(scale_normalized_case):
+    assert scale_normalized_case.bounding_box.is_normalized is False
+
+
+def test_scale_normalized_gt_bbox(scale_normalized_case):
+    assert scale_normalized_case.ground_truth_bounding_box.to_ltrb() == pytest.approx((0.15, 0.25, 0.35, 0.45))
+
+
+def test_scale_normalized_gt_bbox_category(scale_normalized_case):
+    assert scale_normalized_case.ground_truth_bounding_box.is_normalized is True
+
+
+def test_scale_normalized_text(scale_normalized_case):
+    assert scale_normalized_case.text == "abc"
+
+
+def test_scale_normalized_labels(scale_normalized_case):
+    assert scale_normalized_case.word_labels == ["L1"]
+
+
+def test_scale_normalized_keys(scale_normalized_case):
+    assert scale_normalized_case.ground_truth_match_keys == {"k": 1}
 
 
 def test_merge_coordinate_mismatch_raises():
@@ -372,28 +600,29 @@ def test_merge_word_ground_truth_vs_main_mismatch_raises():
         w_bad.merge(w_other)
 
 
-def test_merge_with_both_ground_truth_matching_system_success():
-    # Both words have pixel-space main and ground-truth bboxes (matching systems) -> no raise
-    w1 = Word(
-        text="A",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
-        ground_truth_text="A",
-        ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
-        word_labels=["l1"],
-    )
-    w2 = Word(
-        text="B",
-        bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
-        ground_truth_text="B",
-        ground_truth_bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
-        word_labels=["l2"],
-    )
+@pytest.fixture
+def merge_with_gt_case():
+    """Merge two words each with aligned main + GT bounding boxes."""
+    w1 = Word(text="A", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), ground_truth_text="A", ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), word_labels=["l1"])
+    w2 = Word(text="B", bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), ground_truth_text="B", ground_truth_bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), word_labels=["l2"])
     w1.merge(w2)
-    assert w1.text == "AB"
-    assert w1.ground_truth_text == "AB"
-    assert w1.bounding_box.to_ltrb() == (0, 0, 10, 5)
-    # labels combined & deduped
-    assert set(w1.word_labels) == {"l1", "l2"}
+    return w1
+
+
+def test_merge_with_gt_text(merge_with_gt_case):
+    assert merge_with_gt_case.text == "AB"
+
+
+def test_merge_with_gt_gt_text(merge_with_gt_case):
+    assert merge_with_gt_case.ground_truth_text == "AB"
+
+
+def test_merge_with_gt_bbox(merge_with_gt_case):
+    assert merge_with_gt_case.bounding_box.to_ltrb() == (0, 0, 10, 5)
+
+
+def test_merge_with_gt_labels(merge_with_gt_case):
+    assert set(merge_with_gt_case.word_labels) == {"l1", "l2"}
 
 
 def test_split_ground_truth_coordinate_mismatch_raises():
@@ -409,17 +638,25 @@ def test_split_ground_truth_coordinate_mismatch_raises():
         w.split(bbox_split_offset=5, character_split_index=2)
 
 
-def test_split_with_ground_truth_same_category():
-    w = Word(
-        text="hello",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
-        ground_truth_text="hello",
-        ground_truth_bounding_box=BoundingBox.from_ltrb(2, 2, 8, 8),  # pixel
-    )
-    left, right = w.split(bbox_split_offset=4, character_split_index=2)
+@pytest.fixture
+def split_with_gt_case():
+    """Split where main & ground-truth bboxes share coordinate category (pixel)."""
+    w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ground_truth_text="hello", ground_truth_bounding_box=BoundingBox.from_ltrb(2, 2, 8, 8))
+    return w.split(bbox_split_offset=4, character_split_index=2), w
+
+
+def test_split_with_gt_left_text(split_with_gt_case):
+    (left, _), _ = split_with_gt_case
     assert left.text == "he"
+
+
+def test_split_with_gt_right_text(split_with_gt_case):
+    (_, right), _ = split_with_gt_case
     assert right.text == "llo"
-    # original ground truth text unaffected
+
+
+def test_split_with_gt_original_gt_text(split_with_gt_case):
+    _, w = split_with_gt_case
     assert w.ground_truth_text == "hello"
 
 
@@ -435,55 +672,92 @@ def test_split_ground_truth_coordinate_mismatch_reversed():
         w.split(bbox_split_offset=0.5, character_split_index=2)
 
 
-def test_split_zero_offset_and_index_zero():
+@pytest.fixture
+def split_zero_case():
+    """Split at offset/index zero producing empty left word."""
     w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
-    left, right = w.split(bbox_split_offset=0, character_split_index=0)
+    return w.split(bbox_split_offset=0, character_split_index=0)
+
+
+def test_split_zero_left_text(split_zero_case):
+    left, _ = split_zero_case
     assert left.text == ""
+
+
+def test_split_zero_right_text(split_zero_case):
+    _, right = split_zero_case
     assert right.text == "hello"
+
+
+def test_split_zero_left_width(split_zero_case):
+    left, _ = split_zero_case
     assert left.bounding_box.width == 0
+
+
+def test_split_zero_right_width(split_zero_case):
+    _, right = split_zero_case
     assert right.bounding_box.width == 10
 
 
-def test_split_offset_equals_width():
+@pytest.fixture
+def split_full_width_case():
+    """Split with offset equal to full width -> right side zero width."""
     w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
-    left, right = w.split(bbox_split_offset=10, character_split_index=2)
-    # Entire geometry assigned to left, right gets zero-width geometry
+    return w.split(bbox_split_offset=10, character_split_index=2)
+
+
+def test_split_full_width_left_text(split_full_width_case):
+    left, _ = split_full_width_case
     assert left.text == "he"
+
+
+def test_split_full_width_right_text(split_full_width_case):
+    _, right = split_full_width_case
     assert right.text == "llo"
+
+
+def test_split_full_width_left_width(split_full_width_case):
+    left, _ = split_full_width_case
     assert left.bounding_box.width == 10
+
+
+def test_split_full_width_right_width(split_full_width_case):
+    _, right = split_full_width_case
     assert right.bounding_box.width == 0
 
 
-def test_merge_inherits_ground_truth_keys():
-    a = Word(
-        text="a",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
-        ground_truth_match_keys={"k1": True},
-    )
-    b = Word(
-        text="b",
-        bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
-        ground_truth_match_keys={"k2": True},
-    )
+@pytest.fixture
+def merge_keys_case():
+    """Merge combining distinct ground-truth match key dictionaries."""
+    a = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), ground_truth_match_keys={"k1": True})
+    b = Word(text="b", bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), ground_truth_match_keys={"k2": True})
     a.merge(b)
-    assert a.ground_truth_match_keys.get("k1") is True
-    assert a.ground_truth_match_keys.get("k2") is True
+    return a
 
 
-def test_merge_one_has_ground_truth_bbox():
-    a = Word(
-        text="hi",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
-        ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),  # pixel
-    )
-    b = Word(
-        text="there",
-        bounding_box=BoundingBox.from_ltrb(5, 0, 12, 5),
-        # no ground truth bbox
-    )
+def test_merge_inherits_ground_truth_keys_k1(merge_keys_case):
+    assert merge_keys_case.ground_truth_match_keys.get("k1") is True
+
+
+def test_merge_inherits_ground_truth_keys_k2(merge_keys_case):
+    assert merge_keys_case.ground_truth_match_keys.get("k2") is True
+
+
+@pytest.fixture
+def merge_one_gt_case():
+    """Merge where only first word has ground-truth bbox/Text."""
+    a = Word(text="hi", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5))
+    b = Word(text="there", bounding_box=BoundingBox.from_ltrb(5, 0, 12, 5))
     a.merge(b)
-    assert a.text == "hithere"
-    assert a.bounding_box.to_ltrb() == (0, 0, 12, 5)
+    return a
+
+
+def test_merge_one_gt_text(merge_one_gt_case):
+    assert merge_one_gt_case.text == "hithere"
+
+
+def test_merge_one_gt_bbox(merge_one_gt_case):
+    assert merge_one_gt_case.bounding_box.to_ltrb() == (0, 0, 12, 5)
 
 
 def test_refine_bounding_box_no_content_returns_same():
@@ -511,35 +785,18 @@ def test_merge_other_word_ground_truth_vs_main_mismatch_raises():
         good.merge(bad)
 
 
-def test_merge_only_other_has_ground_truth_left_to_right():
-    left = Word(
-        text="ab",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
-    )
-    right = Word(
-        text="cd",
-        bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
-        ground_truth_text="CD",
-    )
+def test_merge_only_other_has_ground_truth_left_to_right_single_assert():
+    left = Word(text="ab", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5))
+    right = Word(text="cd", bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), ground_truth_text="CD")
     left.merge(right)
-    assert left.text == "abcd"
-    # ground truth text should now be just the other's since self had none
-    assert left.ground_truth_text == "CD"
+    assert (left.text, left.ground_truth_text) == ("abcd", "CD")
 
 
-def test_merge_only_other_has_ground_truth_reversed_order():
-    right = Word(
-        text="XY",
-        bounding_box=BoundingBox.from_ltrb(10, 0, 15, 5),
-    )
-    left = Word(
-        text="Z",
-        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 5),
-        ground_truth_text="Z",
-    )
-    right.merge(left)  # right is to the right -> reversed order merge path
-    assert right.text == "ZXY"
-    assert right.ground_truth_text == "Z"  # only left contributed
+def test_merge_only_other_has_ground_truth_reversed_order_single_assert():
+    right = Word(text="XY", bounding_box=BoundingBox.from_ltrb(10, 0, 15, 5))
+    left = Word(text="Z", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 5), ground_truth_text="Z")
+    right.merge(left)
+    assert (right.text, right.ground_truth_text) == ("ZXY", "Z")
 
 
 def test_merge_label_dedup_multiple_duplicates():
@@ -557,35 +814,67 @@ def test_merge_label_dedup_multiple_duplicates():
     assert set(a.word_labels) == {"l1", "l2", "l3"}
 
 
-def test_crop_bottom_success():
-    # Create normalized word covering whole image; add content only in lower half
-    img_h, img_w = 40, 80
-    image = np.full((img_h, img_w), 255, dtype=np.uint8)
-    image[25:35, 10:70] = 0  # simulate text (black)
+@pytest.fixture
+def crop_bottom_case():
+    """Cropping bottom of a full-coverage normalized word to content region."""
+    image = np.full((40, 80), 255, dtype=np.uint8)
+    image[25:35, 10:70] = 0
     w = Word(text="foo", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
     before = w.bounding_box.to_ltrb()
     w.crop_bottom(image)
     after = w.bounding_box.to_ltrb()
-    # Should still be normalized coords; y2 possibly adjusted upward
+    return w, before, after
+
+
+def test_crop_bottom_is_normalized(crop_bottom_case):
+    w, _, _ = crop_bottom_case
     assert w.bounding_box.is_normalized is True
-    assert after[0] == pytest.approx(before[0])  # left unchanged
-    assert after[1] == pytest.approx(before[1])  # top unchanged
-    assert after[2] == pytest.approx(before[2])  # right unchanged
-    # bottom should not exceed 1
+
+
+def test_crop_bottom_left_preserved(crop_bottom_case):
+    w, before, after = crop_bottom_case
+    assert pytest.approx(before[0]) == after[0]
+
+
+def test_crop_bottom_top_preserved(crop_bottom_case):
+    w, before, after = crop_bottom_case
+    assert pytest.approx(before[1]) == after[1]
+
+
+def test_crop_bottom_right_preserved(crop_bottom_case):
+    w, before, after = crop_bottom_case
+    assert pytest.approx(before[2]) == after[2]
+
+
+def test_crop_bottom_bottom_within_bounds(crop_bottom_case):
+    w, _, after = crop_bottom_case
     assert 0 < after[3] <= 1
 
 
-def test_crop_top_success():
-    img_h, img_w = 40, 80
-    image = np.full((img_h, img_w), 255, dtype=np.uint8)
-    image[5:15, 5:70] = 0  # content near top half
+@pytest.fixture
+def crop_top_case():
+    """Cropping top of a normalized word to remove whitespace."""
+    image = np.full((40, 80), 255, dtype=np.uint8)
+    image[5:15, 5:70] = 0
     w = Word(text="bar", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
     before = w.bounding_box.to_ltrb()
     w.crop_top(image)
     after = w.bounding_box.to_ltrb()
+    return w, before, after
+
+
+def test_crop_top_is_normalized(crop_top_case):
+    w, _, _ = crop_top_case
     assert w.bounding_box.is_normalized is True
-    assert after[0] == pytest.approx(before[0])
-    # bottom should be >= previous bottom (still 1) or maybe slightly less after crop
+
+
+def test_crop_top_left_preserved(crop_top_case):
+    w, before, after = crop_top_case
+    assert pytest.approx(before[0]) == after[0]
+
+
+def test_crop_top_bottom_within_bounds(crop_top_case):
+    w, _, after = crop_top_case
     assert 0 < after[3] <= 1
 
 
@@ -604,31 +893,47 @@ def test_crop_top_missing_bbox_error():
         w.crop_top(np.zeros((10, 10), dtype=np.uint8))
 
 
-def test_crop_bottom_warns_when_internal_returns_none(caplog):
-    # Force crop_bottom to return None to hit warning branch (line ~298)
+@pytest.fixture
+def crop_bottom_warn_case(caplog):
+    """Force crop_bottom internal call to return None to exercise warning path."""
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-
     class DummyBBox:
         def crop_bottom(self, image):  # type: ignore[no-untyped-def]
             return None
-
     w.bounding_box = DummyBBox()  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_bottom(np.zeros((4, 4), dtype=np.uint8))
-    assert any("Cropped bounding box is None" in r.message for r in caplog.records)
-    assert w.bounding_box is None  # now set to None
+    return w, caplog.records
 
 
-def test_crop_top_warns_when_internal_returns_none(caplog):
-    # Force crop_top to return None to hit warning branch (line ~313)
+def test_crop_bottom_warns_logged(crop_bottom_warn_case):
+    _, records = crop_bottom_warn_case
+    assert any("Cropped bounding box is None" in r.message for r in records)
+
+
+def test_crop_bottom_warns_sets_none(crop_bottom_warn_case):
+    w, _ = crop_bottom_warn_case
+    assert w.bounding_box is None
+
+
+@pytest.fixture
+def crop_top_warn_case(caplog):
+    """Force crop_top internal call to return None to exercise warning path."""
     w = Word(text="y", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-
     class DummyBBox:
         def crop_top(self, image):  # type: ignore[no-untyped-def]
             return None
-
     w.bounding_box = DummyBBox()  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_top(np.zeros((4, 4), dtype=np.uint8))
-    assert any("Cropped bounding box is None" in r.message for r in caplog.records)
+    return w, caplog.records
+
+
+def test_crop_top_warns_logged(crop_top_warn_case):
+    _, records = crop_top_warn_case
+    assert any("Cropped bounding box is None" in r.message for r in records)
+
+
+def test_crop_top_warns_sets_none(crop_top_warn_case):
+    w, _ = crop_top_warn_case
     assert w.bounding_box is None
