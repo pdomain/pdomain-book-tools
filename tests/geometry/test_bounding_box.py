@@ -167,22 +167,21 @@ def test_bounding_box_to_dict():
     bbox = BoundingBox(Point(0, 0), Point(1, 1))
     bbox_dict = bbox.to_dict()
     assert bbox_dict == {
-    "top_left": {"x": 0, "y": 0, "is_normalized": True},
-    "bottom_right": {"x": 1, "y": 1, "is_normalized": True},
-    "is_normalized": True,
+        "top_left": {"x": 0, "y": 0, "is_normalized": True},
+        "bottom_right": {"x": 1, "y": 1, "is_normalized": True},
+        "is_normalized": True,
     }
 
 
 def test_bounding_box_from_dict():
     bbox_dict = {
-    "top_left": {"x": 0, "y": 0, "is_normalized": True},
-    "bottom_right": {"x": 1, "y": 1, "is_normalized": True},
-    "is_normalized": True,
+        "top_left": {"x": 0, "y": 0, "is_normalized": True},
+        "bottom_right": {"x": 1, "y": 1, "is_normalized": True},
+        "is_normalized": True,
     }
     bbox = BoundingBox.from_dict(bbox_dict)
     assert bbox.top_left == Point(0, 0)
     assert bbox.bottom_right == Point(1, 1)
-
 
 
 def test_bounding_box_from_shapely():
@@ -233,6 +232,7 @@ def test_bounding_box_normalize_requires_pixel():
 
 def test_refine_preserves_normalized(monkeypatch):
     import numpy as np
+
     # Create simple image with a small white rectangle inside the expected region
     img = np.zeros((100, 200), dtype=np.uint8)
     # Original normalized bbox roughly covering cols 20-80, rows 10-60
@@ -252,6 +252,7 @@ def test_refine_preserves_normalized(monkeypatch):
 
 def test_refine_preserves_pixel():
     import numpy as np
+
     img = np.zeros((100, 200), dtype=np.uint8)
     bbox = BoundingBox.from_ltrb(10, 10, 80, 60)  # pixel box
     img[20:51, 30:71] = 255
@@ -266,6 +267,7 @@ def test_refine_preserves_pixel():
 
 def test_refine_no_text_returns_copy_normalized():
     import numpy as np
+
     # Image all white so after inversion it's all black -> threshold -> all zeros -> no non-zero coords
     img = np.full((50, 100), 255, dtype=np.uint8)
     bbox = BoundingBox.from_ltrb(0.2, 0.2, 0.6, 0.8)  # normalized
@@ -276,6 +278,7 @@ def test_refine_no_text_returns_copy_normalized():
 
 def test_refine_no_text_returns_copy_pixel():
     import numpy as np
+
     img = np.full((50, 100), 255, dtype=np.uint8)
     bbox = BoundingBox.from_ltrb(10, 5, 60, 40)  # pixel
     refined = bbox.refine(img)
@@ -285,6 +288,7 @@ def test_refine_no_text_returns_copy_pixel():
 
 def test_refine_padding_clamped_normalized():
     import numpy as np
+
     img = np.full((100, 100), 255, dtype=np.uint8)
     # Place a small black (0) rectangle inside the bbox to act as text
     img[30:35, 40:45] = 0
@@ -303,6 +307,7 @@ def test_refine_padding_clamped_normalized():
 
 def test_refine_content_fills_box_pixel():
     import numpy as np
+
     img = np.full((60, 120), 255, dtype=np.uint8)
     bbox = BoundingBox.from_ltrb(10, 10, 70, 50)  # pixel
     # Fill entire bbox region with black (text) so refine should not shrink
@@ -310,3 +315,38 @@ def test_refine_content_fills_box_pixel():
     refined = bbox.refine(img)
     assert not refined.is_normalized
     assert refined.to_ltrb() == bbox.to_ltrb()
+
+
+def test_refine_expand_beyond_original_pixel():
+    import numpy as np
+
+    img = np.full((100, 100), 255, dtype=np.uint8)
+    # small text region
+    img[40:45, 40:45] = 0
+    bbox = BoundingBox.from_ltrb(30, 30, 50, 50)  # pixel
+    refined = bbox.refine(img, padding_px=10, expand_beyond_original=True)
+    # Tight rect (40,40)-(45,45); orig width=20 tight width=5 slack=15; extra=10 + 15/2 = 17.5 each side
+    # Expanded: (40-17.5,40-17.5)-(45+17.5,45+17.5) -> (22.5,22.5)-(62.5,62.5)
+    assert refined.to_ltrb() == (22.5, 22.5, 62.5, 62.5)
+
+
+def test_refine_expand_beyond_original_normalized():
+    import numpy as np
+
+    img_h, img_w = 80, 160
+    img = np.full((img_h, img_w), 255, dtype=np.uint8)
+    img[30:35, 70:75] = 0  # small text
+    bbox = BoundingBox.from_ltrb(0.3, 0.3, 0.5, 0.6)  # normalized
+    refined = bbox.refine(img, padding_px=10, expand_beyond_original=True)
+    assert refined.is_normalized
+    # Convert expected expanded pixel box to normalized: original pixel bounds
+    # original pixel box is (48,24)-(80,48) given scaling (0.3*160=48, 0.3*80=24, 0.5*160=80, 0.6*80=48)
+    # content at (70:75,30:35) so tightened region plus 10px padding expands outward inside image bounds:
+    # Tight rect (70,30)-(75,35); original pixel window (48,24)-(80,48)
+    # slack_w=32-5=27, slack_h=24-5=19 -> extra_w=10+27/2=23.5, extra_h=10+19/2=19.5
+    # Expanded (46.5,10.5)-(98.5,54.5) then rounded to int before normalization -> (46,10)-(98,54)
+    left_norm, top_norm, right_norm, bottom_norm = refined.to_ltrb()
+    assert left_norm == pytest.approx(46 / 160, rel=1e-3)
+    assert top_norm == pytest.approx(10 / 80, rel=1e-3)
+    assert right_norm == pytest.approx(98 / 160, rel=1e-3)
+    assert bottom_norm == pytest.approx(54 / 80, rel=1e-3)

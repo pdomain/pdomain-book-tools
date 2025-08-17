@@ -49,7 +49,9 @@ def test_scale_invalid_out_of_range_y_gt_one():
 
 
 def test_scale_boundary_zero(point_factory):
-    assert point_factory(0.0, 0.0).scale(100, 200) == point_factory(0, 0, is_normalized=False)
+    assert point_factory(0.0, 0.0).scale(100, 200) == point_factory(
+        0, 0, is_normalized=False
+    )
 
 
 def test_scale_boundary_one(point_factory):
@@ -150,6 +152,7 @@ def test_ordering_b_not_equal_c(point_factory):
     c = point_factory(0.3, 0.5)
     assert not (b == c)
 
+
 def test_ordering_mismatch_normalization_raises(point_factory):
     norm = point_factory(0.5, 0.4)
     pix = point_factory(50, 40)
@@ -158,11 +161,12 @@ def test_ordering_mismatch_normalization_raises(point_factory):
     with pytest.raises(TypeError):
         _ = pix > norm
 
+
 def test_equality_mismatch_normalization_raises(point_factory):
     norm = point_factory(0.2, 0.3)
     pix = point_factory(20, 30)
     with pytest.raises(TypeError):
-        _ = (norm == pix)
+        _ = norm == pix
 
 
 def test_distance_to_value(point_factory):
@@ -455,7 +459,7 @@ def test_scale_rounding_half_even_value(point_factory):
 
 
 def test_scale_rounding_generic_value(point_factory):
-    p = point_factory(1/3, 2/3)
+    p = point_factory(1 / 3, 2 / 3)
     scaled = p.scale(3, 3)
     assert (scaled.x, scaled.y) == (1, 2)
 
@@ -472,6 +476,7 @@ def test_setter_moves_point_out_of_normalized_range_after_raises(point_factory):
 
 
 # Hashing --------------------------------------------------------------------
+
 
 def test_hash_membership_normalized():
     p = Point.normalized(0.1, 0.2)

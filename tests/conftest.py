@@ -168,6 +168,7 @@ def sample_page(sample_two_paragraph_block1, sample_block4):
 
 # Geometry fixtures -----------------------------------------------------------
 
+
 @pytest.fixture
 def norm_point():
     return Point(0.5, 0.5)
@@ -182,4 +183,5 @@ def pixel_point():
 def point_factory():
     def _make(x: float | int, y: float | int, is_normalized: bool | None = None):
         return Point(x, y, is_normalized=is_normalized)
+
     return _make

@@ -26,9 +26,9 @@ def test_word_to_dict(sample_word1):
 
 def test_word_from_dict(sample_word1):
     bounding_box_dict = {
-    "top_left": {"x": 0, "y": 0, "is_normalized": False},
-    "bottom_right": {"x": 10, "y": 10, "is_normalized": False},
-    "is_normalized": False,
+        "top_left": {"x": 0, "y": 0, "is_normalized": False},
+        "bottom_right": {"x": 10, "y": 10, "is_normalized": False},
+        "is_normalized": False,
     }
     word_dict = {
         "type": "Word",
@@ -91,12 +91,20 @@ def test_split_basic():
 
 @pytest.mark.parametrize(
     "bbox_split_offset,character_split_index,exc",
-    [(-1, 2, ValueError), (2, -1, ValueError), (5, 10, IndexError), (11, 2, ValueError)],
+    [
+        (-1, 2, ValueError),
+        (2, -1, ValueError),
+        (5, 10, IndexError),
+        (11, 2, ValueError),
+    ],
 )
 def test_split_errors(bbox_split_offset, character_split_index, exc):
     w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
     with pytest.raises(exc):
-        w.split(bbox_split_offset=bbox_split_offset, character_split_index=character_split_index)
+        w.split(
+            bbox_split_offset=bbox_split_offset,
+            character_split_index=character_split_index,
+        )
 
 
 def test_split_sets_split_flag_and_labels():
@@ -163,20 +171,32 @@ def test_merge_left_to_right():
 
 def test_merge_confidence_cases():
     # both None
-    a = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None)
-    b = Word(text="b", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None)
+    a = Word(
+        text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
+    )
+    b = Word(
+        text="b", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None
+    )
     a.merge(b)
     assert a.ocr_confidence is None
 
     # self None, other has value
-    c = Word(text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None)
-    d = Word(text="d", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=0.4)
+    c = Word(
+        text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
+    )
+    d = Word(
+        text="d", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=0.4
+    )
     c.merge(d)
     assert c.ocr_confidence == pytest.approx(0.4)
 
     # self has value, other None
-    e = Word(text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7)
-    f = Word(text="f", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None)
+    e = Word(
+        text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7
+    )
+    f = Word(
+        text="f", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None
+    )
     e.merge(f)
     assert e.ocr_confidence == pytest.approx(0.7)
 

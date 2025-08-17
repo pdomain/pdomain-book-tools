@@ -1,4 +1,3 @@
-
 from shapely.geometry import Point as ShapelyPoint  # type: ignore
 
 
@@ -25,7 +24,9 @@ class Point:
 
     __slots__ = ("_geom", "_is_normalized")
 
-    def __init__(self, x: float | int, y: float | int, is_normalized: bool | None = None):
+    def __init__(
+        self, x: float | int, y: float | int, is_normalized: bool | None = None
+    ):
         """Create a point backed directly by a Shapely Point.
 
         Args:
@@ -48,7 +49,9 @@ class Point:
         try:
             f = float(value)
         except (TypeError, ValueError):
-            raise ValueError("Point coordinates must be able to be coerced to real numbers")
+            raise ValueError(
+                "Point coordinates must be able to be coerced to real numbers"
+            )
         # Preserve int type when exact
         return int(f) if f.is_integer() else f
 
@@ -86,7 +89,9 @@ class Point:
 
     @is_normalized.setter
     def is_normalized(self, value: bool) -> None:  # pragma: no cover - defensive
-        raise AttributeError("Point is immutable; use factory methods instead of mutating is_normalized")
+        raise AttributeError(
+            "Point is immutable; use factory methods instead of mutating is_normalized"
+        )
 
     def __getattr__(self, item):
         return getattr(self._geom, item)
@@ -111,8 +116,12 @@ class Point:
         if self.is_normalized:
             raise ValueError("normalize() expected a pixel point (non-normalized)")
         if not (self._is_int_like(self.x) and self._is_int_like(self.y)):
-            raise ValueError("normalize() requires integer-like pixel coordinates (e.g., 10 or 10.0)")
-        return Point.normalized(float(self.x) / float(width), float(self.y) / float(height))
+            raise ValueError(
+                "normalize() requires integer-like pixel coordinates (e.g., 10 or 10.0)"
+            )
+        return Point.normalized(
+            float(self.x) / float(width), float(self.y) / float(height)
+        )
 
     # (with_* helpers removed; construct new instances directly)
 
@@ -148,7 +157,9 @@ class Point:
 
     # Helpers ----------------------------------------------------------
     def _is_int_like(self, value: float | int) -> bool:
-        return isinstance(value, int) or (isinstance(value, float) and float(value).is_integer())
+        return isinstance(value, int) or (
+            isinstance(value, float) and float(value).is_integer()
+        )
 
     # Comparisons ------------------------------------------------------
     def __gt__(self, other: object) -> bool:
