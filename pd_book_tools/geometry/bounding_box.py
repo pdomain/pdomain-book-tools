@@ -2,7 +2,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import cv2
-from shapely.geometry import (Point as ShapelyPoint, Polygon as ShapelyPolygon, box as shapely_box)  # removed LineString import
+from shapely.geometry import (
+    Point as ShapelyPoint,
+    Polygon as ShapelyPolygon,
+    box as shapely_box,
+)  # removed LineString import
 from shapely.ops import unary_union  # removed split import
 
 from pd_book_tools.geometry.point import Point
@@ -99,12 +103,18 @@ class BoundingBox:
         )
 
     @staticmethod
-    def _split_at_x(box: "BoundingBox", x_value: float) -> tuple["BoundingBox", "BoundingBox"]:
+    def _split_at_x(
+        box: "BoundingBox", x_value: float
+    ) -> tuple["BoundingBox", "BoundingBox"]:
         """Internal helper to split at absolute x coordinate (may coincide with an edge)."""
         if x_value < box.minX or x_value > box.maxX:
             raise ValueError("split x is out of range for bounding box")
-        left = BoundingBox._build(box.minX, box.minY, x_value, box.maxY, box.is_normalized)
-        right = BoundingBox._build(x_value, box.minY, box.maxX, box.maxY, box.is_normalized)
+        left = BoundingBox._build(
+            box.minX, box.minY, x_value, box.maxY, box.is_normalized
+        )
+        right = BoundingBox._build(
+            x_value, box.minY, box.maxX, box.maxY, box.is_normalized
+        )
         return left, right
 
     def split_x_offset(self, x_offset: float) -> Tuple["BoundingBox", "BoundingBox"]:
@@ -119,7 +129,9 @@ class BoundingBox:
         x_abs = self.minX + x_offset
         return self._split_at_x(self, x_abs)
 
-    def split_x_absolute(self, x_absolute: float) -> Tuple["BoundingBox", "BoundingBox"]:
+    def split_x_absolute(
+        self, x_absolute: float
+    ) -> Tuple["BoundingBox", "BoundingBox"]:
         """Split the bounding box into two boxes at absolute x coordinate.
 
         Arithmetic-only implementation (no Shapely).
@@ -231,7 +243,9 @@ class BoundingBox:
             raise ValueError(
                 "Bounding box coordinates are not in correct order. x_min < x_max and y_min < y_max"
             )
-        return cls._build(points[0][0], points[0][1], points[1][0], points[1][1], is_normalized)
+        return cls._build(
+            points[0][0], points[0][1], points[1][0], points[1][1], is_normalized
+        )
 
     @classmethod
     def from_ltrb(
@@ -338,6 +352,7 @@ class BoundingBox:
                     "Bounding boxes must share coordinate system (both normalized or both pixel)"
                 )
             return fn(self, other, *args, **kwargs)  # type: ignore
+
         return wrapper
 
     @_require_same_coords
@@ -352,7 +367,9 @@ class BoundingBox:
         minx, miny, maxx, maxy = inter.bounds  # type: ignore
         if minx == maxx or miny == maxy:
             return None
-        is_norm = self.is_normalized and all(0 <= c <= 1 for c in (minx, miny, maxx, maxy))
+        is_norm = self.is_normalized and all(
+            0 <= c <= 1 for c in (minx, miny, maxx, maxy)
+        )
         return BoundingBox.from_ltrb(minx, miny, maxx, maxy, is_normalized=is_norm)
 
     @_require_same_coords  # type: ignore
@@ -473,7 +490,9 @@ class BoundingBox:
         padding_px: int = 0,
         expand_beyond_original: bool = False,
     ) -> "BoundingBox":
-        roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized = self._extract_roi(image)
+        roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized = self._extract_roi(
+            image
+        )
         orig_x1, orig_y1, orig_x2, orig_y2 = x1, y1, x2, y2
         thresh, _ = self._threshold_inverted(roi)
         tight = self._tight_bbox_from_thresh(thresh)
@@ -500,7 +519,9 @@ class BoundingBox:
             y_min = max(orig_y1, max(0.0, y_min - padding_px))
             x_max = min(orig_x2, min(float(img_w), x_max + padding_px))
             y_max = min(orig_y2, min(float(img_h), y_max + padding_px))
-        return self._finalize_pixel_bbox(x_min, y_min, x_max, y_max, img_w, img_h, original_is_normalized)
+        return self._finalize_pixel_bbox(
+            x_min, y_min, x_max, y_max, img_w, img_h, original_is_normalized
+        )
 
     def _vertical_crop(self, image: ndarray, keep: str) -> "BoundingBox":
         """Shared implementation for crop_top (keep='bottom') and crop_bottom (keep='top')."""
@@ -639,10 +660,18 @@ class BoundingBox:
         """
         if dx == dy:
             if dx == 0:
-                return BoundingBox.from_ltrb(self.minX, self.minY, self.maxX, self.maxY, is_normalized=self.is_normalized)
+                return BoundingBox.from_ltrb(
+                    self.minX,
+                    self.minY,
+                    self.maxX,
+                    self.maxY,
+                    is_normalized=self.is_normalized,
+                )
             g = self.as_shapely().buffer(dx, join_style=2)  # type: ignore
             minx, miny, maxx, maxy = g.bounds  # type: ignore
-            return BoundingBox.from_ltrb(minx, miny, maxx, maxy, is_normalized=self.is_normalized)
+            return BoundingBox.from_ltrb(
+                minx, miny, maxx, maxy, is_normalized=self.is_normalized
+            )
         cx = (self.minX + self.maxX) / 2.0
         cy = (self.minY + self.maxY) / 2.0
         half_w = (self.width / 2.0) + dx
@@ -653,10 +682,14 @@ class BoundingBox:
         maxx = cx + half_w
         miny = cy - half_h
         maxy = cy + half_h
-        return BoundingBox.from_ltrb(minx, miny, maxx, maxy, is_normalized=self.is_normalized)
+        return BoundingBox.from_ltrb(
+            minx, miny, maxx, maxy, is_normalized=self.is_normalized
+        )
 
     @staticmethod
-    def _build(left: float, top: float, right: float, bottom: float, is_normalized: bool | None):
+    def _build(
+        left: float, top: float, right: float, bottom: float, is_normalized: bool | None
+    ):
         """Internal helper to construct a BoundingBox with shared validation & normalization inference.
 
         Mirrors the previous logic in individual factory constructors so behavior remains unchanged.
@@ -696,8 +729,11 @@ class BoundingBox:
 
     def to_json(self) -> str:
         import json
+
         return json.dumps(self.to_dict())
+
     @classmethod
     def from_json(cls, s: str) -> "BoundingBox":
         import json
+
         return cls.from_dict(json.loads(s))

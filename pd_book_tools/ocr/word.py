@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from copy import deepcopy
 from logging import getLogger
 from typing import Dict, Optional
 
@@ -72,16 +73,24 @@ class Word:
         return False
 
     def scale(self, width, height):
+        """Return a deep-copied Word with pixel-space bounding box.
+
+        Behavior:
+            * If the current bounding box is already pixel-space (non-normalized),
+                returns a deep copy (no coordinate change) and logs an info message.
+            * If normalized, scales to pixel coordinates (width/height) and returns
+                a deep copy whose bounding box is the scaled (pixel) one while all
+                other metadata is duplicated.
         """
-        Return new word with scaled bounding box
-        to absolute pixel coordinates
-        """
-        return Word(
-            text=self.text,
-            bounding_box=self.bounding_box.scale(width, height),
-            ocr_confidence=self.ocr_confidence,
-            word_labels=self.word_labels,
-        )
+        if not self.bounding_box.is_normalized:
+            logger.info(
+                "Word.scale() called on pixel-space bounding box; returning unchanged deep copy"
+            )
+            return Word.from_dict(deepcopy(self.to_dict()))
+        scaled_bbox = self.bounding_box.scale(width, height)
+        data = deepcopy(self.to_dict())
+        data["bounding_box"] = scaled_bbox.to_dict()
+        return Word.from_dict(data)
 
     def fuzz_score_against(self, ground_truth_text):
         """Scores a string as "matching" against a ground truth string
@@ -145,6 +154,14 @@ class Word:
         logger.debug(
             f"Splitting word '{self.text}' at bbox_split_offset {bbox_split_offset} and character_split_index {character_split_index}"
         )
+        # Validation: if ground truth bbox exists ensure same coordinate category
+        if self.ground_truth_bounding_box and (
+            self.ground_truth_bounding_box.is_normalized
+            != self.bounding_box.is_normalized
+        ):
+            raise ValueError(
+                "Cannot split Word: bounding_box and ground_truth_bounding_box use different coordinate systems"
+            )
         if bbox_split_offset < 0 or character_split_index < 0:
             raise ValueError(
                 "bbox_split_index and character_split_index must be non-negative"
@@ -208,6 +225,29 @@ class Word:
         if not isinstance(word_to_merge, Word):
             raise TypeError("word_to_merge must be an instance of Word")
 
+        # Coordinate system consistency checks
+        if self.bounding_box.is_normalized != word_to_merge.bounding_box.is_normalized:
+            raise ValueError(
+                "Cannot merge Words: bounding boxes use different coordinate systems (pixel vs normalized)"
+            )
+        if self.ground_truth_bounding_box and word_to_merge.ground_truth_bounding_box:
+            if (
+                self.ground_truth_bounding_box.is_normalized
+                != word_to_merge.ground_truth_bounding_box.is_normalized
+            ):
+                raise ValueError(
+                    "Cannot merge Words: ground truth bounding boxes use different coordinate systems"
+                )
+        # Also ensure if only one word has ground truth bbox it matches its own main bbox category
+        for w in (self, word_to_merge):
+            if w.ground_truth_bounding_box and (
+                w.ground_truth_bounding_box.is_normalized
+                != w.bounding_box.is_normalized
+            ):
+                raise ValueError(
+                    "Cannot merge Words: a word has mismatched coordinate systems between its bounding box and ground truth bounding box"
+                )
+
         word_order_left_to_right = True
         if self.bounding_box.top_left.x > word_to_merge.bounding_box.top_left.x:
             word_order_left_to_right = False
@@ -237,14 +277,10 @@ class Word:
             self.ocr_confidence = self.ocr_confidence
         else:
             self.ocr_confidence = None
-
+        # Merge labels & ground truth keys
         self.word_labels.extend(word_to_merge.word_labels)
-
         self.ground_truth_match_keys.update(word_to_merge.ground_truth_match_keys)
-        self.ground_truth_match_keys.update(self.ground_truth_match_keys)
-        self.word_labels.extend(word_to_merge.word_labels)
-        self.word_labels = list(set(self.word_labels))
-        # Remove duplicates
+        # Deduplicate labels while preserving first occurrence order
         self.word_labels = list(dict.fromkeys(self.word_labels))
 
     def crop_bottom(self, img_ndarray):
