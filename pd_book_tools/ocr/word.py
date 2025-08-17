@@ -72,6 +72,18 @@ class Word:
             return self.text == self.ground_truth_text
         return False
 
+    @property
+    def ground_truth_text_only_ocr(self) -> str:
+        """Ground truth text limited to words that actually have OCR text.
+
+        For alignment tasks we sometimes need the subset of ground truth tokens
+        that correspond to OCR-emitted tokens (ignoring inserted GT-only tokens).
+        A Word with empty OCR "text" is treated as non-existent for this view.
+        """
+        if not self.text:
+            return ""
+        return self.ground_truth_text or ""
+
     def scale(self, width, height):
         """Return a deep-copied Word with pixel-space bounding box.
 

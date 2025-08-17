@@ -199,8 +199,6 @@ class Block:
                 self.remove_item(line)
             else:
                 for block in self._items:
-                    if isinstance(block, Word):
-                        raise TypeError("Block must be of type Block")
                     block.remove_line_if_exists(line)
             logger.debug(f"Line {line.text[0:10]}... removed from block")
         else:
@@ -290,11 +288,17 @@ class Block:
         This automatically adds additional CRs between blocks/paragraphs.
         """
         if self.child_type == BlockChildType.WORDS:
-            return " ".join(item.ground_truth_text_only_ocr for item in self.items)
+            return " ".join(
+                s for s in (item.ground_truth_text_only_ocr for item in self.items) if s
+            )
         elif self.block_category == BlockCategory.PARAGRAPH:
-            return "\n".join(item.ground_truth_text_only_ocr for item in self.items)
+            return "\n".join(
+                s for s in (item.ground_truth_text_only_ocr for item in self.items) if s
+            )
         else:
-            return "\n\n".join(item.ground_truth_text_only_ocr for item in self.items)
+            return "\n\n".join(
+                s for s in (item.ground_truth_text_only_ocr for item in self.items) if s
+            )
 
     @property
     def ground_truth_exact_match(self) -> bool:
