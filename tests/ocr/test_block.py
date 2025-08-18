@@ -243,6 +243,24 @@ def test_block_items_sorted_and_copy(sample_block1, sample_block2):
     assert outer.items[1] is b1
 
 
+def test_block_items_uniform_coordinate_system_setter():
+    # Mixed normalized / pixel should raise
+    w_norm = Word("n", BoundingBox.from_ltrb(0.1,0.1,0.2,0.2, is_normalized=True), 0.5)
+    w_px = Word("p", BoundingBox.from_ltrb(10,10,20,20, is_normalized=False), 0.6)
+    with pytest.raises(ValueError):
+        Block([w_norm, w_px], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+
+
+def test_block_items_uniform_coordinate_system_add_item():
+    # Start with normalized then attempt to add pixel word
+    w_norm1 = Word("a", BoundingBox.from_ltrb(0.1,0.1,0.2,0.2, is_normalized=True), 0.5)
+    w_norm2 = Word("b", BoundingBox.from_ltrb(0.2,0.1,0.3,0.2, is_normalized=True), 0.5)
+    blk = Block([w_norm1, w_norm2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    w_px = Word("c", BoundingBox.from_ltrb(10,10,20,20, is_normalized=False), 0.5)
+    with pytest.raises(ValueError):
+        blk.add_item(w_px)
+
+
 def test_block_remove_item_success_and_failure(sample_block1):
     w = sample_block1.items[0]
     original_bbox = sample_block1.bounding_box

@@ -1,8 +1,7 @@
 import itertools
-from dataclasses import dataclass, field
 from enum import Enum
 from logging import getLogger
-from typing import Collection, List, Optional, Tuple, Union
+from typing import Collection, List, Optional, Tuple
 
 from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
@@ -25,7 +24,6 @@ class BlockCategory(Enum):
     LINE = "LINE"
 
 
-@dataclass
 class Block:
     """
     Represents a block of text as detected and split by OCR.
@@ -37,29 +35,10 @@ class Block:
     Some may have blocks with no words at all.
     """
 
-    _items: List[Union["Word", "Block"]]
-    bounding_box: Optional[BoundingBox] = None
-    child_type: Optional[BlockChildType] = BlockChildType.BLOCKS
-    block_category: Optional[BlockCategory] = BlockCategory.BLOCK
-    block_labels: Optional[list[str]] = None
-    additional_block_attributes: Optional[dict] = None
-    base_ground_truth_text: Optional[str] = None
-    """
-    The "base" ground truth text of the block, not having been matched up to individual words or lines.
-    """
-
-    # TODO: Override page sort order for multi-column page layouts
-    override_page_sort_order: Optional[int] = field(default=None)
-
-    unmatched_ground_truth_words: Optional[List[Tuple[int, str]]] = field(
-        default_factory=list
-    )
-    """
-    For lines of text only, this is a list of tuples of (index, word) for words that are inserted
-    in the line and not matched to ground truth.
-    The index is the location right before the unmatched word is inserted into the line.
-    This is used for data labeling, model training, and evaluation purposes.
-    """
+    # NOTE: Previously a dataclass; converted to manual class to avoid misleading auto-generated
+    # equality semantics (identity comparisons are intended) and because a custom __init__ already
+    # existed. Behavior retained.
+    # _items: internal storage list; use items property for external access (sorted copy)
 
     def __init__(
         self,
@@ -73,34 +52,44 @@ class Block:
         additional_block_attributes: Optional[dict] = None,
         base_ground_truth_text: Optional[str] = None,
     ):
-        self.child_type = child_type
-        self.block_category = block_category
-        self.block_labels = block_labels
-        self.items = items  # Use the setter for validation or processing
-        if bounding_box:
-            self.bounding_box = bounding_box
-        elif self.items:
-            self.bounding_box = BoundingBox.union(
-                [item.bounding_box for item in self.items]
-            )
-        else:
-            self.bounding_box = None
-        self.override_page_sort_order = override_page_sort_order
-
-        if unmatched_ground_truth_words:
-            self.unmatched_ground_truth_words = unmatched_ground_truth_words
-        else:
-            self.unmatched_ground_truth_words = []
+        self.child_type: Optional[BlockChildType] = child_type
+        self.block_category: Optional[BlockCategory] = block_category
+        self.block_labels: Optional[list[str]] = block_labels
+        self.override_page_sort_order: Optional[int] = override_page_sort_order
+        self.base_ground_truth_text: Optional[str] = base_ground_truth_text
+        # containers
+        self.additional_block_attributes: dict = (
+            additional_block_attributes if additional_block_attributes else {}
+        )
+        self.unmatched_ground_truth_words: List[Tuple[int, str]] = (
+            list(unmatched_ground_truth_words)
+            if unmatched_ground_truth_words is not None
+            else []
+        )
         logger.debug(
             "unmatched_ground_truth_words: %s", str(self.unmatched_ground_truth_words)
         )
+        # Initialize bounding box attribute so it's always present (may be None for empty blocks)
+        self.bounding_box: Optional[BoundingBox] = None
+        # Will set self._items and compute bounding box
+        self.items = items  # type: ignore[assignment]
+        # If explicit bbox passed, override computed one
+        if bounding_box is not None:
+            self.bounding_box = bounding_box
 
-        if additional_block_attributes:
-            self.additional_block_attributes = additional_block_attributes
-        else:
-            self.additional_block_attributes = {}
-
-        self.base_ground_truth_text = base_ground_truth_text
+    def __repr__(self) -> str:  # pragma: no cover (representation convenience)
+        cls = self.__class__.__name__
+        n_items = len(getattr(self, "_items", []))
+        bbox = (
+            None
+            if getattr(self, "bounding_box", None) is None
+            else f"{self.bounding_box.to_ltrb()}"
+        )
+        return (
+            f"{cls}(items={n_items}, child_type={self.child_type}, "
+            f"block_category={self.block_category}, bbox={bbox}, "
+            f"labels={self.block_labels}, override_sort={self.override_page_sort_order})"
+        )
 
     def _sort_items(self):
         # TODO: Implement a more robust sorting mechanism.
@@ -148,7 +137,8 @@ class Block:
 
     def recompute_bounding_box(self):
         """Recompute the bounding box of the block based on its items"""
-        if not self.items:
+        if not self._items:
+            self.bounding_box = None
             return
         self.bounding_box = BoundingBox.union(
             [item.bounding_box for item in self.items]
@@ -159,6 +149,17 @@ class Block:
         if self.child_type == BlockChildType.WORDS:
             if not isinstance(item, Word):
                 raise TypeError("Item must be of type Word")
+            # Enforce uniform coordinate system among word bounding boxes
+            if self._items:
+                first_bbox = self._items[0].bounding_box
+                if (
+                    first_bbox is not None
+                    and item.bounding_box is not None
+                    and first_bbox.is_normalized != item.bounding_box.is_normalized
+                ):
+                    raise ValueError(
+                        "All word bounding boxes in a WORDS block must share the same coordinate system (normalized or pixel)."
+                    )
         else:
             if not isinstance(item, Block):
                 raise TypeError("Item must be of type Block")
@@ -230,6 +231,15 @@ class Block:
                 )
             if not isinstance(item, (Word, Block)):
                 raise TypeError("Each item in items must be of type Word or Block")
+        # Enforce coordinate system uniformity for WORDS blocks
+        if value and self.child_type == BlockChildType.WORDS:
+            is_norm_set = {
+                getattr(it.bounding_box, "is_normalized", False) for it in value if it.bounding_box is not None
+            }
+            if len(is_norm_set) > 1:
+                raise ValueError(
+                    "All word bounding boxes in a WORDS block must share the same coordinate system (normalized or pixel)."
+                )
         self._items = list(value)
         self._sort_items()
         self.recompute_bounding_box()
