@@ -89,13 +89,40 @@ class PGDPResults:
         s = text
 
         elision_remainders = [
-            "Tis", "tis", "Twas", "twas", "Twere", "twere", "Twill", "twill",
-            "Twould", "twould", "Cause", "cause", "Round", "round", "Mid", "mid",
-            "Mongst", "mongst", "Em", "em", "Ere", "ere", "En", "en", "N", "n", "Til", "til",
+            "Tis",
+            "tis",
+            "Twas",
+            "twas",
+            "Twere",
+            "twere",
+            "Twill",
+            "twill",
+            "Twould",
+            "twould",
+            "Cause",
+            "cause",
+            "Round",
+            "round",
+            "Mid",
+            "mid",
+            "Mongst",
+            "mongst",
+            "Em",
+            "em",
+            "Ere",
+            "ere",
+            "En",
+            "en",
+            "N",
+            "n",
+            "Til",
+            "til",
         ]
 
         # 1. Leading elisions
-        elisions_pattern = r"(?<=^|\s|[\"“])'(" + "|".join(elision_remainders) + r")(?=\b)"
+        elisions_pattern = (
+            r"(?<=^|\s|[\"“])'(" + "|".join(elision_remainders) + r")(?=\b)"
+        )
         s = regex.sub(elisions_pattern, lambda m: "’" + m.group(1), s)
 
         # 2. Decade / year abbreviations
@@ -122,7 +149,9 @@ class PGDPResults:
         s = regex.sub(r"(?<=\w)'(?=\b)", "’", s)  # fallback
 
         # 8. Correct mis-assigned openings before elision remainders
-        s = regex.sub(r"‘(" + "|".join(elision_remainders) + r")\b", lambda m: "’" + m.group(1), s)
+        s = regex.sub(
+            r"‘(" + "|".join(elision_remainders) + r")\b", lambda m: "’" + m.group(1), s
+        )
 
         # 9. Remaining leading straight single quotes before lowercase word => opening curly
         s = regex.sub(r"(?<=^|\s)'(?=[a-z])", "‘", s)

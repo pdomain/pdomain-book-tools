@@ -234,7 +234,9 @@ class Block:
         # Enforce coordinate system uniformity for WORDS blocks
         if value and self.child_type == BlockChildType.WORDS:
             is_norm_set = {
-                getattr(it.bounding_box, "is_normalized", False) for it in value if it.bounding_box is not None
+                getattr(it.bounding_box, "is_normalized", False)
+                for it in value
+                if it.bounding_box is not None
             }
             if len(is_norm_set) > 1:
                 raise ValueError(

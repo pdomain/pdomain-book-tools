@@ -72,7 +72,7 @@ def test_pgdp_page_process_integration(tmp_path):
         "[*Note*]\n"
         "[Blank Page]\n"
         "*'Tis -- a test----*\n"
-    "Hyphen wrap-*Word\n"
+        "Hyphen wrap-*Word\n"
         "Footnote[23]\n"
         "[=A][=a][:E][.C][`U]['y][)E][c,]-*"
     )
@@ -96,7 +96,9 @@ def test_pgdp_page_process_integration(tmp_path):
     # Curly opening apostrophe
     assert "’Tis" in page.processed_page_text
     assert page.processed_lines
-    assert all(isinstance(t[0], int) and isinstance(t[1], str) for t in page.processed_lines)
+    assert all(
+        isinstance(t[0], int) and isinstance(t[1], str) for t in page.processed_lines
+    )
     assert page.processed_words
     assert all(len(t) == 3 for t in page.processed_words)
 
@@ -163,6 +165,7 @@ def test_pgdp_export_from_json_file_success_str_path(tmp_path):
 
 # --- Additional quotation handling tests (may initially fail until logic refined) ---
 
+
 def test_convert_quotes_basic_double():
     src = '"Hello"'
     out = PGDPResults.convert_straight_to_curly_quotes(src)
@@ -170,7 +173,7 @@ def test_convert_quotes_basic_double():
 
 
 def test_convert_quotes_nested():
-    src = '"He said, \'Go.\'"'
+    src = "\"He said, 'Go.'\""
     out = PGDPResults.convert_straight_to_curly_quotes(src)
     assert out == "“He said, ‘Go.’”"
 
@@ -200,7 +203,9 @@ def test_convert_quotes_leading_elision_variants():
     out_list = [PGDPResults.convert_straight_to_curly_quotes(v) for v in variants]
     # Each should start with apostrophe right single quote
     for original, converted in zip(variants, out_list):
-        assert converted[0] == "’", f"Expected apostrophe for {original}: got {converted[0]!r}"
+        assert converted[0] == "’", (
+            f"Expected apostrophe for {original}: got {converted[0]!r}"
+        )
 
 
 def test_convert_quotes_decade_abbreviation():
@@ -281,16 +286,25 @@ def test_convert_quotes_cause_in_quoted_phrase():
         for ch in ["Ā", "ā", "Ë", "Ċ", "Ù", "ý", "ç"]:
             assert ch in txt
         # Elisions apostrophes are right single quotes
-        for word in ["’Cause", "’twas", "’Twas", "’tis", "’mid", "’n", "’til", "’Twill", "’Twould"]:
+        for word in [
+            "’Cause",
+            "’twas",
+            "’Twas",
+            "’tis",
+            "’mid",
+            "’n",
+            "’til",
+            "’Twill",
+            "’Twould",
+        ]:
             assert word in txt
         # Possessive & contraction
         assert "James’ cap" in txt and "doin’ things" in txt
         # Double quotes curly
-        assert '“Go' in txt and 'Stay”' in txt
+        assert "“Go" in txt and "Stay”" in txt
         # Processed structures non-empty and size reasonable
         assert len(page.processed_lines) >= 6
         assert len(page.processed_words) > 30
-
 
     def test_pgdp_large_mixed_order_case2(tmp_path):
         """Similar content, but reorder operations to stress precedence."""
@@ -314,7 +328,16 @@ def test_convert_quotes_cause_in_quoted_phrase():
         # No stray raw hyphen groups
         assert "--" not in txt
         # Apostrophes for elisions
-        for w in ["’Em", "’Round", "’Mongst", "’Ere", "’En", "’Cause", "’Twas", "’twill"]:
+        for w in [
+            "’Em",
+            "’Round",
+            "’Mongst",
+            "’Ere",
+            "’En",
+            "’Cause",
+            "’Twas",
+            "’twill",
+        ]:
             assert w in txt
         # Footnotes separated
         for n in ["1", "2", "345"]:
@@ -331,7 +354,6 @@ def test_convert_quotes_cause_in_quoted_phrase():
         # Years
         assert "’05" in txt and "’90s" in txt
         assert len(page.processed_words) > 35
-
 
     def test_pgdp_large_mixed_order_case3(tmp_path):
         """Edge density: multiple adjacent markers and mixed punctuation clusters."""
@@ -366,7 +388,8 @@ def test_convert_quotes_cause_in_quoted_phrase():
         for ch in ["Ā", "ā", "Ë", "Ċ", "Ù", "ý", "ç"]:
             assert ch in txt
         # Quotes converted (no stray straight quotes except apostrophes replaced)
-        assert "'" not in txt.replace("’", "")  # all remaining singles are curly apostrophes
+        assert "'" not in txt.replace(
+            "’", ""
+        )  # all remaining singles are curly apostrophes
         # Size
         assert len(page.processed_words) > 40
-

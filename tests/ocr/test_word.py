@@ -207,7 +207,9 @@ def test_scale_pixel_deep_copy_labels(scale_pixel_copy_case):
 
 def test_fuzz_score_against_identical_single_assert():
     assert (
-        Word(text="test", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)).fuzz_score_against("test")
+        Word(
+            text="test", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)
+        ).fuzz_score_against("test")
     ) == 100
 
 
@@ -377,22 +379,34 @@ def test_merge_left_to_right_bbox(merge_left_to_right_case):
 
 
 def test_merge_confidence_both_none():
-    a = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None)
-    b = Word(text="b", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None)
+    a = Word(
+        text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
+    )
+    b = Word(
+        text="b", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None
+    )
     a.merge(b)
     assert a.ocr_confidence is None
 
 
 def test_merge_confidence_self_none_other_value():
-    c = Word(text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None)
-    d = Word(text="d", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=0.4)
+    c = Word(
+        text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
+    )
+    d = Word(
+        text="d", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=0.4
+    )
     c.merge(d)
     assert c.ocr_confidence == pytest.approx(0.4)
 
 
 def test_merge_confidence_other_none():
-    e = Word(text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7)
-    f = Word(text="f", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None)
+    e = Word(
+        text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7
+    )
+    f = Word(
+        text="f", bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10), ocr_confidence=None
+    )
     e.merge(f)
     assert e.ocr_confidence == pytest.approx(0.7)
 
@@ -458,7 +472,12 @@ def test_crop_top_none_image_error():
 
 
 def test_ground_truth_exact_match_no_gt_single_assert():
-    assert Word(text="abc", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)).ground_truth_exact_match is False
+    assert (
+        Word(
+            text="abc", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)
+        ).ground_truth_exact_match
+        is False
+    )
 
 
 @pytest.fixture
@@ -537,7 +556,9 @@ def test_scale_normalized_bbox_category(scale_normalized_case):
 
 
 def test_scale_normalized_gt_bbox(scale_normalized_case):
-    assert scale_normalized_case.ground_truth_bounding_box.to_ltrb() == pytest.approx((0.15, 0.25, 0.35, 0.45))
+    assert scale_normalized_case.ground_truth_bounding_box.to_ltrb() == pytest.approx(
+        (0.15, 0.25, 0.35, 0.45)
+    )
 
 
 def test_scale_normalized_gt_bbox_category(scale_normalized_case):
@@ -603,8 +624,20 @@ def test_merge_word_ground_truth_vs_main_mismatch_raises():
 @pytest.fixture
 def merge_with_gt_case():
     """Merge two words each with aligned main + GT bounding boxes."""
-    w1 = Word(text="A", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), ground_truth_text="A", ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), word_labels=["l1"])
-    w2 = Word(text="B", bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), ground_truth_text="B", ground_truth_bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), word_labels=["l2"])
+    w1 = Word(
+        text="A",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
+        ground_truth_text="A",
+        ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
+        word_labels=["l1"],
+    )
+    w2 = Word(
+        text="B",
+        bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
+        ground_truth_text="B",
+        ground_truth_bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
+        word_labels=["l2"],
+    )
     w1.merge(w2)
     return w1
 
@@ -641,7 +674,12 @@ def test_split_ground_truth_coordinate_mismatch_raises():
 @pytest.fixture
 def split_with_gt_case():
     """Split where main & ground-truth bboxes share coordinate category (pixel)."""
-    w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ground_truth_text="hello", ground_truth_bounding_box=BoundingBox.from_ltrb(2, 2, 8, 8))
+    w = Word(
+        text="hello",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
+        ground_truth_text="hello",
+        ground_truth_bounding_box=BoundingBox.from_ltrb(2, 2, 8, 8),
+    )
     return w.split(bbox_split_offset=4, character_split_index=2), w
 
 
@@ -729,8 +767,16 @@ def test_split_full_width_right_width(split_full_width_case):
 @pytest.fixture
 def merge_keys_case():
     """Merge combining distinct ground-truth match key dictionaries."""
-    a = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), ground_truth_match_keys={"k1": True})
-    b = Word(text="b", bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), ground_truth_match_keys={"k2": True})
+    a = Word(
+        text="a",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
+        ground_truth_match_keys={"k1": True},
+    )
+    b = Word(
+        text="b",
+        bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
+        ground_truth_match_keys={"k2": True},
+    )
     a.merge(b)
     return a
 
@@ -746,7 +792,11 @@ def test_merge_inherits_ground_truth_keys_k2(merge_keys_case):
 @pytest.fixture
 def merge_one_gt_case():
     """Merge where only first word has ground-truth bbox/Text."""
-    a = Word(text="hi", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5), ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5))
+    a = Word(
+        text="hi",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
+        ground_truth_bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
+    )
     b = Word(text="there", bounding_box=BoundingBox.from_ltrb(5, 0, 12, 5))
     a.merge(b)
     return a
@@ -779,7 +829,9 @@ def test_merge_other_word_ground_truth_vs_main_mismatch_raises():
     bad = Word(
         text="bad",
         bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),  # pixel
-        ground_truth_bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2),  # normalized mismatch
+        ground_truth_bounding_box=BoundingBox.from_ltrb(
+            0.1, 0.1, 0.2, 0.2
+        ),  # normalized mismatch
     )
     with pytest.raises(ValueError):
         good.merge(bad)
@@ -787,14 +839,20 @@ def test_merge_other_word_ground_truth_vs_main_mismatch_raises():
 
 def test_merge_only_other_has_ground_truth_left_to_right_single_assert():
     left = Word(text="ab", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5))
-    right = Word(text="cd", bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5), ground_truth_text="CD")
+    right = Word(
+        text="cd",
+        bounding_box=BoundingBox.from_ltrb(5, 0, 10, 5),
+        ground_truth_text="CD",
+    )
     left.merge(right)
     assert (left.text, left.ground_truth_text) == ("abcd", "CD")
 
 
 def test_merge_only_other_has_ground_truth_reversed_order_single_assert():
     right = Word(text="XY", bounding_box=BoundingBox.from_ltrb(10, 0, 15, 5))
-    left = Word(text="Z", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 5), ground_truth_text="Z")
+    left = Word(
+        text="Z", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 5), ground_truth_text="Z"
+    )
     right.merge(left)
     assert (right.text, right.ground_truth_text) == ("ZXY", "Z")
 
@@ -897,9 +955,11 @@ def test_crop_top_missing_bbox_error():
 def crop_bottom_warn_case(caplog):
     """Force crop_bottom internal call to return None to exercise warning path."""
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
+
     class DummyBBox:
         def crop_bottom(self, image):  # type: ignore[no-untyped-def]
             return None
+
     w.bounding_box = DummyBBox()  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_bottom(np.zeros((4, 4), dtype=np.uint8))
@@ -920,9 +980,11 @@ def test_crop_bottom_warns_sets_none(crop_bottom_warn_case):
 def crop_top_warn_case(caplog):
     """Force crop_top internal call to return None to exercise warning path."""
     w = Word(text="y", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
+
     class DummyBBox:
         def crop_top(self, image):  # type: ignore[no-untyped-def]
             return None
+
     w.bounding_box = DummyBBox()  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_top(np.zeros((4, 4), dtype=np.uint8))

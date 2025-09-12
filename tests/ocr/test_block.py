@@ -225,7 +225,9 @@ def test_block_items_sorted_and_copy(sample_block1, sample_block2):
     # Construct unsorted WORDS block (x order reversed)
     w1 = Word("a", BoundingBox.from_ltrb(10, 0, 20, 10), 0.5)
     w2 = Word("b", BoundingBox.from_ltrb(0, 0, 5, 10), 0.6)
-    line = Block([w1, w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    line = Block(
+        [w1, w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     assert [w.text for w in line.items] == ["b", "a"]  # sorted
     # Returned list is a copy
     items_copy = line.items
@@ -238,25 +240,43 @@ def test_block_items_sorted_and_copy(sample_block1, sample_block2):
     # shift coordinates to force ordering differences
     b1.bounding_box = BoundingBox.from_ltrb(0, 50, 10, 60)
     b2.bounding_box = BoundingBox.from_ltrb(0, 10, 10, 20)
-    outer = Block([b1, b2], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    outer = Block(
+        [b1, b2],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     assert outer.items[0] is b2
     assert outer.items[1] is b1
 
 
 def test_block_items_uniform_coordinate_system_setter():
     # Mixed normalized / pixel should raise
-    w_norm = Word("n", BoundingBox.from_ltrb(0.1,0.1,0.2,0.2, is_normalized=True), 0.5)
-    w_px = Word("p", BoundingBox.from_ltrb(10,10,20,20, is_normalized=False), 0.6)
+    w_norm = Word(
+        "n", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True), 0.5
+    )
+    w_px = Word("p", BoundingBox.from_ltrb(10, 10, 20, 20, is_normalized=False), 0.6)
     with pytest.raises(ValueError):
-        Block([w_norm, w_px], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+        Block(
+            [w_norm, w_px],
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
 
 
 def test_block_items_uniform_coordinate_system_add_item():
     # Start with normalized then attempt to add pixel word
-    w_norm1 = Word("a", BoundingBox.from_ltrb(0.1,0.1,0.2,0.2, is_normalized=True), 0.5)
-    w_norm2 = Word("b", BoundingBox.from_ltrb(0.2,0.1,0.3,0.2, is_normalized=True), 0.5)
-    blk = Block([w_norm1, w_norm2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    w_px = Word("c", BoundingBox.from_ltrb(10,10,20,20, is_normalized=False), 0.5)
+    w_norm1 = Word(
+        "a", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True), 0.5
+    )
+    w_norm2 = Word(
+        "b", BoundingBox.from_ltrb(0.2, 0.1, 0.3, 0.2, is_normalized=True), 0.5
+    )
+    blk = Block(
+        [w_norm1, w_norm2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    w_px = Word("c", BoundingBox.from_ltrb(10, 10, 20, 20, is_normalized=False), 0.5)
     with pytest.raises(ValueError):
         blk.add_item(w_px)
 
@@ -272,17 +292,25 @@ def test_block_remove_item_success_and_failure(sample_block1):
         sample_block1.remove_item(w)
 
 
-def test_remove_line_if_exists_direct_and_nested(sample_paragraph_block1, sample_block1):
+def test_remove_line_if_exists_direct_and_nested(
+    sample_paragraph_block1, sample_block1
+):
     # Direct removal
     paragraph = sample_paragraph_block1
     assert sample_block1 in paragraph.items
     paragraph.remove_line_if_exists(sample_block1)
     assert sample_block1 not in paragraph.items
     # Nested removal (add paragraph inside a block)
-    outer = Block([paragraph], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK)
+    outer = Block(
+        [paragraph],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.BLOCK,
+    )
     # Create new line to remove nested
     new_line = Word("x", BoundingBox.from_ltrb(30, 0, 40, 10), 0.9)
-    nested_line_block = Block([new_line], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    nested_line_block = Block(
+        [new_line], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     paragraph.add_item(nested_line_block)
     assert nested_line_block in paragraph.items
     outer.remove_line_if_exists(nested_line_block)
@@ -290,19 +318,26 @@ def test_remove_line_if_exists_direct_and_nested(sample_paragraph_block1, sample
 
 
 def test_remove_line_if_exists_not_found_logs(sample_block1):
-    other_line = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    other_line = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     # Should simply log and not raise
     sample_block1.remove_line_if_exists(other_line)
-
 
     # Removed unreachable TypeError branch test (malformed structure causes earlier AttributeError)
 
 
-def test_block_text_variants(sample_block1, sample_paragraph_block1, sample_two_paragraph_block1):
+def test_block_text_variants(
+    sample_block1, sample_paragraph_block1, sample_two_paragraph_block1
+):
     assert sample_block1.text == "word1 word2"  # WORDS case
     assert sample_paragraph_block1.text.count("\n") == 2  # PARAGRAPH single newlines
-    assert sample_two_paragraph_block1.text.count("\n\n") == 1  # BLOCK double newline between paragraphs
-    empty_line = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    assert (
+        sample_two_paragraph_block1.text.count("\n\n") == 1
+    )  # BLOCK double newline between paragraphs
+    empty_line = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     assert empty_line.text == ""
 
 
@@ -340,7 +375,9 @@ def test_split_word_errors(sample_paragraph_block1):
     with pytest.raises(IndexError):
         line_block.split_word(99, 1, 1)
     # Inject non-Word into WORDS block to trigger TypeError
-    bogus_block = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    bogus_block = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     line_block._items.insert(0, bogus_block)  # bypass setter
     with pytest.raises(TypeError):
         line_block.split_word(0, 1, 1)
@@ -385,17 +422,23 @@ def test_merge_other_labels_none(sample_block1, sample_block2):
 def test_ocr_confidence_scores_and_mean_nested(sample_two_paragraph_block1):
     scores = sample_two_paragraph_block1.ocr_confidence_scores()
     assert len(scores) == 6
-    assert sample_two_paragraph_block1.mean_ocr_confidence() == pytest.approx(sum(scores)/len(scores))
-    empty = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    assert sample_two_paragraph_block1.mean_ocr_confidence() == pytest.approx(
+        sum(scores) / len(scores)
+    )
+    empty = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     assert empty.ocr_confidence_scores() == []
     assert empty.mean_ocr_confidence() == 0.0
 
 
 def test_block_scale_normalized():
     # Build a normalized block
-    w1 = Word("a", BoundingBox.from_ltrb(0.1,0.1,0.2,0.2), 0.5)
-    w2 = Word("b", BoundingBox.from_ltrb(0.2,0.1,0.3,0.2), 0.6)
-    line = Block([w1,w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    w1 = Word("a", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2), 0.5)
+    w2 = Word("b", BoundingBox.from_ltrb(0.2, 0.1, 0.3, 0.2), 0.6)
+    line = Block(
+        [w1, w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     scaled = line.scale(100, 200)
     assert scaled.bounding_box.minX == 10
     assert not scaled.bounding_box.is_normalized
@@ -407,8 +450,10 @@ def test_block_scale_pixels_deepcopy(sample_block1):
     # sample_block1 already pixel space; scaling should raise for bbox.scale call if attempted.
     # The Block.scale method assumes bounding_box.scale is valid; ensure we pass a normalized bbox to avoid exception.
     # Create a normalized wrapper instead.
-    w_norm = Word("n", BoundingBox.from_ltrb(0.0,0.0,0.1,0.1), 0.5)
-    block_norm = Block([w_norm], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    w_norm = Word("n", BoundingBox.from_ltrb(0.0, 0.0, 0.1, 0.1), 0.5)
+    block_norm = Block(
+        [w_norm], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     scaled = block_norm.scale(50, 100)
     assert scaled.items[0].bounding_box.width == 5
     assert scaled.items[0] is not w_norm  # deep copy
@@ -428,7 +473,9 @@ def test_block_serialization_round_trip(sample_paragraph_block1):
 
 
 def test_block_to_dict_empty_additional_attrs():
-    empty = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    empty = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     data = empty.to_dict()
     assert data["bounding_box"] is None
     assert data["unmatched_ground_truth_words"] == []
@@ -444,13 +491,15 @@ def test_block_from_dict_defaults(sample_block1):
 
 
 def test_refine_bounding_boxes_empty():
-    empty = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    empty = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     empty.refine_bounding_boxes(image=None)
     assert empty.bounding_box is None
 
 
 def test_refine_bounding_boxes_words_none_image(monkeypatch):
-    w = Word("a", BoundingBox.from_ltrb(0,0,5,5), 0.5)
+    w = Word("a", BoundingBox.from_ltrb(0, 0, 5, 5), 0.5)
     b = Block([w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
     before = w.bounding_box.to_dict()
     b.refine_bounding_boxes(image=None)
@@ -460,13 +509,20 @@ def test_refine_bounding_boxes_words_none_image(monkeypatch):
 def test_refine_bounding_boxes_nested(monkeypatch):
     # Monkeypatch BoundingBox.refine to shrink box deterministically
     def fake_refine(self, image, padding_px=0, expand_beyond_original=False):
-        return BoundingBox.from_ltrb(self.minX, self.minY, self.maxX-1, self.maxY-1)
+        return BoundingBox.from_ltrb(self.minX, self.minY, self.maxX - 1, self.maxY - 1)
+
     monkeypatch.setattr(BoundingBox, "refine", fake_refine, raising=True)
-    img = np.ones((100,100), dtype=np.uint8)*255
-    w1 = Word("a", BoundingBox.from_ltrb(0,0,10,10), 0.5)
-    w2 = Word("b", BoundingBox.from_ltrb(10,0,20,10), 0.5)
-    line1 = Block([w1,w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block([line1], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    img = np.ones((100, 100), dtype=np.uint8) * 255
+    w1 = Word("a", BoundingBox.from_ltrb(0, 0, 10, 10), 0.5)
+    w2 = Word("b", BoundingBox.from_ltrb(10, 0, 20, 10), 0.5)
+    line1 = Block(
+        [w1, w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        [line1],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     before_union_right = para.bounding_box.maxX
     para.refine_bounding_boxes(img)
     # Each word reduced by 1 pixel on right & bottom; parent union should shrink
@@ -480,12 +536,14 @@ def test_refine_bounding_boxes_not_implemented():
             self.bounding_box = bbox
             # no refine_bounding_box method
 
-    w = Word("a", BoundingBox.from_ltrb(0,0,5,5), 0.5)
-    line = Block([w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    stub = Stub(BoundingBox.from_ltrb(10,0,15,5))
+    w = Word("a", BoundingBox.from_ltrb(0, 0, 5, 5), 0.5)
+    line = Block(
+        [w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    stub = Stub(BoundingBox.from_ltrb(10, 0, 15, 5))
     line._items.append(stub)  # bypass validation intentionally
     with pytest.raises(NotImplementedError):
-        line.refine_bounding_boxes(image=np.ones((10,10), dtype=np.uint8))
+        line.refine_bounding_boxes(image=np.ones((10, 10), dtype=np.uint8))
 
 
 # ---------------- Additional targeted coverage tests -----------------------
@@ -493,31 +551,50 @@ def test_refine_bounding_boxes_not_implemented():
 
 def test_items_setter_non_collection(sample_word1):
     with pytest.raises(TypeError):
-        Block(sample_word1, child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)  # type: ignore[arg-type]
+        Block(
+            sample_word1,
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )  # type: ignore[arg-type]
 
 
 def test_items_setter_missing_bbox_attribute():
     class NoBBox:
         def __init__(self):
             self.text = "x"
+
     with pytest.raises(TypeError):
-        Block([NoBBox()], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+        Block(
+            [NoBBox()],
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
 
 
 def test_items_setter_bbox_wrong_type():
     class BadBBox:
         def __init__(self):
             self.bounding_box = 123  # not a BoundingBox
+
     with pytest.raises(TypeError):
-        Block([BadBBox()], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+        Block(
+            [BadBBox()],
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
 
 
 def test_items_setter_invalid_item_type():
     class HasBBox:
         def __init__(self):
-            self.bounding_box = BoundingBox.from_ltrb(0,0,1,1)
+            self.bounding_box = BoundingBox.from_ltrb(0, 0, 1, 1)
+
     with pytest.raises(TypeError):
-        Block([HasBBox()], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+        Block(
+            [HasBBox()],
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
 
 
 def test_paragraph_ground_truth_text_only_ocr(sample_paragraph_block1):
@@ -587,23 +664,35 @@ def test_block_ctor_unmatched_and_additional_attrs(sample_line1):
 
 def test_add_item_type_errors():
     # WORDS block adding non-Word
-    wblock = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    wblock = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     with pytest.raises(TypeError):
-        wblock.add_item(Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE))  # line 161
+        wblock.add_item(
+            Block(
+                [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+            )
+        )  # line 161
     # BLOCKS block adding non-Block
-    bblock = Block([], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    bblock = Block(
+        [], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH
+    )
     with pytest.raises(TypeError):
-        bblock.add_item(Word("w", BoundingBox.from_ltrb(0,0,1,1), 0.5))  # line 164
+        bblock.add_item(Word("w", BoundingBox.from_ltrb(0, 0, 1, 1), 0.5))  # line 164
 
 
 def test_remove_line_if_exists_not_found_blocks(sample_paragraph_block1):
     # Create a new line block not present
-    new_line = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    new_line = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     sample_paragraph_block1.remove_line_if_exists(new_line)  # should hit line 207 path
 
 
 def test_remove_empty_items_empty_return():
-    empty_blocks_parent = Block([], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK)
+    empty_blocks_parent = Block(
+        [], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK
+    )
     empty_blocks_parent.remove_empty_items()  # lines 211-212
     assert empty_blocks_parent.items == []
 
@@ -611,10 +700,16 @@ def test_remove_empty_items_empty_return():
 def test_remove_empty_items_nested_removal(sample_block1):
     # Build an initially non-empty line so validation passes, then clear items manually
     # Use pixel coordinates (not normalized) to match sample_block1 pixel space
-    temp_word = Word("tmp", BoundingBox.from_ltrb(0,0,1,1, is_normalized=False), 0.1)
-    empty_line = Block([temp_word], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    temp_word = Word("tmp", BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=False), 0.1)
+    empty_line = Block(
+        [temp_word], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     empty_line._items.clear()  # force empty while keeping prior bbox
-    parent = Block([empty_line, sample_block1], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    parent = Block(
+        [empty_line, sample_block1],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     parent.remove_empty_items()  # lines 215-219
     assert empty_line not in parent.items
     assert sample_block1 in parent.items
@@ -631,7 +726,9 @@ def test_ground_truth_text_unmatched_insertion(sample_block1):
     assert gt.split() == ["word1", "X", "word2", "Y"]
 
 
-def test_ground_truth_text_paragraph_and_block(sample_paragraph_block1, sample_two_paragraph_block1):
+def test_ground_truth_text_paragraph_and_block(
+    sample_paragraph_block1, sample_two_paragraph_block1
+):
     # Set ground truth text for nested words
     for blk in [sample_paragraph_block1, sample_two_paragraph_block1]:
         for w in blk.words:
@@ -646,10 +743,13 @@ def test_ground_truth_text_paragraph_and_block(sample_paragraph_block1, sample_t
 
 def test_merge_sets_bbox_when_missing(sample_block1):
     # empty block no bbox merges with populated line -> line 411
-    empty = Block([], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
+    empty = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
     assert empty.bounding_box is None
     empty.merge(sample_block1)
     assert empty.bounding_box == sample_block1.bounding_box
+
 
 # NOTE: Line 203 (TypeError in remove_line_if_exists loop) is practically unreachable due to earlier AttributeError
 # when a Word lacks 'lines' attribute; exercising it would require code modification, so it's excluded intentionally.

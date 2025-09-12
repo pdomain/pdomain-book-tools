@@ -38,14 +38,15 @@ Concise, project-specific guidance for AI coding agents contributing to this rep
 ## 5. Testing & Coverage
 - Tests live under `tests/ocr/` and cover: serialization, coordinate scaling, merge/split invariants, deep copy semantics, mismatch error raising, refinement.
 - New features touching coordinate logic must introduce tests for: success path + coordinate mismatch error.
-- Run tests: `uv run pytest` (coverage auto-configured via `pyproject.toml`).
+- **ALWAYS** run tests using `uv run pytest` (coverage auto-configured via `pyproject.toml`). **NEVER** use direct python/pytest commands - UV manages dependencies and environment properly.
 - Keep public behavior stable; many assertions depend on exact bbox tuples and concatenated text ordering.
 
 ## 6. Dependency & Tooling Workflow
-- Dependency manager: `uv` (see README). Use `uv add <pkg>` for new deps; ensure version constraints remain compatible with Python >=3.10.
+- **MANDATORY**: Use `uv` for ALL dependency and environment management (see README). **ALWAYS** use `uv add <pkg>` for new deps; ensure version constraints remain compatible with Python >=3.10.
 - Build: `uv build` (hatchling backend).
+- **CRITICAL**: All tooling commands MUST be run through UV: `uv run pytest`, `uv run ruff format`, `uv run ruff check`, etc. **NEVER** run tools directly without UV prefix.
 - Lint/format/test quality tools present: `ruff`, `pytest`, `pre-commit`, `pylint`, `isort`. Favor `ruff` for quick lint fixes; keep changes minimal in unrelated lines.
-- Be sure to run `uv run ruff format` after making changes.
+- **ALWAYS** run `uv run ruff format` after making changes.
 - GPU optional: cupy / opencv-cuda; guard GPU-specific code paths if adding runtime checks.
 
 ## 7. Performance & Safety Notes

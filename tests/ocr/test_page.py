@@ -58,8 +58,6 @@ def test_page_from_dict(sample_page):
     assert len(new_page.items) == len(sample_page.items)
 
 
-    
-
 # ============================================================================
 # Ground truth removal (clearing gt text / boxes)
 # ============================================================================
@@ -309,7 +307,11 @@ def test_page_ground_truth_text_and_match():
         child_type=BlockChildType.WORDS,
         block_category=BlockCategory.LINE,
     )
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(width=10, height=10, page_index=0, items=[para])
     assert page.ground_truth_text.strip() == "abc def"
     assert page.ground_truth_exact_match
@@ -332,8 +334,16 @@ def test_page_reorganize_lines_merge():
             ocr_confidence=0.9,
         )
     ]
-    line2 = Block(items=line2_words, child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line1, line2], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line2 = Block(
+        items=line2_words,
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para = Block(
+        items=[line1, line2],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     Page.reorganize_lines(para)
     # Lines should merge into one
     assert len(para.items) == 1
@@ -366,8 +376,16 @@ def test_page_remove_line_if_exists_nested():
     # Build nested structure: page -> block(BLOCK) -> paragraph -> lines
     l1 = _make_line(["a"], 0)
     l2 = _make_line(["b"], 10)
-    para = Block(items=[l1, l2], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
-    outer = Block(items=[para], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK)
+    para = Block(
+        items=[l1, l2],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    outer = Block(
+        items=[para],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.BLOCK,
+    )
     page = Page(width=50, height=50, page_index=0, items=[outer])
     page.remove_line_if_exists(l2)
     assert l2 not in page.lines
@@ -376,8 +394,16 @@ def test_page_remove_line_if_exists_nested():
 def test_page_remove_empty_items():
     # Block with empty child after removing line
     l1 = _make_line(["a"], 0)
-    para = Block(items=[l1], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
-    outer = Block(items=[para], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK)
+    para = Block(
+        items=[l1],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    outer = Block(
+        items=[para],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.BLOCK,
+    )
     page = Page(width=10, height=10, page_index=0, items=[outer])
     para.remove_item(l1)
     page.remove_empty_items()
@@ -393,7 +419,18 @@ def test_page_remove_empty_items():
 
 def test_page_refresh_page_images_and_setters(tmp_path):
     l1 = _make_line(["a"], 0)
-    page = Page(width=20, height=20, page_index=0, items=[Block(items=[l1], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)])
+    page = Page(
+        width=20,
+        height=20,
+        page_index=0,
+        items=[
+            Block(
+                items=[l1],
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.PARAGRAPH,
+            )
+        ],
+    )
     img = np.zeros((20, 20, 3), dtype=np.uint8)
     page.cv2_numpy_page_image = img
     assert page.cv2_numpy_page_image_page_with_bbox is not None
@@ -414,7 +451,18 @@ def test_page_doctr_detection_training_set(tmp_path):
     # Provide ground truth for recognition test later
     for w in l1.items:
         w.ground_truth_text = w.text
-    page = Page(width=20, height=20, page_index=5, items=[Block(items=[l1], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)])
+    page = Page(
+        width=20,
+        height=20,
+        page_index=5,
+        items=[
+            Block(
+                items=[l1],
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.PARAGRAPH,
+            )
+        ],
+    )
     page.cv2_numpy_page_image = np.zeros((20, 20, 3), dtype=np.uint8)
     out = tmp_path / "train"
     page.generate_doctr_detection_training_set(out, prefix="book")
@@ -427,7 +475,18 @@ def test_page_doctr_recognition_training_set_error(tmp_path):
     # Ensure ground_truth_text empty to trigger error
     for w in l1.items:
         w.ground_truth_text = ""
-    page = Page(width=20, height=20, page_index=2, items=[Block(items=[l1], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)])
+    page = Page(
+        width=20,
+        height=20,
+        page_index=2,
+        items=[
+            Block(
+                items=[l1],
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.PARAGRAPH,
+            )
+        ],
+    )
     page.cv2_numpy_page_image = np.zeros((20, 20, 3), dtype=np.uint8)
     out = tmp_path / "train2"
     with pytest.raises(ValueError):
@@ -442,8 +501,16 @@ def test_page_convert_to_training_set(tmp_path):
         ocr_confidence=0.9,
         ground_truth_text="abc",
     )
-    line = Block(items=[w_norm], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line = Block(
+        items=[w_norm],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(width=20, height=20, page_index=3, items=[para])
     page.cv2_numpy_page_image = np.zeros((40, 60, 3), dtype=np.uint8)
     out = tmp_path / "both"
@@ -471,9 +538,23 @@ def test_page_add_rect_type_errors():
     img = np.zeros((5, 5, 3), dtype=np.uint8)
     # _add_ocr_text expects Word
     with pytest.raises(TypeError):
-        Page._add_ocr_text(img, Block(items=[], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.LINE))
+        Page._add_ocr_text(
+            img,
+            Block(
+                items=[],
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.LINE,
+            ),
+        )
     with pytest.raises(TypeError):
-        Page._add_gt_text(img, Block(items=[], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.LINE))
+        Page._add_gt_text(
+            img,
+            Block(
+                items=[],
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.LINE,
+            ),
+        )
 
 
 # ============================================================================
@@ -486,11 +567,16 @@ def test_page_detection_labels_overwrite(tmp_path):
     detection_dir = tmp_path / "detection"
     (detection_dir / "images").mkdir(parents=True, exist_ok=True)
     existing = {
-        "oldprefix_5.png": {"img_dimensions": (10, 10), "img_hash": "abc", "polygons": []},
+        "oldprefix_5.png": {
+            "img_dimensions": (10, 10),
+            "img_hash": "abc",
+            "polygons": [],
+        },
         "book_7.png": {"img_dimensions": (10, 10), "img_hash": "def", "polygons": []},
     }
     with open(detection_dir / "labels.json", "w") as f:
         import json
+
         json.dump(existing, f)
     # Build page with page_index=7 so one entry replaced, oldprefix remains
     w = Word(
@@ -499,8 +585,14 @@ def test_page_detection_labels_overwrite(tmp_path):
         ocr_confidence=0.9,
         ground_truth_text="x",
     )
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(width=100, height=100, page_index=7, items=[para])
     page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
     page.generate_doctr_detection_training_set(tmp_path, prefix="book")
@@ -521,6 +613,7 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
     labels_path = tmp_path / "recognition" / "labels.json"
     with open(labels_path, "w") as f:
         import json
+
         json.dump({"pref_9_0_10_0_10.png": "OLD"}, f)
     w = Word(
         text="word",
@@ -528,8 +621,14 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
         ocr_confidence=0.8,
         ground_truth_text="word",
     )
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(width=100, height=100, page_index=9, items=[para])
     page.cv2_numpy_page_image = np.zeros((60, 80, 3), dtype=np.uint8)
     page.generate_doctr_recognition_training_set(tmp_path, prefix="pref")
@@ -538,6 +637,7 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
     # labels replaced with new single label
     with open(labels_path) as f:
         import json
+
         labels = json.load(f)
     assert len(labels) == 1
     assert list(labels.values())[0] == "word"
@@ -559,6 +659,7 @@ def test_page_refresh_page_images_match_score_coloring():
             ground_truth_match_keys={"match_score": score} if score is not None else {},
         )
         return w
+
     words = [
         mw(0, 5, 100),  # skipped drawing
         mw(6, 11, 95),  # dark_green
@@ -566,8 +667,14 @@ def test_page_refresh_page_images_match_score_coloring():
         mw(18, 23, 50),  # magenta
         mw(24, 29, None),  # no gt => red branch
     ]
-    line = Block(items=words, child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line = Block(
+        items=words, child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(width=300, height=100, page_index=0, items=[para])
     page.cv2_numpy_page_image = np.zeros((20, 40, 3), dtype=np.uint8)
     img = page.cv2_numpy_page_image_matched_word_with_colors
@@ -580,21 +687,43 @@ def test_page_refresh_page_images_match_score_coloring():
 
 def test_page_reorganize_lines_edge_branches():
     # single line -> early return
-    single = Block(items=[_make_line(["solo"], 0)], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    single = Block(
+        items=[_make_line(["solo"], 0)],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     Page.reorganize_lines(single)
     assert len(single.items) == 1
     # lines with large height diff -> skip merge
     l1 = _make_line(["AAA"], 0, height=10)
     l2 = _make_line(["BBB"], 0, height=30)
-    para = Block(items=[l1, l2], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    para = Block(
+        items=[l1, l2],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     Page.reorganize_lines(para)
     assert len(para.items) == 2
     # overlapping x too much (second starts inside first) => no merge
     a1 = _make_line(["abc"], 0)
     # create second starting before end of first to produce overlap_x_amount large
-    overlap_word = Word(text="xyz", bounding_box=BoundingBox.from_ltrb(a1.bounding_box.minX + 2, 0, a1.bounding_box.minX + 20, 10), ocr_confidence=0.5)
-    a2 = Block(items=[overlap_word], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para2 = Block(items=[a1, a2], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    overlap_word = Word(
+        text="xyz",
+        bounding_box=BoundingBox.from_ltrb(
+            a1.bounding_box.minX + 2, 0, a1.bounding_box.minX + 20, 10
+        ),
+        ocr_confidence=0.5,
+    )
+    a2 = Block(
+        items=[overlap_word],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para2 = Block(
+        items=[a1, a2],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     Page.reorganize_lines(para2)
     assert len(para2.items) == 2
 
@@ -609,11 +738,21 @@ def test_page_compute_text_row_blocks_empty():
 
 
 def test_page_constructor_cv2_type_error():
-    w = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1), ocr_confidence=0.1)
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    w = Word(
+        text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1), ocr_confidence=0.1
+    )
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     with pytest.raises(TypeError):
-        Page(width=10, height=10, page_index=0, items=[para], cv2_numpy_page_image="bad")  # type: ignore[arg-type]
+        Page(
+            width=10, height=10, page_index=0, items=[para], cv2_numpy_page_image="bad"
+        )  # type: ignore[arg-type]
 
 
 def test_page_scale_no_bounding_box():
@@ -635,8 +774,14 @@ def test_page_init_with_explicit_bounding_box():
         bounding_box=BoundingBox.from_ltrb(10, 10, 20, 20),
         ocr_confidence=0.5,
     )
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     explicit = BoundingBox.from_ltrb(0, 0, 50, 50)
     page = Page(width=60, height=60, page_index=2, items=[para], bounding_box=explicit)
     # Should retain explicit bbox not shrink to union
@@ -649,8 +794,14 @@ def test_page_init_with_unmatched_ground_truth_lines():
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
         ocr_confidence=0.9,
     )
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(
         width=20,
         height=20,
@@ -668,8 +819,14 @@ def test_page_add_rect_with_normalized_block():
         bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.15, 0.2, is_normalized=True),
         ocr_confidence=0.4,
     )
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    block_block = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK)
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    block_block = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.BLOCK,
+    )
     page = Page(width=100, height=100, page_index=0, items=[block_block])
     img = np.zeros((50, 50, 3), dtype=np.uint8)
     Page._add_rect(img, page)  # page color branch
@@ -680,16 +837,31 @@ def test_page_add_rect_with_normalized_block():
     assert np.count_nonzero(img) > 0
 
 
-
 def test_page_reorganize_page_flow():
     # Two lines close enough to merge; ensure reorganize_page rewrites structure
     l1 = _make_line(["alpha"], 0)
     # create second line with small gap so they merge inside reorganize_lines
     last_x = l1.bounding_box.maxX
-    l2_word = Word(text="beta", bounding_box=BoundingBox.from_ltrb(last_x + 1, 0, last_x + 1 + 20, 10), ocr_confidence=0.8)
-    l2 = Block(items=[l2_word], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[l1, l2], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
-    top_block = Block(items=[para], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK)
+    l2_word = Word(
+        text="beta",
+        bounding_box=BoundingBox.from_ltrb(last_x + 1, 0, last_x + 1 + 20, 10),
+        ocr_confidence=0.8,
+    )
+    l2 = Block(
+        items=[l2_word],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para = Block(
+        items=[l1, l2],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    top_block = Block(
+        items=[para],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.BLOCK,
+    )
     page = Page(width=100, height=100, page_index=0, items=[top_block])
     page.reorganize_page()
     # After reorganize, items should be paragraph blocks only; merged line content present
@@ -698,9 +870,20 @@ def test_page_reorganize_page_flow():
 
 
 def test_page_convert_to_training_set_missing_image(tmp_path):
-    w = Word(text="a", bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True), ocr_confidence=0.5, ground_truth_text="a")
-    line = Block(items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
-    para = Block(items=[line], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.PARAGRAPH)
+    w = Word(
+        text="a",
+        bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True),
+        ocr_confidence=0.5,
+        ground_truth_text="a",
+    )
+    line = Block(
+        items=[w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
     page = Page(width=10, height=10, page_index=1, items=[para])
     with pytest.raises(ValueError):
         page.convert_to_training_set(tmp_path / "out", prefix="x")
@@ -715,7 +898,7 @@ def test_page_detection_on_empty_items(tmp_path):
     labels_path = tmp_path / "set" / "detection" / "labels.json"
     assert labels_path.exists()
     import json
+
     data = json.loads(labels_path.read_text())
     assert len(data) == 1
     assert list(data.values())[0]["polygons"] == []
-

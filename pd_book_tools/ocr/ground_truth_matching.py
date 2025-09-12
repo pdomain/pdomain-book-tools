@@ -770,7 +770,9 @@ def update_line_with_ground_truth_replace_words(
         }
 
     # If there are any GT words left, add them at end of the group as 'unmatched' words
-    line.unmatched_ground_truth_words = []
+    # Initialize the list if it doesn't exist, but preserve existing unmatched words
+    if line.unmatched_ground_truth_words is None:
+        line.unmatched_ground_truth_words = []
 
     for gt_word_nbr in to_match_gt_word_nbrs:
         logger.debug("GT Word Nbr for unmatched" + str(gt_word_nbr))
