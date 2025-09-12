@@ -177,3 +177,67 @@ class TestGroundTruthMatching:
         assert line.unmatched_ground_truth_words is not None
         assert len(line.unmatched_ground_truth_words) == 1
         assert line.unmatched_ground_truth_words[0][1] == "extra"
+
+    def test_no_combined_words_found_with_misspelled_ocr(self):
+        """Test that no combined words are found when OCR has misspellings that don't combine well."""
+        # Create OCR words with misspellings: ['tbe', 'Jounding','of','tbe', 'Gopernment']
+        words = [
+            Word(
+                text="tbe",
+                bounding_box=BoundingBox.from_ltrb(0, 0, 30, 20, is_normalized=False),
+            ),
+            Word(
+                text="Jounding",
+                bounding_box=BoundingBox.from_ltrb(35, 0, 100, 20, is_normalized=False),
+            ),
+            Word(
+                text="of",
+                bounding_box=BoundingBox.from_ltrb(105, 0, 125, 20, is_normalized=False),
+            ),
+            Word(
+                text="tbe",
+                bounding_box=BoundingBox.from_ltrb(130, 0, 160, 20, is_normalized=False),
+            ),
+            Word(
+                text="Gopernment",
+                bounding_box=BoundingBox.from_ltrb(165, 0, 245, 20, is_normalized=False),
+            ),
+        ]
+
+        line = Block(
+            items=words,
+            block_category=BlockCategory.LINE,
+            child_type=BlockChildType.WORDS,
+        )
+
+        # Ground truth: 'The Founding of the Government'
+        ocr_line_tuple = ("tbe", "Jounding", "of", "tbe", "Gopernment")
+        ground_truth_tuple = ("The", "Founding", "of", "the", "Government")
+
+        # Call the function to update the line with ground truth
+        from pd_book_tools.ocr.ground_truth_matching import update_line_with_ground_truth
+        
+        update_line_with_ground_truth(
+            line=line,
+            ocr_line_tuple=ocr_line_tuple,
+            ground_truth_tuple=ground_truth_tuple,
+            auto_combine=True,  # Enable auto combine to test that no combinations are found
+        )
+
+        # Verify no words were combined (all words should still exist as separate entities)
+        assert len(line.words) == 5, "Should still have 5 separate words"
+        
+        # Check that each word has ground truth text assigned (from the replace operations)
+        expected_gt_texts = ["The", "Founding", "of", "the", "Government"]
+        for i, word in enumerate(line.words):
+            assert word.ground_truth_text == expected_gt_texts[i], (
+                f"Word {i} should have ground truth '{expected_gt_texts[i]}', "
+                f"but got '{word.ground_truth_text}'"
+            )
+        
+        # Verify that no words have been marked as combined
+        for word in line.words:
+            # Check that no word has been marked as the result of a combination
+            assert word.ground_truth_match_keys.get("match_type") != "difflib-line-replace-word-replace-combined", (
+                f"Word '{word.text}' should not be marked as combined"
+            )
