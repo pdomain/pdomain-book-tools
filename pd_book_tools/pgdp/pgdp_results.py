@@ -8,7 +8,7 @@ import regex
 logger = getLogger(__name__)
 
 
-class PGDPPage:
+class PGDPResults:
     png_file: str
     png_full_path: pathlib.Path
     original_page_text: str
@@ -85,29 +85,47 @@ class PGDPPage:
     @classmethod
     def convert_straight_to_curly_quotes(cls, text):
         logger.debug("Converting straight quotes to curly quotes")
-
+        # Heuristic approach (no heavy NLP): handle elisions, decades, contractions, then generic quotes.
         s = text
-        s = regex.sub(r"(?<=\s|^)'(?=[Tt]is)", "’", s)  # "Tis"
 
-        # Double quotes
-        s = regex.sub(r'(^|[\s(\[{<\(])"', r"\1“", s)  # Opening double quote
-        s = regex.sub(r'"', "”", s)  # Remaining are closing
+        elision_remainders = [
+            "Tis", "tis", "Twas", "twas", "Twere", "twere", "Twill", "twill",
+            "Twould", "twould", "Cause", "cause", "Round", "round", "Mid", "mid",
+            "Mongst", "mongst", "Em", "em", "Ere", "ere", "En", "en", "N", "n", "Til", "til",
+        ]
 
-        # Single quotes
-        # Opening single quote (start of line, after whitespace, or after opening punctuation)
-        s = regex.sub(r"(^|[\s(\[{<\(])'", r"\1‘", s)
+        # 1. Leading elisions
+        elisions_pattern = r"(?<=^|\s|[\"“])'(" + "|".join(elision_remainders) + r")(?=\b)"
+        s = regex.sub(elisions_pattern, lambda m: "’" + m.group(1), s)
 
-        # opening single quote after em-dash or long dash and immediately before word character
-        s = regex.sub(r"(?<=[—⸺])'(?=\w)", "‘", s)
+        # 2. Decade / year abbreviations
+        s = regex.sub(r"(?<=^|\s|[\"“])'(?=\d{2}s?\b)", "’", s)
 
-        # Closing single quote (after word character or punctuation, before whitespace, punctuation, or end of line)
-        s = regex.sub(r"(?<=[\w.,!?;:])'(?=\s|$|[.,!?;:)\]}>])", "’", s)
-
-        # closing single quote after em-dash or long dash and before end of line or whitespace
-        s = regex.sub(r"(?<=[—⸺])'(?=\s|$)", "’", s)
-
-        # Apostrophes in contractions (between word characters)
+        # 3. Contractions / possessives
         s = regex.sub(r"(?<=\w)'(?=\w)", "’", s)
+
+        # 4. Double quotes
+        s = regex.sub(r'(^|[—⸺\s(\[{<])"', r"\1“", s)
+        s = regex.sub(r'"', "”", s)
+
+        # 5. Opening single quotes excluding elisions & decades
+        negative_lookahead = r"(?!\d{2}s?\b|" + "|".join(elision_remainders) + r"\b)"
+        s = regex.sub(r"(^|[\s(\[{<])'" + negative_lookahead, r"\1‘", s)
+
+        # 6. Opening single after em/long dash
+        s = regex.sub(r"(?<=[—⸺])'(?=\w)", "‘", s)
+        s = regex.sub(r"(?<=[—⸺]\s)'(?=\w)", "‘", s)
+
+        # 7. Closing single quotes
+        s = regex.sub(r"(?<=[\w.,!?;:])'(?=\s|$|[\"”.,!?;:)\]}>])", "’", s)
+        s = regex.sub(r"(?<=[—⸺])'(?=\s|$)", "’", s)
+        s = regex.sub(r"(?<=\w)'(?=\b)", "’", s)  # fallback
+
+        # 8. Correct mis-assigned openings before elision remainders
+        s = regex.sub(r"‘(" + "|".join(elision_remainders) + r")\b", lambda m: "’" + m.group(1), s)
+
+        # 9. Remaining leading straight single quotes before lowercase word => opening curly
+        s = regex.sub(r"(?<=^|\s)'(?=[a-z])", "‘", s)
 
         return s
 
@@ -209,10 +227,10 @@ class PGDPPage:
 
 
 class PGDPExport:
-    pages: list[PGDPPage]
+    pages: list[PGDPResults]
     project_id: str
 
-    def __init__(self, pages: list[PGDPPage], project_id: str):
+    def __init__(self, pages: list[PGDPResults], project_id: str):
         self.pages = pages
         self.project_id = project_id
 
@@ -235,5 +253,5 @@ class PGDPExport:
             if isinstance(path_prefix, str):
                 path_prefix = pathlib.Path(path_prefix)
             png_full_file_path = pathlib.Path(path_prefix, png_file)
-            new_pages.append(PGDPPage(png_full_file_path, page_text))
+            new_pages.append(PGDPResults(png_full_file_path, page_text))
         return cls(pages=new_pages, project_id=path_prefix.stem)
