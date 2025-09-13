@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall reset-venv reset-full test lint format pre-commit-check build clean help
+.PHONY: install setup reinstall reset-venv reset-full test lint format pre-commit-check build clean ci help
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -57,6 +57,13 @@ pre-commit-check: ## Run pre-commit on all files
 build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."
 	uv build
+
+ci: ## Run full CI pipeline (pre-commit, tests, build)
+	@echo "🚀 Running full CI pipeline..."
+	@$(MAKE) --no-print-directory pre-commit-check
+	@$(MAKE) --no-print-directory test
+	@$(MAKE) --no-print-directory build
+	@echo "✅ CI pipeline complete!"
 
 clean: ## Clean up cache and temporary files (keeps venv and UV cache)
 	@echo "🧹 Cleaning Python cache files..."
