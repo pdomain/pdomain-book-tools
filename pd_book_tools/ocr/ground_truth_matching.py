@@ -484,6 +484,24 @@ def try_matching_combined_words(
     )
     logger.debug("Combined OCR Tuple: " + str(ocr_combination_tuple))
 
+    # First calculate individual word match scores to prevent combining if individual words score higher
+    individual_match_scores = {}
+    for ocr_word_idx, ocr_word_text in enumerate(ocr_line_tuple):
+        best_individual_score = 0
+        best_gt_word_nbr = None
+        for gt_word_nbr, gt_word_text in enumerate(ground_truth_tuple):
+            individual_ratio = fuzz_ratio(ocr_word_text.strip(), gt_word_text.strip())
+            if individual_ratio > best_individual_score:
+                best_individual_score = individual_ratio
+                best_gt_word_nbr = gt_word_nbr
+        individual_match_scores[ocr_word_idx] = (
+            best_individual_score,
+            best_gt_word_nbr,
+        )
+        logger.debug(
+            f"Individual word '{ocr_word_text}' best match score: {best_individual_score}"
+        )
+
     match_scores = []
     for ocr_combination_nbr in range(0, len(ocr_combination_tuple)):
         logger.debug(
@@ -507,6 +525,21 @@ def try_matching_combined_words(
                 ocr_combination_tuple[ocr_combination_nbr][0],
                 ocr_combination_tuple[ocr_combination_nbr][1],
             )
+
+            # Check if any individual word in this combination has a higher score than the combined score
+            combination_start, combination_end = combination_start_end
+            max_individual_score_in_range = max(
+                individual_match_scores[i][0]
+                for i in range(combination_start, combination_end)
+            )
+
+            # Skip this combination if any individual word scores higher than the combined score
+            if max_individual_score_in_range > ratio:
+                logger.debug(
+                    f"Skipping combination (score {ratio}) - individual word scores higher ({max_individual_score_in_range})"
+                )
+                continue
+
             ocr_text = ocr_combination_tuple[ocr_combination_nbr][2].strip()
             ocr_line = ocr_combination_tuple[ocr_combination_nbr][3]
             gt_text = ground_truth_tuple[gt_word_nbr].strip()
