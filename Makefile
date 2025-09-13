@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall reset-venv reset-full test lint format pre-commit-check clean help
+.PHONY: install setup reinstall reset-venv reset-full test lint format pre-commit-check build clean help
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -6,7 +6,7 @@ help: ## Show this help message
 
 install: ## Install dependencies and set up development environment
 	@echo "📦 Installing dependencies..."
-	uv sync --extra dev
+	uv sync --group dev
 	@echo "🪝 Setting up pre-commit hooks..."
 	uv run pre-commit install
 	@echo "✅ Installation complete!"
@@ -53,12 +53,20 @@ pre-commit-check: ## Run pre-commit on all files
 	@echo "🪝 Running pre-commit on all files..."
 	uv run pre-commit run --all-files
 
+
+build: ## Build the project (hatchling/uv build)
+	@echo "🔨 Building project..."
+	uv build
+
 clean: ## Clean up cache and temporary files (keeps venv and UV cache)
 	@echo "🧹 Cleaning Python cache files..."
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	@echo "🧹 Cleaning coverage files..."
 	rm -rf htmlcov/ 2>/dev/null || true
 	rm -f coverage.xml 2>/dev/null || true
+	@echo "🧹 Cleaning build artifacts..."
+	rm -rf dist/ 2>/dev/null || true
 	@echo "✅ Cache cleanup complete!"

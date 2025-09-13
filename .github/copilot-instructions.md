@@ -2,6 +2,11 @@
 
 Concise, project-specific guidance for AI coding agents contributing to this repo.
 
+## Code Generation
+Always use context7 when I need code generation, setup or configuration steps, or
+library/API documentation. This means you should automatically use the Context7 MCP
+tools to resolve library id and get library docs without me having to explicitly ask.
+
 ## 1. Core Domain & Architecture
 - Purpose: Tools for processing public domain book scans: OCR ingestion, geometric normalization, refinement, labeling, and ground-truth alignment.
 - Key layers:
