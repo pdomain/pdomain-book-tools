@@ -40,7 +40,7 @@ Concise, project-specific guidance for AI coding agents contributing to this rep
 - Tests live under `tests/` with structure mirroring source: `tests/ocr/`, `tests/geometry/`, `tests/pgdp/`. Cover: serialization, coordinate scaling, merge/split invariants, deep copy semantics, mismatch error raising, refinement.
 - New features touching coordinate logic must introduce tests for: success path + coordinate mismatch error.
 - **ALWAYS** run tests using `uv run pytest` (coverage auto-configured via `pyproject.toml`). **NEVER** use direct python/pytest commands - UV manages dependencies and environment properly.
-- Coverage configured to collect from `pd_book_tools` source with HTML reports in `htmlcov/`. 
+- Coverage configured to collect from `pd_book_tools` source with HTML reports in `htmlcov/`.
 - Keep public behavior stable; many assertions depend on exact bbox tuples and concatenated text ordering.
 
 ## 6. Dependency & Tooling Workflow

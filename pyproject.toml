@@ -26,19 +26,23 @@ dependencies = [
     "opencv-python>=4.11.0",
     "packaging<=21.3",
     "pandas>=2.2.3",
-    "pre-commit (>=4.2.0,<5.0.0)",
-    "pylint>=3.3.7",
     "pytesseract (>=0.3.13,<0.4.0)",
-    "pytest-cov>=6.2.1",
-    "pytest>=8.3",
     "python-doctr",
     "regex (>=2024.11.6,<2025.0.0)",
-    "ruff>=0.11.12",
     "shapely>=2.0",
     "thefuzz (>=0.22.1,<0.23.0)",
     "torch>=2.6",
     "torchaudio>=2.7.0",
     "torchvision>=0.22.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit (>=4.2.0,<5.0.0)",
+    "pylint>=3.3.7",
+    "pytest-cov>=6.2.1",
+    "pytest>=8.3",
+    "ruff>=0.12.5",
 ]
 
 [project.urls]

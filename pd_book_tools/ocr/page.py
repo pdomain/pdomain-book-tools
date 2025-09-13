@@ -555,7 +555,6 @@ class Page:
             self.unmatched_ground_truth_lines = []
         self.refresh_page_images()
 
-
     @classmethod
     def from_dict(cls, dict: Dict[str, Any]) -> "Page":
         """Create OCRPage from dictionary"""

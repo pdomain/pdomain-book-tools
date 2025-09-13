@@ -17,11 +17,10 @@ Then run `uv venv` to create a venv.
 
 Deactivate any current venv (`deactivate`), then activate the venv `source .venv/bin/activate`
 
-Install dependencies.
-`uv sync`
-or
-`uv sync --all-extras`
-If you want to use tesseract (it needs pandas and pytesseract) & pytorch functionality (for loading trained models)
+Install dependencies:
+`uv sync --extra dev`
+
+This installs both runtime and development dependencies (including pre-commit, pytest, ruff).
 
 Also, if you want to use tesseract, you have to install it on your system.
 https://tesseract-ocr.github.io/tessdoc/Installation.html
@@ -32,8 +31,11 @@ Try to build
 Try to test
 `uv run pytest`
 
-Check pre-commit
-`pre-commit`
+Set up pre-commit hooks (required for all contributors):
+`uv run pre-commit install`
+
+Check pre-commit manually:
+`uv run pre-commit run --all-files`
 
 ## Usage
 
