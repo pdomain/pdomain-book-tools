@@ -58,8 +58,9 @@ build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."
 	uv build
 
-ci: ## Run full CI pipeline (pre-commit, tests, build)
-	@echo "🚀 Running full CI pipeline..."
+ci: ## Run complete CI pipeline (install [idempotent], pre-commit, test, build)
+	@echo "🚀 Running complete CI pipeline..."
+	@$(MAKE) --no-print-directory install
 	@$(MAKE) --no-print-directory pre-commit-check
 	@$(MAKE) --no-print-directory test
 	@$(MAKE) --no-print-directory build
