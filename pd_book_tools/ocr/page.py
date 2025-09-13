@@ -72,6 +72,7 @@ class Page:
     "List of Ground Truth Lines and the line they were found on before an OCR match"
 
     original_ocr_tool_text: Optional[str] = ""
+    original_ground_truth_text: Optional[str] = ""
 
     def __init__(
         self,
@@ -84,6 +85,7 @@ class Page:
         cv2_numpy_page_image: Optional[ndarray] = None,
         unmatched_ground_truth_lines: Optional[List[Tuple[int, str]]] = None,
         original_ocr_tool_text: Optional[str] = "",
+        original_ground_truth_text: Optional[str] = "",
     ):
         self.width = width
         self.height = height
@@ -111,6 +113,7 @@ class Page:
             self.unmatched_ground_truth_lines = []
 
         self.original_ocr_tool_text = original_ocr_tool_text
+        self.original_ground_truth_text = original_ground_truth_text
 
     def _sort_items(self):
         self._items.sort(
@@ -546,7 +549,12 @@ class Page:
         """Remove ground truth text from the page"""
         for item in self.items:
             item.remove_ground_truth()
+        if self.unmatched_ground_truth_lines:
+            self.unmatched_ground_truth_lines.clear()
+        else:
+            self.unmatched_ground_truth_lines = []
         self.refresh_page_images()
+
 
     @classmethod
     def from_dict(cls, dict: Dict[str, Any]) -> "Page":

@@ -179,13 +179,17 @@ class Block:
 
     def remove_ground_truth(self):
         """Remove the ground truth text from the block"""
-        self.unmatched_ground_truth_words = []
+        if self.unmatched_ground_truth_words:
+            self.unmatched_ground_truth_words.clear()
+        else:
+            self.unmatched_ground_truth_words = []
         if self.child_type == BlockChildType.WORDS:
             word: Word
             for word in self.items:
                 word.ground_truth_text = ""
                 word.ground_truth_bounding_box = None
         else:
+            block: Block
             for block in self.items:
                 block.remove_ground_truth()
         logger.debug("Ground truth text removed from block")
