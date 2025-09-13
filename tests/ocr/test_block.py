@@ -1,8 +1,8 @@
-import pytest
 import numpy as np
+import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import BlockChildType, BlockCategory, Block
+from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.word import Word
 
 
@@ -204,7 +204,7 @@ def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1):
 
 def test_remove_ground_truth_empty_block():
     """Test remove_ground_truth method on an empty block"""
-    from pd_book_tools.ocr.block import Block, BlockChildType, BlockCategory
+    from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 
     empty_block = Block(
         items=[],

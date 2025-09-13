@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
 from copy import deepcopy
+from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Dict, Optional
 

@@ -1,10 +1,10 @@
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.word import Word
-from pd_book_tools.ocr.block import Block, BlockChildType, BlockCategory
-from pd_book_tools.ocr.page import Page
 from pd_book_tools.geometry.point import Point
+from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pd_book_tools.ocr.page import Page
+from pd_book_tools.ocr.word import Word
 
 
 @pytest.fixture

@@ -1,6 +1,7 @@
 import pytest
-from pd_book_tools.geometry.point import Point
 from shapely.geometry import Point as ShapelyPoint  # type: ignore
+
+from pd_book_tools.geometry.point import Point
 
 # Construction & basic access -------------------------------------------------
 

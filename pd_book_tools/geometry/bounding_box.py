@@ -1,17 +1,8 @@
 from dataclasses import dataclass
+from logging import getLogger
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import cv2
-from shapely.geometry import (
-    Point as ShapelyPoint,
-    Polygon as ShapelyPolygon,
-    box as shapely_box,
-)  # removed LineString import
-from shapely.ops import unary_union  # removed split import
-
-from pd_book_tools.geometry.point import Point
-from logging import getLogger
-
 from cv2 import (
     COLOR_BGR2GRAY,
     THRESH_BINARY,
@@ -21,6 +12,18 @@ from cv2 import (
     threshold,
 )
 from numpy import ndarray
+from shapely.geometry import (
+    Point as ShapelyPoint,
+)  # removed LineString import
+from shapely.geometry import (
+    Polygon as ShapelyPolygon,
+)
+from shapely.geometry import (
+    box as shapely_box,
+)
+from shapely.ops import unary_union  # removed split import
+
+from pd_book_tools.geometry.point import Point
 
 # Configure logging
 logger = getLogger(__name__)

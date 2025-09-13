@@ -1,10 +1,12 @@
+from cv2 import COLOR_BGR2GRAY, cvtColor
 from numpy import ndarray
-from cv2 import cvtColor, COLOR_BGR2GRAY
+
 from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.page import Page
 
 try:
-    from pytesseract import image_to_data, image_to_string, Output as pytesseract_Output
+    from pytesseract import Output as pytesseract_Output
+    from pytesseract import image_to_data, image_to_string
 except ImportError:
     raise ImportError(
         "pytesseract is not installed. Please install extra dependency [tesseract]"

@@ -1,9 +1,8 @@
-import pytest
 import numpy as np
+import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.word import Word
-
 
 ###############################################################################
 # Fixtures (shared test data)

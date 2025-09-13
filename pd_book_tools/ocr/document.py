@@ -16,10 +16,9 @@ if TYPE_CHECKING:
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
-
-from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
 
 # Configure logging
 logger = getLogger(__name__)

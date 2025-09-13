@@ -2,11 +2,11 @@ from ipywidgets import HTML, HBox
 from numpy import ndarray
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
-
 from pd_book_tools.ocr.image_utilities import (
     get_cropped_encoded_image,
     get_encoded_image,
 )
+
 # TODO move those image utilities to a more appropriate location
 
 

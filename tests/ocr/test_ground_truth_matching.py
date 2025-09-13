@@ -4,9 +4,12 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.ground_truth_matching import (
+    WordDiffOpCodes,
     try_matching_combined_words,
     update_line_with_ground_truth_replace_words,
-    WordDiffOpCodes,
+)
+from pd_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
+    CharacterGroups,
 )
 from pd_book_tools.ocr.word import Word
 
@@ -311,3 +314,76 @@ class TestGroundTruthMatching:
             assert combined_word.ground_truth_text == "hello", (
                 f"Expected GT text 'hello', got '{combined_word.ground_truth_text}'"
             )
+
+
+class TestCharacterGroups:
+    """Test the CharacterGroups enum functionality."""
+
+    def test_character_groups_hyphen_contains(self):
+        """Test that hyphen group contains expected characters."""
+        assert "-" in CharacterGroups.HYPHEN
+        assert "a" not in CharacterGroups.HYPHEN
+
+    def test_character_groups_endash_contains(self):
+        """Test that en-dash group contains expected characters."""
+        assert "–" in CharacterGroups.ENDASH
+        assert "-" not in CharacterGroups.ENDASH
+
+    def test_character_groups_emdash_contains(self):
+        """Test that em-dash group contains expected characters."""
+        assert "—" in CharacterGroups.EMDASH
+        assert "-" not in CharacterGroups.EMDASH
+
+    def test_character_groups_all_dashes(self):
+        """Test that DASHES contains all dash types."""
+        assert "-" in CharacterGroups.DASHES  # hyphen
+        assert "–" in CharacterGroups.DASHES  # en-dash
+        assert "—" in CharacterGroups.DASHES  # em-dash
+        assert "‒" in CharacterGroups.DASHES  # figure dash
+        assert "⸺" in CharacterGroups.DASHES  # two-em dash
+        assert "⸻" in CharacterGroups.DASHES  # three-em dash
+        assert "―" in CharacterGroups.DASHES  # horizontal bar
+        assert "‑" in CharacterGroups.DASHES  # non-break hyphen
+        assert "−" in CharacterGroups.DASHES  # minus
+        assert "a" not in CharacterGroups.DASHES
+
+    def test_character_groups_single_quote_contains(self):
+        """Test that single quote group contains expected characters."""
+        assert "'" in CharacterGroups.SINGLE_QUOTE
+        assert "'" in CharacterGroups.SINGLE_QUOTE
+        assert "'" in CharacterGroups.SINGLE_QUOTE
+        assert '"' not in CharacterGroups.SINGLE_QUOTE
+
+    def test_character_groups_double_quote_contains(self):
+        """Test that double quote group contains expected characters."""
+        assert '"' in CharacterGroups.DOUBLE_QUOTE
+        assert '"' in CharacterGroups.DOUBLE_QUOTE  # left double quote
+        assert '"' in CharacterGroups.DOUBLE_QUOTE  # right double quote
+        assert "'" not in CharacterGroups.DOUBLE_QUOTE
+
+    def test_character_groups_quotes_contains_both(self):
+        """Test that QUOTES contains both single and double quotes."""
+        assert "'" in CharacterGroups.QUOTES
+        assert "'" in CharacterGroups.QUOTES
+        assert '"' in CharacterGroups.QUOTES
+        assert '"' in CharacterGroups.QUOTES  # left double quote
+        assert '"' in CharacterGroups.QUOTES  # right double quote
+        assert "a" not in CharacterGroups.QUOTES
+
+    def test_character_groups_primes_contains(self):
+        """Test that primes group contains expected characters."""
+        assert "′" in CharacterGroups.SINGLE_PRIME
+        assert "″" in CharacterGroups.DOUBLE_PRIME
+        assert "′" in CharacterGroups.PRIMES
+        assert "″" in CharacterGroups.PRIMES
+        assert "a" not in CharacterGroups.PRIMES
+
+    def test_character_groups_quotes_and_primes(self):
+        """Test that QUOTES_AND_PRIMES contains all quote and prime characters."""
+        assert "'" in CharacterGroups.QUOTES_AND_PRIMES
+        assert "'" in CharacterGroups.QUOTES_AND_PRIMES
+        assert '"' in CharacterGroups.QUOTES_AND_PRIMES
+        assert '"' in CharacterGroups.QUOTES_AND_PRIMES  # left double quote
+        assert "′" in CharacterGroups.QUOTES_AND_PRIMES
+        assert "″" in CharacterGroups.QUOTES_AND_PRIMES
+        assert "a" not in CharacterGroups.QUOTES_AND_PRIMES

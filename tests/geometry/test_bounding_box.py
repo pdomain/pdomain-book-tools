@@ -1,8 +1,8 @@
 import pytest
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
 from shapely.geometry import box  # type: ignore
 
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.geometry.point import Point
 
 # various ways to initialize
 
@@ -513,8 +513,8 @@ def test_interval_overlap_static():
 
 
 def test_threshold_inverted_color_image():
-    import numpy as np
     import cv2
+    import numpy as np
 
     # Color ROI (blue-ish rectangle) inside a normalized bbox
     img = np.zeros((20, 40, 3), dtype=np.uint8)
