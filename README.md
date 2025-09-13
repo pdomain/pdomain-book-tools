@@ -4,38 +4,96 @@ Python tools for working with public domain book scans.
 
 ## Installation
 
-Install Nvidia CUDA toolkit if you want to use GPU functions.
-https://developer.nvidia.com/cuda-toolkit
+### Prerequisites
 
-Install the 'uv' tooling to manage project dependencies:
+1. **Install UV package manager** (required):
+   https://docs.astral.sh/uv/getting-started/installation/
 
-https://docs.astral.sh/uv/getting-started/installation/
+2. **Install Tesseract OCR** (optional, for OCR functionality):
+   https://tesseract-ocr.github.io/tessdoc/Installation.html
 
-I used: `pipx install uv` (you will need pipx to do this), upgrade with `pipx upgrade uv`
+3. **Install Nvidia CUDA toolkit** (optional but highly recommended, for GPU functions):
+   https://developer.nvidia.com/cuda-toolkit
 
-Then run `uv venv` to create a venv.
+### Quick Setup
 
-Deactivate any current venv (`deactivate`), then activate the venv `source .venv/bin/activate`
+The project includes a Makefile with convenient commands. For a complete setup:
 
-Install dependencies:
-`uv sync --extra dev`
+```bash
+make install
+```
 
-This installs both runtime and development dependencies (including pre-commit, pytest, ruff).
+This will:
+- Create a virtual environment
+- Install all dependencies (runtime + development)
+- Set up pre-commit hooks
 
-Also, if you want to use tesseract, you have to install it on your system.
-https://tesseract-ocr.github.io/tessdoc/Installation.html
+### Available Make Commands
 
-Try to build
-`uv build`
+Run `make help` to see all available commands:
 
-Try to test
-`uv run pytest`
+- `make install` - Install dependencies and set up development environment
+- `make test` - Run tests
+- `make lint` - Run linting checks
+- `make format` - Format code
+- `make build` - Build the project
+- `make ci` - Run complete CI pipeline
+- `make clean` - Clean up cache and temporary files
+- `make reset` - Rebuild virtual environment
+- `make reset-full` - Nuclear option: clear everything and redownload
 
-Set up pre-commit hooks (required for all contributors):
-`uv run pre-commit install`
+### Manual Setup (Alternative)
 
-Check pre-commit manually:
-`uv run pre-commit run --all-files`
+If you prefer manual setup instead of using make:
+
+```bash
+# Install dependencies
+uv sync --group dev
+
+# Set up pre-commit hooks
+uv run pre-commit install
+
+# Test the installation
+uv run pytest
+
+# Build the project
+uv build
+```
+
+## Development Workflow
+
+### Running Tests
+```bash
+make test
+```
+
+### Code Quality
+```bash
+make lint    # Check and auto-fix linting issues
+make format  # Format code with ruff
+```
+
+### Pre-commit Checks
+```bash
+make pre-commit-check  # Run all pre-commit hooks
+```
+
+### Building
+```bash
+make build
+```
+
+### Complete CI Pipeline
+```bash
+make ci  # Runs install, pre-commit-check, test, and build
+```
+
+### Troubleshooting
+If you encounter dependency issues:
+```bash
+make reset       # Rebuild environment (keeps cache)
+make reset-full  # Nuclear option: clear everything
+```
 
 ## Usage
 
