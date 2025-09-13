@@ -30,7 +30,7 @@ Try to build
 `uv build`
 
 Try to test
-`pytest`
+`uv run pytest`
 
 Check pre-commit
 `pre-commit`

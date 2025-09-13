@@ -7,7 +7,8 @@ Concise, project-specific guidance for AI coding agents contributing to this rep
 - Key layers:
   - `pd_book_tools/geometry/`: Primitive spatial types (`Point`, `BoundingBox`) with normalization semantics (normalized vs pixel). All downstream logic relies on correct `is_normalized` flags.
   - `pd_book_tools/ocr/`: OCR result object model (`Word`, `Block`, `Page`) plus matching (`ground_truth_matching.py`), external OCR/tool adapters (`cv2_tesseract.py`, `doctr_support.py`), and utilities.
-  - `pd_book_tools/image_processing/`: CV + (optional) GPU variants (cupy / opencv-cuda) for transformations (color, crop, morph, threshold, etc.). Many files are thin wrappers—keep them small & focused.
+  - `pd_book_tools/image_processing/`: CV + (optional) GPU variants in subfolders (`cv2_processing/`, `cupy_processing/`, `cv2cuda_processing/`) for transformations (color, crop, morph, threshold, etc.). Many files are thin wrappers—keep them small & focused.
+  - `pd_book_tools/pgdp/`: Project Gutenberg Distributed Proofreaders integration (`PGDPResults`) for processing proofer text with PGDP-specific markup (footnotes, diacritics, quotes, dashes).
 - Data flow (typical): raw OCR tool output -> `Word`s (normalized or pixel bboxes) -> grouped into `Block`s (hierarchy Lines / Paragraphs / Blocks) -> aggregated into `Page` -> refined (bbox refine/crop) -> ground truth match augmentation.
 
 ## 2. Coordinate System Conventions (Critical!)
@@ -36,9 +37,10 @@ Concise, project-specific guidance for AI coding agents contributing to this rep
 - When adding new refinement routines use `_extract_roi` & `_threshold_inverted` helpers to stay consistent and reduce duplication.
 
 ## 5. Testing & Coverage
-- Tests live under `tests/ocr/` and cover: serialization, coordinate scaling, merge/split invariants, deep copy semantics, mismatch error raising, refinement.
+- Tests live under `tests/` with structure mirroring source: `tests/ocr/`, `tests/geometry/`, `tests/pgdp/`. Cover: serialization, coordinate scaling, merge/split invariants, deep copy semantics, mismatch error raising, refinement.
 - New features touching coordinate logic must introduce tests for: success path + coordinate mismatch error.
 - **ALWAYS** run tests using `uv run pytest` (coverage auto-configured via `pyproject.toml`). **NEVER** use direct python/pytest commands - UV manages dependencies and environment properly.
+- Coverage configured to collect from `pd_book_tools` source with HTML reports in `htmlcov/`. 
 - Keep public behavior stable; many assertions depend on exact bbox tuples and concatenated text ordering.
 
 ## 6. Dependency & Tooling Workflow
@@ -79,7 +81,13 @@ Concise, project-specific guidance for AI coding agents contributing to this rep
 - Do not mutate `Point.is_normalized`; create new `Point` instead (immutable contract).
 - Avoid adding hidden global state; pass width/height explicitly for normalization/scaling.
 
-## 13. Adding new test cases
+## 13. PGDP Integration Patterns
+- `PGDPResults` processes Project Gutenberg Distributed Proofreader markup in `pd_book_tools/pgdp/pgdp_results.py`.
+- Key transformations: remove proofer notes, fix diacritics, handle footnotes, convert dashes/quotes, split hyphen-asterisk patterns.
+- Structured word extraction: `(line_nbr, word_nbr, word)` tuples for ground truth alignment.
+- Use this for ingesting human-proofread text before OCR comparison.
+
+## 14. Adding new test cases
 - Add tests cases in similar folder structure (tests/<submodule>/<class>.py). Don't create multiple files for adding tests.
 
 ---
