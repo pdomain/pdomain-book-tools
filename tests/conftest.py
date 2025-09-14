@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -5,6 +7,142 @@ from pd_book_tools.geometry.point import Point
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
+
+# GPU/CUDA Testing Configuration =============================================
+
+
+def _is_cuda_available():
+    """Check if CUDA is available for testing."""
+    try:
+        import cupy
+
+        return cupy.cuda.is_available()
+    except ImportError:
+        return False
+
+
+def _is_torch_cuda_available():
+    """Check if PyTorch CUDA is available."""
+    try:
+        import torch
+
+        return torch.cuda.is_available()
+    except ImportError:
+        return False
+
+
+def _is_ci_environment():
+    """Check if running in CI environment (GitHub Actions, GitLab CI, etc.)."""
+    ci_indicators = [
+        "CI",
+        "GITHUB_ACTIONS",
+        "GITLAB_CI",
+        "JENKINS_URL",
+        "BUILDKITE",
+        "CIRCLECI",
+        "TRAVIS",
+    ]
+    return any(os.getenv(indicator) for indicator in ci_indicators)
+
+
+# Pytest markers for GPU tests
+def pytest_configure(config):
+    """Configure custom pytest markers."""
+    config.addinivalue_line(
+        "markers", "gpu: mark test as requiring GPU/CUDA functionality"
+    )
+    config.addinivalue_line("markers", "cupy: mark test as requiring CuPy library")
+    config.addinivalue_line(
+        "markers", "torch_cuda: mark test as requiring PyTorch CUDA"
+    )
+    config.addinivalue_line(
+        "markers", "slow: mark test as slow (skip with -m 'not slow')"
+    )
+
+
+# GPU Fixtures ================================================================
+
+
+@pytest.fixture(scope="session")
+def cuda_available():
+    """Session-scoped fixture that checks CUDA availability."""
+    return _is_cuda_available()
+
+
+@pytest.fixture(scope="session")
+def torch_cuda_available():
+    """Session-scoped fixture that checks PyTorch CUDA availability."""
+    return _is_torch_cuda_available()
+
+
+@pytest.fixture(scope="session")
+def ci_environment():
+    """Session-scoped fixture that detects CI environment."""
+    return _is_ci_environment()
+
+
+@pytest.fixture
+def cupy_module():
+    """Fixture that imports and returns cupy module, or skips if unavailable."""
+    cupy = pytest.importorskip("cupy", reason="CuPy not available")
+    if not cupy.cuda.is_available():
+        pytest.skip("CUDA not available for CuPy")
+    return cupy
+
+
+@pytest.fixture
+def torch_cuda():
+    """Fixture that imports torch and checks CUDA, or skips if unavailable."""
+    torch = pytest.importorskip("torch", reason="PyTorch not available")
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA not available for PyTorch")
+    return torch
+
+
+@pytest.fixture
+def gpu_array_factory(cupy_module):
+    """Factory fixture for creating GPU arrays with CuPy."""
+
+    def _create_array(shape, dtype=None, fill_value=None):
+        if fill_value is not None:
+            return cupy_module.full(shape, fill_value, dtype=dtype)
+        return cupy_module.random.randint(
+            0, 255, shape, dtype=dtype or cupy_module.uint8
+        )
+
+    return _create_array
+
+
+@pytest.fixture
+def sample_gpu_image(cupy_module):
+    """Create a sample grayscale image on GPU."""
+    return cupy_module.random.randint(0, 255, (100, 100), dtype=cupy_module.uint8)
+
+
+@pytest.fixture
+def sample_gpu_color_image(cupy_module):
+    """Create a sample color image on GPU."""
+    return cupy_module.random.randint(0, 255, (100, 100, 3), dtype=cupy_module.uint8)
+
+
+# Skip conditions for GPU tests ==============================================
+
+skipif_no_cuda = pytest.mark.skipif(
+    not _is_cuda_available() or _is_ci_environment(),
+    reason="CUDA not available or running in CI environment",
+)
+
+skipif_no_cupy = pytest.mark.skipif(
+    not _is_cuda_available(), reason="CuPy/CUDA not available"
+)
+
+skipif_no_torch_cuda = pytest.mark.skipif(
+    not _is_torch_cuda_available(), reason="PyTorch CUDA not available"
+)
+
+skipif_ci = pytest.mark.skipif(
+    _is_ci_environment(), reason="Skipping GPU tests in CI environment"
+)
 
 
 @pytest.fixture

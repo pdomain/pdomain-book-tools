@@ -82,6 +82,18 @@ directory = "htmlcov"
 [tool.coverage.xml]
 output = "coverage.xml"
 
-# Optional: default pytest addopts to always collect coverage (can be overridden)
+# Pytest configuration
 [tool.pytest.ini_options]
 addopts = "--cov=pd_book_tools --cov-report=term-missing:skip-covered --cov-report=html"
+markers = [
+    "gpu: marks tests as requiring GPU/CUDA functionality",
+    "cupy: marks tests as requiring CuPy library",
+    "torch_cuda: marks tests as requiring PyTorch CUDA",
+    "slow: marks tests as slow (use -m 'not slow' to skip)",
+    "integration: marks tests as integration tests"
+]
+# Skip GPU tests by default in CI environments
+filterwarnings = [
+    "ignore::UserWarning:cupy.*",
+    "ignore::FutureWarning:torch.*"
+]
