@@ -17,7 +17,9 @@ def _is_cuda_available():
         import cupy
 
         return cupy.cuda.is_available()
-    except ImportError:
+    except (ImportError, RuntimeError):
+        # ImportError: cupy not installed
+        # RuntimeError: CUDA driver/runtime issues (e.g., insufficient driver version)
         return False
 
 
@@ -85,8 +87,11 @@ def ci_environment():
 def cupy_module():
     """Fixture that imports and returns cupy module, or skips if unavailable."""
     cupy = pytest.importorskip("cupy", reason="CuPy not available")
-    if not cupy.cuda.is_available():
-        pytest.skip("CUDA not available for CuPy")
+    try:
+        if not cupy.cuda.is_available():
+            pytest.skip("CUDA not available for CuPy")
+    except RuntimeError as e:
+        pytest.skip(f"CUDA runtime error: {e}")
     return cupy
 
 
