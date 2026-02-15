@@ -4,6 +4,7 @@ import pytest
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
+from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pd_book_tools.ocr.word import Word
 
 # ============================================================================
@@ -48,6 +49,21 @@ def test_page_to_dict(sample_page):
     assert "bounding_box" in page_dict
 
 
+def test_page_to_dict_includes_ocr_provenance():
+    provenance = OCRProvenance(
+        engine="doctr",
+        models=[OCRModelProvenance(name="det"), OCRModelProvenance(name="reco")],
+        engine_version="0.8.1",
+    )
+    page = Page(
+        width=100, height=200, page_index=1, items=[], ocr_provenance=provenance
+    )
+
+    page_dict = page.to_dict()
+
+    assert page_dict["ocr_provenance"] == provenance.to_dict()
+
+
 def test_page_from_dict(sample_page):
     page_dict = sample_page.to_dict()
     print(page_dict)
@@ -56,6 +72,62 @@ def test_page_from_dict(sample_page):
     assert new_page.height == sample_page.height
     assert new_page.page_index == sample_page.page_index
     assert len(new_page.items) == len(sample_page.items)
+
+
+def test_page_from_dict_restores_ocr_provenance():
+    page_dict = {
+        "width": 100,
+        "height": 200,
+        "page_index": 2,
+        "bounding_box": None,
+        "items": [],
+        "ocr_provenance": {
+            "engine": "doctr",
+            "models": [],
+            "engine_version": "unknown",
+        },
+    }
+
+    page = Page.from_dict(page_dict)
+
+    assert page.ocr_provenance == OCRProvenance.from_dict(page_dict["ocr_provenance"])
+
+
+def test_page_from_dict_legacy_without_ocr_provenance():
+    page_dict = {
+        "width": 100,
+        "height": 200,
+        "page_index": 3,
+        "bounding_box": None,
+        "items": [],
+    }
+
+    page = Page.from_dict(page_dict)
+
+    assert page.ocr_provenance is None
+
+
+def test_page_copy_preserves_ocr_provenance_without_shared_mutation():
+    page = Page(
+        width=100,
+        height=200,
+        page_index=1,
+        items=[],
+        ocr_provenance=OCRProvenance(
+            engine="doctr",
+            models=[OCRModelProvenance(name="det")],
+            engine_version="unknown",
+        ),
+    )
+
+    copied = page.copy()
+
+    assert copied.ocr_provenance == page.ocr_provenance
+    assert copied.ocr_provenance is not page.ocr_provenance
+
+    copied.ocr_provenance.models.append(OCRModelProvenance(name="reco"))
+
+    assert page.ocr_provenance.models == [OCRModelProvenance(name="det")]
 
 
 # ============================================================================

@@ -24,6 +24,7 @@ from numpy import std as np_std
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.ground_truth_matching import update_page_with_ground_truth_text
+from pd_book_tools.ocr.provenance import OCRProvenance
 from pd_book_tools.ocr.word import Word
 
 # Configure logging
@@ -73,6 +74,7 @@ class Page:
 
     original_ocr_tool_text: Optional[str] = ""
     original_ground_truth_text: Optional[str] = ""
+    ocr_provenance: OCRProvenance | None = None
 
     def __init__(
         self,
@@ -86,6 +88,7 @@ class Page:
         unmatched_ground_truth_lines: Optional[List[Tuple[int, str]]] = None,
         original_ocr_tool_text: Optional[str] = "",
         original_ground_truth_text: Optional[str] = "",
+        ocr_provenance: OCRProvenance | Dict[str, Any] | None = None,
     ):
         self.width = width
         self.height = height
@@ -114,6 +117,7 @@ class Page:
 
         self.original_ocr_tool_text = original_ocr_tool_text
         self.original_ground_truth_text = original_ground_truth_text
+        self.ocr_provenance = OCRProvenance.coerce(ocr_provenance)
 
     def _sort_items(self):
         self._items.sort(
@@ -178,9 +182,9 @@ class Page:
                 raise TypeError("Each item in items must be of type Block")
         self._items = sorted(
             values,
-            key=lambda block: block.bounding_box.top_left.y
-            if block.bounding_box
-            else 0,
+            key=lambda block: (
+                block.bounding_box.top_left.y if block.bounding_box else 0
+            ),
         )
 
     @property
@@ -251,8 +255,9 @@ class Page:
         self._add_rect_recurse(
             self.items,
             self._cv2_numpy_page_image_paragraph_with_bboxes,
-            lambda x: isinstance(x, Block)
-            and x.block_category == BlockCategory.PARAGRAPH,
+            lambda x: (
+                isinstance(x, Block) and x.block_category == BlockCategory.PARAGRAPH
+            ),
         )
 
         self._cv2_numpy_page_image_line_with_bboxes = self._cv2_numpy_page_image.copy()
@@ -484,6 +489,7 @@ class Page:
             if self.bounding_box
             else None,
             page_labels=self.page_labels,
+            ocr_provenance=self.ocr_provenance,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -495,6 +501,11 @@ class Page:
             "page_index": self.page_index,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
+            "ocr_provenance": (
+                self.ocr_provenance.to_dict()
+                if self.ocr_provenance is not None
+                else None
+            ),
         }
 
     def copy(self) -> "Page":
@@ -568,6 +579,7 @@ class Page:
                 if dict.get("bounding_box")
                 else None
             ),
+            ocr_provenance=dict.get("ocr_provenance"),
         )
 
     @classmethod

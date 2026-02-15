@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall reset-venv reset-full test lint format pre-commit-check build clean ci help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs ci help
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -14,6 +14,8 @@ install: ## Install dependencies and set up development environment
 setup: install ## Alias for install
 
 reinstall: reset-venv ## Alias for reset-venv (backward compatibility)
+
+reset-venv: reset ## Alias for reset
 
 remove-venv: ## Remove the virtual environment
 	@echo "🗑️  Removing existing virtual environment..."
@@ -40,6 +42,40 @@ test: ## Run tests
 	@echo "🧪 Running tests..."
 	uv run pytest
 
+test-verbose: ## Run tests with verbose output
+	@echo "🧪 Running tests (verbose mode)..."
+	uv run pytest -v
+
+test-single: ## Run one pytest node id (usage: make test-single TEST='tests/...::test_name')
+	@if [ -z "$(TEST)" ]; then \
+		echo "❌ Missing TEST parameter."; \
+		echo "   Example: make test-single TEST='tests/ocr/test_word.py::TestWord::test_word_scale'"; \
+		exit 1; \
+	fi
+	@echo "🧪 Running single test: $(TEST)"
+	uv run pytest "$(TEST)"
+
+test-k: ## Run tests by pytest -k expression (usage: make test-k K='pattern')
+	@if [ -z "$(K)" ]; then \
+		echo "❌ Missing K parameter."; \
+		echo "   Example: make test-k K='test_word_scale'"; \
+		exit 1; \
+	fi
+	@echo "🧪 Running tests with -k: $(K)"
+	uv run pytest -k "$(K)"
+
+coverage: ## Run tests with coverage report
+	@echo "🧪 Running tests with coverage..."
+	uv run pytest --cov=pd_book_tools --cov-report=html
+	@echo "📊 Coverage report generated in htmlcov/index.html"
+
+upgrade-deps: ## Upgrade dependencies and sync local environment
+	@echo "⬆️ Upgrading dependency lockfile..."
+	uv lock --upgrade
+	@echo "📦 Syncing upgraded dependencies..."
+	uv sync --group dev
+	@echo "✅ Dependencies upgraded and environment synced!"
+
 lint: ## Run linting checks
 	@echo "🔍 Running linting checks..."
 	uv run ruff check --select I --fix
@@ -48,6 +84,7 @@ lint: ## Run linting checks
 format: ## Format code
 	@echo "✨ Formatting code..."
 	uv run ruff format
+	@$(MAKE) --no-print-directory lint
 
 pre-commit-check: ## Run pre-commit on all files
 	@echo "🪝 Running pre-commit on all files..."
@@ -78,3 +115,8 @@ clean: ## Clean up cache and temporary files (keeps venv and UV cache)
 	@echo "🧹 Cleaning build artifacts..."
 	rm -rf dist/ 2>/dev/null || true
 	@echo "✅ Cache cleanup complete!"
+
+clean-logs: ## Remove log files from logs/ if present
+	@echo "🧹 Cleaning logs..."
+	find logs -type f -name "*.log" -delete 2>/dev/null || true
+	@echo "✅ Log cleanup complete!"

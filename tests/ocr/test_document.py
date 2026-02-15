@@ -6,6 +6,7 @@ from pandas import DataFrame
 
 from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.page import Page
+from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 
 
 @pytest.fixture
@@ -99,6 +100,43 @@ def test_document_from_doctr_output(sample_doctr_output):
     assert len(doc.pages) == 1
     assert doc.pages[0].width == 800
     assert doc.pages[0].height == 1000
+    assert doc.pages[0].ocr_provenance is not None
+    assert doc.pages[0].ocr_provenance == OCRProvenance(
+        engine="doctr",
+        models=[],
+        engine_version="unknown",
+    )
+
+
+def test_document_from_doctr_output_normalizes_model_provenance():
+    doctr_output = {
+        "metadata": {
+            "source_lib": "doctr-custom",
+            "engine_version": "0.12.1",
+            "models": [
+                "db_resnet50",
+                {"name": "crnn_vgg16", "version": "2", "weights_id": 123},
+            ],
+        },
+        "pages": [
+            {
+                "dimensions": [100, 100],
+                "blocks": [],
+            }
+        ],
+    }
+
+    doc = Document.from_doctr_output(doctr_output)
+
+    assert doc.pages[0].ocr_provenance == OCRProvenance(
+        engine="doctr",
+        engine_version="0.12.1",
+        models=[
+            OCRModelProvenance(name="db_resnet50"),
+            OCRModelProvenance(name="crnn_vgg16", version="2", weights_id="123"),
+        ],
+        config_fingerprint="doctr-custom|crnn_vgg16|db_resnet50",
+    )
 
 
 def test_document_from_tesseract(sample_tesseract_output):
@@ -109,3 +147,7 @@ def test_document_from_tesseract(sample_tesseract_output):
     print(doc.to_dict())
     assert doc.pages[0].width == 100
     assert doc.pages[0].height == 200
+    assert doc.pages[0].ocr_provenance is not None
+    assert doc.pages[0].ocr_provenance.engine == "tesseract"
+    assert doc.pages[0].ocr_provenance.models == []
+    assert isinstance(doc.pages[0].ocr_provenance.engine_version, str)

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import dataclass, field
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Collection, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Collection, Dict, List, Optional, Sequence, Union
 
 from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
 from numpy import array, ndarray
@@ -18,6 +21,7 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
 from pd_book_tools.ocr.page import Page
+from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pd_book_tools.ocr.word import Word
 
 # Configure logging
@@ -53,7 +57,7 @@ class Document:
         self.source_identifier = source_identifier
 
     def _sort_pages(self):
-        self._pages.sort(key=lambda item: (item.page_index))
+        self._pages.sort(key=lambda item: item.page_index)
 
     @property
     def pages(self) -> list[Page]:
@@ -227,6 +231,12 @@ class Document:
             pages=[],
         )
 
+        metadata = doctr_output.get("metadata", {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        ocr_provenance = cls._build_ocr_provenance(engine="doctr", metadata=metadata)
+
         for page_idx, page_data in enumerate(doctr_output.get("pages", [])):
             height, width = page_data.get("dimensions", (0, 0))
             blocks = []
@@ -285,12 +295,98 @@ class Document:
                 height=height,
                 items=blocks,
                 original_ocr_tool_text=original_ocr_tool_text,
+                ocr_provenance=deepcopy(ocr_provenance),
             )
             result._pages.append(page)
 
         result._sort_pages()
 
         return result
+
+    @classmethod
+    def _build_ocr_provenance(
+        cls, engine: str, metadata: Dict[str, Any]
+    ) -> OCRProvenance:
+        models = cls._normalize_ocr_models(metadata.get("models"))
+
+        config_fingerprint: str | None = None
+
+        explicit_fingerprint = metadata.get("config_fingerprint")
+        if explicit_fingerprint is not None:
+            config_fingerprint = str(explicit_fingerprint)
+        else:
+            source_lib = metadata.get("source_lib")
+            model_names = sorted(model.name for model in models if model.name)
+            parts: list[str] = []
+            if isinstance(source_lib, str) and source_lib:
+                parts.append(source_lib)
+            parts.extend(model_names)
+            if parts:
+                config_fingerprint = "|".join(parts)
+
+        return OCRProvenance(
+            engine=engine,
+            models=models,
+            engine_version=str(metadata.get("engine_version", "unknown")),
+            config_fingerprint=config_fingerprint,
+        )
+
+    @classmethod
+    def _normalize_ocr_models(cls, raw_models: Any) -> list[OCRModelProvenance]:
+        if not isinstance(raw_models, list):
+            return []
+
+        normalized: list[OCRModelProvenance] = []
+        for raw_model in raw_models:
+            if isinstance(raw_model, str) and raw_model:
+                normalized.append(OCRModelProvenance(name=raw_model))
+                continue
+
+            if isinstance(raw_model, dict):
+                name = raw_model.get("name") or raw_model.get("model")
+                if not isinstance(name, str) or not name:
+                    continue
+
+                version_value: str | None = None
+                version = raw_model.get("version")
+                if isinstance(version, (str, int, float)):
+                    version_value = str(version)
+
+                weights_id_value: str | None = None
+                weights_id = raw_model.get("weights_id")
+                if isinstance(weights_id, (str, int, float)):
+                    weights_id_value = str(weights_id)
+
+                normalized.append(
+                    OCRModelProvenance(
+                        name=name,
+                        version=version_value,
+                        weights_id=weights_id_value,
+                    )
+                )
+
+        return normalized
+
+    @classmethod
+    def _safe_package_version(cls, package_name: str) -> str:
+        try:
+            return package_version(package_name)
+        except PackageNotFoundError:
+            return "unknown"
+        except Exception:
+            return "unknown"
+
+    @classmethod
+    def _detect_tesseract_engine_version(cls) -> str:
+        try:
+            import pytesseract
+
+            detected = pytesseract.get_tesseract_version()
+            if detected:
+                return str(detected)
+        except Exception:
+            pass
+        return "unknown"
 
     @classmethod
     def from_json_file(cls, file_path: Union[str, Path]) -> Document:
@@ -330,6 +426,21 @@ class Document:
             source_path = Path(source_path)
 
         result = cls(source_lib="tesseract", source_path=source_path, pages=[])
+
+        pytesseract_version = cls._safe_package_version("pytesseract")
+        tesseract_metadata: Dict[str, Any] = {
+            "source_lib": "tesseract",
+            "engine_version": cls._detect_tesseract_engine_version(),
+            "models": [],
+        }
+        if pytesseract_version != "unknown":
+            tesseract_metadata["config_fingerprint"] = (
+                f"tesseract|pytesseract:{pytesseract_version}"
+            )
+
+        ocr_provenance = cls._build_ocr_provenance(
+            engine="tesseract", metadata=tesseract_metadata
+        )
 
         tesseract_output["left"] = pd_to_numeric(
             tesseract_output["left"], errors="coerce"
@@ -471,6 +582,7 @@ class Document:
                 height=int(page_bounding_box.height),
                 items=blocks,
                 bounding_box=page_bounding_box,
+                ocr_provenance=deepcopy(ocr_provenance),
             )
             result._pages.append(page)
 
