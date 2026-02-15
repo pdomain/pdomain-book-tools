@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pd-book-tools"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python tools for working with public domain book scans"
 authors = [
     { name = "CT", email = "concavetrillion@gmail.com" }
