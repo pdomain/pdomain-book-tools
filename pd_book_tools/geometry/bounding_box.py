@@ -466,6 +466,50 @@ class BoundingBox:
         x, y, w, h = cv2.boundingRect(non_zero)
         return x, y, w, h
 
+    @staticmethod
+    def _connected_content_bbox_from_image_thresh(
+        thresh: ndarray,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+    ):
+        """Return bbox for connected components that intersect the original ROI.
+
+        Coordinates are in image pixel space and returned as (x_min, y_min, x_max, y_max).
+        """
+        if x1 >= x2 or y1 >= y2:
+            return None
+
+        components = cv2.connectedComponentsWithStats(thresh, connectivity=8)
+        num_labels, labels, stats, _ = components
+        if num_labels <= 1:
+            return None
+
+        roi_labels = labels[y1:y2, x1:x2]
+        touching_labels = {
+            int(label) for label in roi_labels.ravel() if int(label) != 0
+        }
+        if not touching_labels:
+            return None
+
+        x_min = float("inf")
+        y_min = float("inf")
+        x_max = float("-inf")
+        y_max = float("-inf")
+
+        for label in touching_labels:
+            comp_x = float(stats[label, cv2.CC_STAT_LEFT])
+            comp_y = float(stats[label, cv2.CC_STAT_TOP])
+            comp_w = float(stats[label, cv2.CC_STAT_WIDTH])
+            comp_h = float(stats[label, cv2.CC_STAT_HEIGHT])
+            x_min = min(x_min, comp_x)
+            y_min = min(y_min, comp_y)
+            x_max = max(x_max, comp_x + comp_w)
+            y_max = max(y_max, comp_y + comp_h)
+
+        return x_min, y_min, x_max, y_max
+
     def _finalize_pixel_bbox(
         self,
         x_min: float,
@@ -497,15 +541,28 @@ class BoundingBox:
             image
         )
         orig_x1, orig_y1, orig_x2, orig_y2 = x1, y1, x2, y2
-        thresh, _ = self._threshold_inverted(roi)
-        tight = self._tight_bbox_from_thresh(thresh)
-        if tight is None:
-            return BoundingBox.from_dict(self.to_dict())
-        x, y, w, h = tight
-        x_min = x1 + x
-        y_min = y1 + y
-        x_max = x1 + x + w
-        y_max = y1 + y + h
+        if expand_beyond_original:
+            thresh_full, _ = self._threshold_inverted(image)
+            connected_bbox = self._connected_content_bbox_from_image_thresh(
+                thresh_full,
+                x1,
+                y1,
+                x2,
+                y2,
+            )
+            if connected_bbox is None:
+                return BoundingBox.from_dict(self.to_dict())
+            x_min, y_min, x_max, y_max = connected_bbox
+        else:
+            thresh, _ = self._threshold_inverted(roi)
+            tight = self._tight_bbox_from_thresh(thresh)
+            if tight is None:
+                return BoundingBox.from_dict(self.to_dict())
+            x, y, w, h = tight
+            x_min = x1 + x
+            y_min = y1 + y
+            x_max = x1 + x + w
+            y_max = y1 + y + h
         tight_width = x_max - x_min
         tight_height = y_max - y_min
         if expand_beyond_original:

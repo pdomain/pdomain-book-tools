@@ -352,6 +352,25 @@ def test_refine_expand_beyond_original_normalized():
     assert bottom_norm == pytest.approx(54 / 80, rel=1e-3)
 
 
+def test_refine_expand_beyond_original_captures_connected_pixels_outside_roi():
+    import numpy as np
+
+    img = np.full((100, 120), 255, dtype=np.uint8)
+    # Single connected component crosses outside the original bbox on the right.
+    img[40:45, 40:80] = 0
+    bbox = BoundingBox.from_ltrb(38, 38, 50, 50)
+
+    refined = bbox.refine(img, padding_px=0, expand_beyond_original=True)
+
+    left, top, right, bottom = refined.to_ltrb()
+    # The connected component must be fully included, even though expand mode may
+    # add vertical slack to preserve approximate box size.
+    assert left <= 40.0 <= right
+    assert left <= 80.0 <= right
+    assert top <= 40.0 <= bottom
+    assert top <= 45.0 <= bottom
+
+
 # ---------------- Additional coverage tests below -----------------
 
 
