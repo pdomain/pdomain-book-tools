@@ -197,17 +197,24 @@ class Block:
     def remove_line_if_exists(self, line):
         """Remove a line from the page if it exists"""
         if self.child_type == BlockChildType.WORDS:
-            return
+            return False
 
-        if line in self.lines:
-            if line in self._items:
-                self.remove_item(line)
-            else:
-                for block in self._items:
-                    block.remove_line_if_exists(line)
+        removed = False
+        if line in self._items:
+            self.remove_item(line)
+            removed = True
+        else:
+            for block in self._items:
+                if block.remove_line_if_exists(line):
+                    removed = True
+                    break
+
+        if removed:
             logger.debug(f"Line {line.text[0:10]}... removed from block")
         else:
             logger.debug(f"Line {line.text[0:10]}... not found in block")
+
+        return removed
 
     def remove_empty_items(self):
         """Remove empty child blocks from the block."""
