@@ -122,20 +122,20 @@ clean-logs: ## Remove log files from logs/ if present
 	@echo "✅ Log cleanup complete!"
 
 release-patch: ## Bump patch version and create a git tag (e.g. 0.3.0 → 0.3.1)
-	uv version patch
+	uv version --bump patch
 	@$(MAKE) --no-print-directory _do-release
 
 release-minor: ## Bump minor version and create a git tag (e.g. 0.3.0 → 0.4.0)
-	uv version minor
+	uv version --bump minor
 	@$(MAKE) --no-print-directory _do-release
 
 release-major: ## Bump major version and create a git tag (e.g. 0.3.0 → 1.0.0)
-	uv version major
+	uv version --bump major
 	@$(MAKE) --no-print-directory _do-release
 
 _do-release:
 	@VERSION=$$(uv version --short); \
-	git add pyproject.toml; \
+	git add pyproject.toml uv.lock; \
 	git commit -m "chore: release v$$VERSION"; \
 	git tag "v$$VERSION"; \
 	echo "🏷️  Tagged v$$VERSION — push with: git push && git push --tags"
