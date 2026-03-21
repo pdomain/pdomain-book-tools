@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.character import Character
 from pd_book_tools.ocr.word import Word
 
 ###############################################################################
@@ -64,6 +65,10 @@ def test_word_to_dict(sample_word1):
         },
         "ocr_confidence": pytest.approx(0.9),
         "word_labels": [],
+        "text_style_labels": ["regular"],
+        "text_style_label_scopes": {"regular": "whole"},
+        "word_components": [],
+        "baseline": None,
         "ground_truth_text": None,
         "ground_truth_bounding_box": None,
         "ground_truth_match_keys": {},
@@ -84,6 +89,7 @@ def word_from_dict_case():
             "bounding_box": bbox_dict,
             "ocr_confidence": 0.99,
             "word_labels": ["label1"],
+            "text_style_labels": ["Bold", "italic"],
         }
     )
     return w, bbox_dict
@@ -107,6 +113,90 @@ def test_word_from_dict_confidence(word_from_dict_case):
 def test_word_from_dict_labels(word_from_dict_case):
     w, _ = word_from_dict_case
     assert w.word_labels == ["label1"]
+
+
+def test_word_from_dict_text_style_labels(word_from_dict_case):
+    w, _ = word_from_dict_case
+    assert w.text_style_labels == ["bold", "italics"]
+
+
+def test_word_from_dict_text_style_label_scopes_defaults_whole(word_from_dict_case):
+    w, _ = word_from_dict_case
+    assert w.text_style_label_scopes == {"bold": "whole", "italics": "whole"}
+
+
+def test_word_text_style_aliases_compact_and_separators(pixel_bbox):
+    w = Word(
+        text="style-aliases",
+        bounding_box=pixel_bbox,
+        text_style_labels=[
+            "allcaps",
+            "small_caps",
+            "typewriter",
+        ],
+    )
+    assert w.text_style_labels == [
+        "all caps",
+        "small caps",
+        "monospace",
+    ]
+
+
+def test_word_text_style_scope_aliases_and_labels_normalized(pixel_bbox):
+    w = Word(
+        text="style-scope",
+        bounding_box=pixel_bbox,
+        text_style_labels=["Bold", "italic"],
+        text_style_label_scopes={
+            "bold": "entire",
+            "italics": "portion",
+        },
+    )
+    assert w.text_style_label_scopes == {"bold": "whole", "italics": "part"}
+
+
+def test_word_text_style_scope_unknown_label_raises(pixel_bbox):
+    with pytest.raises(ValueError):
+        Word(
+            text="bad-style-scope",
+            bounding_box=pixel_bbox,
+            text_style_labels=["bold"],
+            text_style_label_scopes={"italics": "part"},
+        )
+
+
+def test_word_text_style_scope_invalid_value_raises(pixel_bbox):
+    with pytest.raises(ValueError):
+        Word(
+            text="bad-style-scope",
+            bounding_box=pixel_bbox,
+            text_style_labels=["bold"],
+            text_style_label_scopes={"bold": "sometimes"},
+        )
+
+
+def test_word_component_aliases_compact_and_separators(pixel_bbox):
+    w = Word(
+        text="component-aliases",
+        bounding_box=pixel_bbox,
+        word_components=[
+            "starting-footnote-marker",
+            "endfootnotemarker",
+        ],
+    )
+    assert w.word_components == [
+        "has starting footnote marker",
+        "has ending footnote marker",
+    ]
+
+
+def test_word_text_style_invalid_raises(pixel_bbox):
+    with pytest.raises(ValueError):
+        Word(
+            text="bad-style",
+            bounding_box=pixel_bbox,
+            text_style_labels=["totally unknown style"],
+        )
 
 
 ###############################################################################
@@ -307,6 +397,20 @@ def test_split_labels_right(split_flags_case):
     assert set(right.word_labels) == {"x", "y"}
 
 
+def test_split_styles_propagate():
+    w = Word(
+        text="abcd",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 8, 8),
+        text_style_labels=["bold", "italic"],
+        text_style_label_scopes={"bold": "whole", "italics": "part"},
+    )
+    left, right = w.split(bbox_split_offset=3, character_split_index=2)
+    assert left.text_style_labels == ["bold", "italics"]
+    assert right.text_style_labels == ["bold", "italics"]
+    assert left.text_style_label_scopes == {"bold": "whole", "italics": "part"}
+    assert right.text_style_label_scopes == {"bold": "whole", "italics": "part"}
+
+
 ###############################################################################
 # Merging (concatenation of adjacent words) – order, confidence, labels
 ###############################################################################
@@ -347,6 +451,41 @@ def test_merge_reversed_confidence(merge_reversed_case):
 
 def test_merge_reversed_labels(merge_reversed_case):
     assert set(merge_reversed_case.word_labels) == {"foo", "bar"}
+
+
+def test_merge_text_style_labels_deduped():
+    left = Word(
+        text="left",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
+        text_style_labels=["bold", "italic"],
+    )
+    right = Word(
+        text="right",
+        bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
+        text_style_labels=["italics", "small caps"],
+    )
+    left.merge(right)
+    assert left.text_style_labels == ["bold", "italics", "small caps"]
+
+
+def test_merge_text_style_scope_conflict_prefers_part():
+    left = Word(
+        text="left",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
+        text_style_labels=["italic"],
+        text_style_label_scopes={"italics": "whole"},
+    )
+    right = Word(
+        text="right",
+        bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
+        text_style_labels=["italics"],
+        text_style_label_scopes={"italics": "part"},
+    )
+
+    left.merge(right)
+
+    assert left.text_style_labels == ["italics"]
+    assert left.text_style_label_scopes == {"italics": "part"}
 
 
 def test_merge_reversed_bbox(merge_reversed_case):
@@ -998,3 +1137,181 @@ def test_crop_top_warns_logged(crop_top_warn_case):
 def test_crop_top_warns_sets_none(crop_top_warn_case):
     w, _ = crop_top_warn_case
     assert w.bounding_box is None
+
+
+###############################################################################
+# Character segmentation via whitespace gaps
+###############################################################################
+
+
+def test_split_into_characters_from_whitespace_basic():
+    image = np.full((12, 20), 255, dtype=np.uint8)
+    image[3:9, 2:4] = 0
+    image[3:9, 6:8] = 0
+    image[3:9, 10:12] = 0
+
+    w = Word(
+        text="abc",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 12, 9),
+        text_style_labels=["bold"],
+        text_style_label_scopes={"bold": "part"},
+        word_components=["has superscript"],
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text for c in chars] == ["a", "b", "c"]
+    assert all(isinstance(c, Character) for c in chars)
+    assert [c.bounding_box.to_ltrb() for c in chars] == [
+        (2, 3, 4, 9),
+        (6, 3, 8, 9),
+        (10, 3, 12, 9),
+    ]
+    assert chars[0].text_style_labels == ["bold"]
+    assert chars[0].word_components == ["has superscript"]
+
+
+def test_split_into_characters_from_whitespace_propagates_whole_word_styles():
+    image = np.full((12, 20), 255, dtype=np.uint8)
+    image[3:9, 2:4] = 0
+    image[3:9, 6:8] = 0
+
+    w = Word(
+        text="ab",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 8, 9),
+        text_style_labels=["italics"],
+        text_style_label_scopes={"italics": "whole"},
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text_style_labels for c in chars] == [["italics"], ["italics"]]
+
+
+def test_split_into_characters_from_whitespace_propagates_partial_styles_to_all_characters():
+    image = np.full((12, 20), 255, dtype=np.uint8)
+    image[3:9, 2:4] = 0
+    image[3:9, 6:8] = 0
+
+    w = Word(
+        text="ab",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 8, 9),
+        text_style_labels=["bold", "italics"],
+        text_style_label_scopes={"bold": "part", "italics": "whole"},
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text_style_labels for c in chars] == [
+        ["bold", "italics"],
+        ["bold", "italics"],
+    ]
+
+
+def test_split_into_characters_from_whitespace_fallback_count_mismatch():
+    image = np.full((12, 20), 255, dtype=np.uint8)
+    image[3:9, 2:5] = 0
+    image[3:9, 8:11] = 0
+
+    w = Word(
+        text="abc",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 11, 9),
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text for c in chars] == ["a", "b", "c"]
+    assert len(chars) == 3
+    assert chars[0].bounding_box.minX == 2
+    assert chars[-1].bounding_box.maxX == 11
+
+
+def test_split_into_characters_from_whitespace_morph_fallback_recovers_gaps():
+    image = np.full((14, 24), 255, dtype=np.uint8)
+    image[3:11, 2:6] = 0
+    image[3:11, 9:13] = 0
+    image[3:11, 16:20] = 0
+    # Sparse noise in gap columns bridges whitespace for naive projection.
+    image[6, 7] = 0
+    image[7, 14] = 0
+
+    w = Word(
+        text="abc",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 20, 11),
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text for c in chars] == ["a", "b", "c"]
+    # Best-effort fallback should not collapse to uniform thirds in this noisy case.
+    assert [c.bounding_box.width for c in chars] != [6, 6, 6]
+    # Ensure left-to-right non-overlapping order remains valid.
+    assert chars[0].bounding_box.maxX <= chars[1].bounding_box.minX
+    assert chars[1].bounding_box.maxX <= chars[2].bounding_box.minX
+
+
+def test_split_into_characters_auto_labels_super_and_subscript():
+    image = np.full((24, 32), 255, dtype=np.uint8)
+    # Normal baseline character
+    image[10:20, 2:7] = 0
+    # Superscript-like character (higher)
+    image[4:11, 10:14] = 0
+    # Subscript-like character (lower)
+    image[13:22, 17:22] = 0
+
+    w = Word(
+        text="a2x",
+        bounding_box=BoundingBox.from_ltrb(2, 4, 22, 22),
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text for c in chars] == ["a", "2", "x"]
+    assert chars[0].is_superscript is False
+    assert chars[0].is_subscript is False
+    assert chars[1].is_superscript is True
+    assert chars[1].is_subscript is False
+    assert chars[2].is_superscript is False
+    assert chars[2].is_subscript is True
+    assert "has superscript" in chars[1].word_components
+    assert "has subscript" in chars[2].word_components
+
+
+def test_split_into_characters_descenders_downweighted_for_baseline():
+    image = np.full((26, 44), 255, dtype=np.uint8)
+    # Baseline letters (no descenders)
+    image[8:18, 2:6] = 0  # a
+    image[8:18, 24:28] = 0  # c
+    # Descenders naturally lower than baseline letters
+    image[8:22, 9:13] = 0  # p
+    image[8:22, 16:20] = 0  # g
+
+    w = Word(
+        text="apgc",
+        bounding_box=BoundingBox.from_ltrb(2, 8, 28, 22),
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.text for c in chars] == ["a", "p", "g", "c"]
+    assert all(c.is_subscript is False for c in chars)
+    assert all("has subscript" not in c.word_components for c in chars)
+
+
+def test_word_estimate_baseline_from_image_sets_attribute():
+    image = np.full((24, 24), 255, dtype=np.uint8)
+    image[8:18, 2:6] = 0
+    image[8:18, 9:13] = 0
+
+    w = Word(
+        text="ab",
+        bounding_box=BoundingBox.from_ltrb(2, 8, 13, 18),
+    )
+
+    baseline = w.estimate_baseline_from_image(image)
+
+    assert baseline is not None
+    assert baseline["type"] == "horizontal"
+    assert baseline["coordinate_space"] == "pixel"
+    assert baseline["y"] == pytest.approx(18, abs=1.0)
+    assert w.baseline == baseline

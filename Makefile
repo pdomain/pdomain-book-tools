@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs ci help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs ci release-patch release-minor release-major _do-release help
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -120,3 +120,22 @@ clean-logs: ## Remove log files from logs/ if present
 	@echo "🧹 Cleaning logs..."
 	find logs -type f -name "*.log" -delete 2>/dev/null || true
 	@echo "✅ Log cleanup complete!"
+
+release-patch: ## Bump patch version and create a git tag (e.g. 0.3.0 → 0.3.1)
+	uv version patch
+	@$(MAKE) --no-print-directory _do-release
+
+release-minor: ## Bump minor version and create a git tag (e.g. 0.3.0 → 0.4.0)
+	uv version minor
+	@$(MAKE) --no-print-directory _do-release
+
+release-major: ## Bump major version and create a git tag (e.g. 0.3.0 → 1.0.0)
+	uv version major
+	@$(MAKE) --no-print-directory _do-release
+
+_do-release:
+	@VERSION=$$(uv version --short); \
+	git add pyproject.toml; \
+	git commit -m "chore: release v$$VERSION"; \
+	git tag "v$$VERSION"; \
+	echo "🏷️  Tagged v$$VERSION — push with: git push && git push --tags"

@@ -1,8 +1,9 @@
 import itertools
 from enum import Enum
 from logging import getLogger
-from typing import Collection, List, Optional, Tuple
+from typing import ClassVar, Collection, List, Optional, Tuple
 
+import numpy as np
 from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
@@ -35,6 +36,80 @@ class Block:
     Some may have blocks with no words at all.
     """
 
+    ALLOWED_BLOCK_ROLE_LABELS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "paragraph",
+            "sidenote",
+            "page header",
+            "page footer",
+            "page number",
+            "printers mark",
+            "blockquote",
+            "poetry",
+        }
+    )
+
+    ALLOWED_BLOCK_POSITION_LABELS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "center",
+            "margin left",
+            "margin right",
+        }
+    )
+
+    ALLOWED_LINE_ROLE_LABELS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "body line",
+            "heading line",
+            "verse line",
+            "blockquote line",
+            "header line",
+            "footer line",
+            "footnote line",
+            "caption line",
+            "page number line",
+        }
+    )
+
+    ALLOWED_LINE_POSITION_LABELS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "center",
+            "column left",
+            "column right",
+        }
+    )
+
+    BLOCK_ROLE_LABEL_ALIASES: ClassVar[dict[str, str]] = {
+        "block quote": "blockquote",
+        "pageheader": "page header",
+        "pagefooter": "page footer",
+        "pagenumber": "page number",
+        "printer's mark": "printers mark",
+        "printersmark": "printers mark",
+        "poem": "poetry",
+    }
+
+    LINE_ROLE_LABEL_ALIASES: ClassVar[dict[str, str]] = {
+        "body": "body line",
+        "heading": "heading line",
+        "verse": "verse line",
+        "blockquote": "blockquote line",
+        "header": "header line",
+        "footer": "footer line",
+        "footnote": "footnote line",
+        "caption": "caption line",
+        "page number": "page number line",
+        "pagenumber": "page number line",
+    }
+
     # NOTE: Previously a dataclass; converted to manual class to avoid misleading auto-generated
     # equality semantics (identity comparisons are intended) and because a custom __init__ already
     # existed. Behavior retained.
@@ -47,6 +122,11 @@ class Block:
         child_type: Optional[BlockChildType] = BlockChildType.BLOCKS,
         block_category: Optional[BlockCategory] = BlockCategory.BLOCK,
         block_labels: Optional[list[str]] = None,
+        block_role_labels: Optional[list[str]] = None,
+        block_position_labels: Optional[list[str]] = None,
+        line_role_labels: Optional[list[str]] = None,
+        line_position_labels: Optional[list[str]] = None,
+        baseline: Optional[dict[str, float | str]] = None,
         override_page_sort_order: Optional[int] = None,
         unmatched_ground_truth_words: Optional[List[Tuple[int, str]]] = None,
         additional_block_attributes: Optional[dict] = None,
@@ -55,6 +135,33 @@ class Block:
         self.child_type: Optional[BlockChildType] = child_type
         self.block_category: Optional[BlockCategory] = block_category
         self.block_labels: Optional[list[str]] = block_labels
+        self.block_role_labels: list[str] = self._normalize_labels(
+            block_role_labels,
+            self.ALLOWED_BLOCK_ROLE_LABELS,
+            self.BLOCK_ROLE_LABEL_ALIASES,
+            "block role",
+        )
+        self.block_position_labels: list[str] = self._normalize_labels(
+            block_position_labels,
+            self.ALLOWED_BLOCK_POSITION_LABELS,
+            {},
+            "block position",
+        )
+        self.line_role_labels: list[str] = self._normalize_labels(
+            line_role_labels,
+            self.ALLOWED_LINE_ROLE_LABELS,
+            self.LINE_ROLE_LABEL_ALIASES,
+            "line role",
+        )
+        self.line_position_labels: list[str] = self._normalize_labels(
+            line_position_labels,
+            self.ALLOWED_LINE_POSITION_LABELS,
+            {},
+            "line position",
+        )
+        self.baseline: dict[str, float | str] | None = (
+            baseline.copy() if baseline else None
+        )
         self.override_page_sort_order: Optional[int] = override_page_sort_order
         self.base_ground_truth_text: Optional[str] = base_ground_truth_text
         # containers
@@ -90,6 +197,55 @@ class Block:
             f"block_category={self.block_category}, bbox={bbox}, "
             f"labels={self.block_labels}, override_sort={self.override_page_sort_order})"
         )
+
+    @classmethod
+    def _normalize_label(
+        cls,
+        label: str,
+        allowed: frozenset[str],
+        aliases: dict[str, str],
+        label_kind: str,
+    ) -> str:
+        normalized = " ".join(
+            label.strip().lower().replace("_", " ").replace("-", " ").split()
+        )
+        normalized = aliases.get(normalized, normalized)
+
+        if normalized not in allowed:
+            compact = normalized.replace(" ", "")
+            for allowed_label in allowed:
+                if compact == allowed_label.replace(" ", ""):
+                    normalized = allowed_label
+                    break
+
+            if normalized not in allowed:
+                for alias, canonical in aliases.items():
+                    if compact == alias.replace(" ", ""):
+                        normalized = canonical
+                        break
+
+        if normalized not in allowed:
+            allowed_str = ", ".join(sorted(allowed))
+            raise ValueError(
+                f"Invalid {label_kind} label '{label}'. Allowed labels: {allowed_str}"
+            )
+        return normalized
+
+    @classmethod
+    def _normalize_labels(
+        cls,
+        labels: Optional[list[str]],
+        allowed: frozenset[str],
+        aliases: dict[str, str],
+        label_kind: str,
+    ) -> list[str]:
+        if not labels:
+            return []
+        normalized = [
+            cls._normalize_label(label, allowed, aliases, label_kind)
+            for label in labels
+        ]
+        return list(dict.fromkeys(normalized))
 
     def _sort_items(self):
         # TODO: Implement a more robust sorting mechanism.
@@ -442,11 +598,26 @@ class Block:
         if self.block_labels is None:
             self.block_labels = block_to_merge.block_labels
         else:
-            if block_to_merge.block_labels is None:
-                return
-            self.block_labels = list(
-                set(self.block_labels).union(block_to_merge.block_labels)
+            if block_to_merge.block_labels is not None:
+                self.block_labels = list(
+                    set(self.block_labels).union(block_to_merge.block_labels)
+                )
+        self.block_role_labels = list(
+            dict.fromkeys(self.block_role_labels + block_to_merge.block_role_labels)
+        )
+        self.block_position_labels = list(
+            dict.fromkeys(
+                self.block_position_labels + block_to_merge.block_position_labels
             )
+        )
+        self.line_role_labels = list(
+            dict.fromkeys(self.line_role_labels + block_to_merge.line_role_labels)
+        )
+        self.line_position_labels = list(
+            dict.fromkeys(
+                self.line_position_labels + block_to_merge.line_position_labels
+            )
+        )
         self.recompute_bounding_box()
 
     def ocr_confidence_scores(self) -> list[float]:
@@ -482,6 +653,11 @@ class Block:
             child_type=self.child_type,
             block_category=self.block_category,
             block_labels=self.block_labels,
+            block_role_labels=self.block_role_labels,
+            block_position_labels=self.block_position_labels,
+            line_role_labels=self.line_role_labels,
+            line_position_labels=self.line_position_labels,
+            baseline=self.baseline,
         )
 
     def fuzz_score_against(self, ground_truth_text):
@@ -503,6 +679,11 @@ class Block:
             if self.block_category
             else None,
             "block_labels": self.block_labels,
+            "block_role_labels": self.block_role_labels,
+            "block_position_labels": self.block_position_labels,
+            "line_role_labels": self.line_role_labels,
+            "line_position_labels": self.line_position_labels,
+            "baseline": self.baseline,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
             "override_page_sort_order": self.override_page_sort_order,
@@ -530,11 +711,77 @@ class Block:
             child_type=child_type,
             block_category=BlockCategory(dict.get("block_category")),
             block_labels=dict.get("block_labels", []),
+            block_role_labels=dict.get("block_role_labels", []),
+            block_position_labels=dict.get("block_position_labels", []),
+            line_role_labels=dict.get("line_role_labels", []),
+            line_position_labels=dict.get("line_position_labels", []),
+            baseline=dict.get("baseline"),
             override_page_sort_order=dict.get("override_page_sort_order", None),
             unmatched_ground_truth_words=dict.get("unmatched_ground_truth_words", []),
             additional_block_attributes=dict.get("additional_block_attributes", {}),
             base_ground_truth_text=dict.get("base_ground_truth_text", None),
         )
+
+    def estimate_baseline_from_image(
+        self, image: ndarray | None
+    ) -> dict[str, float | str] | None:
+        """Estimate a line baseline y = m*x + b in pixel coordinates.
+
+        This only applies to line blocks containing words.
+        """
+        if image is None:
+            self.baseline = None
+            return None
+        if (
+            self.child_type != BlockChildType.WORDS
+            or self.block_category != BlockCategory.LINE
+        ):
+            self.baseline = None
+            return None
+
+        descender_chars = {"p", "g", "j", "q", "Q"}
+        x_points: list[float] = []
+        y_points: list[float] = []
+        weights: list[float] = []
+
+        for item in self.items:
+            if not isinstance(item, Word):
+                continue
+            chars = item.split_into_characters_from_whitespace(image)
+            if not chars:
+                continue
+            item.estimate_baseline_from_image(image)
+            for ch in chars:
+                x_points.append(
+                    float((ch.bounding_box.minX + ch.bounding_box.maxX) / 2)
+                )
+                y_points.append(float(ch.bounding_box.maxY))
+                weights.append(0.35 if ch.text in descender_chars else 1.0)
+
+        if len(x_points) < 2:
+            self.baseline = None
+            return None
+
+        x_arr = np.array(x_points, dtype=float)
+        y_arr = np.array(y_points, dtype=float)
+        w_arr = np.array(weights, dtype=float)
+
+        slope, intercept = np.polyfit(x_arr, y_arr, deg=1, w=w_arr)
+        predicted = slope * x_arr + intercept
+        residual = y_arr - predicted
+        weighted_var = float(np.average(residual * residual, weights=w_arr))
+        weighted_std = float(np.sqrt(weighted_var))
+        y_span = float(max(1.0, np.max(y_arr) - np.min(y_arr)))
+        confidence = max(0.0, 1.0 - (weighted_std / y_span))
+
+        self.baseline = {
+            "type": "linear",
+            "slope": float(slope),
+            "intercept": float(intercept),
+            "confidence": confidence,
+            "coordinate_space": "pixel",
+        }
+        return self.baseline
 
     def refine_bounding_boxes(self, image: ndarray | None, padding_px: int = 0):
         logger.debug(f"Refining bounding boxes for block with {len(self.items)} items")

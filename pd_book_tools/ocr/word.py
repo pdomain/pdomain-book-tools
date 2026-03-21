@@ -1,12 +1,27 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Dict, Optional
+from typing import ClassVar, Dict, Optional
 
+import cv2
+import numpy as np
 from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.character import Character
+from pd_book_tools.ocr.label_normalization import (
+    ALLOWED_TEXT_STYLE_LABEL_SCOPES,
+    ALLOWED_TEXT_STYLE_LABELS,
+    ALLOWED_WORD_COMPONENTS,
+    TEXT_STYLE_LABEL_ALIASES,
+    WORD_COMPONENT_ALIASES,
+    normalize_text_style_label,
+    normalize_text_style_label_scopes,
+    normalize_text_style_labels,
+    normalize_word_component,
+    normalize_word_components,
+)
 
 # Configure logging
 logger = getLogger(__name__)
@@ -16,14 +31,30 @@ logger = getLogger(__name__)
 class Word:
     """Represents a single word (uninterrupted sequence of characters) detected by OCR"""
 
+    ALLOWED_TEXT_STYLE_LABELS: ClassVar[frozenset[str]] = ALLOWED_TEXT_STYLE_LABELS
+
+    TEXT_STYLE_LABEL_ALIASES: ClassVar[dict[str, str]] = TEXT_STYLE_LABEL_ALIASES
+
+    ALLOWED_TEXT_STYLE_LABEL_SCOPES: ClassVar[frozenset[str]] = (
+        ALLOWED_TEXT_STYLE_LABEL_SCOPES
+    )
+
+    ALLOWED_WORD_COMPONENTS: ClassVar[frozenset[str]] = ALLOWED_WORD_COMPONENTS
+
+    WORD_COMPONENT_ALIASES: ClassVar[dict[str, str]] = WORD_COMPONENT_ALIASES
+
     _text: str
     bounding_box: BoundingBox
     ocr_confidence: float | None
     word_labels: list[str] = field(default_factory=list)
+    text_style_labels: list[str] = field(default_factory=list)
+    text_style_label_scopes: dict[str, str] = field(default_factory=dict)
+    word_components: list[str] = field(default_factory=list)
 
     _ground_truth_text: Optional[str] = None
     ground_truth_bounding_box: Optional[BoundingBox] = None
     ground_truth_match_keys: dict = field(default_factory=dict)
+    baseline: dict[str, float | str] | None = None
 
     def __init__(
         self,
@@ -31,6 +62,10 @@ class Word:
         bounding_box: BoundingBox,
         ocr_confidence: Optional[float] = None,
         word_labels: Optional[list[str]] = None,
+        text_style_labels: Optional[list[str]] = None,
+        text_style_label_scopes: Optional[dict[str, str]] = None,
+        word_components: Optional[list[str]] = None,
+        baseline: Optional[dict[str, float | str]] = None,
         ground_truth_text: Optional[str] = None,
         ground_truth_bounding_box: Optional[BoundingBox] = None,
         ground_truth_match_keys: Optional[dict] = None,
@@ -39,15 +74,46 @@ class Word:
         self.bounding_box = bounding_box
         self.ocr_confidence = ocr_confidence
         if word_labels:
-            self.word_labels = word_labels
+            self.word_labels = list(word_labels)
         else:
             self.word_labels = []
+        self.text_style_labels = self._normalize_text_style_labels(text_style_labels)
+        self.text_style_label_scopes = self._normalize_text_style_label_scopes(
+            self.text_style_labels,
+            text_style_label_scopes,
+        )
+        self.word_components = self._normalize_word_components(word_components)
+        self.baseline = baseline.copy() if baseline else None
         self.ground_truth_text = ground_truth_text or ""
         self.ground_truth_bounding_box = ground_truth_bounding_box
         if ground_truth_match_keys:
             self.ground_truth_match_keys = ground_truth_match_keys
         else:
             self.ground_truth_match_keys = {}
+
+    @classmethod
+    def _normalize_text_style_label(cls, label: str) -> str:
+        return normalize_text_style_label(label)
+
+    @classmethod
+    def _normalize_text_style_labels(cls, labels: Optional[list[str]]) -> list[str]:
+        return normalize_text_style_labels(labels)
+
+    @classmethod
+    def _normalize_text_style_label_scopes(
+        cls,
+        labels: list[str],
+        scopes: Optional[dict[str, str]],
+    ) -> dict[str, str]:
+        return normalize_text_style_label_scopes(labels, scopes)
+
+    @classmethod
+    def _normalize_word_component(cls, component: str) -> str:
+        return normalize_word_component(component)
+
+    @classmethod
+    def _normalize_word_components(cls, components: Optional[list[str]]) -> list[str]:
+        return normalize_word_components(components)
 
     @property
     def text(self) -> str:
@@ -123,6 +189,10 @@ class Word:
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "ocr_confidence": self.ocr_confidence,
             "word_labels": self.word_labels,
+            "text_style_labels": self.text_style_labels,
+            "text_style_label_scopes": self.text_style_label_scopes,
+            "word_components": self.word_components,
+            "baseline": self.baseline,
             "ground_truth_text": (
                 self.ground_truth_text if self.ground_truth_text else None
             ),
@@ -142,6 +212,10 @@ class Word:
             bounding_box=BoundingBox.from_dict(dict["bounding_box"]),
             ocr_confidence=dict["ocr_confidence"],
             word_labels=dict.get("word_labels", []),
+            text_style_labels=dict.get("text_style_labels", []),
+            text_style_label_scopes=dict.get("text_style_label_scopes"),
+            word_components=dict.get("word_components", []),
+            baseline=dict.get("baseline"),
             ground_truth_text=dict.get("ground_truth_text"),
             ground_truth_bounding_box=(
                 BoundingBox.from_dict(dict["ground_truth_bounding_box"])
@@ -214,6 +288,9 @@ class Word:
             bounding_box=left_bbox,
             ocr_confidence=None,
             word_labels=self.word_labels,
+            text_style_labels=self.text_style_labels,
+            text_style_label_scopes=self.text_style_label_scopes,
+            word_components=self.word_components,
             ground_truth_text=left_ground_truth_text,
             ground_truth_match_keys={
                 "split": True,
@@ -224,6 +301,9 @@ class Word:
             bounding_box=right_bbox,
             ocr_confidence=None,
             word_labels=self.word_labels,
+            text_style_labels=self.text_style_labels,
+            text_style_label_scopes=self.text_style_label_scopes,
+            word_components=self.word_components,
             ground_truth_text=right_ground_truth_text,
             ground_truth_match_keys={
                 "split": True,
@@ -231,6 +311,238 @@ class Word:
         )
         logger.debug(f"Left word: {left_word.text}, Right word: {right_word.text}")
         return left_word, right_word
+
+    def split_into_characters_from_whitespace(
+        self, image: ndarray | None, min_ink_pixels_per_column: int = 1
+    ) -> list[Character]:
+        """Split word into Character objects using vertical whitespace gaps.
+
+        The word ROI is extracted from the image, converted to grayscale if needed,
+        then segmented into runs of non-whitespace columns. If the number of runs
+        doesn't match text length, a uniform fallback split is used.
+        """
+        if image is None:
+            raise ValueError("Image is None, cannot split word into characters")
+        if not self.text:
+            return []
+
+        img_h, img_w = image.shape[:2]
+        pixel_bbox = (
+            self.bounding_box.scale(img_w, img_h)
+            if self.bounding_box.is_normalized
+            else self.bounding_box
+        )
+
+        min_x = max(0, int(np.floor(pixel_bbox.minX)))
+        min_y = max(0, int(np.floor(pixel_bbox.minY)))
+        max_x = min(img_w, int(np.ceil(pixel_bbox.maxX)))
+        max_y = min(img_h, int(np.ceil(pixel_bbox.maxY)))
+        if min_x >= max_x or min_y >= max_y:
+            raise ValueError("Word bounding box is out of image bounds")
+
+        roi = image[min_y:max_y, min_x:max_x]
+        if roi.ndim == 3:
+            gray = roi.mean(axis=2)
+        else:
+            gray = roi
+
+        min_ink = max(1, int(min_ink_pixels_per_column))
+        dark_as_ink = gray < 128
+        light_as_ink = ~dark_as_ink
+
+        def _runs_from_mask(mask: ndarray) -> list[tuple[int, int]]:
+            columns = np.sum(mask, axis=0) >= min_ink
+            mask_runs: list[tuple[int, int]] = []
+            run_start: int | None = None
+            for idx, has_ink in enumerate(columns):
+                if has_ink and run_start is None:
+                    run_start = idx
+                elif not has_ink and run_start is not None:
+                    mask_runs.append((run_start, idx))
+                    run_start = None
+            if run_start is not None:
+                mask_runs.append((run_start, len(columns)))
+            return mask_runs
+
+        dark_runs = _runs_from_mask(dark_as_ink)
+        light_runs = _runs_from_mask(light_as_ink)
+        if abs(len(dark_runs) - len(self.text)) <= abs(
+            len(light_runs) - len(self.text)
+        ):
+            runs = dark_runs
+            chosen_mask = dark_as_ink
+        else:
+            runs = light_runs
+            chosen_mask = light_as_ink
+
+        # Best-effort fallback: morphology + distance transform can recover
+        # character gaps when sparse noise bridges whitespace columns.
+        if len(runs) != len(self.text):
+            _, otsu_binary = cv2.threshold(
+                gray.astype(np.uint8),
+                0,
+                255,
+                cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+            )
+
+            def _morph_runs_from_foreground(
+                foreground: ndarray,
+            ) -> tuple[list[tuple[int, int]], ndarray]:
+                kernel = np.ones((2, 2), np.uint8)
+                opened = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel)
+                closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
+                dist = cv2.distanceTransform(closed, cv2.DIST_L2, 3)
+                if float(dist.max()) > 0:
+                    sure_fg = dist >= (0.2 * float(dist.max()))
+                else:
+                    sure_fg = closed > 0
+                return _runs_from_mask(sure_fg), sure_fg
+
+            morph_runs_a, morph_mask_a = _morph_runs_from_foreground(otsu_binary)
+            morph_runs_b, morph_mask_b = _morph_runs_from_foreground(
+                cv2.bitwise_not(otsu_binary)
+            )
+            if abs(len(morph_runs_a) - len(self.text)) <= abs(
+                len(morph_runs_b) - len(self.text)
+            ):
+                morph_runs = morph_runs_a
+                morph_mask = morph_mask_a
+            else:
+                morph_runs = morph_runs_b
+                morph_mask = morph_mask_b
+
+            if abs(len(morph_runs) - len(self.text)) < abs(len(runs) - len(self.text)):
+                runs = morph_runs
+                chosen_mask = morph_mask
+
+        if len(runs) != len(self.text):
+            logger.debug(
+                "Whitespace segmentation run count (%s) differs from text length (%s); using uniform fallback",
+                len(runs),
+                len(self.text),
+            )
+            roi_width = max_x - min_x
+            per_char = roi_width / len(self.text)
+            runs = []
+            for i in range(len(self.text)):
+                left = int(round(i * per_char))
+                right = int(round((i + 1) * per_char))
+                runs.append((left, right))
+            # Keep using last selected mask for vertical bounds when possible.
+
+        # For character splits we intentionally propagate every word-level style label
+        # to every character, including labels scoped as "part". This is a conservative
+        # placeholder until a human reviewer or a character-level OCR model resolves
+        # the exact character subset for partial styles.
+        character_style_labels = [
+            label
+            for label in self.text_style_labels
+            if self.text_style_label_scopes.get(label, "whole") in {"whole", "part"}
+        ]
+
+        characters: list[Character] = []
+        for idx, ch in enumerate(self.text):
+            left, right = runs[idx]
+
+            run_mask = chosen_mask[:, left:right]
+            row_has_ink = np.any(run_mask, axis=1) if run_mask.size else np.array([])
+            if row_has_ink.size and np.any(row_has_ink):
+                row_indices = np.where(row_has_ink)[0]
+                top_rel = int(row_indices[0])
+                bottom_rel = int(row_indices[-1]) + 1
+            else:
+                top_rel = 0
+                bottom_rel = max_y - min_y
+
+            char_bbox = BoundingBox.from_ltrb(
+                min_x + left,
+                min_y + top_rel,
+                min_x + right,
+                min_y + bottom_rel,
+            )
+            characters.append(
+                Character(
+                    text=ch,
+                    bounding_box=char_bbox,
+                    ocr_confidence=self.ocr_confidence,
+                    text_style_labels=list(character_style_labels),
+                    word_components=list(self.word_components),
+                )
+            )
+
+        # Baseline/topline heuristic: label characters displaced vertically.
+        if len(characters) >= 2:
+            tops = np.array([c.bounding_box.minY for c in characters], dtype=float)
+            bottoms = np.array([c.bounding_box.maxY for c in characters], dtype=float)
+            heights = np.array(
+                [max(c.bounding_box.height, 1.0) for c in characters], dtype=float
+            )
+
+            # Descenders (e.g., p/g/j/q/Q) naturally dip below baseline,
+            # so reduce their influence in baseline estimation.
+            descender_chars = {"p", "g", "j", "q", "Q"}
+            weights = np.array(
+                [0.35 if c.text in descender_chars else 1.0 for c in characters],
+                dtype=float,
+            )
+            median_top = float(np.average(tops, weights=weights))
+            median_bottom = float(np.average(bottoms, weights=weights))
+            median_height = float(np.average(heights, weights=weights))
+            top_delta = 0.2 * median_height
+            bottom_delta = 0.1 * median_height
+
+            for c in characters:
+                is_super = c.bounding_box.minY <= (
+                    median_top - top_delta
+                ) and c.bounding_box.maxY <= (median_bottom - bottom_delta)
+                is_sub = c.bounding_box.minY >= (
+                    median_top + top_delta
+                ) and c.bounding_box.maxY >= (median_bottom + bottom_delta)
+                c.is_superscript = bool(is_super)
+                c.is_subscript = bool(is_sub)
+                if c.is_superscript and "has superscript" not in c.word_components:
+                    c.word_components.append("has superscript")
+                if c.is_subscript and "has subscript" not in c.word_components:
+                    c.word_components.append("has subscript")
+        return characters
+
+    def estimate_baseline_from_image(
+        self, image: ndarray | None
+    ) -> dict[str, float | str] | None:
+        """Estimate a horizontal baseline for this word in pixel coordinates."""
+        if image is None or not self.text:
+            self.baseline = None
+            return None
+
+        characters = self.split_into_characters_from_whitespace(image)
+        if not characters:
+            self.baseline = None
+            return None
+
+        descender_chars = {"p", "g", "j", "q", "Q"}
+        bottoms = np.array([c.bounding_box.maxY for c in characters], dtype=float)
+        heights = np.array(
+            [max(c.bounding_box.height, 1.0) for c in characters], dtype=float
+        )
+        weights = np.array(
+            [0.35 if c.text in descender_chars else 1.0 for c in characters],
+            dtype=float,
+        )
+
+        baseline_y = float(np.average(bottoms, weights=weights))
+        height_ref = float(np.average(heights, weights=weights))
+        residual = bottoms - baseline_y
+        weighted_var = float(np.average(residual * residual, weights=weights))
+        weighted_std = float(np.sqrt(weighted_var))
+        confidence = max(0.0, 1.0 - (weighted_std / max(1.0, height_ref)))
+
+        self.baseline = {
+            "type": "horizontal",
+            "y": baseline_y,
+            "confidence": confidence,
+            "coordinate_space": "pixel",
+        }
+        return self.baseline
 
     def merge(self, word_to_merge: "Word"):
         """Merge this word with another word"""
@@ -291,9 +603,27 @@ class Word:
             self.ocr_confidence = None
         # Merge labels & ground truth keys
         self.word_labels.extend(word_to_merge.word_labels)
+        self.text_style_labels.extend(word_to_merge.text_style_labels)
+        self.word_components.extend(word_to_merge.word_components)
         self.ground_truth_match_keys.update(word_to_merge.ground_truth_match_keys)
         # Deduplicate labels while preserving first occurrence order
         self.word_labels = list(dict.fromkeys(self.word_labels))
+        self.text_style_labels = list(dict.fromkeys(self.text_style_labels))
+        self.word_components = list(dict.fromkeys(self.word_components))
+
+        merged_scopes = self._normalize_text_style_label_scopes(
+            self.text_style_labels,
+            self.text_style_label_scopes,
+        )
+        incoming_scopes = self._normalize_text_style_label_scopes(
+            word_to_merge.text_style_labels,
+            word_to_merge.text_style_label_scopes,
+        )
+        for label in self.text_style_labels:
+            current = merged_scopes.get(label, "whole")
+            incoming = incoming_scopes.get(label, "whole")
+            merged_scopes[label] = "part" if "part" in (current, incoming) else "whole"
+        self.text_style_label_scopes = merged_scopes
 
     def crop_bottom(self, img_ndarray):
         """Crop the bottom of the word using bounding box crop_bottom method"""

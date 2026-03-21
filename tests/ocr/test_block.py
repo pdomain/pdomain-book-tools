@@ -33,6 +33,11 @@ def test_block_to_dict(sample_block1, sample_line1, sample_two_paragraph_block1)
     assert block_dict["child_type"] == BlockChildType.WORDS.value
     assert block_dict["block_category"] == BlockCategory.LINE.value
     assert block_dict["block_labels"] == ["labelline1"]
+    assert block_dict["block_role_labels"] == []
+    assert block_dict["block_position_labels"] == []
+    assert block_dict["line_role_labels"] == []
+    assert block_dict["line_position_labels"] == []
+    assert block_dict["baseline"] is None
     assert len(block_dict["items"]) == 2
     assert block_dict["items"][0] == sample_line1[0].to_dict()
     assert block_dict["items"][1] == sample_line1[1].to_dict()
@@ -42,6 +47,47 @@ def test_block_to_dict(sample_block1, sample_line1, sample_two_paragraph_block1)
     assert len(twoP["items"]) == 2
     assert len(twoP["items"][0]["items"]) == 2
     assert len(twoP["items"][1]["items"]) == 1
+
+
+def test_block_to_from_dict_with_baseline(sample_block1):
+    sample_block1.baseline = {
+        "type": "linear",
+        "slope": 0.1,
+        "intercept": 10.0,
+        "confidence": 0.9,
+        "coordinate_space": "pixel",
+    }
+    round_trip = Block.from_dict(sample_block1.to_dict())
+    assert round_trip.baseline is not None
+    assert round_trip.baseline["type"] == "linear"
+    assert round_trip.baseline["slope"] == pytest.approx(0.1)
+
+
+def test_line_block_estimate_baseline_from_image_sets_attribute():
+    image = np.full((40, 60), 255, dtype=np.uint8)
+    # first word ("ab")
+    image[14:24, 4:8] = 0
+    image[14:24, 10:14] = 0
+    # second word ("cd")
+    image[15:25, 26:30] = 0
+    image[15:25, 33:37] = 0
+
+    w1 = Word(text="ab", bounding_box=BoundingBox.from_ltrb(4, 14, 14, 24))
+    w2 = Word(text="cd", bounding_box=BoundingBox.from_ltrb(26, 15, 37, 25))
+    line = Block(
+        items=[w1, w2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+
+    baseline = line.estimate_baseline_from_image(image)
+
+    assert baseline is not None
+    assert baseline["type"] == "linear"
+    assert baseline["coordinate_space"] == "pixel"
+    assert "slope" in baseline
+    assert "intercept" in baseline
+    assert line.baseline == baseline
 
 
 def test_paragraph(
@@ -417,6 +463,75 @@ def test_merge_other_labels_none(sample_block1, sample_block2):
     original_labels = list(sample_block1.block_labels)
     sample_block1.merge(b2)
     assert sample_block1.block_labels == original_labels  # unchanged
+
+
+def test_block_classification_label_alias_normalization(sample_line1):
+    b = Block(
+        sample_line1,
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+        block_role_labels=["Page-Header", "printer's mark", "blockquote"],
+        block_position_labels=["top", "margin_left", "RIGHT"],
+        line_role_labels=["verse", "pagenumber"],
+        line_position_labels=["column_right", "bottom"],
+    )
+    assert b.block_role_labels == ["page header", "printers mark", "blockquote"]
+    assert b.block_position_labels == ["top", "margin left", "right"]
+    assert b.line_role_labels == ["verse line", "page number line"]
+    assert b.line_position_labels == ["column right", "bottom"]
+
+
+def test_block_classification_invalid_label_raises(sample_line1):
+    with pytest.raises(ValueError):
+        Block(
+            sample_line1,
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+            block_role_labels=["totally unknown role"],
+        )
+
+
+def test_block_classification_round_trip(sample_line1):
+    b = Block(
+        sample_line1,
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+        block_role_labels=["poem"],
+        block_position_labels=["bottom"],
+        line_role_labels=["header"],
+        line_position_labels=["center"],
+    )
+    rt = Block.from_dict(b.to_dict())
+    assert rt.block_role_labels == ["poetry"]
+    assert rt.block_position_labels == ["bottom"]
+    assert rt.line_role_labels == ["header line"]
+    assert rt.line_position_labels == ["center"]
+
+
+def test_block_merge_combines_classification_labels(sample_line1, sample_line2):
+    left = Block(
+        sample_line1,
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+        block_role_labels=["page header"],
+        block_position_labels=["top", "left"],
+        line_role_labels=["header line"],
+        line_position_labels=["top"],
+    )
+    right = Block(
+        sample_line2,
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+        block_role_labels=["pageheader", "page number"],
+        block_position_labels=["right"],
+        line_role_labels=["pagenumber"],
+        line_position_labels=["top"],
+    )
+    left.merge(right)
+    assert left.block_role_labels == ["page header", "page number"]
+    assert left.block_position_labels == ["top", "left", "right"]
+    assert left.line_role_labels == ["header line", "page number line"]
+    assert left.line_position_labels == ["top"]
 
 
 def test_ocr_confidence_scores_and_mean_nested(sample_two_paragraph_block1):
