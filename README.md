@@ -54,7 +54,7 @@ uv sync --group dev
 uv run pre-commit install
 
 # Test the installation
-uv run pytest
+uv run pytest -n auto -v -ra
 
 # Build the project
 uv build

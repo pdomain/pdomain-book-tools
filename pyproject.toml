@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pd-book-tools"
-version = "0.3.1"
+version = "0.3.2"
 description = "Python tools for working with public domain book scans"
 authors = [
     { name = "CT", email = "concavetrillion@gmail.com" }
@@ -43,6 +43,7 @@ dev = [
     "pytest-cov>=6.2.1",
     "pytest>=8.3",
     "ruff>=0.12.5",
+    "pytest-xdist>=3.8.0",
 ]
 
 

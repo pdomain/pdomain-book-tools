@@ -38,13 +38,13 @@ reset-full: ## Nuclear option: clear everything and redownload
 	@$(MAKE) --no-print-directory install
 	@echo "💥 Full reset complete! Everything is fresh!"
 
-test: ## Run tests
-	@echo "🧪 Running tests..."
-	uv run pytest
+test: ## Run tests with parallelization
+	@echo "🧪 Running tests (parallelized)..."
+	uv run pytest -n auto -v -ra
 
-test-verbose: ## Run tests with verbose output
-	@echo "🧪 Running tests (verbose mode)..."
-	uv run pytest -v
+test-verbose: ## Run tests with verbose output and parallelization
+	@echo "🧪 Running tests (verbose mode, parallelized)..."
+	uv run pytest -n auto -v -ra
 
 test-single: ## Run one pytest node id (usage: make test-single TEST='tests/...::test_name')
 	@if [ -z "$(TEST)" ]; then \
@@ -52,8 +52,8 @@ test-single: ## Run one pytest node id (usage: make test-single TEST='tests/...:
 		echo "   Example: make test-single TEST='tests/ocr/test_word.py::TestWord::test_word_scale'"; \
 		exit 1; \
 	fi
-	@echo "🧪 Running single test: $(TEST)"
-	uv run pytest "$(TEST)"
+	@echo "🧪 Running single test (parallelized): $(TEST)"
+	uv run pytest -n auto "$(TEST)"
 
 test-k: ## Run tests by pytest -k expression (usage: make test-k K='pattern')
 	@if [ -z "$(K)" ]; then \
@@ -61,12 +61,12 @@ test-k: ## Run tests by pytest -k expression (usage: make test-k K='pattern')
 		echo "   Example: make test-k K='test_word_scale'"; \
 		exit 1; \
 	fi
-	@echo "🧪 Running tests with -k: $(K)"
-	uv run pytest -k "$(K)"
+	@echo "🧪 Running tests with -k (parallelized): $(K)"
+	uv run pytest -n auto -k "$(K)"
 
-coverage: ## Run tests with coverage report
-	@echo "🧪 Running tests with coverage..."
-	uv run pytest --cov=pd_book_tools --cov-report=html
+coverage: ## Run tests with coverage report (parallelized)
+	@echo "🧪 Running tests with coverage (parallelized)..."
+	uv run pytest --cov=pd_book_tools --cov-report=html -n auto -v -ra
 	@echo "📊 Coverage report generated in htmlcov/index.html"
 
 upgrade-deps: ## Upgrade dependencies and sync local environment

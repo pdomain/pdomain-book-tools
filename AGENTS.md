@@ -35,8 +35,18 @@ Common commands:
 
 - Prefer `make` targets over direct tool invocation when a target exists.
 - All Python tooling must run through `uv` (`uv run pytest`, `uv run ruff format`, etc.).
+- Test execution is mandatory through Make targets or `uv run pytest ...` only.
+- pytest-xdist parallelization is REQUIRED for pytest runs: always include `-n auto`.
 - After code changes, run formatting first, then targeted tests, then broader checks as needed.
 - Keep tests aligned with the existing mirrored structure under `tests/`.
+
+### Non-negotiable test command policy
+
+- NEVER use `.venv/bin/python -m pytest ...`.
+- NEVER use `python -m pytest ...`.
+- NEVER use `python3 -m pytest ...`.
+- ALWAYS use `make ...` targets for tests when available, otherwise `uv run pytest -n auto ...`.
+- If a direct-python test command appears anywhere, treat it as policy violation and replace it.
 
 ## Domain guardrails (OCR + geometry)
 

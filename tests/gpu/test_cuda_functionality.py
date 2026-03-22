@@ -19,19 +19,19 @@ Test Organization:
 
 Usage:
     # Run all GPU tests (skips automatically if no GPU)
-    pytest tests/gpu/ -v
+    uv run pytest -n auto tests/gpu/ -v
 
     # Run only CuPy tests
-    pytest tests/gpu/ -v -m cupy
+    uv run pytest -n auto tests/gpu/ -v -m cupy
 
     # Run only PyTorch CUDA tests
-    pytest tests/gpu/ -v -m torch_cuda
+    uv run pytest -n auto tests/gpu/ -v -m torch_cuda
 
     # Skip slow performance tests
-    pytest tests/gpu/ -v -m "gpu and not slow"
+    uv run pytest -n auto tests/gpu/ -v -m "gpu and not slow"
 
     # Simulate CI environment (should skip GPU tests)
-    CI=true pytest tests/gpu/ -v
+    CI=true uv run pytest -n auto tests/gpu/ -v
 """
 
 import numpy as np

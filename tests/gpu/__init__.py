@@ -10,8 +10,8 @@ Test organization:
 - TestGPUIntegration: End-to-end GPU processing pipelines and performance
 
 Usage:
-    pytest tests/gpu/ -v               # All GPU tests (auto-skip if no GPU)
-    pytest tests/gpu/ -v -m cupy       # Only CuPy tests
-    pytest tests/gpu/ -v -m torch_cuda # Only PyTorch CUDA tests
-    pytest tests/gpu/ -v -m "not slow" # Skip slow performance tests
+    uv run pytest -n auto tests/gpu/ -v               # All GPU tests (auto-skip if no GPU)
+    uv run pytest -n auto tests/gpu/ -v -m cupy       # Only CuPy tests
+    uv run pytest -n auto tests/gpu/ -v -m torch_cuda # Only PyTorch CUDA tests
+    uv run pytest -n auto tests/gpu/ -v -m "not slow" # Skip slow performance tests
 """

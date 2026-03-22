@@ -89,34 +89,34 @@ def test_cupy_required(cupy_module):
 ### **Local Development (with GPU)**
 ```bash
 # Run all tests (GPU tests will run)
-uv run pytest
+uv run pytest -n auto -v -ra
 
 # Run only GPU tests
-uv run pytest -m gpu
+uv run pytest -n auto -m gpu
 
 # Run specific GPU modules
-uv run pytest tests/gpu/ -v
+uv run pytest -n auto tests/gpu/ -v
 
 # Skip slow GPU tests
-uv run pytest -m "gpu and not slow"
+uv run pytest -n auto -m "gpu and not slow"
 ```
 
 ### **CI Environment (GitHub Actions)**
 ```bash
 # GPU tests automatically skip
-uv run pytest
+uv run pytest -n auto -v -ra
 
 # Explicitly skip GPU tests
-uv run pytest -m "not gpu"
+uv run pytest -n auto -m "not gpu"
 ```
 
 ### **Force Skip GPU Tests**
 ```bash
 # Simulate CI environment
-CI=true uv run pytest
+CI=true uv run pytest -n auto -v -ra
 
 # Use markers to skip
-uv run pytest -m "not gpu"
+uv run pytest -n auto -m "not gpu"
 ```
 
 ## Markers
