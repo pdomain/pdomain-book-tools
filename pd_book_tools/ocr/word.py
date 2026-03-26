@@ -11,11 +11,9 @@ from thefuzz.fuzz import ratio as fuzz_ratio
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.character import Character
 from pd_book_tools.ocr.label_normalization import (
+    ALLOWED_COMPONENTS,
     ALLOWED_TEXT_STYLE_LABEL_SCOPES,
     ALLOWED_TEXT_STYLE_LABELS,
-    ALLOWED_WORD_COMPONENTS,
-    TEXT_STYLE_LABEL_ALIASES,
-    WORD_COMPONENT_ALIASES,
     normalize_text_style_label,
     normalize_text_style_label_scopes,
     normalize_text_style_labels,
@@ -33,15 +31,11 @@ class Word:
 
     ALLOWED_TEXT_STYLE_LABELS: ClassVar[frozenset[str]] = ALLOWED_TEXT_STYLE_LABELS
 
-    TEXT_STYLE_LABEL_ALIASES: ClassVar[dict[str, str]] = TEXT_STYLE_LABEL_ALIASES
-
     ALLOWED_TEXT_STYLE_LABEL_SCOPES: ClassVar[frozenset[str]] = (
         ALLOWED_TEXT_STYLE_LABEL_SCOPES
     )
 
-    ALLOWED_WORD_COMPONENTS: ClassVar[frozenset[str]] = ALLOWED_WORD_COMPONENTS
-
-    WORD_COMPONENT_ALIASES: ClassVar[dict[str, str]] = WORD_COMPONENT_ALIASES
+    ALLOWED_WORD_COMPONENTS: ClassVar[frozenset[str]] = ALLOWED_COMPONENTS
 
     _text: str
     bounding_box: BoundingBox
@@ -439,6 +433,7 @@ class Word:
             for label in self.text_style_labels
             if self.text_style_label_scopes.get(label, "whole") in {"whole", "part"}
         ]
+        character_word_components = list(self.word_components)
 
         characters: list[Character] = []
         for idx, ch in enumerate(self.text):
@@ -466,7 +461,7 @@ class Word:
                     bounding_box=char_bbox,
                     ocr_confidence=self.ocr_confidence,
                     text_style_labels=list(character_style_labels),
-                    word_components=list(self.word_components),
+                    word_components=list(character_word_components),
                 )
             )
 
@@ -498,12 +493,10 @@ class Word:
                 is_sub = c.bounding_box.minY >= (
                     median_top + top_delta
                 ) and c.bounding_box.maxY >= (median_bottom + bottom_delta)
-                c.is_superscript = bool(is_super)
-                c.is_subscript = bool(is_sub)
-                if c.is_superscript and "has superscript" not in c.word_components:
-                    c.word_components.append("has superscript")
-                if c.is_subscript and "has subscript" not in c.word_components:
-                    c.word_components.append("has subscript")
+                if is_super and "superscript" not in c.word_components:
+                    c.word_components.append("superscript")
+                if is_sub and "subscript" not in c.word_components:
+                    c.word_components.append("subscript")
         return characters
 
     def estimate_baseline_from_image(

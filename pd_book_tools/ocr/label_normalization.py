@@ -15,49 +15,16 @@ ALLOWED_TEXT_STYLE_LABELS: Final[frozenset[str]] = frozenset(
     }
 )
 
-TEXT_STYLE_LABEL_ALIASES: Final[dict[str, str]] = {
-    "italic": "italics",
-    "ital": "italics",
-    "monospaced": "monospace",
-    "typewriter": "monospace",
-}
-
-ALLOWED_WORD_COMPONENTS: Final[frozenset[str]] = frozenset(
+ALLOWED_COMPONENTS: Final[frozenset[str]] = frozenset(
     {
-        "has superscript",
-        "has subscript",
-        "has starting footnote marker",
-        "has ending footnote marker",
-        "has drop cap",
+        "superscript",
+        "subscript",
+        "footnote marker",
+        "drop cap",
     }
 )
 
-WORD_COMPONENT_ALIASES: Final[dict[str, str]] = {
-    "superscript": "has superscript",
-    "subscript": "has subscript",
-    "start footnote marker": "has starting footnote marker",
-    "start footnote": "has starting footnote marker",
-    "footnote start marker": "has starting footnote marker",
-    "starting footnote marker": "has starting footnote marker",
-    "has start footnote marker": "has starting footnote marker",
-    "end footnote marker": "has ending footnote marker",
-    "end footnote": "has ending footnote marker",
-    "footnote end marker": "has ending footnote marker",
-    "ending footnote marker": "has ending footnote marker",
-    "has end footnote marker": "has ending footnote marker",
-    "drop cap": "has drop cap",
-    "has dropcap": "has drop cap",
-}
-
 ALLOWED_TEXT_STYLE_LABEL_SCOPES: Final[frozenset[str]] = frozenset({"whole", "part"})
-
-TEXT_STYLE_LABEL_SCOPE_ALIASES: Final[dict[str, str]] = {
-    "entire": "whole",
-    "full": "whole",
-    "word": "whole",
-    "partial": "part",
-    "portion": "part",
-}
 
 
 def _normalize_token(label: str) -> str:
@@ -66,7 +33,6 @@ def _normalize_token(label: str) -> str:
 
 def normalize_text_style_label(label: str) -> str:
     normalized = _normalize_token(label)
-    normalized = TEXT_STYLE_LABEL_ALIASES.get(normalized, normalized)
 
     if normalized not in ALLOWED_TEXT_STYLE_LABELS:
         compact = normalized.replace(" ", "")
@@ -75,12 +41,6 @@ def normalize_text_style_label(label: str) -> str:
             if compact == allowed_label.replace(" ", ""):
                 normalized = allowed_label
                 break
-
-        if normalized not in ALLOWED_TEXT_STYLE_LABELS:
-            for alias, canonical in TEXT_STYLE_LABEL_ALIASES.items():
-                if compact == alias.replace(" ", ""):
-                    normalized = canonical
-                    break
 
     if normalized not in ALLOWED_TEXT_STYLE_LABELS:
         allowed = ", ".join(sorted(ALLOWED_TEXT_STYLE_LABELS))
@@ -102,7 +62,6 @@ def normalize_text_style_label_scope(scope: Optional[str]) -> str:
         return "whole"
 
     normalized = _normalize_token(scope)
-    normalized = TEXT_STYLE_LABEL_SCOPE_ALIASES.get(normalized, normalized)
 
     if normalized not in ALLOWED_TEXT_STYLE_LABEL_SCOPES:
         allowed = ", ".join(sorted(ALLOWED_TEXT_STYLE_LABEL_SCOPES))
@@ -138,33 +97,54 @@ def normalize_text_style_label_scopes(
 
 
 def normalize_word_component(component: str) -> str:
-    normalized = _normalize_token(component)
-    normalized = WORD_COMPONENT_ALIASES.get(normalized, normalized)
-
-    if normalized not in ALLOWED_WORD_COMPONENTS:
-        compact = normalized.replace(" ", "")
-
-        for allowed_component in ALLOWED_WORD_COMPONENTS:
-            if compact == allowed_component.replace(" ", ""):
-                normalized = allowed_component
-                break
-
-        if normalized not in ALLOWED_WORD_COMPONENTS:
-            for alias, canonical in WORD_COMPONENT_ALIASES.items():
-                if compact == alias.replace(" ", ""):
-                    normalized = canonical
-                    break
-
-    if normalized not in ALLOWED_WORD_COMPONENTS:
-        allowed = ", ".join(sorted(ALLOWED_WORD_COMPONENTS))
-        raise ValueError(
-            f"Invalid word component '{component}'. Allowed components: {allowed}"
-        )
-    return normalized
+    return _normalize_component(
+        component,
+        allowed_components=ALLOWED_COMPONENTS,
+        label_type="word component",
+    )
 
 
 def normalize_word_components(components: Optional[list[str]]) -> list[str]:
     if not components:
         return []
     normalized = [normalize_word_component(component) for component in components]
+    return list(dict.fromkeys(normalized))
+
+
+def normalize_character_component(component: str) -> str:
+    return _normalize_component(
+        component,
+        allowed_components=ALLOWED_COMPONENTS,
+        label_type="character component",
+    )
+
+
+def _normalize_component(
+    component: str,
+    *,
+    allowed_components: frozenset[str],
+    label_type: str,
+) -> str:
+    normalized = _normalize_token(component)
+
+    if normalized not in allowed_components:
+        compact = normalized.replace(" ", "")
+
+        for allowed_component in allowed_components:
+            if compact == allowed_component.replace(" ", ""):
+                normalized = allowed_component
+                break
+
+    if normalized not in allowed_components:
+        allowed = ", ".join(sorted(allowed_components))
+        raise ValueError(
+            f"Invalid {label_type} '{component}'. Allowed components: {allowed}"
+        )
+    return normalized
+
+
+def normalize_character_components(components: Optional[list[str]]) -> list[str]:
+    if not components:
+        return []
+    normalized = [normalize_character_component(component) for component in components]
     return list(dict.fromkeys(normalized))

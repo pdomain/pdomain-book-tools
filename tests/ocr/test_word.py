@@ -89,7 +89,7 @@ def word_from_dict_case():
             "bounding_box": bbox_dict,
             "ocr_confidence": 0.99,
             "word_labels": ["label1"],
-            "text_style_labels": ["Bold", "italic"],
+            "text_style_labels": ["Bold", "italics"],
         }
     )
     return w, bbox_dict
@@ -125,14 +125,14 @@ def test_word_from_dict_text_style_label_scopes_defaults_whole(word_from_dict_ca
     assert w.text_style_label_scopes == {"bold": "whole", "italics": "whole"}
 
 
-def test_word_text_style_aliases_compact_and_separators(pixel_bbox):
+def test_word_text_style_compact_and_separators(pixel_bbox):
     w = Word(
         text="style-aliases",
         bounding_box=pixel_bbox,
         text_style_labels=[
             "allcaps",
             "small_caps",
-            "typewriter",
+            "monospace",
         ],
     )
     assert w.text_style_labels == [
@@ -142,14 +142,14 @@ def test_word_text_style_aliases_compact_and_separators(pixel_bbox):
     ]
 
 
-def test_word_text_style_scope_aliases_and_labels_normalized(pixel_bbox):
+def test_word_text_style_scopes_normalized(pixel_bbox):
     w = Word(
         text="style-scope",
         bounding_box=pixel_bbox,
-        text_style_labels=["Bold", "italic"],
+        text_style_labels=["Bold", "italics"],
         text_style_label_scopes={
-            "bold": "entire",
-            "italics": "portion",
+            "bold": "whole",
+            "italics": "part",
         },
     )
     assert w.text_style_label_scopes == {"bold": "whole", "italics": "part"}
@@ -175,19 +175,16 @@ def test_word_text_style_scope_invalid_value_raises(pixel_bbox):
         )
 
 
-def test_word_component_aliases_compact_and_separators(pixel_bbox):
+def test_word_component_normalizes_compact_and_separators(pixel_bbox):
     w = Word(
         text="component-aliases",
         bounding_box=pixel_bbox,
         word_components=[
-            "starting-footnote-marker",
-            "endfootnotemarker",
+            "footnote-marker",
+            "footnotemarker",
         ],
     )
-    assert w.word_components == [
-        "has starting footnote marker",
-        "has ending footnote marker",
-    ]
+    assert w.word_components == ["footnote marker"]
 
 
 def test_word_text_style_invalid_raises(pixel_bbox):
@@ -401,7 +398,7 @@ def test_split_styles_propagate():
     w = Word(
         text="abcd",
         bounding_box=BoundingBox.from_ltrb(0, 0, 8, 8),
-        text_style_labels=["bold", "italic"],
+        text_style_labels=["bold", "italics"],
         text_style_label_scopes={"bold": "whole", "italics": "part"},
     )
     left, right = w.split(bbox_split_offset=3, character_split_index=2)
@@ -457,7 +454,7 @@ def test_merge_text_style_labels_deduped():
     left = Word(
         text="left",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
-        text_style_labels=["bold", "italic"],
+        text_style_labels=["bold", "italics"],
     )
     right = Word(
         text="right",
@@ -472,7 +469,7 @@ def test_merge_text_style_scope_conflict_prefers_part():
     left = Word(
         text="left",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
-        text_style_labels=["italic"],
+        text_style_labels=["italics"],
         text_style_label_scopes={"italics": "whole"},
     )
     right = Word(
@@ -1155,7 +1152,7 @@ def test_split_into_characters_from_whitespace_basic():
         bounding_box=BoundingBox.from_ltrb(2, 3, 12, 9),
         text_style_labels=["bold"],
         text_style_label_scopes={"bold": "part"},
-        word_components=["has superscript"],
+        word_components=["superscript"],
     )
 
     chars = w.split_into_characters_from_whitespace(image)
@@ -1168,7 +1165,42 @@ def test_split_into_characters_from_whitespace_basic():
         (10, 3, 12, 9),
     ]
     assert chars[0].text_style_labels == ["bold"]
-    assert chars[0].word_components == ["has superscript"]
+    assert chars[0].word_components == ["superscript"]
+
+
+def test_split_into_characters_from_whitespace_propagates_all_word_components():
+    image = np.full((12, 20), 255, dtype=np.uint8)
+    image[3:9, 2:4] = 0
+    image[3:9, 6:8] = 0
+
+    w = Word(
+        text="ab",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 8, 9),
+        word_components=["footnote marker", "drop cap"],
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert [c.word_components for c in chars] == [
+        ["footnote marker", "drop cap"],
+        ["footnote marker", "drop cap"],
+    ]
+
+
+def test_split_into_characters_from_whitespace_marks_single_character_footnote_marker():
+    image = np.full((12, 20), 255, dtype=np.uint8)
+    image[3:9, 2:4] = 0
+
+    w = Word(
+        text="*",
+        bounding_box=BoundingBox.from_ltrb(2, 3, 4, 9),
+        word_components=["footnote marker"],
+    )
+
+    chars = w.split_into_characters_from_whitespace(image)
+
+    assert len(chars) == 1
+    assert chars[0].word_components == ["footnote marker"]
 
 
 def test_split_into_characters_from_whitespace_propagates_whole_word_styles():
@@ -1267,14 +1299,14 @@ def test_split_into_characters_auto_labels_super_and_subscript():
     chars = w.split_into_characters_from_whitespace(image)
 
     assert [c.text for c in chars] == ["a", "2", "x"]
-    assert chars[0].is_superscript is False
-    assert chars[0].is_subscript is False
-    assert chars[1].is_superscript is True
-    assert chars[1].is_subscript is False
-    assert chars[2].is_superscript is False
-    assert chars[2].is_subscript is True
-    assert "has superscript" in chars[1].word_components
-    assert "has subscript" in chars[2].word_components
+    assert "superscript" not in chars[0].word_components
+    assert "subscript" not in chars[0].word_components
+    assert "superscript" in chars[1].word_components
+    assert "subscript" not in chars[1].word_components
+    assert "superscript" not in chars[2].word_components
+    assert "subscript" in chars[2].word_components
+    assert "superscript" in chars[1].word_components
+    assert "subscript" in chars[2].word_components
 
 
 def test_split_into_characters_descenders_downweighted_for_baseline():
@@ -1294,8 +1326,7 @@ def test_split_into_characters_descenders_downweighted_for_baseline():
     chars = w.split_into_characters_from_whitespace(image)
 
     assert [c.text for c in chars] == ["a", "p", "g", "c"]
-    assert all(c.is_subscript is False for c in chars)
-    assert all("has subscript" not in c.word_components for c in chars)
+    assert all("subscript" not in c.word_components for c in chars)
 
 
 def test_word_estimate_baseline_from_image_sets_attribute():
