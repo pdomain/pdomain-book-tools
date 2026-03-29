@@ -801,7 +801,9 @@ class Page:
         )
         logger.debug("Median Line Height Spacing: " + str(median_line_height_spacing))
 
-        std_line_height_spacing = np_std(line_spacings) * 0.75
+        std_line_height_spacing = (
+            float(np_std(line_spacings)) * 0.75 if line_spacings else 0.0
+        )
         logger.debug(
             "Standard Deviation Line Height Spacing: " + str(std_line_height_spacing)
         )

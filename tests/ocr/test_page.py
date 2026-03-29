@@ -804,6 +804,15 @@ def test_page_compute_text_row_blocks_empty():
     assert Page.compute_text_row_blocks([]) is None
 
 
+def test_page_compute_text_row_blocks_single_line():
+    line = _make_line(["solo"], 0)
+
+    block = Page.compute_text_row_blocks([line])
+
+    assert block is not None
+    assert len(block.items) == 1
+
+
 # ============================================================================
 # Error handling & edge cases
 # ============================================================================
