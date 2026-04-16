@@ -542,9 +542,9 @@ def test_page_doctr_detection_training_set(tmp_path):
     assert det_labels.exists()
 
 
-def test_page_doctr_recognition_training_set_error(tmp_path):
+def test_page_doctr_recognition_training_set_skips_no_gt(tmp_path):
     l1 = _make_line(["abc"], 0)
-    # Ensure ground_truth_text empty to trigger error
+    # Ensure ground_truth_text empty — should be skipped (not raise)
     for w in l1.items:
         w.ground_truth_text = ""
     page = Page(
@@ -561,8 +561,15 @@ def test_page_doctr_recognition_training_set_error(tmp_path):
     )
     page.cv2_numpy_page_image = np.zeros((20, 20, 3), dtype=np.uint8)
     out = tmp_path / "train2"
-    with pytest.raises(ValueError):
-        page.generate_doctr_recognition_training_set(out, prefix="p")
+    # Should not raise — words without GT text are skipped
+    page.generate_doctr_recognition_training_set(out, prefix="p")
+    rec_labels = out / "recognition" / "labels.json"
+    assert rec_labels.exists()
+    import json
+
+    with open(rec_labels) as f:
+        labels = json.load(f)
+    assert len(labels) == 0
 
 
 def test_page_convert_to_training_set(tmp_path):
@@ -718,6 +725,124 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
 # ============================================================================
 # Match score coloring (visual QA overlays)
 # ============================================================================
+
+
+def test_page_detection_word_filter(tmp_path):
+    """Detection export with word_filter produces only matching polygons."""
+    w1 = Word(
+        text="keep",
+        bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True),
+        ocr_confidence=0.9,
+        ground_truth_text="keep",
+        text_style_labels=["italics"],
+    )
+    w2 = Word(
+        text="drop",
+        bounding_box=BoundingBox.from_ltrb(0.3, 0.1, 0.4, 0.2, is_normalized=True),
+        ocr_confidence=0.9,
+        ground_truth_text="drop",
+    )
+    line = Block(
+        items=[w1, w2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    page = Page(width=100, height=100, page_index=0, items=[para])
+    page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
+
+    page.generate_doctr_detection_training_set(
+        tmp_path,
+        prefix="filt",
+        word_filter=lambda w: "italics" in (w.text_style_labels or []),
+    )
+    import json
+
+    with open(tmp_path / "detection" / "labels.json") as f:
+        data = json.load(f)
+    entry = list(data.values())[0]
+    assert len(entry["polygons"]) == 1  # only w1
+
+
+def test_page_recognition_word_filter(tmp_path):
+    """Recognition export with word_filter produces only matching crops."""
+    w1 = Word(
+        text="keep",
+        bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True),
+        ocr_confidence=0.9,
+        ground_truth_text="keep",
+        text_style_labels=["italics"],
+    )
+    w2 = Word(
+        text="drop",
+        bounding_box=BoundingBox.from_ltrb(0.3, 0.1, 0.4, 0.2, is_normalized=True),
+        ocr_confidence=0.9,
+        ground_truth_text="drop",
+    )
+    line = Block(
+        items=[w1, w2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    page = Page(width=100, height=100, page_index=0, items=[para])
+    page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
+
+    page.generate_doctr_recognition_training_set(
+        tmp_path,
+        prefix="filt",
+        word_filter=lambda w: "italics" in (w.text_style_labels or []),
+    )
+    import json
+
+    with open(tmp_path / "recognition" / "labels.json") as f:
+        labels = json.load(f)
+    assert len(labels) == 1
+    assert list(labels.values())[0] == "keep"
+
+
+def test_page_recognition_label_formatter(tmp_path):
+    """Recognition export with label_formatter writes custom label values."""
+    w1 = Word(
+        text="word",
+        bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True),
+        ocr_confidence=0.9,
+        ground_truth_text="word",
+        text_style_labels=["italics"],
+    )
+    line = Block(
+        items=[w1],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    para = Block(
+        items=[line],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    page = Page(width=100, height=100, page_index=0, items=[para])
+    page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
+
+    def my_formatter(w):
+        return {"text": w.ground_truth_text, "italic": True}
+
+    page.generate_doctr_recognition_training_set(
+        tmp_path, prefix="fmt", label_formatter=my_formatter
+    )
+    import json
+
+    with open(tmp_path / "recognition" / "labels.json") as f:
+        labels = json.load(f)
+    entry = list(labels.values())[0]
+    assert entry == {"text": "word", "italic": True}
 
 
 def test_page_refresh_page_images_match_score_coloring():

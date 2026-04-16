@@ -6,7 +6,7 @@ from hashlib import sha256
 from json import dump as json_dump
 from json import load as json_load
 from logging import getLogger
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import Any, Callable, Collection, Dict, List, Optional, Tuple
 
 # from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
 from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
@@ -954,11 +954,27 @@ class Page:
         output_path.mkdir(parents=True, exist_ok=True)
 
     def generate_doctr_detection_training_set(
-        self: "Page", output_path: pathlib.Path, prefix: str = ""
+        self: "Page",
+        output_path: pathlib.Path,
+        prefix: str = "",
+        word_filter: Optional[Callable[["Word"], bool]] = None,
     ) -> None:
         """
-        Create a DocTR text detection training or validation set from a page image (matched_ocr data) and image bounding boxes
-        Result:
+        Create a DocTR text detection training or validation set from a page
+        image (matched_ocr data) and image bounding boxes.
+
+        Parameters
+        ----------
+        output_path : pathlib.Path
+            Root output directory.  A ``detection/`` subdirectory is created.
+        prefix : str
+            Prefix for exported image filenames.
+        word_filter : callable, optional
+            ``(Word) -> bool`` predicate. When provided, only words that
+            return ``True`` contribute polygons to the detection labels.
+
+        Result::
+
             Files:
             ├── detection
               ├── images
@@ -966,7 +982,8 @@ class Page:
                 └──── ...
               ├── labels.json
 
-           Detection labels.json:
+           Detection labels.json::
+
             {
                 "image_path_1": {
                     'img_dimensions': (x, y),
@@ -1006,6 +1023,10 @@ class Page:
             image_buffer = f.read()
             image_hash = sha256(image_buffer).hexdigest()
 
+        words = self.words
+        if word_filter is not None:
+            words = [w for w in words if word_filter(w)]
+
         detection_labels[image_name] = {
             "img_dimensions": (img_width, img_height),
             "img_hash": image_hash,
@@ -1013,7 +1034,7 @@ class Page:
                 word.bounding_box.get_four_point_scaled_polygon_list(
                     img_width, img_height
                 )
-                for word in self.words
+                for word in words
             ],
         }
 
@@ -1040,28 +1061,46 @@ class Page:
             json_dump(detection_labels, f, indent=4, ensure_ascii=False)
 
     def generate_doctr_recognition_training_set(
-        self: "Page", output_path: pathlib.Path, prefix: str = ""
+        self: "Page",
+        output_path: pathlib.Path,
+        prefix: str = "",
+        word_filter: Optional[Callable[["Word"], bool]] = None,
+        label_formatter: Optional[Callable[["Word"], Any]] = None,
     ) -> None:
         """
-        Create a text recognition training or validation set from a page image (matched_ocr data) and image bounding boxes
-        Result:
+        Create a text recognition training or validation set from a page
+        image (matched_ocr data) and image bounding boxes.
+
+        Parameters
+        ----------
+        output_path : pathlib.Path
+            Root output directory.  A ``recognition/`` subdirectory is created.
+        prefix : str
+            Prefix for exported image filenames.
+        word_filter : callable, optional
+            ``(Word) -> bool`` predicate.  When provided, only words that
+            return ``True`` are exported as recognition crops.
+        label_formatter : callable, optional
+            ``(Word) -> Any`` — custom label builder.  When provided, each
+            word's label in ``labels.json`` is the return value of
+            ``label_formatter(word)`` instead of ``word.ground_truth_text``.
+            Words without ``ground_truth_text`` are still skipped unless a
+            *label_formatter* is supplied.
+
+        Result::
+
             Files:
             ├── recognition
               ├── images
-                ├──── <prefix>_<page_index>_x1_x2_y1_y2.jpg (cropped image, x1, y1, x2, y2 are the scaled coordinates of the bounding box)
+                ├──── <prefix>_<page_index>_x1_x2_y1_y2.png
                 └──── ...
               ├── labels.json
 
-            Recognition labels.json:
+            Recognition labels.json::
+
             {
                 "image_path_1": "<gt value>",
             }
-
-
-        Args:
-            self (Page): _description_
-            output_path (pathlib.Path): _description_
-            prefix (str, optional): _description_. Defaults to "".
         """
         self.generate_doctr_checks(output_path)
 
@@ -1078,6 +1117,10 @@ class Page:
         image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
         img_height, img_width, _ = image.shape
 
+        words = self.words
+        if word_filter is not None:
+            words = [w for w in words if word_filter(w)]
+
         # Delete any existing images that match the prefix + page index in the output directory
         for file in recognition_image_path.glob(f"{prefix}_{self.page_index}_*"):
             if file.is_file():
@@ -1086,20 +1129,15 @@ class Page:
 
         recognition_labels = {}
 
-        for word in self.words:
-            if not word.ground_truth_text:
-                logger.critical(
-                    "Word does not have ground truth text. Please set it before calling this method. Word: "
-                    + word.text
-                )
-                raise ValueError(
-                    "Word does not have ground truth text. Please set it before calling this method. Word: "
-                    + word.text
-                )
-                # raise ValueError(
-                #     "Word does not have ground truth text. Please set it before calling this method. Word: "
-                #     + word.text
-                # )
+        for word in words:
+            if label_formatter is not None:
+                label = label_formatter(word)
+            elif word.ground_truth_text:
+                label = word.ground_truth_text
+            else:
+                logger.warning("Skipping word without ground truth text: %s", word.text)
+                continue
+
             bb = word.bounding_box.scale(width=img_width, height=img_height)
             cropped_image = image[bb.minY : bb.maxY, bb.minX : bb.maxX]
             cropped_image_name = "{}_{}_{}_{}_{}_{}.png".format(
@@ -1115,9 +1153,7 @@ class Page:
                 str(pathlib.Path(recognition_image_path, cropped_image_name).resolve()),
                 cropped_image,
                 [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
-                # [int(cv2_IMWRITE_JPEG_QUALITY), 100],
             )
-            label = word.ground_truth_text
             recognition_labels[cropped_image_name] = label
 
         # Read in the JSON file and add the new labels
@@ -1143,16 +1179,30 @@ class Page:
             json_dump(recognition_labels, f, indent=4, ensure_ascii=False)
 
     def convert_to_training_set(
-        self: "Page", output_path: pathlib.Path, prefix: str = ""
+        self: "Page",
+        output_path: pathlib.Path,
+        prefix: str = "",
+        word_filter: Optional[Callable[["Word"], bool]] = None,
     ) -> None:
         """
-        Create a recognition and detection training sets from a page image (matched_ocr data) and image bounding boxes
+        Create recognition and detection training sets from a page image
+        (matched_ocr data) and image bounding boxes.
+
+        Parameters
+        ----------
+        output_path : pathlib.Path
+            Root output directory.
+        prefix : str
+            Prefix for exported image filenames.
+        word_filter : callable, optional
+            ``(Word) -> bool`` predicate forwarded to both detection and
+            recognition export methods.
         """
         self.generate_doctr_detection_training_set(
-            output_path=output_path, prefix=prefix
+            output_path=output_path, prefix=prefix, word_filter=word_filter
         )
         self.generate_doctr_recognition_training_set(
-            output_path=output_path, prefix=prefix
+            output_path=output_path, prefix=prefix, word_filter=word_filter
         )
 
     # def compute_text_columns(lines: List[Block], tolerance=None):
