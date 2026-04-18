@@ -15,6 +15,9 @@ Python tools for working with public domain book scans.
 3. **Install Nvidia CUDA toolkit** (optional but highly recommended, for GPU functions):
    https://developer.nvidia.com/cuda-toolkit
 
+   Note, if you are using a containerized dev env, you also need Nvidia container tools.
+   https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+
 ### Quick Setup
 
 The project includes a Makefile with convenient commands. For a complete setup:
