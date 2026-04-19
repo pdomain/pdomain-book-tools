@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from shapely.geometry import box  # type: ignore
 
@@ -648,3 +649,46 @@ def test_vertical_crop_branch_coverage():
     # Ensure y adjustments occurred (top crop raised top; bottom crop lowered bottom)
     assert ct.minY > 0
     assert cb.maxY < 1
+
+
+# ============================================================================
+# crop_image tests
+# ============================================================================
+
+
+class TestCropImage:
+    """Tests for BoundingBox.crop_image."""
+
+    def test_pixel_coords(self):
+        img = np.arange(100 * 200 * 3, dtype=np.uint8).reshape(100, 200, 3)
+        bbox = BoundingBox.from_ltrb(10, 20, 50, 60, is_normalized=False)
+        crop = bbox.crop_image(img)
+        assert crop is not None
+        assert crop.shape == (40, 40, 3)
+
+    def test_normalized_coords(self):
+        img = np.zeros((100, 200, 3), dtype=np.uint8)
+        bbox = BoundingBox.from_ltrb(0.0, 0.0, 0.5, 0.5, is_normalized=True)
+        crop = bbox.crop_image(img)
+        assert crop is not None
+        assert crop.shape == (50, 100, 3)
+
+    def test_clamped_to_bounds(self):
+        img = np.zeros((50, 50, 3), dtype=np.uint8)
+        # Bbox extends beyond image bounds — crop_image should clamp
+        bbox = BoundingBox.from_ltrb(10, 10, 100, 100, is_normalized=False)
+        crop = bbox.crop_image(img)
+        assert crop is not None
+        assert crop.shape == (40, 40, 3)
+
+    def test_degenerate_returns_none(self):
+        img = np.zeros((50, 50, 3), dtype=np.uint8)
+        bbox = BoundingBox.from_ltrb(10, 10, 10, 10, is_normalized=False)
+        assert bbox.crop_image(img) is None
+
+    def test_grayscale_image(self):
+        img = np.zeros((80, 80), dtype=np.uint8)
+        bbox = BoundingBox.from_ltrb(0, 0, 40, 40, is_normalized=False)
+        crop = bbox.crop_image(img)
+        assert crop is not None
+        assert crop.shape == (40, 40)

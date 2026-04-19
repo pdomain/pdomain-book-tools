@@ -651,6 +651,40 @@ class BoundingBox:
             is_normalized=False,
         )
 
+    def crop_image(self, image: ndarray) -> ndarray | None:
+        """Crop a region from *image* using this bounding box.
+
+        Handles both normalized and pixel-coordinate bounding boxes.
+        Coordinates are clamped to valid image bounds before slicing.
+
+        Returns ``None`` when the resulting crop would be empty.
+        """
+        height, width = image.shape[:2]
+
+        if self.is_normalized:
+            pixel_bbox = self.scale(width, height)
+        else:
+            pixel_bbox = self
+
+        x1 = int(pixel_bbox.minX)
+        y1 = int(pixel_bbox.minY)
+        x2 = int(pixel_bbox.maxX)
+        y2 = int(pixel_bbox.maxY)
+
+        if x1 >= x2 or y1 >= y2:
+            return None
+
+        # Clamp to image bounds
+        x1 = max(0, min(x1, width - 1))
+        y1 = max(0, min(y1, height - 1))
+        x2 = max(x1 + 1, min(x2, width))
+        y2 = max(y1 + 1, min(y2, height))
+
+        cropped = image[y1:y2, x1:x2]
+        if cropped.size == 0:
+            return None
+        return cropped
+
     # Shapely integration methods
     @classmethod
     def from_shapely(cls, shapely_box: "ShapelyPolygon") -> "BoundingBox":

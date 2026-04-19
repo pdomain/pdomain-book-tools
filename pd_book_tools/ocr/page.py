@@ -89,6 +89,13 @@ class Page:
         original_ocr_tool_text: Optional[str] = "",
         original_ground_truth_text: Optional[str] = "",
         ocr_provenance: OCRProvenance | Dict[str, Any] | None = None,
+        image_path: pathlib.Path | str | None = None,
+        name: str | None = None,
+        source: str = "ocr",
+        ocr_failed: bool = False,
+        provenance_live_ocr: Dict[str, Any] | None = None,
+        provenance_saved_ocr: Dict[str, Any] | None = None,
+        provenance_saved: Dict[str, Any] | None = None,
     ):
         self.width = width
         self.height = height
@@ -118,6 +125,45 @@ class Page:
         self.original_ocr_tool_text = original_ocr_tool_text
         self.original_ground_truth_text = original_ground_truth_text
         self.ocr_provenance = OCRProvenance.coerce(ocr_provenance)
+
+        # Page metadata fields
+        self.image_path: pathlib.Path | str | None = image_path
+        self.name: str | None = name
+        self.source: str = source
+        self.ocr_failed: bool = ocr_failed
+        self.provenance_live_ocr: Dict[str, Any] | None = provenance_live_ocr
+        self.provenance_saved_ocr: Dict[str, Any] | None = provenance_saved_ocr
+        self.provenance_saved: Dict[str, Any] | None = provenance_saved
+
+    @property
+    def index(self) -> int:
+        """Compatibility alias for ``page_index``."""
+        return self.page_index
+
+    @index.setter
+    def index(self, value: int) -> None:
+        self.page_index = int(value)
+
+    @property
+    def page_source(self) -> str:
+        """Compatibility alias for ``source``."""
+        return self.source
+
+    @page_source.setter
+    def page_source(self, value: str) -> None:
+        self.source = value
+
+    def set_source(self, source: str) -> None:
+        """Set the page source identifier."""
+        self.source = source
+
+    def mark_ocr_failed(self, failed: bool = True) -> None:
+        """Mark whether OCR processing failed for this page."""
+        self.ocr_failed = failed
+
+    def set_image_path(self, path: pathlib.Path | str | None) -> None:
+        """Set the original image path for this page."""
+        self.image_path = path
 
     def _sort_items(self):
         self._items.sort(
@@ -502,7 +548,7 @@ class Page:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to JSON-serializable dictionary"""
-        return {
+        result: Dict[str, Any] = {
             "type": "Page",
             "width": self.width,
             "height": self.height,
@@ -515,6 +561,22 @@ class Page:
                 else None
             ),
         }
+        # Include metadata fields when set (omit defaults for compact output)
+        if self.image_path is not None:
+            result["image_path"] = str(self.image_path)
+        if self.name is not None:
+            result["name"] = self.name
+        if self.source != "ocr":
+            result["source"] = self.source
+        if self.ocr_failed:
+            result["ocr_failed"] = self.ocr_failed
+        if self.provenance_live_ocr is not None:
+            result["provenance_live_ocr"] = self.provenance_live_ocr
+        if self.provenance_saved_ocr is not None:
+            result["provenance_saved_ocr"] = self.provenance_saved_ocr
+        if self.provenance_saved is not None:
+            result["provenance_saved"] = self.provenance_saved
+        return result
 
     def copy(self) -> "Page":
         # Copy the page to a new object via serialization/deserialization
@@ -577,6 +639,8 @@ class Page:
     @classmethod
     def from_dict(cls, dict: Dict[str, Any]) -> "Page":
         """Create OCRPage from dictionary"""
+        # Resolve source from either "source" or legacy "page_source" key
+        source = dict.get("source", dict.get("page_source", "ocr"))
         return cls(
             items=[Block.from_dict(block) for block in dict["items"]],
             width=dict["width"],
@@ -588,6 +652,13 @@ class Page:
                 else None
             ),
             ocr_provenance=dict.get("ocr_provenance"),
+            image_path=dict.get("image_path"),
+            name=dict.get("name"),
+            source=source,
+            ocr_failed=dict.get("ocr_failed", False),
+            provenance_live_ocr=dict.get("provenance_live_ocr"),
+            provenance_saved_ocr=dict.get("provenance_saved_ocr"),
+            provenance_saved=dict.get("provenance_saved"),
         )
 
     @classmethod

@@ -1108,3 +1108,181 @@ def test_page_detection_on_empty_items(tmp_path):
     data = json.loads(labels_path.read_text())
     assert len(data) == 1
     assert list(data.values())[0]["polygons"] == []
+
+
+# ============================================================================
+# Page metadata fields
+# ============================================================================
+
+
+class TestPageMetadata:
+    """Tests for first-class metadata fields on Page."""
+
+    def _make_page(self, **kwargs):
+        return Page(width=10, height=10, page_index=0, items=[], **kwargs)
+
+    def test_defaults(self):
+        page = self._make_page()
+        assert page.image_path is None
+        assert page.name is None
+        assert page.source == "ocr"
+        assert page.ocr_failed is False
+        assert page.provenance_live_ocr is None
+        assert page.provenance_saved_ocr is None
+        assert page.provenance_saved is None
+
+    def test_constructor_accepts_metadata(self):
+        page = self._make_page(
+            image_path="/tmp/image.png",
+            name="image.png",
+            source="filesystem",
+            ocr_failed=True,
+            provenance_live_ocr={"engine": "doctr"},
+            provenance_saved_ocr={"engine": "tesseract"},
+            provenance_saved={"hash": "abc"},
+        )
+        assert page.image_path == "/tmp/image.png"
+        assert page.name == "image.png"
+        assert page.source == "filesystem"
+        assert page.ocr_failed is True
+        assert page.provenance_live_ocr == {"engine": "doctr"}
+        assert page.provenance_saved_ocr == {"engine": "tesseract"}
+        assert page.provenance_saved == {"hash": "abc"}
+
+    def test_index_alias(self):
+        page = self._make_page()
+        assert page.index == 0
+        page.index = 5
+        assert page.page_index == 5
+        assert page.index == 5
+
+    def test_page_source_alias(self):
+        page = self._make_page(source="ocr")
+        assert page.page_source == "ocr"
+        page.page_source = "filesystem"
+        assert page.source == "filesystem"
+        assert page.page_source == "filesystem"
+
+    def test_set_source(self):
+        page = self._make_page()
+        page.set_source("cached_ocr")
+        assert page.source == "cached_ocr"
+
+    def test_mark_ocr_failed(self):
+        page = self._make_page()
+        page.mark_ocr_failed()
+        assert page.ocr_failed is True
+        page.mark_ocr_failed(False)
+        assert page.ocr_failed is False
+
+    def test_set_image_path(self):
+        page = self._make_page()
+        page.set_image_path("/new/path.png")
+        assert page.image_path == "/new/path.png"
+        page.set_image_path(None)
+        assert page.image_path is None
+
+    def test_to_dict_omits_defaults(self):
+        page = self._make_page()
+        d = page.to_dict()
+        assert "image_path" not in d
+        assert "name" not in d
+        assert "source" not in d
+        assert "ocr_failed" not in d
+        assert "provenance_live_ocr" not in d
+        assert "provenance_saved_ocr" not in d
+        assert "provenance_saved" not in d
+
+    def test_to_dict_includes_non_defaults(self):
+        page = self._make_page(
+            image_path="/img.png",
+            name="img.png",
+            source="filesystem",
+            ocr_failed=True,
+            provenance_saved={"v": 1},
+        )
+        d = page.to_dict()
+        assert d["image_path"] == "/img.png"
+        assert d["name"] == "img.png"
+        assert d["source"] == "filesystem"
+        assert d["ocr_failed"] is True
+        assert d["provenance_saved"] == {"v": 1}
+
+    def test_serialization_roundtrip(self):
+        page = self._make_page(
+            image_path="/a/b.png",
+            name="b.png",
+            source="cached_ocr",
+            ocr_failed=True,
+            provenance_live_ocr={"k": "v"},
+            provenance_saved_ocr={"k2": "v2"},
+            provenance_saved={"k3": "v3"},
+        )
+        d = page.to_dict()
+        restored = Page.from_dict(d)
+        assert restored.image_path == "/a/b.png"
+        assert restored.name == "b.png"
+        assert restored.source == "cached_ocr"
+        assert restored.ocr_failed is True
+        assert restored.provenance_live_ocr == {"k": "v"}
+        assert restored.provenance_saved_ocr == {"k2": "v2"}
+        assert restored.provenance_saved == {"k3": "v3"}
+
+    def test_from_dict_without_metadata_uses_defaults(self):
+        """Loading older data without metadata keys keeps defaults."""
+        d = {
+            "type": "Page",
+            "width": 10,
+            "height": 10,
+            "page_index": 0,
+            "items": [],
+            "bounding_box": None,
+        }
+        page = Page.from_dict(d)
+        assert page.image_path is None
+        assert page.name is None
+        assert page.source == "ocr"
+        assert page.ocr_failed is False
+
+    def test_from_dict_legacy_page_source_key(self):
+        """When only legacy ``page_source`` key is present, it maps to ``source``."""
+        d = {
+            "type": "Page",
+            "width": 10,
+            "height": 10,
+            "page_index": 0,
+            "items": [],
+            "bounding_box": None,
+            "page_source": "filesystem",
+        }
+        page = Page.from_dict(d)
+        assert page.source == "filesystem"
+        assert page.page_source == "filesystem"
+
+    def test_from_dict_source_wins_over_page_source(self):
+        """When both ``source`` and ``page_source`` are present, ``source`` wins."""
+        d = {
+            "type": "Page",
+            "width": 10,
+            "height": 10,
+            "page_index": 0,
+            "items": [],
+            "bounding_box": None,
+            "source": "cached_ocr",
+            "page_source": "filesystem",
+        }
+        page = Page.from_dict(d)
+        assert page.source == "cached_ocr"
+
+    def test_copy_preserves_metadata(self):
+        page = self._make_page(
+            image_path="/x.png",
+            name="x.png",
+            source="filesystem",
+            ocr_failed=True,
+        )
+        copied = page.copy()
+        assert copied.image_path == "/x.png"
+        assert copied.name == "x.png"
+        assert copied.source == "filesystem"
+        assert copied.ocr_failed is True
