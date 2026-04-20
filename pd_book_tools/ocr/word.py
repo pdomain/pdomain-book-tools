@@ -9,12 +9,14 @@ from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.geometry.point import Point
 from pd_book_tools.ocr.character import Character
 from pd_book_tools.ocr.label_normalization import (
     ALLOWED_COMPONENTS,
     ALLOWED_TEXT_STYLE_LABEL_SCOPES,
     ALLOWED_TEXT_STYLE_LABELS,
     normalize_text_style_label,
+    normalize_text_style_label_scope,
     normalize_text_style_label_scopes,
     normalize_text_style_labels,
     normalize_word_component,
@@ -36,6 +38,24 @@ class Word:
     )
 
     ALLOWED_WORD_COMPONENTS: ClassVar[frozenset[str]] = ALLOWED_COMPONENTS
+
+    STYLE_LABEL_BY_ATTR: ClassVar[dict[str, str]] = {
+        "italic": "italics",
+        "is_italic": "italics",
+        "small_caps": "small caps",
+        "is_small_caps": "small caps",
+        "blackletter": "blackletter",
+        "is_blackletter": "blackletter",
+    }
+
+    WORD_COMPONENT_BY_ATTR: ClassVar[dict[str, str]] = {
+        "left_footnote": "footnote marker",
+        "is_left_footnote": "footnote marker",
+        "right_footnote": "footnote marker",
+        "is_right_footnote": "footnote marker",
+        "footnote": "footnote marker",
+        "is_footnote": "footnote marker",
+    }
 
     _text: str
     bounding_box: BoundingBox
@@ -131,6 +151,424 @@ class Word:
         if self.ground_truth_text:
             return self.text == self.ground_truth_text
         return False
+
+    @property
+    def is_empty(self) -> bool:
+        """Return True when this word has no text."""
+        return not self.text
+
+    # ------------------------------------------------------------------
+    # Style and component attribute methods
+    # ------------------------------------------------------------------
+
+    def read_style_attribute(
+        self,
+        primary_name: str,
+        aliases: tuple[str, ...] = (),
+    ) -> bool:
+        """Read a legacy boolean word attribute from modern Word structures."""
+        style_label = self._resolve_style_label(primary_name, aliases)
+        if style_label is not None:
+            return style_label in self._normalized_style_labels()
+
+        component_label = self._resolve_word_component(primary_name, aliases)
+        if component_label is not None:
+            return component_label in self._normalized_components()
+
+        return False
+
+    def update_style_attributes(
+        self,
+        *,
+        italic: bool,
+        small_caps: bool,
+        blackletter: bool,
+        left_footnote: bool,
+        right_footnote: bool,
+    ) -> bool:
+        """Update text styles and word components."""
+        desired_flags = {
+            "italic": bool(italic),
+            "small_caps": bool(small_caps),
+            "blackletter": bool(blackletter),
+            "left_footnote": bool(left_footnote),
+            "right_footnote": bool(right_footnote),
+        }
+        current_flags = {
+            name: self.read_style_attribute(name) for name in desired_flags
+        }
+        if current_flags == desired_flags:
+            return True
+
+        style_labels = self._normalized_style_labels()
+        style_scopes = self._normalized_style_scopes()
+        word_components = self._normalized_components()
+
+        style_labels_set = set(style_labels)
+        component_set = set(word_components)
+
+        for attr_name in ("italic", "small_caps", "blackletter"):
+            style_label = self._resolve_style_label(attr_name, ())
+            if style_label is None:
+                continue
+            if desired_flags[attr_name]:
+                style_labels_set.add(style_label)
+                style_scopes.setdefault(style_label, "whole")
+            else:
+                style_labels_set.discard(style_label)
+                style_scopes.pop(style_label, None)
+
+        footnote_component = self._resolve_word_component("left_footnote", ())
+        if footnote_component is not None:
+            if desired_flags["left_footnote"] or desired_flags["right_footnote"]:
+                component_set.add(footnote_component)
+            else:
+                component_set.discard(footnote_component)
+
+        normalized_style_labels = self._ordered_values(style_labels, style_labels_set)
+        normalized_components = self._ordered_values(word_components, component_set)
+
+        if not normalized_style_labels:
+            normalized_style_labels = ["regular"]
+        elif "regular" in normalized_style_labels and len(normalized_style_labels) > 1:
+            normalized_style_labels = [
+                label for label in normalized_style_labels if label != "regular"
+            ]
+
+        normalized_style_scopes = {
+            label: normalize_text_style_label_scope(style_scopes.get(label, "whole"))
+            for label in normalized_style_labels
+        }
+
+        self.text_style_labels = normalized_style_labels
+        self.text_style_label_scopes = normalized_style_scopes
+        self.word_components = normalized_components
+        return True
+
+    def apply_style_scope(
+        self,
+        style: str,
+        scope: str,
+    ) -> bool:
+        """Apply a scope to an existing or implied text style label."""
+        normalized_style = normalize_text_style_label(style)
+        normalized_scope = normalize_text_style_label_scope(scope)
+
+        style_labels = self._normalized_style_labels()
+        style_scopes = self._normalized_style_scopes()
+        style_set = set(style_labels)
+        style_set.add(normalized_style)
+        style_set.discard("regular")
+
+        ordered_labels = self._ordered_values(style_labels, style_set)
+        if normalized_style not in ordered_labels:
+            ordered_labels.append(normalized_style)
+
+        style_scopes[normalized_style] = normalized_scope
+        self.text_style_labels = ordered_labels or [normalized_style]
+        self.text_style_label_scopes = {
+            label: normalize_text_style_label_scope(style_scopes.get(label, "whole"))
+            for label in self.text_style_labels
+        }
+        return True
+
+    def apply_component(
+        self,
+        component: str,
+        *,
+        enabled: bool,
+    ) -> bool:
+        """Add or remove a normalized word component label."""
+        normalized_component = normalize_word_component(component)
+        word_components = self._normalized_components()
+        component_set = set(word_components)
+        if enabled:
+            component_set.add(normalized_component)
+        else:
+            component_set.discard(normalized_component)
+        self.word_components = self._ordered_values(word_components, component_set)
+        return True
+
+    def remove_style_label(self, style: str) -> bool:
+        """Remove a text style label while preserving other style metadata."""
+        normalized_style = normalize_text_style_label(style)
+        style_labels = self._normalized_style_labels()
+        style_scopes = self._normalized_style_scopes()
+
+        style_set = set(style_labels)
+        style_set.discard(normalized_style)
+        style_scopes.pop(normalized_style, None)
+
+        ordered_labels = self._ordered_values(style_labels, style_set)
+        if not ordered_labels:
+            ordered_labels = ["regular"]
+
+        self.text_style_labels = ordered_labels
+        self.text_style_label_scopes = {
+            label: normalize_text_style_label_scope(style_scopes.get(label, "whole"))
+            for label in ordered_labels
+        }
+        return True
+
+    def clear_all_scopes(self) -> bool:
+        """Remove all scope assignments from text style labels.
+
+        Returns True if at least one scope was removed, False otherwise.
+        """
+        style_labels = self._normalized_style_labels()
+        candidate_styles = [label for label in style_labels if label != "regular"]
+        if not candidate_styles:
+            return False
+
+        scopes = self._normalized_style_scopes()
+        changed = False
+        for style_label in candidate_styles:
+            if style_label in scopes:
+                scopes.pop(style_label)
+                changed = True
+
+        if changed:
+            self.text_style_label_scopes = scopes
+        return changed
+
+    def _normalized_style_labels(self) -> list[str]:
+        """Return normalized text style labels list."""
+        labels = list(self.text_style_labels or [])
+        normalized = []
+        for label in labels:
+            try:
+                normalized.append(normalize_text_style_label(str(label)))
+            except ValueError:
+                logger.debug("Ignoring invalid text style label %r", label)
+        if not normalized:
+            return ["regular"]
+        return list(dict.fromkeys(normalized))
+
+    def _normalized_style_scopes(self) -> dict[str, str]:
+        """Return normalized text style label scopes dict."""
+        scopes = dict(self.text_style_label_scopes or {})
+        normalized: dict[str, str] = {}
+        for label, scope in scopes.items():
+            try:
+                normalized_label = normalize_text_style_label(str(label))
+                normalized[normalized_label] = normalize_text_style_label_scope(scope)
+            except ValueError:
+                logger.debug(
+                    "Ignoring invalid text style scope entry %r=%r", label, scope
+                )
+        return normalized
+
+    def _normalized_components(self) -> list[str]:
+        """Return normalized word components list."""
+        components = list(self.word_components or [])
+        normalized = []
+        for component in components:
+            try:
+                normalized.append(normalize_word_component(str(component)))
+            except ValueError:
+                logger.debug("Ignoring invalid word component %r", component)
+        return normalized
+
+    @classmethod
+    def _resolve_style_label(
+        cls,
+        primary_name: str,
+        aliases: tuple[str, ...],
+    ) -> str | None:
+        """Resolve a legacy attribute name to a style label."""
+        style_label = cls.STYLE_LABEL_BY_ATTR.get(primary_name)
+        if style_label is not None:
+            return style_label
+        for alias in aliases:
+            style_label = cls.STYLE_LABEL_BY_ATTR.get(alias)
+            if style_label is not None:
+                return style_label
+        return None
+
+    @classmethod
+    def _resolve_word_component(
+        cls,
+        primary_name: str,
+        aliases: tuple[str, ...],
+    ) -> str | None:
+        """Resolve a legacy attribute name to a word component label."""
+        component_label = cls.WORD_COMPONENT_BY_ATTR.get(primary_name)
+        if component_label is not None:
+            return component_label
+        for alias in aliases:
+            component_label = cls.WORD_COMPONENT_BY_ATTR.get(alias)
+            if component_label is not None:
+                return component_label
+        return None
+
+    @staticmethod
+    def _ordered_values(original: list[str], values: set[str]) -> list[str]:
+        """Return values in their original order, with new values sorted at end."""
+        ordered = [value for value in original if value in values]
+        ordered.extend(sorted(value for value in values if value not in set(ordered)))
+        return ordered
+
+    # ------------------------------------------------------------------
+    # Bounding box refinement and expansion
+    # ------------------------------------------------------------------
+
+    @property
+    def bbox_signature(self) -> tuple[float, float, float, float, bool] | None:
+        """Return a stable bbox signature for convergence checks."""
+        bbox = self.bounding_box
+        if bbox is None:
+            return None
+        return (
+            round(bbox.minX, 6),
+            round(bbox.minY, 6),
+            round(bbox.maxX, 6),
+            round(bbox.maxY, 6),
+            bbox.is_normalized,
+        )
+
+    def refine_bbox(self, page_image: ndarray | None) -> bool:
+        """Refine this word's bounding box using the page image.
+
+        Tries BoundingBox.refine first, falls back to crop_bottom.
+        Returns True if refinement succeeded.
+        """
+        bbox = self.bounding_box
+        if bbox is None:
+            return False
+
+        if page_image is not None:
+            try:
+                refined_bbox = bbox.refine(
+                    page_image,
+                    padding_px=1,
+                    expand_beyond_original=False,
+                )
+                if refined_bbox is not None:
+                    self.bounding_box = refined_bbox
+                    return True
+            except Exception:
+                logger.debug(
+                    "Bounding-box refine failed during word refine; falling back",
+                    exc_info=True,
+                )
+
+        if page_image is not None:
+            try:
+                self.crop_bottom(page_image)
+                return True
+            except Exception:
+                logger.debug(
+                    "crop_bottom failed during word refine",
+                    exc_info=True,
+                )
+
+        return False
+
+    def expand_bbox(
+        self,
+        padding_px: float,
+        page_width: float,
+        page_height: float,
+    ) -> bool:
+        """Expand this word's bbox by uniform pixel padding, clamped to page bounds.
+
+        Returns True if the bbox was successfully expanded.
+        """
+        bbox = self.bounding_box
+        if bbox is None:
+            return False
+
+        if bbox.is_normalized:
+            if page_width <= 0.0 or page_height <= 0.0:
+                return False
+            x1 = bbox.minX * page_width
+            y1 = bbox.minY * page_height
+            x2 = bbox.maxX * page_width
+            y2 = bbox.maxY * page_height
+        else:
+            x1 = bbox.minX
+            y1 = bbox.minY
+            x2 = bbox.maxX
+            y2 = bbox.maxY
+
+        nx1 = max(0.0, x1 - padding_px)
+        ny1 = max(0.0, y1 - padding_px)
+        nx2 = x2 + padding_px
+        ny2 = y2 + padding_px
+        if page_width > 0.0:
+            nx2 = min(nx2, page_width)
+        if page_height > 0.0:
+            ny2 = min(ny2, page_height)
+
+        if nx2 <= nx1 or ny2 <= ny1:
+            return False
+
+        if bbox.is_normalized:
+            new_bbox = BoundingBox(
+                Point(nx1 / page_width, ny1 / page_height),
+                Point(nx2 / page_width, ny2 / page_height),
+                is_normalized=True,
+            )
+        else:
+            new_bbox = BoundingBox(
+                Point(nx1, ny1),
+                Point(nx2, ny2),
+                is_normalized=False,
+            )
+
+        self.bounding_box = new_bbox
+        return True
+
+    def expand_then_refine_bbox(self, page_image: ndarray | None) -> bool:
+        """Iteratively expand and refine this word's bbox until it stabilizes.
+
+        Returns True if any refinement occurred.
+        """
+        refined = False
+
+        previous_signature = self.bbox_signature
+        seen_signatures: set[tuple[float, float, float, float, bool] | None] = {
+            previous_signature
+        }
+        for _ in range(8):
+            bbox = self.bounding_box
+            if bbox is not None and page_image is not None:
+                try:
+                    refined_bbox = bbox.refine(
+                        page_image,
+                        padding_px=0,
+                        expand_beyond_original=True,
+                    )
+                    if refined_bbox is not None:
+                        self.bounding_box = refined_bbox
+                        refined = True
+                        break
+                except Exception:
+                    logger.debug(
+                        "Bounding-box refine (expand_beyond_original=True) failed; falling back",
+                        exc_info=True,
+                    )
+
+            if page_image is not None:
+                try:
+                    self.crop_bottom(page_image)
+                    refined = True
+                except Exception:
+                    logger.debug(
+                        "crop_bottom failed during expand-then-refine",
+                        exc_info=True,
+                    )
+
+            current_signature = self.bbox_signature
+            if current_signature == previous_signature:
+                break
+            if current_signature in seen_signatures:
+                break
+
+            seen_signatures.add(current_signature)
+            previous_signature = current_signature
+
+        return refined
 
     @property
     def ground_truth_text_only_ocr(self) -> str:

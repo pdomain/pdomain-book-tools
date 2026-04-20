@@ -645,7 +645,9 @@ def test_refine_bounding_boxes_nested(monkeypatch):
 
 
 def test_refine_bounding_boxes_not_implemented():
-    # Insert a stub object lacking refine_bounding_box into a WORDS block post-construction
+    # Insert a stub object lacking refine_bounding_box into a WORDS block post-construction.
+    # Since the items setter/add_item enforce Word types, this can only happen via
+    # direct _items manipulation. The resulting AttributeError is expected.
     class Stub:
         def __init__(self, bbox):
             self.bounding_box = bbox
@@ -657,7 +659,7 @@ def test_refine_bounding_boxes_not_implemented():
     )
     stub = Stub(BoundingBox.from_ltrb(10, 0, 15, 5))
     line._items.append(stub)  # bypass validation intentionally
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(AttributeError):
         line.refine_bounding_boxes(image=np.ones((10, 10), dtype=np.uint8))
 
 

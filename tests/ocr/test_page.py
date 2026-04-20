@@ -615,9 +615,9 @@ def test_page_add_ground_truth_calls_refresh(sample_page):
 
 def test_page_add_rect_type_errors():
     img = np.zeros((5, 5, 3), dtype=np.uint8)
-    # _add_ocr_text expects Word
+    # _add_text_label expects Word
     with pytest.raises(TypeError):
-        Page._add_ocr_text(
+        Page._add_text_label(
             img,
             Block(
                 items=[],
@@ -626,13 +626,14 @@ def test_page_add_rect_type_errors():
             ),
         )
     with pytest.raises(TypeError):
-        Page._add_gt_text(
+        Page._add_text_label(
             img,
             Block(
                 items=[],
                 child_type=BlockChildType.BLOCKS,
                 block_category=BlockCategory.LINE,
             ),
+            text_attr="ground_truth_text",
         )
 
 
@@ -1165,21 +1166,21 @@ class TestPageMetadata:
 
     def test_set_source(self):
         page = self._make_page()
-        page.set_source("cached_ocr")
+        page.source = "cached_ocr"
         assert page.source == "cached_ocr"
 
     def test_mark_ocr_failed(self):
         page = self._make_page()
-        page.mark_ocr_failed()
+        page.ocr_failed = True
         assert page.ocr_failed is True
-        page.mark_ocr_failed(False)
+        page.ocr_failed = False
         assert page.ocr_failed is False
 
     def test_set_image_path(self):
         page = self._make_page()
-        page.set_image_path("/new/path.png")
+        page.image_path = "/new/path.png"
         assert page.image_path == "/new/path.png"
-        page.set_image_path(None)
+        page.image_path = None
         assert page.image_path is None
 
     def test_to_dict_omits_defaults(self):

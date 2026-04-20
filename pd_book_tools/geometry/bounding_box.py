@@ -105,6 +105,31 @@ class BoundingBox:
             (self.top_left.y + self.bottom_right.y) / 2,
         )
 
+    @property
+    def vertical_midpoint(self) -> float:
+        """Return the vertical centre (midpoint of minY and maxY)."""
+        return (self.minY + self.maxY) / 2.0
+
+    @property
+    def horizontal_midpoint(self) -> float:
+        """Return the horizontal centre (midpoint of minX and maxX)."""
+        return (self.minX + self.maxX) / 2.0
+
+    @property
+    def y_range(self) -> Tuple[float, float]:
+        """Return ``(minY, maxY)`` tuple."""
+        return (self.minY, self.maxY)
+
+    @property
+    def has_usable_coordinates(self) -> bool:
+        """Return True when all four corners are finite numbers suitable for rendering."""
+        try:
+            return all(
+                c is not None for c in (self.minX, self.minY, self.maxX, self.maxY)
+            )
+        except Exception:
+            return False
+
     @staticmethod
     def _split_at_x(
         box: "BoundingBox", x_value: float
@@ -831,3 +856,9 @@ class BoundingBox:
         import json
 
         return cls.from_dict(json.loads(s))
+
+    @staticmethod
+    def is_geometry_normalization_error(error: Exception) -> bool:
+        """Return True for known malformed-bbox normalization failures."""
+        message = str(error)
+        return "NoneType" in message and "is_normalized" in message

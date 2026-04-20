@@ -100,15 +100,15 @@ class Document:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
 
     @classmethod
-    def from_dict(cls, dict) -> "Document":
+    def from_dict(cls, data) -> "Document":
         """Create Document from dictionary"""
         return cls(
-            source_lib=dict.get("source_lib", ""),
-            source_identifier=dict.get("source_identifier", ""),
-            source_path=Path(dict.get("source_path"))
-            if dict.get("source_path")
+            source_lib=data.get("source_lib", ""),
+            source_identifier=data.get("source_identifier", ""),
+            source_path=Path(data.get("source_path"))
+            if data.get("source_path")
             else None,
-            pages=[Page.from_dict(page) for page in dict.get("pages", [])],
+            pages=[Page.from_dict(page) for page in data.get("pages", [])],
         )
 
     @classmethod

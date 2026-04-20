@@ -41,10 +41,7 @@ class BBoxColors(Enum):
     WORD = (0, 128, 0)  # Dark Green
     GROUND_TRUTH = (0, 255, 255)  # Cyan
     BLACK = (0, 0, 0)  # Black
-    RED = (0, 0, 255)  # Red
     DARK_YELLOW = (0, 225, 225)  # Darker Yellow
-    DARK_GREEN = (0, 128, 0)  # Dark Green
-    MAGENTA = (255, 0, 255)  # Magenta
 
 
 @dataclass
@@ -153,18 +150,6 @@ class Page:
     def page_source(self, value: str) -> None:
         self.source = value
 
-    def set_source(self, source: str) -> None:
-        """Set the page source identifier."""
-        self.source = source
-
-    def mark_ocr_failed(self, failed: bool = True) -> None:
-        """Mark whether OCR processing failed for this page."""
-        self.ocr_failed = failed
-
-    def set_image_path(self, path: pathlib.Path | str | None) -> None:
-        """Set the original image path for this page."""
-        self.image_path = path
-
     def _sort_items(self):
         self._items.sort(
             key=lambda item: (
@@ -237,7 +222,8 @@ class Page:
         self._items = sorted(
             values,
             key=lambda block: (
-                block.bounding_box.top_left.y if block.bounding_box else 0
+                block.bounding_box.top_left.y if block.bounding_box else 0,
+                block.bounding_box.top_left.x if block.bounding_box else 0,
             ),
         )
 
@@ -336,9 +322,10 @@ class Page:
             self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text,
             lambda x: isinstance(x, Word),
         )
-        self._add_ocr_text_recurse(
+        self._add_text_recurse(
             self.items,
             self._cv2_numpy_page_image_word_with_bboxes_and_ocr_text,
+            text_attr="text",
         )
 
         self._cv2_numpy_page_image_word_with_bboxes_and_gt_text = (
@@ -349,9 +336,10 @@ class Page:
             self._cv2_numpy_page_image_word_with_bboxes_and_gt_text,
             lambda x: isinstance(x, Word),
         )
-        self._add_gt_text_recurse(
+        self._add_text_recurse(
             self.items,
             self._cv2_numpy_page_image_word_with_bboxes_and_gt_text,
+            text_attr="ground_truth_text",
         )
 
         self._cv2_numpy_page_image_matched_word_with_colors = (
@@ -370,13 +358,13 @@ class Page:
                 or "match_score" not in w.ground_truth_match_keys
             ):
                 logger.debug("No ground truth match/match score for word " + w.text)
-                color = BBoxColors.RED.value
+                color = BBoxColors.LINE.value
             elif w.ground_truth_match_keys["match_score"] >= 90:
-                color = BBoxColors.DARK_GREEN.value
+                color = BBoxColors.WORD.value
             elif w.ground_truth_match_keys["match_score"] >= 70:
-                color = BBoxColors.DARK_GREEN.value
+                color = BBoxColors.DARK_YELLOW.value
             else:
-                color = BBoxColors.MAGENTA.value
+                color = BBoxColors.PAGE.value
             self._add_rect(
                 self._cv2_numpy_page_image_matched_word_with_colors, w, color
             )
@@ -423,17 +411,17 @@ class Page:
                     thickness=2,
                 )
 
-    def _add_ocr_text_recurse(self, items, image):
+    def _add_text_recurse(self, items, image, text_attr="text"):
         if image is None:
             return
         for item in items:
             if isinstance(item, Word):
-                self._add_ocr_text(image, item)
+                self._add_text_label(image, item, text_attr=text_attr)
             elif hasattr(item, "items") and item.items:
-                self._add_ocr_text_recurse(item.items, image)
+                self._add_text_recurse(item.items, image, text_attr=text_attr)
 
     @classmethod
-    def _add_ocr_text(cls, image, item, color=None):
+    def _add_text_label(cls, image, item, text_attr="text", color=None):
         if not isinstance(item, Word):
             raise TypeError("item must be of type Word")
         w, h = image.shape[1], image.shape[0]
@@ -449,47 +437,13 @@ class Page:
         y1 = max(int(bbox.top_left.y), 0)
         cv2_putText(
             image,
-            item.text or "",
+            getattr(item, text_attr, None) or "",
             (x1, y1 - 5),
             cv2_FONT_HERSHEY_SIMPLEX,
             0.5,
             color,
             1,
         )
-
-    @classmethod
-    def _add_gt_text(cls, image, item, color=None):
-        if not isinstance(item, Word):
-            raise TypeError("item must be of type Word")
-        w, h = image.shape[1], image.shape[0]
-        if not color:
-            color = (255, 0, 0)  # Blue
-
-        bbox = item.bounding_box
-        # If scaled coordinates
-        if item.bounding_box.width < 1 or item.bounding_box.height < 1:
-            bbox = item.bounding_box.scale(width=w, height=h)
-
-        x1 = int(bbox.top_left.x)
-        y1 = max(int(bbox.top_left.y), 0)
-        cv2_putText(
-            image,
-            item.ground_truth_text or "",
-            (x1, y1 - 5),
-            cv2_FONT_HERSHEY_SIMPLEX,
-            0.5,
-            color,
-            1,
-        )
-
-    def _add_gt_text_recurse(self, items, image):
-        if image is None:
-            return
-        for item in items:
-            if isinstance(item, Word):
-                self._add_gt_text(image, item)
-            elif hasattr(item, "items") and item.items:
-                self._add_gt_text_recurse(item.items, image)
 
     @property
     def text(self) -> str:
@@ -527,6 +481,1169 @@ class Page:
         """Get flat list of all 'paragraphs' in the page"""
         return list(
             itertools.chain.from_iterable([item.paragraphs for item in self.items])
+        )
+
+    @property
+    def is_content_normalized(self) -> bool:
+        """Return True if existing word bboxes on the page are normalized."""
+        for line in self.lines:
+            for word in line.words:
+                if word.bounding_box is not None:
+                    return word.bounding_box.is_normalized
+        return False
+
+    @property
+    def resolved_dimensions(self) -> tuple[float, float]:
+        """Return page dimensions in pixels (width, height).
+
+        Falls back to page image dimensions if width/height are not set.
+        """
+        w = float(self.width or 0.0)
+        h = float(self.height or 0.0)
+        if w > 0.0 and h > 0.0:
+            return w, h
+
+        base_image = self.cv2_numpy_page_image
+        if base_image is not None:
+            image_height, image_width = base_image.shape[:2]
+            return float(image_width), float(image_height)
+
+        return 0.0, 0.0
+
+    # ------------------------------------------------------------------
+    # Structural helpers
+    # ------------------------------------------------------------------
+
+    def validated_line_words(self, line_index: int) -> list[Word] | None:
+        """Validate line index and return line words list, or None if invalid."""
+        lines = list(self.lines)
+        if line_index < 0 or line_index >= len(lines):
+            logger.warning(
+                "Line index %s out of range (0-%s)",
+                line_index,
+                len(lines) - 1,
+            )
+            return None
+        return list(lines[line_index].words)
+
+    @staticmethod
+    def move_word_between_lines(
+        source_line: Block,
+        target_line: Block,
+        word: Word,
+    ) -> bool:
+        """Move a word object from source line to target line."""
+        if source_line is target_line:
+            return True
+
+        source_line.remove_item(word)
+        try:
+            target_line.add_item(word)
+        except Exception:
+            source_line.add_item(word)
+            return False
+        return True
+
+    # ------------------------------------------------------------------
+    # Spatial line-search helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def closest_line_by_y_range_then_x(
+        lines: list[Block],
+        center_x: float,
+        center_y: float,
+        fallback_line: Block,
+    ) -> Block:
+        """Choose the best line for a point at (center_x, center_y).
+
+        Strategy:
+        1. Collect all lines whose Y range contains center_y.
+        2. Among those, pick the one closest horizontally.
+        3. Fall back to closest vertical midpoint.
+        """
+        y_candidates: list[Block] = []
+        for line in lines:
+            bbox = line.bounding_box
+            if bbox is None or not bbox.has_usable_coordinates:
+                continue
+            if bbox.minY <= center_y <= bbox.maxY:
+                y_candidates.append(line)
+
+        if y_candidates:
+            best_line = y_candidates[0]
+            best_x_dist = float("inf")
+            for line in y_candidates:
+                bbox = line.bounding_box
+                if bbox is None:
+                    continue
+                x_dist = abs(bbox.horizontal_midpoint - center_x)
+                if x_dist < best_x_dist:
+                    best_x_dist = x_dist
+                    best_line = line
+            return best_line
+
+        return Page.closest_line_by_midpoint(lines, center_y, fallback_line)
+
+    @staticmethod
+    def closest_line_by_midpoint(
+        lines: list[Block],
+        midpoint_y: float | None,
+        fallback_line: Block,
+    ) -> Block:
+        """Choose the line whose vertical midpoint is closest to *midpoint_y*."""
+        if midpoint_y is None:
+            return fallback_line
+
+        closest_line = fallback_line
+        closest_distance = float("inf")
+        for line in lines:
+            bbox = line.bounding_box
+            if bbox is None or not bbox.has_usable_coordinates:
+                continue
+            distance = abs(bbox.vertical_midpoint - midpoint_y)
+            if distance < closest_distance:
+                closest_distance = distance
+                closest_line = line
+
+        return closest_line
+
+    # ------------------------------------------------------------------
+    # Page finalization and block tree manipulation
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_geometry_normalization_error(error: Exception) -> bool:
+        """Return True for known malformed-bbox normalization failures."""
+        return BoundingBox.is_geometry_normalization_error(error)
+
+    def finalize_page_structure(self) -> None:
+        """Run cleanup/recompute hooks after structural edits.
+
+        Prunes empty items and recomputes nested bounding boxes.
+        """
+        self._remove_empty_items_safely()
+
+        try:
+            Page._recompute_nested_bounding_boxes(self)
+        except Exception as recompute_error:
+            if not self._is_geometry_normalization_error(recompute_error):
+                raise
+            logger.warning(
+                "Skipped nested bbox recompute due to malformed geometry: %s",
+                recompute_error,
+            )
+            self._recompute_paragraph_bboxes()
+
+        try:
+            self.recompute_bounding_box()
+        except Exception as recompute_error:
+            if not self._is_geometry_normalization_error(recompute_error):
+                raise
+            logger.warning(
+                "Skipped page bbox recompute due to malformed geometry: %s",
+                recompute_error,
+            )
+
+    @staticmethod
+    def _recompute_nested_bounding_boxes(
+        container: "Page | Block",
+    ) -> None:
+        """Recursively recompute bounding boxes bottom-up for nested blocks."""
+        for child in container.items:
+            if isinstance(child, Block):
+                Page._recompute_nested_bounding_boxes(child)
+        container.recompute_bounding_box()
+
+    def find_parent_block(
+        self,
+        target: Block,
+    ) -> "Page | Block | None":
+        """Find parent block/page that directly contains target in its child items."""
+        return Page._find_parent_block_recursive(self, target)
+
+    @staticmethod
+    def _find_parent_block_recursive(
+        container: "Page | Block",
+        target: Block,
+    ) -> "Page | Block | None":
+        if target in container.items:
+            return container
+        for child in container.items:
+            if isinstance(child, Block):
+                parent = Page._find_parent_block_recursive(child, target)
+                if parent is not None:
+                    return parent
+        return None
+
+    def remove_nested_block(self, target: Block) -> bool:
+        """Remove target from nested page/block hierarchy if present."""
+        return Page._remove_nested_block_recursive(self, target)
+
+    @classmethod
+    def _remove_nested_block_recursive(
+        cls,
+        container: "Page | Block",
+        target: Block,
+    ) -> bool:
+        if target in container.items:
+            try:
+                container.remove_item(target)
+                return True
+            except Exception as removal_error:
+                if not cls._is_geometry_normalization_error(removal_error):
+                    raise
+                logger.warning(
+                    "remove_item fallback for malformed geometry on %s: %s",
+                    type(container).__name__,
+                    removal_error,
+                )
+                return Page._remove_item_without_recompute(container, target)
+
+        for child in list(container.items):
+            if isinstance(child, Block) and cls._remove_nested_block_recursive(
+                child, target
+            ):
+                return True
+        return False
+
+    @staticmethod
+    def _remove_item_without_recompute(
+        container: "Page | Block",
+        target: "Block | Word",
+    ) -> bool:
+        """Best-effort item removal when remove_item triggers malformed bbox
+        recompute errors."""
+        items = list(container.items)
+        if target not in items:
+            return False
+        updated_items = [item for item in items if item is not target]
+        container._items = updated_items
+        return True
+
+    def _remove_empty_items_safely(self) -> None:
+        """Best-effort empty-item pruning that tolerates malformed geometry
+        recompute errors."""
+        try:
+            self.remove_empty_items()
+        except Exception as error:
+            if not self._is_geometry_normalization_error(error):
+                raise
+            logger.warning(
+                "Skipped remove_empty_items due to malformed geometry: %s",
+                error,
+            )
+
+        Page._prune_empty_blocks_fallback(self)
+
+    @staticmethod
+    def _prune_empty_blocks_fallback(
+        container: "Page | Block",
+    ) -> None:
+        """Recursively remove empty line/paragraph blocks from nested items
+        lists."""
+        child_items = list(container.items)
+        if not child_items:
+            return
+
+        kept_items: list["Block | Word"] = []
+        changed = False
+        for child in child_items:
+            if isinstance(child, Block):
+                Page._prune_empty_blocks_fallback(child)
+
+            if child.is_empty:
+                changed = True
+                continue
+
+            kept_items.append(child)
+
+        if not changed:
+            return
+
+        container._items = kept_items
+
+    def replace_block_with_split_paragraphs(
+        self,
+        paragraph: Block,
+        paragraph_lines: list[Block],
+    ) -> bool:
+        """Replace a paragraph with one paragraph per line."""
+        parent = self.find_parent_block(paragraph)
+        if parent is None:
+            return False
+        parent.remove_item(paragraph)
+        for line in paragraph_lines:
+            new_paragraph = Block(
+                items=[line],
+                block_category=BlockCategory.PARAGRAPH,
+            )
+            parent.add_item(new_paragraph)
+        return True
+
+    def _recompute_paragraph_bboxes(self) -> None:
+        """Best-effort paragraph bbox recompute."""
+        try:
+            paragraphs = self.paragraphs
+        except (AttributeError, TypeError):
+            return
+        for paragraph in paragraphs:
+            try:
+                paragraph.recompute_bounding_box()
+            except Exception:
+                logger.debug(
+                    "Paragraph bbox recompute fallback skipped for %s",
+                    type(paragraph).__name__,
+                    exc_info=True,
+                )
+
+    @staticmethod
+    def first_usable_bbox(
+        bbox_candidates: list[BoundingBox | None],
+    ) -> BoundingBox | None:
+        """Return first bbox candidate that can be rendered in overlays."""
+        for bbox in bbox_candidates:
+            if bbox is not None and bbox.has_usable_coordinates:
+                return bbox
+        return None
+
+    # ------------------------------------------------------------------
+    # Paragraph operations
+    # ------------------------------------------------------------------
+
+    def merge_paragraphs(self, paragraph_indices: list[int]) -> bool:
+        """Merge selected paragraphs into the first selected paragraph."""
+        try:
+            paragraphs = list(self.paragraphs)
+            paragraph_count_before = len(paragraphs)
+
+            logger.debug(
+                "merge_paragraphs start: page_type=%s, paragraph_count=%d, "
+                "requested=%s",
+                type(self).__name__,
+                paragraph_count_before,
+                paragraph_indices,
+            )
+
+            unique_indices = sorted(set(paragraph_indices or []))
+            if len(unique_indices) < 2:
+                logger.warning(
+                    "Paragraph merge requires selecting at least two paragraphs"
+                )
+                return False
+
+            for index in unique_indices:
+                if index < 0 or index >= paragraph_count_before:
+                    logger.warning(
+                        "Paragraph index %s out of range (0-%s)",
+                        index,
+                        paragraph_count_before - 1,
+                    )
+                    return False
+
+            primary_index = unique_indices[0]
+            primary_paragraph = paragraphs[primary_index]
+
+            for index in unique_indices[1:]:
+                primary_paragraph.merge(paragraphs[index])
+
+            for index in reversed(unique_indices[1:]):
+                if not self.remove_nested_block(paragraphs[index]):
+                    logger.warning(
+                        "Failed to remove merged paragraph at index %s", index
+                    )
+                    return False
+
+            self.remove_empty_items()
+            self.recompute_bounding_box()
+
+            paragraph_count_after = len(self.paragraphs)
+            logger.info(
+                "Merged %d paragraphs into paragraph %d (paragraph_count %d -> %d)",
+                len(unique_indices),
+                primary_index,
+                paragraph_count_before,
+                paragraph_count_after,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception("Error merging paragraphs %s: %s", paragraph_indices, e)
+            return False
+
+    def delete_paragraphs(self, paragraph_indices: list[int]) -> bool:
+        """Delete selected paragraphs from the page."""
+        try:
+            paragraphs = list(self.paragraphs)
+            paragraph_count_before = len(paragraphs)
+
+            unique_indices = sorted(set(paragraph_indices or []))
+            if not unique_indices:
+                logger.warning("Paragraph deletion requires selecting at least one")
+                return False
+
+            for index in unique_indices:
+                if index < 0 or index >= paragraph_count_before:
+                    logger.warning(
+                        "Paragraph index %s out of range (0-%s)",
+                        index,
+                        paragraph_count_before - 1,
+                    )
+                    return False
+
+            for index in reversed(unique_indices):
+                if not self.remove_nested_block(paragraphs[index]):
+                    logger.warning(
+                        "Failed to remove paragraph at index %s during deletion",
+                        index,
+                    )
+                    return False
+
+            self.remove_empty_items()
+            self.recompute_bounding_box()
+
+            paragraph_count_after = len(self.paragraphs)
+            logger.info(
+                "Deleted %d paragraphs (paragraph_count %d -> %d)",
+                len(unique_indices),
+                paragraph_count_before,
+                paragraph_count_after,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception("Error deleting paragraphs %s: %s", paragraph_indices, e)
+            return False
+
+    def split_paragraphs(self, paragraph_indices: list[int]) -> bool:
+        """Split selected paragraphs into one paragraph per line."""
+        try:
+            paragraphs = list(self.paragraphs)
+            paragraph_count_before = len(paragraphs)
+
+            logger.debug(
+                "split_paragraphs start: page_type=%s, paragraph_count=%d, "
+                "requested=%s",
+                type(self).__name__,
+                paragraph_count_before,
+                paragraph_indices,
+            )
+
+            unique_indices = sorted(set(paragraph_indices or []))
+            if not unique_indices:
+                logger.warning(
+                    "Paragraph split requires selecting at least one paragraph"
+                )
+                return False
+
+            for index in unique_indices:
+                if index < 0 or index >= paragraph_count_before:
+                    logger.warning(
+                        "Paragraph index %s out of range (0-%s)",
+                        index,
+                        paragraph_count_before - 1,
+                    )
+                    return False
+
+            changed = False
+            for index in reversed(unique_indices):
+                paragraph = paragraphs[index]
+                paragraph_lines = list(paragraph.lines)
+                if len(paragraph_lines) < 2:
+                    logger.debug(
+                        "Skipping paragraph %s split; requires at least 2 lines",
+                        index,
+                    )
+                    continue
+
+                if not self.replace_block_with_split_paragraphs(
+                    paragraph,
+                    paragraph_lines,
+                ):
+                    logger.warning("Unable to split paragraph index %s", index)
+                    continue
+                changed = True
+
+            if not changed:
+                logger.info("No selected paragraphs were split")
+                return False
+
+            self.remove_empty_items()
+            self.recompute_bounding_box()
+
+            paragraph_count_after = len(self.paragraphs)
+            logger.info(
+                "Split selected paragraphs (paragraph_count %d -> %d)",
+                paragraph_count_before,
+                paragraph_count_after,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception("Error splitting paragraphs %s: %s", paragraph_indices, e)
+            return False
+
+    def split_paragraph_after_line(self, line_index: int) -> bool:
+        """Split the containing paragraph immediately after the selected
+        line."""
+        try:
+            lines = list(self.lines)
+            if line_index < 0 or line_index >= len(lines):
+                logger.warning(
+                    "Line index %s out of range for paragraph split (0-%s)",
+                    line_index,
+                    len(lines) - 1,
+                )
+                return False
+
+            selected_line = lines[line_index]
+            paragraphs = list(self.paragraphs)
+            target_paragraph = None
+            target_paragraph_lines: list[Block] = []
+
+            for paragraph in paragraphs:
+                paragraph_lines = list(paragraph.lines)
+                if selected_line in paragraph_lines:
+                    target_paragraph = paragraph
+                    target_paragraph_lines = paragraph_lines
+                    break
+
+            if target_paragraph is None:
+                logger.warning(
+                    "Unable to find paragraph containing line index %s",
+                    line_index,
+                )
+                return False
+
+            split_offset = target_paragraph_lines.index(selected_line)
+            if split_offset >= len(target_paragraph_lines) - 1:
+                logger.warning(
+                    "Cannot split paragraph after last line (line index %s)",
+                    line_index,
+                )
+                return False
+
+            first_lines = target_paragraph_lines[: split_offset + 1]
+            second_lines = target_paragraph_lines[split_offset + 1 :]
+            if not first_lines or not second_lines:
+                logger.warning(
+                    "Paragraph split produced empty segment(s) for line index %s",
+                    line_index,
+                )
+                return False
+
+            parent = self.find_parent_block(target_paragraph)
+            if parent is None:
+                logger.warning(
+                    "Unable to locate parent block for paragraph split after line %s",
+                    line_index,
+                )
+                return False
+
+            current_items = list(parent.items)
+            if target_paragraph not in current_items:
+                logger.warning(
+                    "Target paragraph not found in parent items for line index %s",
+                    line_index,
+                )
+                return False
+
+            paragraph_idx = current_items.index(target_paragraph)
+            replacement = [
+                Block(
+                    items=first_lines,
+                    block_category=BlockCategory.PARAGRAPH,
+                ),
+                Block(
+                    items=second_lines,
+                    block_category=BlockCategory.PARAGRAPH,
+                ),
+            ]
+            parent.items = (
+                current_items[:paragraph_idx]
+                + replacement
+                + current_items[paragraph_idx + 1 :]
+            )
+
+            self.remove_empty_items()
+            self.recompute_bounding_box()
+
+            logger.info("Split paragraph after line index %s", line_index)
+            return True
+
+        except Exception as e:
+            logger.exception(
+                "Error splitting paragraph after line index %s: %s",
+                line_index,
+                e,
+            )
+            return False
+
+    def split_paragraph_with_selected_lines(
+        self,
+        line_indices: list[int],
+    ) -> bool:
+        """Split a paragraph into selected lines and unselected lines."""
+        try:
+            lines = list(self.lines)
+            unique_indices = sorted(set(line_indices or []))
+            if not unique_indices:
+                logger.warning(
+                    "Split-by-selected-lines requires at least one selected line"
+                )
+                return False
+
+            for line_index in unique_indices:
+                if line_index < 0 or line_index >= len(lines):
+                    logger.warning(
+                        "Line index %s out of range for split-by-selected-lines (0-%s)",
+                        line_index,
+                        len(lines) - 1,
+                    )
+                    return False
+
+            selected_lines = [lines[line_index] for line_index in unique_indices]
+            paragraphs = list(self.paragraphs)
+            target_paragraph = None
+            target_paragraph_lines: list[Block] = []
+
+            for paragraph in paragraphs:
+                paragraph_lines = list(paragraph.lines)
+                if any(line in paragraph_lines for line in selected_lines):
+                    target_paragraph = paragraph
+                    target_paragraph_lines = paragraph_lines
+                    break
+
+            if target_paragraph is None:
+                logger.warning(
+                    "Unable to find paragraph containing selected lines %s",
+                    unique_indices,
+                )
+                return False
+
+            if not all(line in target_paragraph_lines for line in selected_lines):
+                logger.warning(
+                    "Selected lines %s span multiple paragraphs; "
+                    "split requires one paragraph",
+                    unique_indices,
+                )
+                return False
+
+            selected_line_set = set(selected_lines)
+            selected_paragraph_lines = [
+                line for line in target_paragraph_lines if line in selected_line_set
+            ]
+            unselected_paragraph_lines = [
+                line for line in target_paragraph_lines if line not in selected_line_set
+            ]
+
+            if not selected_paragraph_lines or not unselected_paragraph_lines:
+                logger.warning(
+                    "Split-by-selected-lines requires selecting a "
+                    "strict subset of a paragraph"
+                )
+                return False
+
+            parent = self.find_parent_block(target_paragraph)
+            if parent is None:
+                logger.warning(
+                    "Unable to locate parent block for split-by-selected-lines %s",
+                    unique_indices,
+                )
+                return False
+
+            current_items = list(parent.items)
+            if target_paragraph not in current_items:
+                logger.warning(
+                    "Target paragraph missing in parent items for selected lines %s",
+                    unique_indices,
+                )
+                return False
+
+            paragraph_idx = current_items.index(target_paragraph)
+            replacement = [
+                Block(
+                    items=selected_paragraph_lines,
+                    block_category=BlockCategory.PARAGRAPH,
+                ),
+                Block(
+                    items=unselected_paragraph_lines,
+                    block_category=BlockCategory.PARAGRAPH,
+                ),
+            ]
+            parent.items = (
+                current_items[:paragraph_idx]
+                + replacement
+                + current_items[paragraph_idx + 1 :]
+            )
+
+            self.remove_empty_items()
+            self.recompute_bounding_box()
+
+            logger.info(
+                "Split paragraph by selected lines %s into selected/unselected groups",
+                unique_indices,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception(
+                "Error splitting paragraph with selected lines %s: %s",
+                line_indices,
+                e,
+            )
+            return False
+
+    def group_selected_words_into_new_paragraph(
+        self,
+        word_keys: list[tuple[int, int]],
+    ) -> bool:
+        """Move selected words into a newly created paragraph.
+
+        For each affected source line, selected words are moved to one
+        new line in the new paragraph while unselected words remain in
+        the original line.
+        """
+        from pd_book_tools.ocr.block import BlockChildType
+
+        unique_keys = sorted(set(word_keys or []))
+        if not unique_keys:
+            logger.warning("Group-selected-words requires at least one selected word")
+            return False
+
+        try:
+            lines = list(self.lines)
+            paragraphs = list(self.paragraphs)
+
+            line_to_selected_word_indices: dict[int, set[int]] = {}
+            for line_index, word_index in unique_keys:
+                if line_index < 0 or line_index >= len(lines):
+                    logger.warning(
+                        "Word key (%s, %s) line index out of range (0-%s)",
+                        line_index,
+                        word_index,
+                        len(lines) - 1,
+                    )
+                    return False
+                line_to_selected_word_indices.setdefault(line_index, set()).add(
+                    word_index
+                )
+
+            target_lines = [
+                lines[line_index]
+                for line_index in sorted(line_to_selected_word_indices)
+            ]
+
+            paragraph_for_line: dict[Block, Block] = {}
+            for line in target_lines:
+                containing_paragraph = None
+                for paragraph in paragraphs:
+                    paragraph_lines = list(paragraph.lines)
+                    if line in paragraph_lines:
+                        containing_paragraph = paragraph
+                        break
+                if containing_paragraph is None:
+                    logger.warning(
+                        "Unable to find paragraph containing selected words %s",
+                        unique_keys,
+                    )
+                    return False
+                paragraph_for_line[line] = containing_paragraph
+
+            affected_paragraphs: list[Block] = []
+            for paragraph in paragraphs:
+                if any(
+                    paragraph_for_line.get(line) is paragraph for line in target_lines
+                ):
+                    affected_paragraphs.append(paragraph)
+
+            if not affected_paragraphs:
+                logger.warning(
+                    "Unable to determine affected paragraphs for selected words %s",
+                    unique_keys,
+                )
+                return False
+
+            selected_lines_for_new_paragraph: list[Block] = []
+            selected_line_bbox_fallbacks: list[object] = []
+            for line_index in sorted(line_to_selected_word_indices):
+                selected_word_indices = line_to_selected_word_indices[line_index]
+                source_line = lines[line_index]
+                line_words = list(source_line.words)
+                source_line_original_bbox = source_line.bounding_box
+
+                for wi in selected_word_indices:
+                    if wi < 0 or wi >= len(line_words):
+                        logger.warning(
+                            "Word index %s out of range for line %s (0-%s)",
+                            wi,
+                            line_index,
+                            len(line_words) - 1,
+                        )
+                        return False
+
+                selected_words = [
+                    line_words[wi]
+                    for wi in range(len(line_words))
+                    if wi in selected_word_indices
+                ]
+                unselected_words = [
+                    line_words[wi]
+                    for wi in range(len(line_words))
+                    if wi not in selected_word_indices
+                ]
+
+                if not selected_words:
+                    logger.warning(
+                        "Grouping requires at least one selected word for line %s",
+                        line_index,
+                    )
+                    return False
+
+                source_line.items = unselected_words
+                source_line.unmatched_ground_truth_words = []
+                try:
+                    source_line.recompute_bounding_box()
+                except Exception as recompute_error:
+                    if not self._is_geometry_normalization_error(recompute_error):
+                        raise
+                    logger.warning(
+                        "Skipped source line bbox recompute due to "
+                        "malformed geometry on line %s: %s",
+                        line_index,
+                        recompute_error,
+                    )
+
+                if (
+                    unselected_words
+                    and not (
+                        source_line.bounding_box is not None
+                        and source_line.bounding_box.has_usable_coordinates
+                    )
+                    and (
+                        source_line_original_bbox is not None
+                        and source_line_original_bbox.has_usable_coordinates
+                    )
+                ):
+                    source_line.bounding_box = source_line_original_bbox
+
+                selected_line = Block(
+                    items=selected_words,
+                    bounding_box=source_line_original_bbox,
+                    child_type=BlockChildType.WORDS,
+                    block_category=BlockCategory.LINE,
+                )
+                try:
+                    selected_line.recompute_bounding_box()
+                except Exception as recompute_error:
+                    if not self._is_geometry_normalization_error(recompute_error):
+                        raise
+                    logger.warning(
+                        "Skipped selected line bbox recompute due to "
+                        "malformed geometry on line %s: %s",
+                        line_index,
+                        recompute_error,
+                    )
+
+                if (
+                    selected_line.bounding_box is not None
+                    and selected_line.bounding_box.has_usable_coordinates
+                ):
+                    selected_line_bbox_fallbacks.append(selected_line.bounding_box)
+                elif (
+                    source_line_original_bbox is not None
+                    and source_line_original_bbox.has_usable_coordinates
+                ):
+                    selected_line.bounding_box = source_line_original_bbox
+                    selected_line_bbox_fallbacks.append(source_line_original_bbox)
+                selected_lines_for_new_paragraph.append(selected_line)
+
+            if not selected_lines_for_new_paragraph:
+                logger.warning("No selected words available to group into paragraph")
+                return False
+
+            new_paragraph = Block(
+                items=selected_lines_for_new_paragraph,
+                bounding_box=Page.first_usable_bbox(
+                    selected_line_bbox_fallbacks
+                    + [paragraph.bounding_box for paragraph in affected_paragraphs]
+                ),
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.PARAGRAPH,
+            )
+
+            page_items = list(self.items)
+            self.items = page_items + [new_paragraph]
+
+            self.finalize_page_structure()
+
+            if not (
+                new_paragraph.bounding_box is not None
+                and new_paragraph.bounding_box.has_usable_coordinates
+            ):
+                fallback_bbox = Page.first_usable_bbox(
+                    selected_line_bbox_fallbacks
+                    + [paragraph.bounding_box for paragraph in affected_paragraphs]
+                )
+                if fallback_bbox is not None:
+                    new_paragraph.bounding_box = fallback_bbox
+
+            logger.info(
+                "Grouped selected words %s into new paragraph with %d line(s)",
+                unique_keys,
+                len(selected_lines_for_new_paragraph),
+            )
+            return True
+        except Exception as e:
+            logger.exception(
+                "Error grouping selected words %s into paragraph: %s",
+                unique_keys,
+                e,
+            )
+            return False
+
+    # ------------------------------------------------------------------
+    # Bbox operations – shared helpers
+    # ------------------------------------------------------------------
+
+    def _apply_to_word_keys(
+        self,
+        word_keys: list[tuple[int, int]],
+        operation: Callable[[Word], bool],
+        label: str,
+    ) -> bool:
+        """Validate word keys and apply *operation* to each word."""
+        unique_keys = sorted(set(word_keys or []))
+        if not unique_keys:
+            logger.warning("%s requires selecting at least one word", label)
+            return False
+        try:
+            changed = False
+            for line_index, word_index in unique_keys:
+                line_words = self.validated_line_words(line_index)
+                if line_words is None:
+                    return False
+                if word_index < 0 or word_index >= len(line_words):
+                    logger.warning(
+                        "%s word index %s out of range for line %s (0-%s)",
+                        label,
+                        word_index,
+                        line_index,
+                        len(line_words) - 1,
+                    )
+                    return False
+                changed = operation(line_words[word_index]) or changed
+            if not changed:
+                logger.warning("Selected words could not be processed (%s)", label)
+                return False
+            self.finalize_page_structure()
+            logger.info("%s %d selected words", label, len(unique_keys))
+            return True
+        except Exception as e:
+            logger.exception("Error in %s for words %s: %s", label, word_keys, e)
+            return False
+
+    def _apply_to_line_indices(
+        self,
+        line_indices: list[int],
+        operation: Callable[[Block], bool],
+        label: str,
+    ) -> bool:
+        """Validate line indices and apply *operation* to each line."""
+        unique_indices = sorted(set(line_indices or []))
+        if not unique_indices:
+            logger.warning("%s requires selecting at least one line", label)
+            return False
+        try:
+            lines = list(self.lines)
+            changed = False
+            for line_index in unique_indices:
+                if line_index < 0 or line_index >= len(lines):
+                    logger.warning(
+                        "%s line index %s out of range (0-%s)",
+                        label,
+                        line_index,
+                        len(lines) - 1,
+                    )
+                    return False
+                changed = operation(lines[line_index]) or changed
+            if not changed:
+                logger.warning("Selected lines could not be processed (%s)", label)
+                return False
+            self.finalize_page_structure()
+            logger.info("%s %d selected lines", label, len(unique_indices))
+            return True
+        except Exception as e:
+            logger.exception("Error in %s for lines %s: %s", label, line_indices, e)
+            return False
+
+    def _apply_to_paragraph_indices(
+        self,
+        paragraph_indices: list[int],
+        operation: Callable[[Block], bool],
+        label: str,
+    ) -> bool:
+        """Validate paragraph indices and apply *operation* to each paragraph."""
+        unique_indices = sorted(set(paragraph_indices or []))
+        if not unique_indices:
+            logger.warning("%s requires selecting at least one paragraph", label)
+            return False
+        try:
+            paragraphs = list(self.paragraphs)
+            if not paragraphs:
+                logger.warning("Page has no paragraphs (%s)", label)
+                return False
+            changed = False
+            for paragraph_index in unique_indices:
+                if paragraph_index < 0 or paragraph_index >= len(paragraphs):
+                    logger.warning(
+                        "%s paragraph index %s out of range (0-%s)",
+                        label,
+                        paragraph_index,
+                        len(paragraphs) - 1,
+                    )
+                    return False
+                changed = operation(paragraphs[paragraph_index]) or changed
+            if not changed:
+                logger.warning("Selected paragraphs could not be processed (%s)", label)
+                return False
+            self.finalize_page_structure()
+            logger.info("%s %d selected paragraphs", label, len(unique_indices))
+            return True
+        except Exception as e:
+            logger.exception(
+                "Error in %s for paragraphs %s: %s", label, paragraph_indices, e
+            )
+            return False
+
+    # ------------------------------------------------------------------
+    # Bbox operations – word level
+    # ------------------------------------------------------------------
+
+    def refine_words(self, word_keys: list[tuple[int, int]]) -> bool:
+        """Refine selected word bounding boxes."""
+        return self._apply_to_word_keys(
+            word_keys,
+            lambda w: w.refine_bbox(self.cv2_numpy_page_image),
+            "Refined",
+        )
+
+    def expand_then_refine_words(self, word_keys: list[tuple[int, int]]) -> bool:
+        """Expand then refine selected word bounding boxes."""
+        return self._apply_to_word_keys(
+            word_keys,
+            lambda w: w.expand_then_refine_bbox(self.cv2_numpy_page_image),
+            "Expand-then-refined",
+        )
+
+    def expand_word_bboxes(
+        self, word_keys: list[tuple[int, int]], padding_px: float = 2.0
+    ) -> bool:
+        """Expand selected word bounding boxes by uniform pixel padding."""
+        page_width, page_height = self.resolved_dimensions
+        return self._apply_to_word_keys(
+            word_keys,
+            lambda w: w.expand_bbox(padding_px, page_width, page_height),
+            "Expanded bboxes for",
+        )
+
+    # ------------------------------------------------------------------
+    # Bbox operations – line level
+    # ------------------------------------------------------------------
+
+    def refine_lines(self, line_indices: list[int]) -> bool:
+        """Refine all words/bboxes in selected lines."""
+        return self._apply_to_line_indices(
+            line_indices,
+            lambda line: line.refine_word_bboxes(self.cv2_numpy_page_image),
+            "Refined",
+        )
+
+    def expand_then_refine_lines(self, line_indices: list[int]) -> bool:
+        """Expand then refine all words/bboxes in selected lines."""
+
+        def _op(line: Block) -> bool:
+            changed = False
+            for word in line.words:
+                changed = (
+                    word.expand_then_refine_bbox(self.cv2_numpy_page_image) or changed
+                )
+            line.recompute_bounding_box()
+            return changed
+
+        return self._apply_to_line_indices(line_indices, _op, "Expand-then-refined")
+
+    def expand_line_bboxes(
+        self, line_indices: list[int], padding_px: float = 2.0
+    ) -> bool:
+        """Expand all word bboxes in selected lines by uniform pixel padding."""
+        page_width, page_height = self.resolved_dimensions
+
+        def _op(line: Block) -> bool:
+            changed = False
+            for word in line.words:
+                changed = (
+                    word.expand_bbox(padding_px, page_width, page_height) or changed
+                )
+            line.recompute_bounding_box()
+            return changed
+
+        return self._apply_to_line_indices(line_indices, _op, "Expanded bboxes in")
+
+    # ------------------------------------------------------------------
+    # Bbox operations – paragraph level
+    # ------------------------------------------------------------------
+
+    def refine_paragraphs(self, paragraph_indices: list[int]) -> bool:
+        """Refine all words/bboxes in selected paragraphs."""
+
+        def _op(paragraph: Block) -> bool:
+            changed = False
+            for line in paragraph.lines:
+                changed = line.refine_word_bboxes(self.cv2_numpy_page_image) or changed
+            paragraph.recompute_bounding_box()
+            return changed
+
+        return self._apply_to_paragraph_indices(paragraph_indices, _op, "Refined")
+
+    def expand_then_refine_paragraphs(self, paragraph_indices: list[int]) -> bool:
+        """Expand then refine all words/bboxes in selected paragraphs."""
+
+        def _op(paragraph: Block) -> bool:
+            changed = False
+            for line in paragraph.lines:
+                for word in line.words:
+                    changed = (
+                        word.expand_then_refine_bbox(self.cv2_numpy_page_image)
+                        or changed
+                    )
+                line.recompute_bounding_box()
+            paragraph.recompute_bounding_box()
+            return changed
+
+        return self._apply_to_paragraph_indices(
+            paragraph_indices, _op, "Expand-then-refined"
+        )
+
+    def expand_paragraph_bboxes(
+        self, paragraph_indices: list[int], padding_px: float = 2.0
+    ) -> bool:
+        """Expand all word bboxes in selected paragraphs by uniform pixel padding."""
+        page_width, page_height = self.resolved_dimensions
+
+        def _op(paragraph: Block) -> bool:
+            changed = False
+            for line in paragraph.lines:
+                for word in line.words:
+                    changed = (
+                        word.expand_bbox(padding_px, page_width, page_height) or changed
+                    )
+                line.recompute_bounding_box()
+            paragraph.recompute_bounding_box()
+            return changed
+
+        return self._apply_to_paragraph_indices(
+            paragraph_indices, _op, "Expanded bboxes in"
         )
 
     def scale(self, width: int, height: int) -> "Page":
@@ -637,28 +1754,28 @@ class Page:
         self.refresh_page_images()
 
     @classmethod
-    def from_dict(cls, dict: Dict[str, Any]) -> "Page":
+    def from_dict(cls, data: Dict[str, Any]) -> "Page":
         """Create OCRPage from dictionary"""
         # Resolve source from either "source" or legacy "page_source" key
-        source = dict.get("source", dict.get("page_source", "ocr"))
+        source = data.get("source", data.get("page_source", "ocr"))
         return cls(
-            items=[Block.from_dict(block) for block in dict["items"]],
-            width=dict["width"],
-            height=dict["height"],
-            page_index=dict["page_index"],
+            items=[Block.from_dict(block) for block in data["items"]],
+            width=data["width"],
+            height=data["height"],
+            page_index=data["page_index"],
             bounding_box=(
-                BoundingBox.from_dict(dict["bounding_box"])
-                if dict.get("bounding_box")
+                BoundingBox.from_dict(data["bounding_box"])
+                if data.get("bounding_box")
                 else None
             ),
-            ocr_provenance=dict.get("ocr_provenance"),
-            image_path=dict.get("image_path"),
-            name=dict.get("name"),
+            ocr_provenance=data.get("ocr_provenance"),
+            image_path=data.get("image_path"),
+            name=data.get("name"),
             source=source,
-            ocr_failed=dict.get("ocr_failed", False),
-            provenance_live_ocr=dict.get("provenance_live_ocr"),
-            provenance_saved_ocr=dict.get("provenance_saved_ocr"),
-            provenance_saved=dict.get("provenance_saved"),
+            ocr_failed=data.get("ocr_failed", False),
+            provenance_live_ocr=data.get("provenance_live_ocr"),
+            provenance_saved_ocr=data.get("provenance_saved_ocr"),
+            provenance_saved=data.get("provenance_saved"),
         )
 
     @classmethod
@@ -1275,191 +2392,3 @@ class Page:
         self.generate_doctr_recognition_training_set(
             output_path=output_path, prefix=prefix, word_filter=word_filter
         )
-
-    # def compute_text_columns(lines: List[Block], tolerance=None):
-    #     """
-    #     Compute the number of columns in a given block of OCR lines.
-    #     This is done by grouping lines based on their x-coordinates.
-
-    #     :param lines: List of blocks representing a line of OCR words.
-    #     :param tolerance: Tolerance for grouping similar x-coordinates
-    #     (in same coordinates as line bounding boxes).
-    #     :return: dictionary of columns
-    #     """
-
-    #     # A given page may have multiple sets of columns, broken apart horizontally
-    #     # E.G. 1-column header, 2-column body, 1-column footer
-    #     # or single column, but 3 blocks, because of a blockquote
-
-    #     # Default tolerance is 10% of the average line width
-    #     if tolerance is None:
-    #         tolerance = 0.10 * np.mean([line.bounding_box.width for line in lines])
-
-    #     left_positions = [line.bounding_box.minX for line in lines]
-    #     right_positions = [line.bounding_box.maxX for line in lines]
-    #     central_positions = [
-    #         (left + right) / 2 for left, right in zip(left_positions, right_positions)
-    #     ]
-
-    #     # Helper function to group positions into clusters
-    #     def cluster_positions(positions, tolerance):
-    #         clusters = []
-    #         for pos in sorted(positions):
-    #             if not clusters or abs(pos - clusters[-1][-1]) > tolerance:
-    #                 clusters.append([pos])
-    #             else:
-    #                 clusters[-1].append(pos)
-    #         return [np.mean(cluster) for cluster in clusters]
-
-    #     # Cluster central positions instead of left or right positions
-    #     central_clusters = cluster_positions(central_positions, tolerance)
-
-    #     # Group lines into columns based on left and right clusters
-    #     columns = defaultdict(list)
-    #     for line in lines:
-    #         left = line["geometry"][0][0]
-    #         right = line["geometry"][1][0]
-
-    #         # Find the closest cluster for the left and right margins
-    #         left_column = min(left_clusters, key=lambda x: abs(x - left))
-    #         right_column = min(right_clusters, key=lambda x: abs(x - right))
-
-    #         # Use a tuple of (left_column, right_column) as the column key
-    #         columns[(left_column, right_column)].append(line)
-
-    #     return columns
-
-    # def _compute_dynamic_horizontal_spacing_threshold(self, lines, std_multiplier):
-    #     """
-    #     Compute a dynamic spacing threshold based on the vertical spacing between lines.
-    #     This is used to detect block/paragraph/thought breaks in OCR text.
-
-    #     The threshold is calculated as the mean spacing,
-    #     plus a multiple of the standard deviation to account
-    #     for minor variations in line spacing.
-
-    #     :param lines: List of line dictionaries
-    #     :return: Dynamic spacing threshold based on mean and standard deviation
-    #     """
-    #     if len(lines) < 2:
-    #         return 0
-    #         # Extract Y positions and compute spacing statistics
-    #     y_positions = [line["geometry"][0][1] for line in lines]
-
-    #     # Get differences between consecutive lines
-    #     line_spacings = np.diff(y_positions)
-    #     mean_spacing = np.mean(line_spacings)
-    #     std_spacing = np.std(line_spacings)
-    #     dynamic_horizontal_spacing_threshold = mean_spacing + (
-    #         std_spacing * std_multiplier
-    #     )
-    #     return dynamic_horizontal_spacing_threshold
-
-    # def reprocess_column_block(self, lines: List[Block]):
-
-    #     # First, reorganize the lines into blocks based on their vertical spacing
-    #     # This will group lines separate vertical blocks (e.g. Header, Body, Blockquotes, Footer, etc)
-
-    #     # Compute dynamic spacing threshold for block breaks
-    #     dynamic_horizontal_spacing_threshold = (
-    #         self._compute_dynamic_horizontal_spacing_threshold(
-    #             lines, std_multiplier=1.3
-    #         )
-    #     )
-
-    #     blocks = []
-    #     current_block = []
-    #     last_y = lines[0]["geometry"][0][1]
-
-    #     for i, line in enumerate(lines):
-    #         words = line.items
-    #         if words:
-    #             line_text = line.text
-    #             indent = words[0].bounding_box.minX  # X-coordinate for indentation
-    #             y_position = line.bounding_box.minY
-
-    #             # Paragraph break detection
-    #             is_paragraph_break = False
-
-    #             # "Block" break detection
-    #             is_block_break = False
-
-    #             # First line: Always add it normally (don't check breaks)
-    #             if i == 0:
-    #                 processed_text.append(line_text)
-    #                 continue  # Skip to next line
-
-    #             # Second line: Check if it's unusually spaced compared to the first
-    #             # Poetry, of course, makes this worse
-
-    #             elif i == 1:
-    #                 first_spacing = abs(y_position - lines[0]["geometry"][0][1])
-    #                 if first_spacing > dynamic_spacing_threshold:
-    #                     is_paragraph_break = True
-
-    #             # For other lines, detect spacing-based paragraph breaks dynamically
-    #             elif i < len(lines) - 1:  # Ensure next line exists
-    #                 next_y = lines[i + 1]["geometry"][0][1]
-    #                 line_spacing = abs(next_y - y_position)
-
-    #                 if line_spacing > dynamic_spacing_threshold:
-    #                     is_paragraph_break = True  # Large vertical gap detected
-
-    #             # Detect indentation-based paragraph breaks using global median threshold
-    #             if abs(indent - median_indent) > dynamic_indent_threshold:
-    #                 is_paragraph_break = True
-
-    #             # Insert exactly two line breaks for paragraph separation
-    #             if is_paragraph_break and not last_was_paragraph_break:
-    #                 processed_text.append("")  # Adds one extra blank line
-    #                 last_was_paragraph_break = True
-    #             else:
-    #                 last_was_paragraph_break = False  # Reset flag
-
-    #             processed_text.append(line_text)
-
-    # def reprocess_blocks(self, std_multiplier=1.3, indent_multiplier=0.015):
-    #     """
-    #     Reprocesses an OCR page dictionary.
-    #     This is post-processing logic built primarily for Book Pages.
-
-    #     Starts with all lines, and recalculates blocks and
-    #     paragraph breaks based on dynamically computed vertical spacing
-    #     and a median-based global indentation threshold.
-
-    #     :param std_multiplier: How many standard deviations above the mean spacing qualifies as a block break.
-    #     :param indent_multiplier: Factor to apply to median line length for dynamic indentation threshold. (for paragraphs)
-    #     :return: New Page object with reprocessed paragraphs.
-    #     """
-    #     processed_text = []
-    #     last_was_paragraph_break = False  # Tracks last break state
-
-    #     lines = self.lines
-    #     if len(lines) < 2:
-    #         return self  # Not enough lines to compute spacing, don't change the text
-
-    #     dynamic_horizontal_spacing_threshold = (
-    #         self._compute_dynamic_horizontal_spacing_threshold(lines, std_multiplier)
-    #     )
-
-    #     # Compute right-aligned median x value for dynamic indentation threshold
-    #     all_right_indents = [line["geometry"][1][0] for line in lines]
-
-    #     # Determine if there are several different common median right-aligned x values.
-    #     # If so, this means there are multiple columns of text on the page.
-    #     # We should split these apart and generate separate paragraphs for each column.
-
-    #     median_right_indent = np.median(all_right_indents)
-
-    #     # Compute global median indentation of each line
-    #     all_left_indents = [line["geometry"][0][0] for line in lines]
-    #     median_left_indent = np.median(all_left_indents)
-
-    #     # Compute median line length for dynamic indentation threshold
-    #     line_lengths = [
-    #         line["geometry"][1][0] - line["geometry"][0][0] for line in lines
-    #     ]
-    #     median_line_length = np.median(line_lengths)
-    #     dynamic_indent_threshold = median_line_length * indent_multiplier
-
-    #     return "\n".join(processed_text)

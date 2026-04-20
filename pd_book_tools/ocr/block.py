@@ -1,7 +1,8 @@
 import itertools
+from collections.abc import Collection
 from enum import Enum
 from logging import getLogger
-from typing import ClassVar, Collection, List, Optional, Tuple
+from typing import ClassVar
 
 import numpy as np
 from numpy import ndarray
@@ -118,23 +119,23 @@ class Block:
     def __init__(
         self,
         items: Collection,
-        bounding_box: Optional[BoundingBox] = None,
-        child_type: Optional[BlockChildType] = BlockChildType.BLOCKS,
-        block_category: Optional[BlockCategory] = BlockCategory.BLOCK,
-        block_labels: Optional[list[str]] = None,
-        block_role_labels: Optional[list[str]] = None,
-        block_position_labels: Optional[list[str]] = None,
-        line_role_labels: Optional[list[str]] = None,
-        line_position_labels: Optional[list[str]] = None,
-        baseline: Optional[dict[str, float | str]] = None,
-        override_page_sort_order: Optional[int] = None,
-        unmatched_ground_truth_words: Optional[List[Tuple[int, str]]] = None,
-        additional_block_attributes: Optional[dict] = None,
-        base_ground_truth_text: Optional[str] = None,
+        bounding_box: BoundingBox | None = None,
+        child_type: BlockChildType | None = BlockChildType.BLOCKS,
+        block_category: BlockCategory | None = BlockCategory.BLOCK,
+        block_labels: list[str] | None = None,
+        block_role_labels: list[str] | None = None,
+        block_position_labels: list[str] | None = None,
+        line_role_labels: list[str] | None = None,
+        line_position_labels: list[str] | None = None,
+        baseline: dict[str, float | str] | None = None,
+        override_page_sort_order: int | None = None,
+        unmatched_ground_truth_words: list[tuple[int, str]] | None = None,
+        additional_block_attributes: dict | None = None,
+        base_ground_truth_text: str | None = None,
     ):
-        self.child_type: Optional[BlockChildType] = child_type
-        self.block_category: Optional[BlockCategory] = block_category
-        self.block_labels: Optional[list[str]] = block_labels
+        self.child_type: BlockChildType | None = child_type
+        self.block_category: BlockCategory | None = block_category
+        self.block_labels: list[str] | None = block_labels
         self.block_role_labels: list[str] = self._normalize_labels(
             block_role_labels,
             self.ALLOWED_BLOCK_ROLE_LABELS,
@@ -162,13 +163,15 @@ class Block:
         self.baseline: dict[str, float | str] | None = (
             baseline.copy() if baseline else None
         )
-        self.override_page_sort_order: Optional[int] = override_page_sort_order
-        self.base_ground_truth_text: Optional[str] = base_ground_truth_text
+        self.override_page_sort_order: int | None = override_page_sort_order
+        self.base_ground_truth_text: str | None = base_ground_truth_text
         # containers
         self.additional_block_attributes: dict = (
-            additional_block_attributes if additional_block_attributes else {}
+            additional_block_attributes
+            if additional_block_attributes is not None
+            else {}
         )
-        self.unmatched_ground_truth_words: List[Tuple[int, str]] = (
+        self.unmatched_ground_truth_words: list[tuple[int, str]] = (
             list(unmatched_ground_truth_words)
             if unmatched_ground_truth_words is not None
             else []
@@ -177,7 +180,7 @@ class Block:
             "unmatched_ground_truth_words: %s", str(self.unmatched_ground_truth_words)
         )
         # Initialize bounding box attribute so it's always present (may be None for empty blocks)
-        self.bounding_box: Optional[BoundingBox] = None
+        self.bounding_box: BoundingBox | None = None
         # Will set self._items and compute bounding box
         self.items = items  # type: ignore[assignment]
         # If explicit bbox passed, override computed one
@@ -234,7 +237,7 @@ class Block:
     @classmethod
     def _normalize_labels(
         cls,
-        labels: Optional[list[str]],
+        labels: list[str] | None,
         allowed: frozenset[str],
         aliases: dict[str, str],
         label_kind: str,
@@ -286,18 +289,17 @@ class Block:
             )
 
     @property
-    def items(self) -> List:
-        """Returns a copy of the item list in this block"""
-        self._sort_items()
+    def items(self) -> list:
+        """Returns a copy of the item list in this block."""
         return self._items.copy()
 
-    def recompute_bounding_box(self):
-        """Recompute the bounding box of the block based on its items"""
+    def recompute_bounding_box(self) -> None:
+        """Recompute the bounding box of the block based on its items."""
         if not self._items:
             self.bounding_box = None
             return
         self.bounding_box = BoundingBox.union(
-            [item.bounding_box for item in self.items]
+            [item.bounding_box for item in self._items]
         )
 
     def add_item(self, item):
@@ -323,35 +325,33 @@ class Block:
         self._sort_items()
         self.recompute_bounding_box()
 
-    def remove_item(self, item):
-        """Remove an item from the block"""
+    def remove_item(self, item) -> None:
+        """Remove an item from the block."""
         if item in self._items:
             self._items.remove(item)
             self._sort_items()
             self.recompute_bounding_box()
-            logger.debug(f"Empty item removed. New text: {self.text[0:10]}...")
+            logger.debug("Item removed from block")
         else:
             raise ValueError("Item not found in block")
 
-    def remove_ground_truth(self):
-        """Remove the ground truth text from the block"""
+    def remove_ground_truth(self) -> None:
+        """Remove the ground truth text from the block."""
         if self.unmatched_ground_truth_words:
             self.unmatched_ground_truth_words.clear()
         else:
             self.unmatched_ground_truth_words = []
         if self.child_type == BlockChildType.WORDS:
-            word: Word
-            for word in self.items:
+            for word in self._items:
                 word.ground_truth_text = ""
                 word.ground_truth_bounding_box = None
         else:
-            block: Block
-            for block in self.items:
+            for block in self._items:
                 block.remove_ground_truth()
         logger.debug("Ground truth text removed from block")
 
-    def remove_line_if_exists(self, line):
-        """Remove a line from the page if it exists"""
+    def remove_line_if_exists(self, line) -> bool:
+        """Remove a line from the page if it exists."""
         if self.child_type == BlockChildType.WORDS:
             return False
 
@@ -366,23 +366,30 @@ class Block:
                     break
 
         if removed:
-            logger.debug(f"Line {line.text[0:10]}... removed from block")
+            logger.debug("Line removed from block")
         else:
-            logger.debug(f"Line {line.text[0:10]}... not found in block")
+            logger.debug("Line not found in block")
 
         return removed
 
-    def remove_empty_items(self):
+    @property
+    def is_empty(self) -> bool:
+        """Return True when this block has no child items."""
+        return not self._items
+
+    def remove_empty_items(self) -> None:
         """Remove empty child blocks from the block."""
-        if not self.items:
+        if not self._items:
             return
         if self.child_type != BlockChildType.WORDS:
-            item: Block
-            for item in self.items:
+            for item in self._items:
                 item.remove_empty_items()
-                if not item.items:
-                    self.remove_item(item)
-                    logger.debug("Empty block removed")
+            before = len(self._items)
+            self._items = [item for item in self._items if item._items]
+            if len(self._items) != before:
+                self._sort_items()
+                self.recompute_bounding_box()
+                logger.debug("Empty blocks removed")
         # Empty words are directly removed with remove_item, do not need to be handled here
 
     @items.setter
@@ -421,11 +428,11 @@ class Block:
         This automatically adds additional CRs between blocks/paragraphs.
         """
         if self.child_type == BlockChildType.WORDS:
-            return " ".join(item.text for item in self.items)
+            return " ".join(item.text for item in self._items)
         elif self.block_category == BlockCategory.PARAGRAPH:
-            return "\n".join(item.text for item in self.items)
+            return "\n".join(item.text for item in self._items)
         else:
-            return "\n\n".join(item.text for item in self.items)
+            return "\n\n".join(item.text for item in self._items)
 
     @property
     def ground_truth_text(self) -> str:
@@ -437,7 +444,7 @@ class Block:
         if self.child_type == BlockChildType.WORDS:
             # If the block is a line, use the ground truth text of the words
             matched_words = []
-            for word in self.items:
+            for word in self._items:
                 matched_words.append(word.ground_truth_text or "")
 
             # Also, add unmatched ground truth words to the text
@@ -446,17 +453,20 @@ class Block:
                     self.unmatched_ground_truth_words
                 ):
                     logger.debug(
-                        f"Adding unmatched ground truth word '{unmatched_gt_word}' at index {unmatched_gt_word_idx}"
+                        "Adding unmatched ground truth word '%s' at index %s",
+                        unmatched_gt_word,
+                        unmatched_gt_word_idx,
                     )
                     matched_words.insert(unmatched_gt_word_idx + 1, unmatched_gt_word)
                 logger.debug(
-                    f"Matched words after adding unmatched ground truth words: {matched_words}"
+                    "Matched words after adding unmatched ground truth words: %s",
+                    matched_words,
                 )
             return " ".join(matched_words)
         elif self.block_category == BlockCategory.PARAGRAPH:
-            return "\n".join(item.ground_truth_text for item in self.items)
+            return "\n".join(item.ground_truth_text for item in self._items)
         else:
-            return "\n\n".join(item.ground_truth_text for item in self.items)
+            return "\n\n".join(item.ground_truth_text for item in self._items)
 
     @property
     def ground_truth_text_only_ocr(self) -> str:
@@ -468,97 +478,135 @@ class Block:
         """
         if self.child_type == BlockChildType.WORDS:
             return " ".join(
-                s for s in (item.ground_truth_text_only_ocr for item in self.items) if s
+                s
+                for s in (item.ground_truth_text_only_ocr for item in self._items)
+                if s
             )
         elif self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(
-                s for s in (item.ground_truth_text_only_ocr for item in self.items) if s
+                s
+                for s in (item.ground_truth_text_only_ocr for item in self._items)
+                if s
             )
         else:
             return "\n\n".join(
-                s for s in (item.ground_truth_text_only_ocr for item in self.items) if s
+                s
+                for s in (item.ground_truth_text_only_ocr for item in self._items)
+                if s
             )
 
     @property
     def ground_truth_exact_match(self) -> bool:
-        """Check if the ground truth text of the block matches the text"""
-        if self.child_type == BlockChildType.WORDS:
-            return all(item.ground_truth_exact_match for item in self.items)
-        else:
-            return all(item.ground_truth_exact_match for item in self.items)
+        """Check if the ground truth text of the block matches the text."""
+        return all(item.ground_truth_exact_match for item in self._items)
+
+    def validate_line_consistency(self) -> dict:
+        """Validate consistency of OCR vs ground truth for this line.
+
+        Returns a dict with word counts, match counts, mismatch details,
+        and an overall accuracy score.
+        """
+        words = self.words
+        if not words:
+            return {
+                "valid": True,
+                "words": 0,
+                "with_gt": 0,
+                "matches": 0,
+                "mismatches": 0,
+            }
+
+        total_words = len(words)
+        words_with_gt = 0
+        exact_matches = 0
+        mismatches = []
+
+        for word_idx, word in enumerate(words):
+            ocr_text = word.text
+            gt_text = word.ground_truth_text
+
+            if gt_text:
+                words_with_gt += 1
+                if ocr_text == gt_text:
+                    exact_matches += 1
+                else:
+                    mismatches.append(
+                        {
+                            "word_index": word_idx,
+                            "ocr_text": ocr_text,
+                            "gt_text": gt_text,
+                        }
+                    )
+
+        return {
+            "valid": True,
+            "words": total_words,
+            "with_gt": words_with_gt,
+            "matches": exact_matches,
+            "mismatches": len(mismatches),
+            "mismatch_details": mismatches,
+            "accuracy": exact_matches / words_with_gt if words_with_gt > 0 else 1.0,
+        }
 
     @property
     def word_list(self) -> list[str]:
-        """Get list of words in the block"""
+        """Get list of words in the block."""
         if self.child_type == BlockChildType.WORDS:
-            return [item.text for item in self.items]
+            return [item.text for item in self._items]
         else:
             return list(
-                itertools.chain.from_iterable([item.word_list for item in self.items])
+                itertools.chain.from_iterable(item.word_list for item in self._items)
             )
 
     @property
     def words(self) -> list[Word]:
-        """Get flat list of all words in the block"""
+        """Get flat list of all words in the block."""
         if self.child_type == BlockChildType.WORDS:
-            return list(self.items)
+            return list(self._items)
         else:
             return list(
-                itertools.chain.from_iterable([item.words for item in self.items])
+                itertools.chain.from_iterable(item.words for item in self._items)
             )
 
     @property
-    def lines(self) -> List["Block"]:
-        """Flat list of all 'lines' in the block"""
+    def lines(self) -> list["Block"]:
+        """Flat list of all 'lines' in the block."""
         if self.child_type == BlockChildType.WORDS:
             return [self]
         else:
             return list(
-                itertools.chain.from_iterable([item.lines for item in self.items])
+                itertools.chain.from_iterable(item.lines for item in self._items)
             )
 
     @property
-    def paragraphs(self) -> List["Block"]:
-        """Flat list of all 'paragraphs' in the block"""
+    def paragraphs(self) -> list["Block"]:
+        """Flat list of all 'paragraphs' in the block."""
         if self.block_category == BlockCategory.PARAGRAPH:
             return [self]
         else:
             return list(
-                itertools.chain.from_iterable([item.paragraphs for item in self.items])
+                itertools.chain.from_iterable(item.paragraphs for item in self._items)
             )
-
-    # def compute_baseline_y(self):
-    #     # If the block is a line, compute a baseline
-    #     """Compute the baseline Y-coordinate for a line of text."""
-    #     if self.block_category != BlockCategory.LINE:
-    #         raise ValueError("Baseline can only be computed for lines of text.")
-
-    #     # Collect the bottom edges of all words in the line
-    #     bottom_edges = [item.bounding_box.bottom_right.y for item in self.items]
-
-    #     if not bottom_edges:
-    #         return None
-
-    #     # Use the median to ignore descenders like 'p' and 'q'
-    #     baseline_y = int(np.median(bottom_edges))
-    #     return baseline_y
 
     def split_word(
         self,
         split_word_index: int,
         bbox_split_offset: float,
         character_split_index: int,
-    ):
-        """Split a word in the line into two parts and replace it with the new words"""
+    ) -> None:
+        """Split a word in the line into two parts and replace it with the new words."""
         logger.debug(
-            f"Line Splitting word at index {split_word_index} with bbox_split_offset {bbox_split_offset} and character_split_index {character_split_index}"
+            "Splitting word at index %s with bbox_split_offset %s and character_split_index %s",
+            split_word_index,
+            bbox_split_offset,
+            character_split_index,
         )
 
         if self.child_type != BlockChildType.WORDS:
             raise ValueError("Cannot split a word in a block of blocks")
-        if split_word_index < 0 or split_word_index >= len(self.items):
+        if split_word_index < 0 or split_word_index >= len(self._items):
             raise IndexError("Index out of range")
-        word = self.items[split_word_index]
+        word = self._items[split_word_index]
         if not isinstance(word, Word):
             raise TypeError("Item must be of type Word")
 
@@ -567,25 +615,112 @@ class Block:
             character_split_index=character_split_index,
         )
         logger.debug("Word Split. New words: %s, %s", word_1.text, word_2.text)
-        self.remove_item(word)
-        self.add_item(word_1)
-        self.add_item(word_2)
-        self.remove_empty_items()
+        self._items.remove(word)
+        self._items.append(word_1)
+        self._items.append(word_2)
+        self._sort_items()
         self.recompute_bounding_box()
-        logger.debug(f"Line after split:\n{self.text}")
+        logger.debug("Line after split: %s", self.text)
 
-    def merge(self, block_to_merge: "Block"):
-        """Merge another block into this one"""
+    def merge_adjacent_words(self, word_index: int, direction: str) -> bool:
+        """Merge adjacent words within this line block.
+
+        Args:
+            word_index: Zero-based index of the selected word.
+            direction: ``"left"`` merges into the preceding word,
+                ``"right"`` merges the following word into the selected one.
+
+        Returns:
+            True if the merge succeeded, False otherwise.
+        """
+        words = list(self.words)
+        if len(words) < 2:
+            logger.warning("Word merge requires at least two words in line")
+            return False
+
+        if word_index < 0 or word_index >= len(words):
+            logger.warning(
+                "Word merge index %s out of range (0-%s)",
+                word_index,
+                len(words) - 1,
+            )
+            return False
+
+        if direction == "left":
+            if word_index == 0:
+                logger.warning("Cannot merge first word to the left")
+                return False
+            keep_index = word_index - 1
+            remove_index = word_index
+        elif direction == "right":
+            if word_index >= len(words) - 1:
+                logger.warning("Cannot merge last word to the right")
+                return False
+            keep_index = word_index
+            remove_index = word_index + 1
+        else:
+            logger.warning("Unsupported word merge direction: %s", direction)
+            return False
+
+        words[keep_index].merge(words[remove_index])
+        self.remove_item(words[remove_index])
+
+        for word in self.words:
+            word.ground_truth_text = ""
+
+        return True
+
+    @staticmethod
+    def _is_geometry_normalization_error(error: Exception) -> bool:
+        """Return True for known malformed-bbox normalization failures."""
+        return BoundingBox.is_geometry_normalization_error(error)
+
+    def merge_fallback(self, other: "Block") -> bool:
+        """Fallback merge that concatenates items when :meth:`merge` fails
+        on malformed bbox metadata."""
+        try:
+            self._items = [*self._items, *other.items]
+            self._sort_items()
+
+            try:
+                self.recompute_bounding_box()
+            except Exception as recompute_error:
+                if not self._is_geometry_normalization_error(recompute_error):
+                    raise
+                logger.warning(
+                    "Fallback merge skipped bbox recompute due to "
+                    "malformed geometry: %s",
+                    recompute_error,
+                )
+
+            return True
+        except Exception as fallback_error:
+            logger.exception("Fallback merge failed: %s", fallback_error)
+            return False
+
+    def refine_word_bboxes(self, page_image: "ndarray | None") -> bool:
+        """Refine all word bounding boxes using the page image and recompute
+        this block's bbox.
+
+        Args:
+            page_image: The page's cv2 numpy image (passed down since Block
+                doesn't own the image).
+
+        Returns:
+            True if any word was refined.
+        """
+        refined_any = False
+        for word in self.words:
+            refined_any = word.refine_bbox(page_image) or refined_any
+        self.recompute_bounding_box()
+        return refined_any
+
+    def merge(self, block_to_merge: "Block") -> None:
+        """Merge another block into this one."""
         if self.child_type != block_to_merge.child_type:
             raise ValueError("Cannot merge blocks with different child types")
         if self.block_category != block_to_merge.block_category:
             raise ValueError("Cannot merge blocks with different block categories")
-        if self.bounding_box and block_to_merge.bounding_box:
-            self.bounding_box = BoundingBox.union(
-                [self.bounding_box, block_to_merge.bounding_box]
-            )
-        else:
-            self.bounding_box = block_to_merge.bounding_box
         self._items.extend(block_to_merge.items)
         self._sort_items()
         if (
@@ -621,15 +756,15 @@ class Block:
         self.recompute_bounding_box()
 
     def ocr_confidence_scores(self) -> list[float]:
-        """Get a list of the OCR confidence scores of all nested words"""
-        if not self.items:
+        """Get a list of the OCR confidence scores of all nested words."""
+        if not self._items:
             return []
         if self.child_type == BlockChildType.WORDS:
-            return [item.ocr_confidence for item in self.items]
+            return [item.ocr_confidence for item in self._items]
         else:
             return list(
                 itertools.chain.from_iterable(
-                    [item.ocr_confidence_scores() for item in self.items]
+                    item.ocr_confidence_scores() for item in self._items
                 )
             )
 
@@ -646,7 +781,7 @@ class Block:
         and scaled children to absolute pixel coordinates
         """
         return Block(
-            items=[item.scale(width, height) for item in self.items],
+            items=[item.scale(width, height) for item in self._items],
             bounding_box=self.bounding_box.scale(width, height)
             if self.bounding_box
             else None,
@@ -671,7 +806,7 @@ class Block:
         return fuzz_ratio(self.text, ground_truth_text)
 
     def to_dict(self) -> dict:
-        """Convert to JSON-serializable dictionary"""
+        """Convert to JSON-serializable dictionary."""
         return {
             "type": "Block",
             "child_type": self.child_type.value if self.child_type else None,
@@ -685,7 +820,7 @@ class Block:
             "line_position_labels": self.line_position_labels,
             "baseline": self.baseline,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
-            "items": [item.to_dict() for item in self.items] if self.items else [],
+            "items": [item.to_dict() for item in self._items],
             "override_page_sort_order": self.override_page_sort_order,
             "unmatched_ground_truth_words": self.unmatched_ground_truth_words or [],
             "additional_block_attributes": self.additional_block_attributes or {},
@@ -693,33 +828,35 @@ class Block:
         }
 
     @classmethod
-    def from_dict(cls, dict) -> "Block":
+    def from_dict(cls, data) -> "Block":
         """Create OCRBlock from dictionary"""
-        if dict.get("child_type"):
-            child_type = BlockChildType(dict["child_type"])
+        if data.get("child_type"):
+            child_type = BlockChildType(data["child_type"])
         else:
             child_type = BlockChildType.WORDS
 
         if child_type == BlockChildType.WORDS:
-            items = [Word.from_dict(item) for item in dict["items"]]
+            items = [Word.from_dict(item) for item in data["items"]]
         else:
-            items = [Block.from_dict(item) for item in dict["items"]]
+            items = [Block.from_dict(item) for item in data["items"]]
 
         return cls(
             items=items,
-            bounding_box=BoundingBox.from_dict(dict["bounding_box"]),
+            bounding_box=BoundingBox.from_dict(data["bounding_box"]),
             child_type=child_type,
-            block_category=BlockCategory(dict.get("block_category")),
-            block_labels=dict.get("block_labels", []),
-            block_role_labels=dict.get("block_role_labels", []),
-            block_position_labels=dict.get("block_position_labels", []),
-            line_role_labels=dict.get("line_role_labels", []),
-            line_position_labels=dict.get("line_position_labels", []),
-            baseline=dict.get("baseline"),
-            override_page_sort_order=dict.get("override_page_sort_order", None),
-            unmatched_ground_truth_words=dict.get("unmatched_ground_truth_words", []),
-            additional_block_attributes=dict.get("additional_block_attributes", {}),
-            base_ground_truth_text=dict.get("base_ground_truth_text", None),
+            block_category=BlockCategory(data["block_category"])
+            if data.get("block_category")
+            else BlockCategory.BLOCK,
+            block_labels=data.get("block_labels", []),
+            block_role_labels=data.get("block_role_labels", []),
+            block_position_labels=data.get("block_position_labels", []),
+            line_role_labels=data.get("line_role_labels", []),
+            line_position_labels=data.get("line_position_labels", []),
+            baseline=data.get("baseline"),
+            override_page_sort_order=data.get("override_page_sort_order", None),
+            unmatched_ground_truth_words=data.get("unmatched_ground_truth_words", []),
+            additional_block_attributes=data.get("additional_block_attributes", {}),
+            base_ground_truth_text=data.get("base_ground_truth_text", None),
         )
 
     def estimate_baseline_from_image(
@@ -744,7 +881,7 @@ class Block:
         y_points: list[float] = []
         weights: list[float] = []
 
-        for item in self.items:
+        for item in self._items:
             if not isinstance(item, Word):
                 continue
             chars = item.split_into_characters_from_whitespace(image)
@@ -783,37 +920,23 @@ class Block:
         }
         return self.baseline
 
-    def refine_bounding_boxes(self, image: ndarray | None, padding_px: int = 0):
-        logger.debug(f"Refining bounding boxes for block with {len(self.items)} items")
-        if not self.items:
+    def refine_bounding_boxes(self, image: ndarray | None, padding_px: int = 0) -> None:
+        logger.debug(
+            "Refining bounding boxes for block with %s items", len(self._items)
+        )
+        if not self._items:
             self.bounding_box = None
             return
         if self.child_type == BlockChildType.WORDS:
             logger.debug(
-                f"Refining bounding boxes for {len(self.items)} words in block"
+                "Refining bounding boxes for %s words in block", len(self._items)
             )
-            for item in self.items:
-                logger.debug(
-                    f"Refining bounding box for item: {getattr(item, 'text', str(item))}"
-                )
-                if (
-                    hasattr(item, "refine_bounding_box")
-                    and callable(getattr(item, "refine_bounding_box", None))
-                    and not isinstance(item, Block)
-                ):
-                    item.refine_bounding_box(image, padding_px=padding_px)
-                else:
-                    logger.critical(
-                        f"Item '{getattr(item, 'text', str(item))}' does not have a refine_bounding_box method"
-                    )
-                    raise NotImplementedError(
-                        "Item does not implement refine_bounding_box method"
-                    )
+            for item in self._items:
+                item.refine_bounding_box(image, padding_px=padding_px)
         else:
             logger.debug(
-                f"Refining bounding boxes for {len(self.items)} blocks in block"
+                "Refining bounding boxes for %s blocks in block", len(self._items)
             )
-            item: Block
-            for item in self.items:
+            for item in self._items:
                 item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
