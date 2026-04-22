@@ -145,6 +145,27 @@ class Word:
     def ground_truth_text(self, value: str) -> None:
         self._ground_truth_text = value
 
+    def copy_ocr_to_ground_truth(self) -> bool:
+        """Copy OCR text into ground truth text. Returns True if text was present."""
+        if not self.text:
+            return False
+        self.ground_truth_text = self.text
+        return True
+
+    def copy_ground_truth_to_ocr(self) -> bool:
+        """Copy ground truth text into OCR text. Returns True if GT was present."""
+        if not self.ground_truth_text:
+            return False
+        self.text = self.ground_truth_text
+        return True
+
+    def clear_ground_truth(self) -> bool:
+        """Clear ground truth text. Returns True if there was GT text to clear."""
+        if not self.ground_truth_text:
+            return False
+        self.ground_truth_text = ""
+        return True
+
     @property
     def ground_truth_exact_match(self) -> bool:
         """Check if the word matches the ground truth text exactly"""

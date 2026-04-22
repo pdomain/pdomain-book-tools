@@ -548,6 +548,18 @@ class Block:
             "accuracy": exact_matches / words_with_gt if words_with_gt > 0 else 1.0,
         }
 
+    def copy_ocr_to_ground_truth(self) -> bool:
+        """Copy OCR text to ground truth for all words in this block."""
+        return any([word.copy_ocr_to_ground_truth() for word in self.words])
+
+    def copy_ground_truth_to_ocr(self) -> bool:
+        """Copy ground truth text to OCR text for all words in this block."""
+        return any([word.copy_ground_truth_to_ocr() for word in self.words])
+
+    def clear_ground_truth(self) -> bool:
+        """Clear ground truth text from all words in this block."""
+        return any([word.clear_ground_truth() for word in self.words])
+
     @property
     def word_list(self) -> list[str]:
         """Get list of words in the block."""
@@ -668,6 +680,86 @@ class Block:
         for word in self.words:
             word.ground_truth_text = ""
 
+        return True
+
+    def merge_word_left(self, word_index: int) -> bool:
+        """Merge the word at *word_index* into its immediate left neighbor."""
+        return self.merge_adjacent_words(word_index, "left")
+
+    def merge_word_right(self, word_index: int) -> bool:
+        """Merge the word at *word_index* with its immediate right neighbor."""
+        return self.merge_adjacent_words(word_index, "right")
+
+    def split_word_at_fraction(self, word_index: int, split_fraction: float) -> bool:
+        """Split the word at *word_index* at a relative horizontal position.
+
+        Calculates the character and bbox split points from *split_fraction*
+        and delegates to :meth:`split_word`.  Clears ground-truth text for all
+        words in the line after the split.
+
+        Args:
+            word_index: Zero-based index of the word to split.
+            split_fraction: Relative split position in the range (0, 1).
+
+        Returns:
+            True if the split succeeded, False otherwise.
+        """
+        if split_fraction <= 0.0 or split_fraction >= 1.0:
+            logger.warning(
+                "Word split fraction must be between 0 and 1 (exclusive), got %s",
+                split_fraction,
+            )
+            return False
+
+        words = list(self.words)
+        if word_index < 0 or word_index >= len(words):
+            logger.warning(
+                "Word split index %s out of range (0-%s)",
+                word_index,
+                len(words) - 1,
+            )
+            return False
+
+        word = words[word_index]
+        word_text = str(word.text or "")
+        if len(word_text) < 2:
+            logger.warning(
+                "Word split requires at least two characters (word=%s)",
+                word_index,
+            )
+            return False
+
+        bbox = word.bounding_box
+        bbox_width = float(bbox.width if bbox else 0.0)
+        if bbox is None or bbox_width <= 0.0:
+            logger.warning(
+                "Word split requires a valid non-zero bounding box (word=%s)",
+                word_index,
+            )
+            return False
+
+        character_split_index = int(round(len(word_text) * split_fraction))
+        character_split_index = max(1, min(len(word_text) - 1, character_split_index))
+
+        epsilon = min(1e-6, bbox_width / 10) if bbox_width > 0 else 0.0
+        bbox_split_offset = bbox_width * split_fraction
+        bbox_split_offset = max(epsilon, min(bbox_width - epsilon, bbox_split_offset))
+
+        self.split_word(
+            split_word_index=word_index,
+            bbox_split_offset=bbox_split_offset,
+            character_split_index=character_split_index,
+        )
+
+        for w in self.words:
+            w.ground_truth_text = ""
+
+        logger.info(
+            "Split word index=%d fraction=%.3f char_index=%d",
+            word_index,
+            split_fraction,
+            character_split_index,
+        )
         return True
 
     @staticmethod

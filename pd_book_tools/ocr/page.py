@@ -466,6 +466,18 @@ class Page:
         """Check if the ground truth text of the block matches the text"""
         return all(item.ground_truth_exact_match for item in self.items)
 
+    def copy_ocr_to_ground_truth(self) -> bool:
+        """Copy OCR text to ground truth for all words on this page."""
+        return any([word.copy_ocr_to_ground_truth() for word in self.words])
+
+    def copy_ground_truth_to_ocr(self) -> bool:
+        """Copy ground truth text to OCR text for all words on this page."""
+        return any([word.copy_ground_truth_to_ocr() for word in self.words])
+
+    def clear_ground_truth(self) -> bool:
+        """Clear ground truth text from all words on this page."""
+        return any([word.clear_ground_truth() for word in self.words])
+
     @property
     def words(self) -> List[Word]:
         """Get flat list of all words in the page"""
@@ -1403,248 +1415,1103 @@ class Page:
             return False
 
     # ------------------------------------------------------------------
-    # Bbox operations – shared helpers
+    # Line / word structural operations
     # ------------------------------------------------------------------
 
-    def _apply_to_word_keys(
-        self,
-        word_keys: list[tuple[int, int]],
-        operation: Callable[[Word], bool],
-        label: str,
-    ) -> bool:
-        """Validate word keys and apply *operation* to each word."""
-        unique_keys = sorted(set(word_keys or []))
-        if not unique_keys:
-            logger.warning("%s requires selecting at least one word", label)
-            return False
+    def merge_lines(self, line_indices: list[int]) -> bool:
+        """Merge multiple lines into the first selected line."""
         try:
-            changed = False
-            for line_index, word_index in unique_keys:
-                line_words = self.validated_line_words(line_index)
-                if line_words is None:
+            lines = list(self.lines)
+            line_count_before = len(lines)
+
+            logger.debug(
+                "merge_lines start: page_type=%s, line_count=%d, requested=%s",
+                type(self).__name__,
+                line_count_before,
+                line_indices,
+            )
+
+            if line_count_before < 2:
+                logger.warning("Line merge requires at least two available lines")
+                return False
+
+            unique_indices = sorted(set(line_indices or []))
+            if len(unique_indices) < 2:
+                logger.warning("Line merge requires selecting at least two lines")
+                return False
+
+            for index in unique_indices:
+                if index < 0 or index >= line_count_before:
+                    logger.warning(
+                        "Line index %s out of range (0-%s)",
+                        index,
+                        line_count_before - 1,
+                    )
                     return False
+                if not isinstance(lines[index], Block):
+                    logger.warning(
+                        "Selected line is not a Block (index=%s, type=%s)",
+                        index,
+                        type(lines[index]).__name__,
+                    )
+                    return False
+
+            primary_index = unique_indices[0]
+            primary_line = lines[primary_index]
+            for index in unique_indices[1:]:
+                secondary_line = lines[index]
+                try:
+                    primary_line.merge(secondary_line)
+                except Exception as merge_error:
+                    if not BoundingBox.is_geometry_normalization_error(merge_error):
+                        raise
+                    logger.warning(
+                        "Line merge hit malformed bbox metadata (primary=%s secondary=%s): %s; applying merge fallback",
+                        primary_index,
+                        index,
+                        merge_error,
+                    )
+                    if not primary_line.merge_fallback(secondary_line):
+                        return False
+
+            for index in reversed(unique_indices[1:]):
+                self.remove_line_if_exists(lines[index])
+
+            try:
+                self.finalize_page_structure()
+            except Exception as finalize_error:
+                if not BoundingBox.is_geometry_normalization_error(finalize_error):
+                    raise
+                logger.warning(
+                    "Merged lines but skipped final bbox recompute due to malformed geometry: %s",
+                    finalize_error,
+                )
+                self._remove_empty_items_safely()
+                self._recompute_paragraph_bboxes()
+
+            lines_after = len(list(self.lines))
+            logger.info(
+                "Merged %d lines into line %d (line_count %d -> %d)",
+                len(unique_indices),
+                primary_index,
+                line_count_before,
+                lines_after,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception("Error merging lines %s: %s", line_indices, e)
+            return False
+
+    def delete_lines(self, line_indices: list[int]) -> bool:
+        """Delete selected lines from the page."""
+        try:
+            lines = list(self.lines)
+            line_count_before = len(lines)
+
+            logger.debug(
+                "delete_lines start: page_type=%s, line_count=%d, requested=%s",
+                type(self).__name__,
+                line_count_before,
+                line_indices,
+            )
+
+            unique_indices = sorted(set(line_indices or []))
+            if not unique_indices:
+                logger.warning("Line deletion requires selecting at least one line")
+                return False
+
+            for index in unique_indices:
+                if index < 0 or index >= line_count_before:
+                    logger.warning(
+                        "Line index %s out of range (0-%s)",
+                        index,
+                        line_count_before - 1,
+                    )
+                    return False
+
+            for index in reversed(unique_indices):
+                self.remove_line_if_exists(lines[index])
+
+            lines_after = len(list(self.lines))
+            logger.info(
+                "Deleted %d lines (line_count %d -> %d)",
+                len(unique_indices),
+                line_count_before,
+                lines_after,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception("Error deleting lines %s: %s", line_indices, e)
+            return False
+
+    def delete_words(self, word_keys: list[tuple[int, int]]) -> bool:
+        """Delete selected words from the page."""
+        try:
+            unique_keys = sorted(set(word_keys or []))
+            if not unique_keys:
+                logger.warning("Word deletion requires selecting at least one word")
+                return False
+
+            validated_by_line: dict[int, list] = {}
+
+            for line_index, word_index in unique_keys:
+                line_words = validated_by_line.get(line_index)
+                if line_words is None:
+                    line_words = self.validated_line_words(line_index)
+                    if line_words is None:
+                        return False
+                    validated_by_line[line_index] = line_words
                 if word_index < 0 or word_index >= len(line_words):
                     logger.warning(
-                        "%s word index %s out of range for line %s (0-%s)",
-                        label,
+                        "Word index %s out of range for line %s (0-%s)",
                         word_index,
                         line_index,
                         len(line_words) - 1,
                     )
                     return False
-                changed = operation(line_words[word_index]) or changed
-            if not changed:
-                logger.warning("Selected words could not be processed (%s)", label)
-                return False
+
+            keys_by_line: dict[int, list[int]] = {}
+            for line_index, word_index in unique_keys:
+                keys_by_line.setdefault(line_index, []).append(word_index)
+
+            for line_index, word_indices in keys_by_line.items():
+                line_words = self.validated_line_words(line_index)
+                if line_words is None:
+                    return False
+                lines = list(self.lines)
+                for word_index in sorted(word_indices, reverse=True):
+                    if line_index < 0 or line_index >= len(lines):
+                        return False
+                    line = lines[line_index]
+                    words = list(line_words)
+                    if word_index < 0 or word_index >= len(words):
+                        return False
+                    line.remove_item(words[word_index])
+
             self.finalize_page_structure()
-            logger.info("%s %d selected words", label, len(unique_keys))
+
+            logger.info("Deleted %d selected words", len(unique_keys))
             return True
+
         except Exception as e:
-            logger.exception("Error in %s for words %s: %s", label, word_keys, e)
+            logger.exception("Error deleting selected words %s: %s", word_keys, e)
             return False
 
-    def _apply_to_line_indices(
+    def split_word(
         self,
-        line_indices: list[int],
-        operation: Callable[[Block], bool],
-        label: str,
+        line_index: int,
+        word_index: int,
+        split_fraction: float,
     ) -> bool:
-        """Validate line indices and apply *operation* to each line."""
-        unique_indices = sorted(set(line_indices or []))
-        if not unique_indices:
-            logger.warning("%s requires selecting at least one line", label)
-            return False
-        try:
-            lines = list(self.lines)
-            changed = False
-            for line_index in unique_indices:
-                if line_index < 0 or line_index >= len(lines):
-                    logger.warning(
-                        "%s line index %s out of range (0-%s)",
-                        label,
-                        line_index,
-                        len(lines) - 1,
-                    )
-                    return False
-                changed = operation(lines[line_index]) or changed
-            if not changed:
-                logger.warning("Selected lines could not be processed (%s)", label)
-                return False
-            self.finalize_page_structure()
-            logger.info("%s %d selected lines", label, len(unique_indices))
-            return True
-        except Exception as e:
-            logger.exception("Error in %s for lines %s: %s", label, line_indices, e)
-            return False
-
-    def _apply_to_paragraph_indices(
-        self,
-        paragraph_indices: list[int],
-        operation: Callable[[Block], bool],
-        label: str,
-    ) -> bool:
-        """Validate paragraph indices and apply *operation* to each paragraph."""
-        unique_indices = sorted(set(paragraph_indices or []))
-        if not unique_indices:
-            logger.warning("%s requires selecting at least one paragraph", label)
-            return False
-        try:
-            paragraphs = list(self.paragraphs)
-            if not paragraphs:
-                logger.warning("Page has no paragraphs (%s)", label)
-                return False
-            changed = False
-            for paragraph_index in unique_indices:
-                if paragraph_index < 0 or paragraph_index >= len(paragraphs):
-                    logger.warning(
-                        "%s paragraph index %s out of range (0-%s)",
-                        label,
-                        paragraph_index,
-                        len(paragraphs) - 1,
-                    )
-                    return False
-                changed = operation(paragraphs[paragraph_index]) or changed
-            if not changed:
-                logger.warning("Selected paragraphs could not be processed (%s)", label)
-                return False
-            self.finalize_page_structure()
-            logger.info("%s %d selected paragraphs", label, len(unique_indices))
-            return True
-        except Exception as e:
-            logger.exception(
-                "Error in %s for paragraphs %s: %s", label, paragraph_indices, e
+        """Split a word into two words at a relative horizontal position."""
+        if split_fraction <= 0.0 or split_fraction >= 1.0:
+            logger.warning(
+                "Word split fraction must be between 0 and 1 (exclusive), got %s",
+                split_fraction,
             )
             return False
 
-    # ------------------------------------------------------------------
-    # Bbox operations – word level
-    # ------------------------------------------------------------------
-
-    def refine_words(self, word_keys: list[tuple[int, int]]) -> bool:
-        """Refine selected word bounding boxes."""
-        return self._apply_to_word_keys(
-            word_keys,
-            lambda w: w.refine_bbox(self.cv2_numpy_page_image),
-            "Refined",
-        )
-
-    def expand_then_refine_words(self, word_keys: list[tuple[int, int]]) -> bool:
-        """Expand then refine selected word bounding boxes."""
-        return self._apply_to_word_keys(
-            word_keys,
-            lambda w: w.expand_then_refine_bbox(self.cv2_numpy_page_image),
-            "Expand-then-refined",
-        )
-
-    def expand_word_bboxes(
-        self, word_keys: list[tuple[int, int]], padding_px: float = 2.0
-    ) -> bool:
-        """Expand selected word bounding boxes by uniform pixel padding."""
-        page_width, page_height = self.resolved_dimensions
-        return self._apply_to_word_keys(
-            word_keys,
-            lambda w: w.expand_bbox(padding_px, page_width, page_height),
-            "Expanded bboxes for",
-        )
-
-    # ------------------------------------------------------------------
-    # Bbox operations – line level
-    # ------------------------------------------------------------------
-
-    def refine_lines(self, line_indices: list[int]) -> bool:
-        """Refine all words/bboxes in selected lines."""
-        return self._apply_to_line_indices(
-            line_indices,
-            lambda line: line.refine_word_bboxes(self.cv2_numpy_page_image),
-            "Refined",
-        )
-
-    def expand_then_refine_lines(self, line_indices: list[int]) -> bool:
-        """Expand then refine all words/bboxes in selected lines."""
-
-        def _op(line: Block) -> bool:
-            changed = False
-            for word in line.words:
-                changed = (
-                    word.expand_then_refine_bbox(self.cv2_numpy_page_image) or changed
+        try:
+            lines = list(self.lines)
+            if line_index < 0 or line_index >= len(lines):
+                logger.warning(
+                    "Line index %s out of range (0-%s)",
+                    line_index,
+                    len(lines) - 1,
                 )
-            line.recompute_bounding_box()
-            return changed
+                return False
 
-        return self._apply_to_line_indices(line_indices, _op, "Expand-then-refined")
-
-    def expand_line_bboxes(
-        self, line_indices: list[int], padding_px: float = 2.0
-    ) -> bool:
-        """Expand all word bboxes in selected lines by uniform pixel padding."""
-        page_width, page_height = self.resolved_dimensions
-
-        def _op(line: Block) -> bool:
-            changed = False
-            for word in line.words:
-                changed = (
-                    word.expand_bbox(padding_px, page_width, page_height) or changed
+            line = lines[line_index]
+            words = list(line.words)
+            if word_index < 0 or word_index >= len(words):
+                logger.warning(
+                    "Word split index %s out of range for line %s (0-%s)",
+                    word_index,
+                    line_index,
+                    len(words) - 1,
                 )
-            line.recompute_bounding_box()
-            return changed
+                return False
 
-        return self._apply_to_line_indices(line_indices, _op, "Expanded bboxes in")
+            word = words[word_index]
+            word_text = str(word.text or "")
+            if len(word_text) < 2:
+                logger.warning(
+                    "Word split requires at least two characters (line=%s, word=%s)",
+                    line_index,
+                    word_index,
+                )
+                return False
 
-    # ------------------------------------------------------------------
-    # Bbox operations – paragraph level
-    # ------------------------------------------------------------------
+            bbox = word.bounding_box
+            bbox_width = float(bbox.width if bbox else 0.0)
+            if bbox is None or bbox_width <= 0.0:
+                logger.warning(
+                    "Word split requires valid non-zero bounding box (line=%s, word=%s)",
+                    line_index,
+                    word_index,
+                )
+                return False
 
-    def refine_paragraphs(self, paragraph_indices: list[int]) -> bool:
-        """Refine all words/bboxes in selected paragraphs."""
+            character_split_index = int(round(len(word_text) * split_fraction))
+            character_split_index = max(
+                1, min(len(word_text) - 1, character_split_index)
+            )
 
-        def _op(paragraph: Block) -> bool:
-            changed = False
-            for line in paragraph.lines:
-                changed = line.refine_word_bboxes(self.cv2_numpy_page_image) or changed
-            paragraph.recompute_bounding_box()
-            return changed
+            epsilon = min(1e-6, bbox_width / 10) if bbox_width > 0 else 0.0
+            bbox_split_offset = bbox_width * split_fraction
+            bbox_split_offset = max(
+                epsilon, min(bbox_width - epsilon, bbox_split_offset)
+            )
 
-        return self._apply_to_paragraph_indices(paragraph_indices, _op, "Refined")
+            line.split_word(
+                split_word_index=word_index,
+                bbox_split_offset=bbox_split_offset,
+                character_split_index=character_split_index,
+            )
 
-    def expand_then_refine_paragraphs(self, paragraph_indices: list[int]) -> bool:
-        """Expand then refine all words/bboxes in selected paragraphs."""
+            updated_words = self.validated_line_words(line_index)
+            if updated_words is None:
+                return False
+            for updated_word in updated_words:
+                updated_word.ground_truth_text = ""
 
-        def _op(paragraph: Block) -> bool:
-            changed = False
-            for line in paragraph.lines:
-                for word in line.words:
-                    changed = (
-                        word.expand_then_refine_bbox(self.cv2_numpy_page_image)
-                        or changed
-                    )
-                line.recompute_bounding_box()
-            paragraph.recompute_bounding_box()
-            return changed
+            self.finalize_page_structure()
 
-        return self._apply_to_paragraph_indices(
-            paragraph_indices, _op, "Expand-then-refined"
-        )
+            logger.info(
+                "Split word line=%d index=%d fraction=%.3f char_index=%d",
+                line_index,
+                word_index,
+                split_fraction,
+                character_split_index,
+            )
+            return True
 
-    def expand_paragraph_bboxes(
-        self, paragraph_indices: list[int], padding_px: float = 2.0
+        except Exception as e:
+            logger.exception(
+                "Error splitting word line=%s index=%s split_fraction=%s: %s",
+                line_index,
+                word_index,
+                split_fraction,
+                e,
+            )
+            return False
+
+    def split_word_vertically_and_assign_to_closest_line(
+        self,
+        line_index: int,
+        word_index: int,
+        split_fraction: float,
     ) -> bool:
-        """Expand all word bboxes in selected paragraphs by uniform pixel padding."""
-        page_width, page_height = self.resolved_dimensions
+        """Split a word, then assign each resulting piece to the closest line by y-midpoint."""
+        lines_before_split = list(self.lines)
+        if line_index < 0 or line_index >= len(lines_before_split):
+            logger.warning(
+                "Line index %s out of range (0-%s)",
+                line_index,
+                len(lines_before_split) - 1,
+            )
+            return False
+        source_line = lines_before_split[line_index]
 
-        def _op(paragraph: Block) -> bool:
-            changed = False
-            for line in paragraph.lines:
-                for word in line.words:
-                    changed = (
-                        word.expand_bbox(padding_px, page_width, page_height) or changed
+        if not self.split_word(line_index, word_index, split_fraction):
+            return False
+
+        try:
+            lines = list(self.lines)
+            source_words = list(source_line.words)
+            if word_index < 0 or word_index + 1 >= len(source_words):
+                logger.warning(
+                    "Post-split word indices %s/%s unavailable on line %s",
+                    word_index,
+                    word_index + 1,
+                    line_index,
+                )
+                return False
+
+            split_words = [source_words[word_index], source_words[word_index + 1]]
+
+            touched_lines: dict[int, object] = {id(source_line): source_line}
+            for split_piece in split_words:
+                piece_bbox = split_piece.bounding_box
+                midpoint_y = (
+                    piece_bbox.vertical_midpoint if piece_bbox is not None else None
+                )
+                target_line = Page.closest_line_by_midpoint(
+                    lines,
+                    midpoint_y,
+                    fallback_line=source_line,
+                )
+                touched_lines[id(target_line)] = target_line
+
+                if target_line is source_line:
+                    continue
+
+                if not Page.move_word_between_lines(
+                    source_line, target_line, split_piece
+                ):
+                    logger.warning(
+                        "Failed to move split word piece to closest line (line=%s word=%s)",
+                        line_index,
+                        word_index,
                     )
-                line.recompute_bounding_box()
-            paragraph.recompute_bounding_box()
-            return changed
+                    return False
 
-        return self._apply_to_paragraph_indices(
-            paragraph_indices, _op, "Expanded bboxes in"
-        )
+            for touched_line in touched_lines.values():
+                touched_words = list(touched_line.words)
+                for touched_word in touched_words:
+                    touched_word.ground_truth_text = ""
+                touched_line.recompute_bounding_box()
+
+            self.finalize_page_structure()
+
+            logger.info(
+                "Split word vertically with closest-line assignment line=%d index=%d fraction=%.3f",
+                line_index,
+                word_index,
+                split_fraction,
+            )
+            return True
+        except Exception as e:
+            logger.exception(
+                "Error splitting word vertically line=%s index=%s split_fraction=%s: %s",
+                line_index,
+                word_index,
+                split_fraction,
+                e,
+            )
+            return False
+
+    def split_line_after_word(
+        self,
+        line_index: int,
+        word_index: int,
+    ) -> bool:
+        """Split a line into two lines immediately after the selected word."""
+        from pd_book_tools.ocr.block import BlockChildType
+
+        try:
+            lines = list(self.lines)
+            if line_index < 0 or line_index >= len(lines):
+                logger.warning(
+                    "Line index %s out of range for line split (0-%s)",
+                    line_index,
+                    len(lines) - 1,
+                )
+                return False
+
+            target_line = lines[line_index]
+            line_words = list(target_line.words)
+            if len(line_words) < 2:
+                logger.warning(
+                    "Line split requires at least two words (line index %s)",
+                    line_index,
+                )
+                return False
+
+            if word_index < 0 or word_index >= len(line_words) - 1:
+                logger.warning(
+                    "Cannot split line %s after word index %s (valid range: 0-%s)",
+                    line_index,
+                    word_index,
+                    len(line_words) - 2,
+                )
+                return False
+
+            first_words = line_words[: word_index + 1]
+            second_words = line_words[word_index + 1 :]
+
+            paragraphs = list(self.paragraphs)
+            target_paragraph = None
+            for paragraph in paragraphs:
+                if target_line in list(paragraph.lines):
+                    target_paragraph = paragraph
+                    break
+
+            if target_paragraph is None:
+                logger.warning(
+                    "Unable to find paragraph containing line index %s", line_index
+                )
+                return False
+
+            parent = self.find_parent_block(target_paragraph)
+            if parent is None:
+                logger.warning(
+                    "Unable to locate parent block for line split after word (%s, %s)",
+                    line_index,
+                    word_index,
+                )
+                return False
+
+            paragraph_items = list(target_paragraph.items)
+            if target_line not in paragraph_items:
+                logger.warning(
+                    "Target line missing in paragraph items for line split (%s, %s)",
+                    line_index,
+                    word_index,
+                )
+                return False
+
+            line_item_index = paragraph_items.index(target_line)
+            target_line.items = first_words
+            target_line.unmatched_ground_truth_words = []
+            target_line.recompute_bounding_box()
+
+            split_line = Block(
+                items=second_words,
+                child_type=BlockChildType.WORDS,
+                block_category=BlockCategory.LINE,
+            )
+
+            target_paragraph.items = (
+                paragraph_items[: line_item_index + 1]
+                + [split_line]
+                + paragraph_items[line_item_index + 1 :]
+            )
+            target_paragraph.recompute_bounding_box()
+            parent.recompute_bounding_box()
+
+            self.finalize_page_structure()
+
+            logger.info("Split line %s after word %s", line_index, word_index)
+            return True
+
+        except Exception as e:
+            logger.exception(
+                "Error splitting line after word line=%s word=%s: %s",
+                line_index,
+                word_index,
+                e,
+            )
+            return False
+
+    def rebox_word(
+        self,
+        line_index: int,
+        word_index: int,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        refine_after: bool = True,
+    ) -> bool:
+        """Replace a word bounding box with the provided rectangle."""
+        from pd_book_tools.geometry.point import Point
+
+        try:
+            line_words = self.validated_line_words(line_index)
+            if line_words is None:
+                return False
+            if word_index < 0 or word_index >= len(line_words):
+                logger.warning(
+                    "Word rebox index %s out of range for line %s (0-%s)",
+                    word_index,
+                    line_index,
+                    len(line_words) - 1,
+                )
+                return False
+
+            rx1, ry1 = min(float(x1), float(x2)), min(float(y1), float(y2))
+            rx2, ry2 = max(float(x1), float(x2)), max(float(y1), float(y2))
+            if rx2 <= rx1 or ry2 <= ry1:
+                logger.warning(
+                    "Invalid rebox rectangle for line=%s word=%s: (%s, %s, %s, %s)",
+                    line_index,
+                    word_index,
+                    rx1,
+                    ry1,
+                    rx2,
+                    ry2,
+                )
+                return False
+
+            word = line_words[word_index]
+            existing_bbox = word.bounding_box
+            is_normalized = bool(
+                existing_bbox.is_normalized if existing_bbox else False
+            )
+
+            if is_normalized:
+                page_width, page_height = self.resolved_dimensions
+                if page_width <= 0.0 or page_height <= 0.0:
+                    logger.warning(
+                        "Unable to resolve page dimensions for normalized rebox"
+                    )
+                    return False
+                new_bbox = BoundingBox(
+                    Point(rx1 / page_width, ry1 / page_height),
+                    Point(rx2 / page_width, ry2 / page_height),
+                    is_normalized=True,
+                )
+            else:
+                new_bbox = BoundingBox(
+                    Point(rx1, ry1),
+                    Point(rx2, ry2),
+                    is_normalized=False,
+                )
+
+            word.bounding_box = new_bbox
+            if refine_after:
+                word.refine_bbox(self.cv2_numpy_page_image)
+            self.finalize_page_structure()
+
+            logger.info(
+                "Reboxed word line=%d index=%d bbox=(%.2f, %.2f, %.2f, %.2f)",
+                line_index,
+                word_index,
+                rx1,
+                ry1,
+                rx2,
+                ry2,
+            )
+            return True
+        except Exception as e:
+            logger.exception(
+                "Error reboxing word line=%s index=%s: %s",
+                line_index,
+                word_index,
+                e,
+            )
+            return False
+
+    def add_word_to_page(
+        self,
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+        text: str = "",
+    ) -> bool:
+        """Insert a new word with the given bounding box into the nearest line."""
+        from pd_book_tools.geometry.point import Point
+
+        try:
+            rx1, ry1 = min(float(x1), float(x2)), min(float(y1), float(y2))
+            rx2, ry2 = max(float(x1), float(x2)), max(float(y1), float(y2))
+            if rx2 <= rx1 or ry2 <= ry1:
+                logger.warning(
+                    "Invalid add-word rectangle: (%.2f, %.2f, %.2f, %.2f)",
+                    rx1,
+                    ry1,
+                    rx2,
+                    ry2,
+                )
+                return False
+
+            lines = list(self.lines)
+            if not lines:
+                logger.warning("No lines found in page for add_word_to_page")
+                return False
+
+            is_normalized = self.is_content_normalized
+            page_width, page_height = 0.0, 0.0
+
+            if is_normalized:
+                page_width, page_height = self.resolved_dimensions
+                if page_width <= 0.0 or page_height <= 0.0:
+                    logger.warning("Unable to resolve page dimensions for add_word")
+                    return False
+                new_bbox = BoundingBox(
+                    Point(rx1 / page_width, ry1 / page_height),
+                    Point(rx2 / page_width, ry2 / page_height),
+                    is_normalized=True,
+                )
+            else:
+                new_bbox = BoundingBox(
+                    Point(rx1, ry1),
+                    Point(rx2, ry2),
+                    is_normalized=False,
+                )
+
+            new_word = Word(
+                text=text,
+                bounding_box=new_bbox,
+                ocr_confidence=None,
+            )
+
+            cx = (rx1 + rx2) / 2.0
+            cy = (ry1 + ry2) / 2.0
+            if is_normalized:
+                cx = cx / page_width
+                cy = cy / page_height
+
+            target_line = Page.closest_line_by_y_range_then_x(
+                lines,
+                cx,
+                cy,
+                lines[0],
+            )
+
+            target_line.add_item(new_word)
+
+            self.finalize_page_structure()
+
+            logger.info(
+                "Added new word to page bbox=(%.2f, %.2f, %.2f, %.2f)",
+                rx1,
+                ry1,
+                rx2,
+                ry2,
+            )
+            return True
+
+        except Exception as e:
+            logger.exception("Error adding word to page: %s", e)
+            return False
+
+    def split_line_with_selected_words(
+        self,
+        word_keys: list[tuple[int, int]],
+    ) -> bool:
+        """Move selected words into exactly one newly created line."""
+        from pd_book_tools.ocr.block import BlockChildType
+
+        unique_keys = sorted(set(word_keys or []))
+        if not unique_keys:
+            logger.warning(
+                "Split-line-by-selected-words requires at least one selected word"
+            )
+            return False
+
+        try:
+            lines = list(self.lines)
+
+            line_to_selected_word_indices: dict[int, set[int]] = {}
+            for line_index, word_index in unique_keys:
+                if line_index < 0 or line_index >= len(lines):
+                    logger.warning(
+                        "Word key (%s, %s) line index out of range (0-%s)",
+                        line_index,
+                        word_index,
+                        len(lines) - 1,
+                    )
+                    return False
+                line_to_selected_word_indices.setdefault(line_index, set()).add(
+                    word_index
+                )
+
+            selected_words_for_new_line: list[Word] = []
+            source_line_bboxes: list = []
+            containing_paragraphs: list[Block] = []
+            line_insertion_points: list[tuple[Block, int]] = []
+            emptied_line_ids: set[int] = set()
+            for line_index in sorted(line_to_selected_word_indices):
+                selected_word_indices = line_to_selected_word_indices[line_index]
+                target_line = lines[line_index]
+                line_words = list(target_line.words)
+                source_line_original_bbox = target_line.bounding_box
+
+                if len(line_words) < 1:
+                    logger.warning("Line %s has no words", line_index)
+                    return False
+
+                for wi in selected_word_indices:
+                    if wi < 0 or wi >= len(line_words):
+                        logger.warning(
+                            "Word index %s out of range for line %s (0-%s)",
+                            wi,
+                            line_index,
+                            len(line_words) - 1,
+                        )
+                        return False
+
+                selected_words = [
+                    line_words[wi]
+                    for wi in range(len(line_words))
+                    if wi in selected_word_indices
+                ]
+                unselected_words = [
+                    line_words[wi]
+                    for wi in range(len(line_words))
+                    if wi not in selected_word_indices
+                ]
+
+                if not selected_words:
+                    logger.warning("No selected words found on line %s", line_index)
+                    return False
+
+                selected_words_for_new_line.extend(selected_words)
+                if (
+                    source_line_original_bbox is not None
+                    and source_line_original_bbox.has_usable_coordinates
+                ):
+                    source_line_bboxes.append(source_line_original_bbox)
+
+                paragraphs = list(self.paragraphs)
+                target_paragraph = None
+                for paragraph in paragraphs:
+                    if target_line in list(paragraph.lines):
+                        target_paragraph = paragraph
+                        break
+
+                if target_paragraph is None:
+                    logger.warning(
+                        "Unable to find paragraph containing line %s", line_index
+                    )
+                    return False
+                containing_paragraphs.append(target_paragraph)
+
+                paragraph_items = list(target_paragraph.items)
+                if target_line not in paragraph_items:
+                    logger.warning(
+                        "Target line missing in paragraph items for line %s",
+                        line_index,
+                    )
+                    return False
+
+                line_item_index = paragraph_items.index(target_line)
+                line_insertion_points.append((target_paragraph, line_item_index))
+
+                target_line.items = unselected_words
+                target_line.unmatched_ground_truth_words = []
+                if not unselected_words:
+                    emptied_line_ids.add(id(target_line))
+
+                if unselected_words:
+                    try:
+                        target_line.recompute_bounding_box()
+                    except Exception as recompute_error:
+                        if not BoundingBox.is_geometry_normalization_error(
+                            recompute_error
+                        ):
+                            raise
+                        logger.warning(
+                            "Skipped source line bbox recompute due to malformed geometry on line %s: %s",
+                            line_index,
+                            recompute_error,
+                        )
+
+                if (
+                    unselected_words
+                    and not (
+                        target_line.bounding_box is not None
+                        and target_line.bounding_box.has_usable_coordinates
+                    )
+                    and (
+                        source_line_original_bbox is not None
+                        and source_line_original_bbox.has_usable_coordinates
+                    )
+                ):
+                    target_line.bounding_box = source_line_original_bbox
+
+            if not selected_words_for_new_line:
+                logger.warning("No selected words found for single-line extraction")
+                return False
+
+            new_line = Block(
+                items=selected_words_for_new_line,
+                bounding_box=Page.first_usable_bbox(source_line_bboxes),
+                child_type=BlockChildType.WORDS,
+                block_category=BlockCategory.LINE,
+            )
+            try:
+                new_line.recompute_bounding_box()
+            except Exception as recompute_error:
+                if not BoundingBox.is_geometry_normalization_error(recompute_error):
+                    raise
+                logger.warning(
+                    "Skipped extracted line bbox recompute due to malformed geometry: %s",
+                    recompute_error,
+                )
+
+            if (
+                not (
+                    new_line.bounding_box is not None
+                    and new_line.bounding_box.has_usable_coordinates
+                )
+                and source_line_bboxes
+            ):
+                new_line.bounding_box = Page.first_usable_bbox(source_line_bboxes)
+
+            unique_paragraphs = []
+            for paragraph in containing_paragraphs:
+                if paragraph not in unique_paragraphs:
+                    unique_paragraphs.append(paragraph)
+
+            if len(unique_paragraphs) == 1 and line_insertion_points:
+                target_paragraph = unique_paragraphs[0]
+                original_paragraph_items = list(target_paragraph.items)
+                paragraph_items = [
+                    item
+                    for item in original_paragraph_items
+                    if id(item) not in emptied_line_ids
+                ]
+                insert_after = max(
+                    item_index
+                    for paragraph, item_index in line_insertion_points
+                    if paragraph is target_paragraph
+                )
+                insert_at = sum(
+                    1
+                    for idx, item in enumerate(original_paragraph_items)
+                    if idx <= insert_after and id(item) not in emptied_line_ids
+                )
+                target_paragraph.items = (
+                    paragraph_items[:insert_at]
+                    + [new_line]
+                    + paragraph_items[insert_at:]
+                )
+            else:
+                new_paragraph = Block(
+                    items=[new_line],
+                    bounding_box=Page.first_usable_bbox(
+                        source_line_bboxes
+                        + [paragraph.bounding_box for paragraph in unique_paragraphs]
+                    ),
+                    child_type=BlockChildType.BLOCKS,
+                    block_category=BlockCategory.PARAGRAPH,
+                )
+                self.items = list(self.items) + [new_paragraph]
+
+            self.finalize_page_structure()
+            logger.info(
+                "Moved selected words into one new line from %d source line(s)",
+                len(line_to_selected_word_indices),
+            )
+            return True
+        except Exception as e:
+            logger.exception(
+                "Error splitting lines by selected words %s: %s",
+                unique_keys,
+                e,
+            )
+            return False
+
+    def split_lines_into_selected_and_unselected_words(
+        self,
+        word_keys: list[tuple[int, int]],
+    ) -> bool:
+        """Split each affected line into selected-word and unselected-word lines."""
+        from pd_book_tools.ocr.block import BlockChildType
+
+        unique_keys = sorted(set(word_keys or []))
+        if not unique_keys:
+            logger.warning(
+                "Split-lines-into-selected-unselected requires at least one selected word"
+            )
+            return False
+
+        try:
+            lines = list(self.lines)
+
+            line_to_selected_word_indices: dict[int, set[int]] = {}
+            for line_index, word_index in unique_keys:
+                if line_index < 0 or line_index >= len(lines):
+                    logger.warning(
+                        "Word key (%s, %s) line index out of range (0-%s)",
+                        line_index,
+                        word_index,
+                        len(lines) - 1,
+                    )
+                    return False
+                line_to_selected_word_indices.setdefault(line_index, set()).add(
+                    word_index
+                )
+
+            split_any = False
+            for line_index in sorted(line_to_selected_word_indices, reverse=True):
+                selected_word_indices = line_to_selected_word_indices[line_index]
+                target_line = lines[line_index]
+                line_words = list(target_line.words)
+
+                if len(line_words) < 2:
+                    logger.warning(
+                        "Line %s has fewer than 2 words; cannot split by selection",
+                        line_index,
+                    )
+                    continue
+
+                for wi in selected_word_indices:
+                    if wi < 0 or wi >= len(line_words):
+                        logger.warning(
+                            "Word index %s out of range for line %s (0-%s)",
+                            wi,
+                            line_index,
+                            len(line_words) - 1,
+                        )
+                        return False
+
+                selected_words = [
+                    line_words[wi]
+                    for wi in range(len(line_words))
+                    if wi in selected_word_indices
+                ]
+                unselected_words = [
+                    line_words[wi]
+                    for wi in range(len(line_words))
+                    if wi not in selected_word_indices
+                ]
+
+                if not selected_words or not unselected_words:
+                    logger.warning(
+                        "Split-by-selection requires selected and unselected words on line %s",
+                        line_index,
+                    )
+                    continue
+
+                paragraphs = list(self.paragraphs)
+                target_paragraph = None
+                for paragraph in paragraphs:
+                    if target_line in list(paragraph.lines):
+                        target_paragraph = paragraph
+                        break
+
+                if target_paragraph is None:
+                    logger.warning(
+                        "Unable to find paragraph containing line %s", line_index
+                    )
+                    return False
+
+                paragraph_items = list(target_paragraph.items)
+                if target_line not in paragraph_items:
+                    logger.warning(
+                        "Target line missing in paragraph items for line %s",
+                        line_index,
+                    )
+                    return False
+
+                line_item_index = paragraph_items.index(target_line)
+
+                target_line.items = selected_words
+                target_line.unmatched_ground_truth_words = []
+                target_line.recompute_bounding_box()
+
+                new_line = Block(
+                    items=unselected_words,
+                    child_type=BlockChildType.WORDS,
+                    block_category=BlockCategory.LINE,
+                )
+
+                target_paragraph.items = (
+                    paragraph_items[: line_item_index + 1]
+                    + [new_line]
+                    + paragraph_items[line_item_index + 1 :]
+                )
+                target_paragraph.recompute_bounding_box()
+
+                parent = self.find_parent_block(target_paragraph)
+                if parent is not None:
+                    parent.recompute_bounding_box()
+
+                split_any = True
+
+            if not split_any:
+                logger.warning("No lines were split into selected/unselected groups")
+                return False
+
+            self.finalize_page_structure()
+            logger.info(
+                "Split %d line(s) into selected/unselected words",
+                len(line_to_selected_word_indices),
+            )
+            return True
+        except Exception as e:
+            logger.exception(
+                "Error splitting lines into selected/unselected words %s: %s",
+                unique_keys,
+                e,
+            )
+            return False
+
+    def nudge_word_bbox(
+        self,
+        line_index: int,
+        word_index: int,
+        left_delta: float,
+        right_delta: float,
+        top_delta: float,
+        bottom_delta: float,
+        refine_after: bool = True,
+    ) -> bool:
+        """Expand/contract a word bounding box by pixel deltas."""
+        try:
+            line_words = self.validated_line_words(line_index)
+            if line_words is None:
+                return False
+            if word_index < 0 or word_index >= len(line_words):
+                logger.warning(
+                    "Word nudge index %s out of range for line %s (0-%s)",
+                    word_index,
+                    line_index,
+                    len(line_words) - 1,
+                )
+                return False
+
+            word = line_words[word_index]
+            bbox = word.bounding_box
+            if bbox is None:
+                logger.warning(
+                    "Word bbox nudge requires an existing bbox for line=%s word=%s",
+                    line_index,
+                    word_index,
+                )
+                return False
+
+            is_normalized = bool(bbox.is_normalized)
+            if is_normalized:
+                page_width, page_height = self.resolved_dimensions
+                if page_width <= 0.0 or page_height <= 0.0:
+                    logger.warning(
+                        "Unable to resolve page dimensions for normalized bbox nudge"
+                    )
+                    return False
+                x1 = float(bbox.minX or 0.0) * page_width
+                y1 = float(bbox.minY or 0.0) * page_height
+                x2 = float(bbox.maxX or 0.0) * page_width
+                y2 = float(bbox.maxY or 0.0) * page_height
+            else:
+                x1 = float(bbox.minX or 0.0)
+                y1 = float(bbox.minY or 0.0)
+                x2 = float(bbox.maxX or 0.0)
+                y2 = float(bbox.maxY or 0.0)
+
+            nx1 = x1 - float(left_delta)
+            ny1 = y1 - float(top_delta)
+            nx2 = x2 + float(right_delta)
+            ny2 = y2 + float(bottom_delta)
+
+            page_width, page_height = self.resolved_dimensions
+            nx1 = max(0.0, nx1)
+            ny1 = max(0.0, ny1)
+            if page_width > 0.0:
+                nx2 = min(nx2, page_width)
+            if page_height > 0.0:
+                ny2 = min(ny2, page_height)
+
+            if nx2 <= nx1 or ny2 <= ny1:
+                logger.warning(
+                    "Invalid bbox size after resize for line=%s word=%s: (%s, %s, %s, %s)",
+                    line_index,
+                    word_index,
+                    nx1,
+                    ny1,
+                    nx2,
+                    ny2,
+                )
+                return False
+
+            return self.rebox_word(
+                line_index,
+                word_index,
+                nx1,
+                ny1,
+                nx2,
+                ny2,
+                refine_after=refine_after,
+            )
+        except Exception as e:
+            logger.exception(
+                "Error resizing word bbox line=%s index=%s deltas=(l=%s r=%s t=%s b=%s): %s",
+                line_index,
+                word_index,
+                left_delta,
+                right_delta,
+                top_delta,
+                bottom_delta,
+                e,
+            )
+            raise
 
     def scale(self, width: int, height: int) -> "Page":
         """

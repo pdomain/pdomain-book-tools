@@ -414,6 +414,31 @@ def test_split_word_happy_path(sample_block1):
     assert any(t == "word2" for t in texts)
 
 
+def test_split_word_at_fraction_success(sample_block1):
+    # word1 (5 chars, width=10) split at 0.5 → "wo" + "rd1"
+    result = sample_block1.split_word_at_fraction(0, 0.5)
+    assert result is True
+    texts = [w.text for w in sample_block1.words]
+    assert len(texts) == 3  # wo, rd1, word2
+    assert "word2" in texts
+    # GT cleared for all words after split
+    assert all(w.ground_truth_text == "" for w in sample_block1.words)
+
+
+def test_split_word_at_fraction_rejects_edge_fractions(sample_block1):
+    assert sample_block1.split_word_at_fraction(0, 0.0) is False
+    assert sample_block1.split_word_at_fraction(0, 1.0) is False
+
+
+def test_split_word_at_fraction_rejects_out_of_range_index(sample_block1):
+    assert sample_block1.split_word_at_fraction(99, 0.5) is False
+
+
+def test_split_word_at_fraction_rejects_single_char_word(sample_block1):
+    sample_block1.words[0].text = "x"
+    assert sample_block1.split_word_at_fraction(0, 0.5) is False
+
+
 def test_split_word_errors(sample_paragraph_block1):
     with pytest.raises(ValueError):
         sample_paragraph_block1.split_word(0, 1, 1)  # not a WORDS block
