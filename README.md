@@ -100,7 +100,40 @@ make reset-full  # Nuclear option: clear everything
 
 ## Usage
 
-TODO
+### Geometry primitives
+
+```python
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.geometry.point import Point
+
+bbox = BoundingBox(top_left=Point(10, 20), bottom_right=Point(110, 70))
+print(bbox.width, bbox.height, bbox.area)
+```
+
+### OCR word model
+
+```python
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.geometry.point import Point
+from pd_book_tools.ocr.word import Word
+
+word = Word(
+   text="Example",
+   bounding_box=BoundingBox(Point(0, 0), Point(100, 20)),
+   ocr_confidence=0.98,
+)
+word.ground_truth_text = "Example"
+print(word.text, word.ground_truth_text)
+```
+
+### PGDP preprocessing
+
+```python
+from pd_book_tools.pgdp.pgdp_results import PGDPResults
+
+results = PGDPResults("001.png", "Some -- raw [*proof note*] text")
+print(results.processed_page_text)
+```
 
 ## License
 

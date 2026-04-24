@@ -1,7 +1,10 @@
-# Test Coverage Analysis & Work Plan
+# Test Coverage Analysis & Work Plan (Historical Snapshot)
+
+> Note: This document is a point-in-time snapshot and may not reflect current
+> coverage. To regenerate current coverage data, run `make coverage`.
 
 **Generated:** September 13, 2025
-**Overall Coverage:** 70.7%
+**Snapshot Coverage:** 70.7%
 
 ## Executive Summary
 
