@@ -222,12 +222,62 @@ def update_page_match_difflib_lines_replace(
         # If the same number of lines are in the GT and OCR diff match, run matching on the words in the line
         logger.debug("REPLACE - Same Number of Lines")
 
+        # First check whether the positional alignment is reasonable. When the
+        # ground truth has rearranged paragraphs (e.g. an image caption placed
+        # at a different line position than in the OCR), positional pairing
+        # would misalign OCR lines with the wrong GT lines even though the line
+        # counts happen to match. In that case, fall back to similarity-based
+        # matching which considers all OCR/GT pairs in the block.
+        positional_pairs = []
+        positional_scores = []
         for ocr_line_nbr in range(op.ocr_line_1, op.ocr_line_2):
             gt_line_nbr = op.gt_line_1 + (ocr_line_nbr - op.ocr_line_1)
+            ocr_text = " ".join(ocr_tuples[ocr_line_nbr])
             ground_truth_text = " ".join(ground_truth_tuples[gt_line_nbr])
-            previous_line_ground_truth_text = " ".join(
-                ground_truth_tuples[gt_line_nbr - 1] if gt_line_nbr > 0 else ""
+            previous_line_ground_truth_text = (
+                " ".join(ground_truth_tuples[gt_line_nbr - 1])
+                if gt_line_nbr > 0
+                else ""
             )
+            _, score = generate_best_matched_ground_truth_line(
+                ocr_text=ocr_text,
+                ground_truth_text=ground_truth_text,
+                previous_ground_truth_text=previous_line_ground_truth_text,
+            )
+            positional_pairs.append(
+                (
+                    ocr_line_nbr,
+                    gt_line_nbr,
+                    ground_truth_text,
+                    previous_line_ground_truth_text,
+                )
+            )
+            positional_scores.append(score)
+
+        # Heuristic: if any single positional pair is clearly a poor match
+        # (< 50) or the average is weak (< 70), the lines are likely
+        # rearranged and we should use similarity matching instead.
+        min_score = min(positional_scores) if positional_scores else 0
+        avg_score = (
+            sum(positional_scores) / len(positional_scores) if positional_scores else 0
+        )
+        if positional_scores and (min_score < 50 or avg_score < 70):
+            logger.debug(
+                "REPLACE - Same Number of Lines but positional alignment is "
+                f"weak (min={min_score}, avg={avg_score:.1f}); falling back to "
+                "similarity-based matching."
+            )
+            update_page_match_difflib_lines_replace_different_line_count(
+                page, op, ocr_tuples, ground_truth_tuples
+            )
+            return
+
+        for (
+            ocr_line_nbr,
+            _gt_line_nbr,
+            ground_truth_text,
+            previous_line_ground_truth_text,
+        ) in positional_pairs:
             logger.debug("Updating ocr text: " + " ".join(ocr_tuples[ocr_line_nbr]))
             logger.debug("Updating ground_truth_text: " + ground_truth_text)
 

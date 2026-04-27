@@ -1,15 +1,19 @@
 # GPU Testing Strategy
 
-This document explains how GPU/CUDA functionality is tested in pd-book-tools while remaining compatible with CI environments like GitHub Actions that don't have GPU access.
+This document explains how GPU/CUDA functionality is tested in pd-book-tools
+while remaining compatible with CI environments like GitHub Actions that
+don't have GPU access.
 
 ## Overview
 
 The project includes GPU acceleration through:
+
 - **CuPy**: GPU arrays and operations (`cupy_processing/` modules)
 - **PyTorch CUDA**: Neural network acceleration (DocTR integration)
 - **OpenCV CUDA**: GPU-accelerated computer vision
 
-However, CI environments typically don't have GPUs, so tests must gracefully skip when GPU is unavailable.
+However, CI environments typically don't have GPUs, so tests must gracefully
+skip when GPU is unavailable.
 
 ## Testing Strategy
 
@@ -51,6 +55,7 @@ skipif_no_cuda = pytest.mark.skipif(
 ### 3. **Test Patterns**
 
 #### **Pattern 1: Skip in CI**
+
 ```python
 @skipif_ci
 @pytest.mark.gpu
@@ -62,6 +67,7 @@ def test_gpu_functionality(cupy_module):
 ```
 
 #### **Pattern 2: Conditional Logic**
+
 ```python
 @pytest.mark.gpu
 def test_conditional_gpu(cuda_available):
@@ -75,6 +81,7 @@ def test_conditional_gpu(cuda_available):
 ```
 
 #### **Pattern 3: Automatic Skip**
+
 ```python
 @skipif_no_cuda
 @pytest.mark.cupy
@@ -87,6 +94,7 @@ def test_cupy_required(cupy_module):
 ## Running Tests
 
 ### **Local Development (with GPU)**
+
 ```bash
 # Run all tests (GPU tests will run)
 uv run pytest -n auto -v -ra
@@ -102,6 +110,7 @@ uv run pytest -n auto -m "gpu and not slow"
 ```
 
 ### **CI Environment (GitHub Actions)**
+
 ```bash
 # GPU tests automatically skip
 uv run pytest -n auto -v -ra
@@ -111,6 +120,7 @@ uv run pytest -n auto -m "not gpu"
 ```
 
 ### **Force Skip GPU Tests**
+
 ```bash
 # Simulate CI environment
 CI=true uv run pytest -n auto -v -ra
@@ -130,19 +140,21 @@ uv run pytest -n auto -m "not gpu"
 ## CI Behavior
 
 ### **GitHub Actions**
+
 - Environment variable: `GITHUB_ACTIONS=true`
 - GPU tests automatically skip
 - Only CPU code paths tested
 - Tesseract tests run (system binary installed)
 
 ### **Local Development**
+
 - GPU tests run if CUDA available
 - Provides full test coverage
 - Can test GPU performance
 
 ## File Organization
 
-```
+```text
 tests/
 ├── conftest.py              # GPU fixtures and skip conditions
 ├── gpu/                     # GPU-specific tests
@@ -156,12 +168,14 @@ tests/
 ## Best Practices
 
 ### **DO:**
+
 - Use fixtures for GPU imports (`cupy_module`, `torch_cuda`)
 - Mark GPU tests with appropriate markers
 - Provide CPU fallbacks where possible
 - Skip gracefully in CI environments
 
 ### **DON'T:**
+
 - Import GPU libraries at module level
 - Assume GPU is always available
 - Write tests that fail hard without GPU
@@ -194,6 +208,7 @@ class TestCupyMorphology:
 ```
 
 This approach ensures:
+
 - ✅ **CI passes** without GPU hardware
 - ✅ **Local development** gets full GPU test coverage
 - ✅ **Graceful degradation** when GPU unavailable

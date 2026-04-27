@@ -1,12 +1,15 @@
 # Agent Instructions (Cross-Tool)
 
-Shared instructions for AI coding agents working in this repository (Copilot, Claude Code, and other assistants).
+Shared instructions for AI coding agents working in this repository (Copilot,
+Claude Code, and other assistants).
 
 ## Scope and precedence
 
 - This file is the cross-agent baseline.
-- Tool-specific files (for example `.github/copilot-instructions.md`) should stay thin and point here.
-- If a tool requires extra constraints, those are additive and should not duplicate this file.
+- Tool-specific files (for example `.github/copilot-instructions.md`) should
+  stay thin and point here.
+- If a tool requires extra constraints, those are additive and should not
+  duplicate this file.
 
 ## Source of truth (read order)
 
@@ -24,6 +27,7 @@ Shared instructions for AI coding agents working in this repository (Copilot, Cl
 - Build backend: hatchling (`uv build`).
 
 Common commands:
+
 - Install: `make install`
 - Test: `make test`
 - Lint: `make lint`
@@ -34,10 +38,13 @@ Common commands:
 ## Validation rules
 
 - Prefer `make` targets over direct tool invocation when a target exists.
-- All Python tooling must run through `uv` (`uv run pytest`, `uv run ruff format`, etc.).
+- All Python tooling must run through `uv` (`uv run pytest`, `uv run ruff
+  format`, etc.).
 - Test execution is mandatory through Make targets or `uv run pytest ...` only.
-- pytest-xdist parallelization is REQUIRED for pytest runs: always include `-n auto`.
-- After code changes, run formatting first, then targeted tests, then broader checks as needed.
+- pytest-xdist parallelization is REQUIRED for pytest runs: always include
+  `-n auto`.
+- After code changes, run formatting first, then targeted tests, then broader
+  checks as needed.
 - Keep tests aligned with the existing mirrored structure under `tests/`.
 
 ### Non-negotiable test command policy
@@ -45,22 +52,31 @@ Common commands:
 - NEVER use `.venv/bin/python -m pytest ...`.
 - NEVER use `python -m pytest ...`.
 - NEVER use `python3 -m pytest ...`.
-- ALWAYS use `make ...` targets for tests when available, otherwise `uv run pytest -n auto ...`.
-- If a direct-python test command appears anywhere, treat it as policy violation and replace it.
+- ALWAYS use `make ...` targets for tests when available, otherwise `uv run
+  pytest -n auto ...`.
+- If a direct-python test command appears anywhere, treat it as policy
+  violation and replace it.
 
 ## Domain guardrails (OCR + geometry)
 
-- Preserve normalized vs pixel coordinate semantics (`is_normalized`) across `Point`, `BoundingBox`, and OCR model types.
-- Do not silently coerce coordinate systems in merge/split/union operations; fail explicitly on mismatch.
-- Use deep-copy-safe object transformations (`to_dict`/`from_dict`) when returning transformed OCR entities.
-- Keep image refinement routines consistent with existing ROI/threshold helper patterns.
+- Preserve normalized vs pixel coordinate semantics (`is_normalized`) across
+  `Point`, `BoundingBox`, and OCR model types.
+- Do not silently coerce coordinate systems in merge/split/union operations;
+  fail explicitly on mismatch.
+- Use deep-copy-safe object transformations (`to_dict`/`from_dict`) when
+  returning transformed OCR entities.
+- Keep image refinement routines consistent with existing ROI/threshold helper
+  patterns.
 
 ## Documentation hygiene
 
 - Update docs when implementation changes expected workflows or behavior.
-- Keep this file canonical for shared policy; avoid duplicating long guidance in tool-specific instruction files.
+- Keep this file canonical for shared policy; avoid duplicating long guidance
+  in tool-specific instruction files.
 
 ## Practical compatibility note
 
-- Many agents discover root-level policy files like `AGENTS.md` and/or `CLAUDE.md`.
-- Keep this file as canonical; if needed, create thin tool-specific adapters that reference this file.
+- Many agents discover root-level policy files like `AGENTS.md` and/or
+  `CLAUDE.md`.
+- Keep this file as canonical; if needed, create thin tool-specific adapters
+  that reference this file.

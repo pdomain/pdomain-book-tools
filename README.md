@@ -7,16 +7,17 @@ Python tools for working with public domain book scans.
 ### Prerequisites
 
 1. **Install UV package manager** (required):
-   https://docs.astral.sh/uv/getting-started/installation/
+   <https://docs.astral.sh/uv/getting-started/installation/>
 
 2. **Install Tesseract OCR** (optional, for OCR functionality):
-   https://tesseract-ocr.github.io/tessdoc/Installation.html
+   <https://tesseract-ocr.github.io/tessdoc/Installation.html>
 
 3. **Install Nvidia CUDA toolkit** (optional but highly recommended, for GPU functions):
-   https://developer.nvidia.com/cuda-toolkit
+   <https://developer.nvidia.com/cuda-toolkit>
 
-   Note, if you are using a containerized dev env, you also need Nvidia container tools.
-   https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+   Note, if you are using a containerized dev env, you also need Nvidia
+   container tools.
+   <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html>
 
 ### Quick Setup
 
@@ -27,6 +28,7 @@ make install
 ```
 
 This will:
+
 - Create a virtual environment
 - Install all dependencies (runtime + development)
 - Set up pre-commit hooks
@@ -66,33 +68,40 @@ uv build
 ## Development Workflow
 
 ### Running Tests
+
 ```bash
 make test
 ```
 
 ### Code Quality
+
 ```bash
 make lint    # Check and auto-fix linting issues
 make format  # Format code with ruff
 ```
 
 ### Pre-commit Checks
+
 ```bash
 make pre-commit-check  # Run all pre-commit hooks
 ```
 
 ### Building
+
 ```bash
 make build
 ```
 
 ### Complete CI Pipeline
+
 ```bash
 make ci  # Runs install, pre-commit-check, test, and build
 ```
 
 ### Troubleshooting
+
 If you encounter dependency issues:
+
 ```bash
 make reset       # Rebuild environment (keeps cache)
 make reset-full  # Nuclear option: clear everything

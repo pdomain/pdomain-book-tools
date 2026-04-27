@@ -7,11 +7,43 @@ from pd_book_tools.ocr.ground_truth_matching import (
     WordDiffOpCodes,
     try_matching_combined_words,
     update_line_with_ground_truth_replace_words,
+    update_page_with_ground_truth_text,
 )
 from pd_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
     CharacterGroups,
 )
+from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
+
+
+def _make_line(text_words, y):
+    """Build a simple Block(LINE) at y-row from a sequence of word strings."""
+    words = []
+    x = 0
+    for w in text_words:
+        width = max(8, len(w) * 8)
+        words.append(
+            Word(
+                text=w,
+                bounding_box=BoundingBox.from_ltrb(
+                    x, y, x + width, y + 18, is_normalized=False
+                ),
+            )
+        )
+        x += width + 4
+    return Block(
+        items=words,
+        block_category=BlockCategory.LINE,
+        child_type=BlockChildType.WORDS,
+    )
+
+
+def _make_page(lines_of_words):
+    """Build a Page from an ordered list of word-string lists, one per line."""
+    line_blocks = [
+        _make_line(words, y=20 + i * 30) for i, words in enumerate(lines_of_words)
+    ]
+    return Page(width=1000, height=1000, page_index=0, items=line_blocks)
 
 
 class TestGroundTruthMatching:
@@ -387,3 +419,200 @@ class TestCharacterGroups:
         assert "′" in CharacterGroups.QUOTES_AND_PRIMES
         assert "″" in CharacterGroups.QUOTES_AND_PRIMES
         assert "a" not in CharacterGroups.QUOTES_AND_PRIMES
+
+
+class TestUpdatePageWithGroundTruthText:
+    """Page-level tests for update_page_with_ground_truth_text.
+
+    These exercise the difflib line-level matching logic, including the
+    similarity-based fallback used when same-line-count `replace` blocks
+    are positionally misaligned (e.g. an image caption placed at a
+    different position in OCR vs ground truth).
+    """
+
+    def _gt_lines(self, page):
+        return [(line.text, line.base_ground_truth_text or "") for line in page.lines]
+
+    def test_paragraph_rearranged_around_caption_matches_correctly(self):
+        """Regression test: caption between paragraph halves in OCR but
+        moved past the paragraph in GT must NOT positionally match the
+        caption line to a paragraph line just because line counts agree.
+        """
+        ocr_lines = [
+            [
+                "money",
+                "in",
+                "particular",
+                "had",
+                "fallen",
+                "so",
+                "in",
+                "value",
+                "that",
+                "the",
+                "com-",
+            ],
+            ["GENERAL", "GEORCE", "WASBISGTONS", "COACH", "AND", "FOUR"],
+            [
+                "modity",
+                "must",
+                "have",
+                "been",
+                "valueless",
+                "indeed",
+                "which",
+                "fell",
+                "un-",
+            ],
+            [
+                "der",
+                "the",
+                "reproach",
+                "of",
+                "being",
+                "not",
+                "worth",
+                "a",
+                "continental.",
+            ],
+        ]
+        gt_text = "\n".join(
+            [
+                "money in particular had fallen so in value that the commodity",
+                "must have been valueless indeed which fell under",
+                "the reproach of being not worth a continental.",
+                "",
+                "GENERAL GEORGE WASHINGTON'S COACH AND FOUR",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        line_texts = [line.text for line in page.lines]
+        gts = [line.base_ground_truth_text or "" for line in page.lines]
+
+        # The caption OCR line must NOT be paired with the paragraph GT line.
+        caption_idx = line_texts.index("GENERAL GEORCE WASBISGTONS COACH AND FOUR")
+        assert "valueless" not in gts[caption_idx], (
+            f"Caption line was incorrectly matched to paragraph GT: "
+            f"{gts[caption_idx]!r}"
+        )
+
+        # The OCR caption line should match the GT caption line.
+        assert "GEORGE" in gts[caption_idx] and "WASHINGTON" in gts[caption_idx]
+
+        # The paragraph lines should be matched to their paragraph GT lines.
+        # (The first paragraph line ends with "com-" in OCR, so the matcher
+        # may store the dash-wrapped variant of the GT line as the base GT.)
+        para_first_idx = 0
+        assert "money" in gts[para_first_idx] and "particular" in gts[para_first_idx]
+        assert "GEORGE" not in gts[para_first_idx]
+
+        para_third_idx = 2
+        assert "valueless" in gts[para_third_idx] or "fell" in gts[para_third_idx]
+        assert "GEORGE" not in gts[para_third_idx]
+
+    def test_same_count_replace_with_rearranged_lines_uses_similarity(self):
+        """Two lines with OCR errors that are reordered between OCR and GT
+        produce a same-count `replace` opcode. The similarity-based fallback
+        should still pair them correctly rather than positionally."""
+        # Both lines have OCR errors so SequenceMatcher can't find any tuple
+        # equality and emits a single same-count `replace` block.
+        ocr_lines = [
+            ["Tbe", "quiek", "browm", "fox"],
+            ["jumps", "ovcr", "tbe", "lazv", "dog"],
+        ]
+        gt_text = "\n".join(
+            [
+                "jumps over the lazy dog",
+                "The quick brown fox",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        gts = [line.base_ground_truth_text or "" for line in page.lines]
+        # OCR line 0 ("Tbe quiek browm fox") should match the "The quick..."
+        # GT line, NOT the "jumps over..." GT line.
+        assert "quick" in gts[0] and "fox" in gts[0]
+        assert "jumps" not in gts[0]
+        # OCR line 1 ("jumps ovcr tbe lazv dog") should match the "jumps..." GT.
+        assert "jumps" in gts[1] and "dog" in gts[1]
+        assert "fox" not in gts[1]
+
+    def test_aligned_lines_still_match_positionally(self):
+        """Sanity check: when OCR and GT lines align, matching is unchanged
+        and each line gets its corresponding GT text."""
+        ocr_lines = [
+            ["The", "quick", "brown", "fox"],
+            ["jumps", "over", "the", "lazy", "dog"],
+            ["and", "runs", "away"],
+        ]
+        gt_text = "\n".join(
+            [
+                "The quick brown fox",
+                "jumps over the lazy dog",
+                "and runs away",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        # All lines should match exactly via the LINE_EQUAL path.
+        for line, expected in zip(
+            page.lines,
+            ["The quick brown fox", "jumps over the lazy dog", "and runs away"],
+        ):
+            for word in line.words:
+                assert word.ground_truth_text is not None
+            joined_gt = " ".join((w.ground_truth_text or "") for w in line.words)
+            assert joined_gt == expected
+
+    def test_aligned_lines_with_minor_ocr_errors_match_positionally(self):
+        """Same-count replace block with minor per-line errors should still
+        use positional pairing (no fallback), since each pair scores high."""
+        ocr_lines = [
+            ["The", "quiek", "brown", "fox"],  # 'quiek' typo
+            ["jumps", "over", "tbe", "lazy", "dog"],  # 'tbe' typo
+            ["and", "runs", "awayy"],  # extra letter
+        ]
+        gt_text = "\n".join(
+            [
+                "The quick brown fox",
+                "jumps over the lazy dog",
+                "and runs away",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        gts = [line.base_ground_truth_text or "" for line in page.lines]
+        assert "quick" in gts[0] and "fox" in gts[0]
+        assert "the" in gts[1] and "dog" in gts[1]
+        assert "away" in gts[2]
+
+    def test_unmatched_gt_lines_recorded(self):
+        """GT lines with no matching OCR line should be added to
+        page.unmatched_ground_truth_lines."""
+        ocr_lines = [
+            ["First", "line", "of", "text"],
+            ["Last", "line", "of", "text"],
+        ]
+        gt_text = "\n".join(
+            [
+                "First line of text",
+                "An entirely different middle line that has no OCR equivalent",
+                "Last line of text",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        unmatched = page.unmatched_ground_truth_lines or []
+        unmatched_texts = [t for _, t in unmatched]
+        assert any("entirely different middle line" in t for t in unmatched_texts)
