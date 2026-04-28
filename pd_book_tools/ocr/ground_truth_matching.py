@@ -109,6 +109,69 @@ def update_page_with_ground_truth_text(
         else:
             raise ValueError(f"Unknown line tag: {op.line_tag}")
 
+    # Recover strongly matching lines that were displaced and surfaced as
+    # unmatched GT insertions (e.g. inline caption/name lines moved in OCR).
+    update_page_match_unmatched_lines_best_effort(page)
+
+
+def update_page_match_unmatched_lines_best_effort(page: "Page"):
+    """Try to align unmatched GT lines to unmatched OCR lines.
+
+    Difflib can emit a delete+insert pair when a short line moves position.
+    In those cases, OCR lines are left without GT while the corresponding GT
+    lines are stored in ``page.unmatched_ground_truth_lines``. This post-pass
+    reattaches only very high-confidence full-line matches.
+    """
+
+    unmatched_gt_lines = list(page.unmatched_ground_truth_lines or [])
+    if not unmatched_gt_lines:
+        return
+
+    unmatched_ocr_lines = []
+    for ocr_line_nbr, line in enumerate(page.lines):
+        if any((word.ground_truth_text or "").strip() for word in line.words):
+            continue
+        ocr_text = (line.text or "").strip()
+        if not ocr_text:
+            continue
+        unmatched_ocr_lines.append((ocr_line_nbr, line, ocr_text))
+
+    if not unmatched_ocr_lines:
+        return
+
+    # Build candidate pairs and greedily consume best unique matches.
+    # Require a very high score to avoid hijacking true unmatched content.
+    match_candidates = []
+    for ocr_line_nbr, _line, ocr_text in unmatched_ocr_lines:
+        for gt_idx, (_insert_at, gt_text) in enumerate(unmatched_gt_lines):
+            score = fuzz_ratio(ocr_text.lower(), gt_text.lower())
+            if score >= 90:
+                match_candidates.append((score, ocr_line_nbr, gt_idx, gt_text))
+
+    match_candidates.sort(reverse=True)
+
+    used_ocr_lines = set()
+    used_gt_idxs = set()
+    for _score, ocr_line_nbr, gt_idx, gt_text in match_candidates:
+        if ocr_line_nbr in used_ocr_lines or gt_idx in used_gt_idxs:
+            continue
+
+        line = page.lines[ocr_line_nbr]
+        update_line_with_ground_truth(
+            line=line,
+            ocr_line_tuple=tuple(line.word_list),
+            ground_truth_tuple=tuple(gt_text.split()),
+        )
+        used_ocr_lines.add(ocr_line_nbr)
+        used_gt_idxs.add(gt_idx)
+
+    if used_gt_idxs:
+        page.unmatched_ground_truth_lines = [
+            unmatched_gt_lines[i]
+            for i in range(len(unmatched_gt_lines))
+            if i not in used_gt_idxs
+        ]
+
 
 def update_page_match_difflib_lines_delete(page: "Page", op: LineDiffOpCodes):
     """
@@ -904,19 +967,30 @@ def update_page_match_difflib_lines_replace_different_line_count(
     )
     sorted_match_scores = [s for s in sorted_match_scores if s.match_score >= 70]
 
-    done = False
     matched_ocr_lines = []
-    while (not done) and sorted_match_scores:
+    matched_ocr_line_nbrs = set()
+    matched_gt_line_nbrs = set()
+    while sorted_match_scores:
         next_score_tuple = sorted_match_scores.pop(0)
+        if (
+            next_score_tuple.ocr_line_nbr in matched_ocr_line_nbrs
+            or next_score_tuple.gt_line_nbr in matched_gt_line_nbrs
+        ):
+            continue
+
         matched_ocr_lines.append(next_score_tuple)
-        # remove all entries for this OCR line number
+        matched_ocr_line_nbrs.add(next_score_tuple.ocr_line_nbr)
+        matched_gt_line_nbrs.add(next_score_tuple.gt_line_nbr)
+
+        # Keep only unused OCR/GT line pair candidates.
         sorted_match_scores = [
             s
             for s in sorted_match_scores
-            if s.ocr_line_nbr != next_score_tuple.ocr_line_nbr
+            if (
+                s.ocr_line_nbr not in matched_ocr_line_nbrs
+                and s.gt_line_nbr not in matched_gt_line_nbrs
+            )
         ]
-        if len(matched_ocr_lines) == (op.ocr_line_2 - op.ocr_line_1):
-            done = True
 
     # Once all Matched OCR lines are found, update ground truth
     for m in matched_ocr_lines:
@@ -969,11 +1043,47 @@ def _build_current_work_gt_line_remove_suffix(remove_count, ground_truth_text):
         raise ValueError("Cannot remove more characters than exist in the string")
 
 
-def _generate_work_variants(base_text):
-    """Generate variants of the base text with dashes appended."""
-    return [base_text, base_text + "--"] + [
-        base_text + dash for dash in CharacterGroups.DASHES.value
-    ]
+def _generate_work_variants(
+    base_text: str,
+    include_plain: bool = True,
+    dash_chars: Sequence[str] | None = None,
+) -> list[str]:
+    """Generate variants of base text with optional plain + dash-appended forms."""
+    if dash_chars is None:
+        dash_chars = CharacterGroups.DASHES.value
+    prefixed = [base_text] if include_plain else []
+    return prefixed + [base_text + "--"] + [base_text + dash for dash in dash_chars]
+
+
+def _should_consider_line_end_soft_wrap(ocr_text: str, ground_truth_text: str) -> bool:
+    """Return True when OCR line-end likely dropped a hyphen during wrapping.
+
+    This catches cases like OCR ending with "op" while GT ends with
+    "opposed". We only enable this when the final OCR token is a short
+    prefix of the final GT token to avoid broad false positives.
+    """
+    ocr_words = ocr_text.strip().split()
+    gt_words = ground_truth_text.strip().split()
+    if not ocr_words or not gt_words:
+        return False
+
+    ocr_last = ocr_words[-1].strip()
+    gt_last = gt_words[-1].strip()
+    if not ocr_last or not gt_last:
+        return False
+
+    # If OCR already ends with a dash, the explicit-dash path handles this.
+    if ocr_last[-1] in CharacterGroups.DASHES.value:
+        return False
+
+    # Ignore punctuation when checking a possible soft-wrap prefix.
+    ocr_core = ocr_last.rstrip(".,;:!?)]}\"'")
+    gt_core = gt_last.rstrip(".,;:!?)]}\"'")
+
+    if len(ocr_core) < 2 or len(gt_core) <= len(ocr_core):
+        return False
+
+    return gt_core.lower().startswith(ocr_core.lower())
 
 
 def generate_best_matched_ground_truth_line(
@@ -999,9 +1109,18 @@ def generate_best_matched_ground_truth_line(
             0, (len(previous_ground_truth_text)) - previous_ground_truth_text.rfind(" ")
         )
     ]
-    if ocr_text.strip()[-1] in CharacterGroups.DASHES.value:
-        # If the last character of the OCR text is a dash
-        # generate a set of variants that remove letters from GT text
+    has_explicit_line_end_dash = ocr_text.strip()[-1] in CharacterGroups.DASHES.value
+    has_soft_wrap_without_dash = _should_consider_line_end_soft_wrap(
+        ocr_text, ground_truth_text
+    )
+    use_line_end_hyphen_variants = (
+        has_explicit_line_end_dash or has_soft_wrap_without_dash
+    )
+
+    if use_line_end_hyphen_variants:
+        # If OCR appears wrapped at line-end (explicit dash or likely dropped
+        # dash), generate variants that remove letters from GT text and append
+        # dash-like characters.
         variants = [
             (_build_current_work_gt_line_remove_suffix(j, prefix_variant)).strip()
             for j in range(0, (len(ground_truth_text) - ground_truth_text.rfind(" ")))
@@ -1010,7 +1129,15 @@ def generate_best_matched_ground_truth_line(
         variants = [
             item.strip()
             for sublist in [
-                _generate_work_variants(variant)
+                _generate_work_variants(
+                    variant,
+                    include_plain=has_explicit_line_end_dash,
+                    dash_chars=(
+                        CharacterGroups.DASHES.value
+                        if has_explicit_line_end_dash
+                        else ["-"]
+                    ),
+                )
                 for variant in variants
                 if variant is not None and variant.strip() != ""
             ]

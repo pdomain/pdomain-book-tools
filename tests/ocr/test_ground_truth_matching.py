@@ -616,3 +616,239 @@ class TestUpdatePageWithGroundTruthText:
         unmatched = page.unmatched_ground_truth_lines or []
         unmatched_texts = [t for _, t in unmatched]
         assert any("entirely different middle line" in t for t in unmatched_texts)
+
+    def test_header_and_page_number_ignored_but_inline_name_lines_match(self):
+        """Regression: non-GT header/page number OCR lines should not block
+        matching for intervening content lines like 'ROBERT'/'MORRIS'.
+        """
+        ocr_lines = [
+            ["BETWEEN", "WAR", "AND", "PEACE"],
+            [
+                "de",
+                "Rochambeau,",
+                "upon",
+                "his",
+                "personal",
+                "credit,",
+                "to",
+                "do",
+                "it.",
+            ],
+            [
+                "But",
+                "even",
+                "Morris,",
+                "trained",
+                "merchant",
+                "and",
+                "financier",
+                "that",
+            ],
+            ["ROBERT"],
+            ["MORRIS"],
+            [
+                "he",
+                "was,",
+                "could",
+                "not",
+                "make",
+                "something",
+                "out",
+                "of",
+                "nothing.",
+                "The",
+            ],
+            [
+                "States",
+                "would",
+                "not",
+                "tax",
+                "their",
+                "people",
+                "for",
+                "the",
+                "support",
+                "of",
+            ],
+            [
+                "the",
+                "Confederation.",
+                "It",
+                "took",
+                "eighteen",
+                "months",
+                "to",
+                "collect",
+            ],
+            [
+                "one-fifth",
+                "of",
+                "the",
+                "taxes",
+                "assigned",
+                "them",
+                "in",
+                "1783.",
+                "They",
+            ],
+            ["31"],
+        ]
+
+        gt_text = "\n".join(
+            [
+                "de Rochambeau, upon his personal credit, to do it.",
+                "But even Morris, trained merchant and financier that",
+                "he was, could not make something out of nothing. The",
+                "States would not tax their people for the support of",
+                "the Confederation. It took eighteen months to collect",
+                "one-fifth of the taxes assigned them in 1783. They",
+                "ROBERT",
+                "MORRIS",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        # Header and page number are OCR-only; they should remain unmatched.
+        header_line = page.lines[0]
+        page_number_line = page.lines[-1]
+        assert header_line.text == "BETWEEN WAR AND PEACE"
+        assert all((w.ground_truth_text or "") == "" for w in header_line.words)
+        assert page_number_line.text == "31"
+        assert all((w.ground_truth_text or "") == "" for w in page_number_line.words)
+
+        # Inline inserted name lines must still match their GT lines.
+        robert_line = page.lines[3]
+        morris_line = page.lines[4]
+        assert robert_line.text == "ROBERT"
+        assert morris_line.text == "MORRIS"
+        assert [w.ground_truth_text for w in robert_line.words] == ["ROBERT"]
+        assert [w.ground_truth_text for w in morris_line.words] == ["MORRIS"]
+
+        # Main paragraph lines should still align to GT text.
+        line1_gt = " ".join((w.ground_truth_text or "") for w in page.lines[1].words)
+        line2_gt = " ".join((w.ground_truth_text or "") for w in page.lines[2].words)
+        line5_gt = " ".join((w.ground_truth_text or "") for w in page.lines[5].words)
+        assert line1_gt == "de Rochambeau, upon his personal credit, to do it."
+        assert line2_gt == "But even Morris, trained merchant and financier that"
+        assert line5_gt == "he was, could not make something out of nothing. The"
+
+    def test_hyphenated_line_break_preserves_split_when_previous_line_matches(self):
+        """Regression: when OCR splits a GT word across lines with a trailing dash,
+        keep the split as 'op-' and 'posed' when the preceding line already aligns.
+        """
+        ocr_lines = [
+            ["which", "had", "rendered", "them", "homeless.", "Almost", "without"],
+            [
+                "exception",
+                "they",
+                "had",
+                "been,",
+                "in",
+                "opinion,",
+                "as",
+                "thoroughly",
+                "op-",
+            ],
+            [
+                "posed",
+                "as",
+                "their",
+                "neighbors",
+                "to",
+                "the",
+                "policy",
+                "of",
+                "the",
+                "King",
+                "and",
+            ],
+        ]
+
+        gt_text = "\n".join(
+            [
+                "which had rendered them homeless. Almost without",
+                "exception they had been, in opinion, as thoroughly opposed",
+                "as their neighbors to the policy of the King and",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        # Prior line is an exact anchor line.
+        assert (
+            " ".join((word.ground_truth_text or "") for word in page.lines[0].words)
+            == "which had rendered them homeless. Almost without"
+        )
+
+        # The hyphenated OCR line should map to a hyphenated GT variant.
+        assert page.lines[1].base_ground_truth_text == (
+            "exception they had been, in opinion, as thoroughly op-"
+        )
+
+        # The next OCR line should receive the carried remainder of the split word.
+        assert page.lines[2].base_ground_truth_text == (
+            "posed as their neighbors to the policy of the King and"
+        )
+
+        # Word-level sanity checks for the split itself.
+        assert page.lines[1].words[-1].text == "op-"
+        assert page.lines[1].words[-1].ground_truth_text == "op-"
+        assert page.lines[2].words[0].text == "posed"
+        assert page.lines[2].words[0].ground_truth_text == "posed"
+
+    def test_line_end_soft_wrap_without_visible_hyphen_still_restores_split(self):
+        """If OCR misses the trailing hyphen at line end (e.g. 'op'), still
+        restore a wrapped GT split as 'op-' and carry 'posed' to next line.
+        """
+        ocr_lines = [
+            ["which", "had", "rendered", "them", "homeless.", "Almost", "without"],
+            [
+                "exception",
+                "they",
+                "had",
+                "been,",
+                "in",
+                "opinion,",
+                "as",
+                "thoroughly",
+                "op",
+            ],
+            [
+                "posed",
+                "as",
+                "their",
+                "neighbors",
+                "to",
+                "the",
+                "policy",
+                "of",
+                "the",
+                "King",
+                "and",
+            ],
+        ]
+
+        gt_text = "\n".join(
+            [
+                "which had rendered them homeless. Almost without",
+                "exception they had been, in opinion, as thoroughly opposed",
+                "as their neighbors to the policy of the King and",
+            ]
+        )
+
+        page = _make_page(ocr_lines)
+        update_page_with_ground_truth_text(page, gt_text)
+
+        assert page.lines[1].base_ground_truth_text == (
+            "exception they had been, in opinion, as thoroughly op-"
+        )
+        assert page.lines[2].base_ground_truth_text == (
+            "posed as their neighbors to the policy of the King and"
+        )
+
+        assert page.lines[1].words[-1].text == "op"
+        assert page.lines[1].words[-1].ground_truth_text == "op-"
+        assert page.lines[2].words[0].ground_truth_text == "posed"
