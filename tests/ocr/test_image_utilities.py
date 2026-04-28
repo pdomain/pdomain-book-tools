@@ -9,6 +9,7 @@ import pytest
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.image_utilities import (
+    crop_image_to_bbox,
     get_cropped_block_image,
     get_cropped_encoded_image,
     get_cropped_encoded_image_scaled_bbox,
@@ -16,6 +17,79 @@ from pd_book_tools.ocr.image_utilities import (
     get_encoded_image,
 )
 from pd_book_tools.ocr.word import Word
+
+
+class TestCropImageToBbox:
+    """Test the crop_image_to_bbox helper."""
+
+    def test_returns_none_when_element_is_none(self):
+        img = np.zeros((10, 10, 3), dtype=np.uint8)
+        assert crop_image_to_bbox(None, img) is None
+
+    def test_returns_none_when_image_is_none(self):
+        word = Word(
+            text="x",
+            bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=True),
+            ocr_confidence=1.0,
+        )
+        assert crop_image_to_bbox(word, None) is None
+
+    def test_returns_none_when_no_bounding_box_attr(self):
+        img = np.zeros((10, 10, 3), dtype=np.uint8)
+
+        class NoBbox:
+            pass
+
+        assert crop_image_to_bbox(NoBbox(), img, label="custom") is None
+
+    def test_returns_none_when_bounding_box_is_none(self):
+        img = np.zeros((10, 10, 3), dtype=np.uint8)
+
+        class HasNone:
+            bounding_box = None
+
+        assert crop_image_to_bbox(HasNone(), img) is None
+
+    def test_returns_cropped_array(self):
+        img = np.arange(100, dtype=np.uint8).reshape(10, 10)
+
+        word = Word(
+            text="t",
+            bounding_box=BoundingBox.from_ltrb(0.0, 0.0, 0.5, 0.5, is_normalized=True),
+            ocr_confidence=1.0,
+        )
+
+        cropped = crop_image_to_bbox(word, img)
+        assert cropped is not None
+        assert isinstance(cropped, np.ndarray)
+        # Half of 10x10 -> 5x5
+        assert cropped.shape == (5, 5)
+
+    def test_swallows_exception_returns_none(self):
+        """If bbox.crop_image raises, the helper should return None."""
+        img = np.zeros((5, 5, 3), dtype=np.uint8)
+
+        class FakeBbox:
+            def crop_image(self, image):
+                raise RuntimeError("boom")
+
+        class Holder:
+            bounding_box = FakeBbox()
+
+        assert crop_image_to_bbox(Holder(), img) is None
+
+    def test_handles_empty_crop(self):
+        """When crop returns None, helper returns that None as well."""
+        img = np.zeros((5, 5, 3), dtype=np.uint8)
+
+        class FakeBbox:
+            def crop_image(self, image):
+                return None
+
+        class Holder:
+            bounding_box = FakeBbox()
+
+        assert crop_image_to_bbox(Holder(), img) is None
 
 
 class TestGetEncodedImage:
