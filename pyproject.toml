@@ -61,6 +61,10 @@ omit = [
     "*/tests/*",
     "*/.*/*",
     "*/site-packages/*",
+    # GPU-only modules: tests exist but skip without CUDA/CuPy.
+    # Excluded so CPU-only coverage runs report a meaningful baseline.
+    "*/image_processing/cupy_processing/*",
+    "*/image_processing/cv2cuda_processing/*",
 ]
 concurrency = ["thread"]  # NiceGUI & timers may spawn threads
 

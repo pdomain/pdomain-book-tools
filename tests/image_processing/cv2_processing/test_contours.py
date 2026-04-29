@@ -65,3 +65,43 @@ class TestRemoveSmallContours:
         assert (cleaned[5:9, 5:9] == 0).all()
         # Big blob should remain
         assert (cleaned[30:70, 30:70] == 255).all()
+
+    def test_medium_contour_with_nearby_pixels_kept(self):
+        """Medium contour with significant nearby pixels should be retained."""
+        from cv2 import (
+            CHAIN_APPROX_SIMPLE,
+            RETR_EXTERNAL,
+            findContours,
+        )
+
+        # Create an image where a medium contour sits close to a large blob
+        img = np.zeros((200, 200), dtype=np.uint8)
+        # Large support blob
+        img[80:120, 20:180] = 255
+        # Medium-sized contour next to it - within size threshold but with neighbors
+        img[60:75, 60:80] = 255
+
+        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        cleaned, vis = remove_small_contours(img.copy(), contours)
+        # Visualization should be a 3-channel image
+        assert vis.ndim == 3
+        assert vis.shape[2] == 3
+
+    def test_medium_contour_isolated_removed(self):
+        """Medium contour with no nearby pixels should be removed."""
+        from cv2 import (
+            CHAIN_APPROX_SIMPLE,
+            RETR_EXTERNAL,
+            findContours,
+        )
+
+        img = np.zeros((200, 200), dtype=np.uint8)
+        # An isolated medium-sized contour
+        img[100:108, 100:108] = 255
+
+        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        cleaned, _ = remove_small_contours(
+            img.copy(), contours, min_w_pct=0.10, min_h_pct=0.10
+        )
+        # The isolated medium contour should be cleared
+        assert (cleaned[100:108, 100:108] == 0).all()

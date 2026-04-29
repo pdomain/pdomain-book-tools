@@ -95,3 +95,141 @@ class TestGetFinetunedTorchDoctrPredictor:
         )
         # Files do not exist, so the helper falls through and returns None
         assert result is None
+
+    def test_happy_path_with_existing_files(self, monkeypatch, tmp_path):
+        """With pretrained files present, the helper should construct a predictor."""
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        # Stub torch
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        # Stub doctr modules
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+        fake_predictor = MagicMock()
+        fake_det_predictor = MagicMock()
+        fake_reco_predictor = MagicMock()
+
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.detection_predictor = MagicMock(return_value=fake_det_predictor)
+        fake_models.ocr_predictor = MagicMock(return_value=fake_predictor)
+        fake_models.recognition_predictor = MagicMock(return_value=fake_reco_predictor)
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        result = get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=det_path,
+            recognition_pt_file=reco_path,
+        )
+        assert result is fake_predictor
+        # Verify det/reco predictors got attached
+        assert fake_predictor.det_predictor is fake_det_predictor
+        assert fake_predictor.reco_predictor is fake_reco_predictor
+
+    def test_happy_path_with_custom_vocab(self, monkeypatch, tmp_path):
+        """If vocab is provided explicitly, it should be passed through."""
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=det_path,
+            recognition_pt_file=reco_path,
+            vocab="custom_vocab",
+        )
+        kwargs = fake_models.crnn_vgg16_bn.call_args.kwargs
+        assert kwargs["vocab"] == "custom_vocab"
+
+    def test_happy_path_with_cuda_available(self, monkeypatch, tmp_path):
+        """When CUDA is available, the helper should use the cuda device strings."""
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=True)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=det_path,
+            recognition_pt_file=reco_path,
+        )
+        # torch_load should have been called with map_location="cuda:0"
+        load_kwargs = fake_torch.load.call_args.kwargs
+        assert load_kwargs["map_location"] == "cuda:0"
