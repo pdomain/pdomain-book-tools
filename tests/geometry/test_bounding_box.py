@@ -692,3 +692,72 @@ class TestCropImage:
         crop = bbox.crop_image(img)
         assert crop is not None
         assert crop.shape == (40, 40)
+
+
+# ============================================================================
+# Additional coverage tests
+# ============================================================================
+
+
+def test_shapely_property():
+    """Line 754: shapely property calls as_shapely()."""
+    bbox = BoundingBox.from_ltrb(0, 0, 10, 10, is_normalized=False)
+    geom = bbox.shapely
+    assert geom is not None
+    assert geom.bounds == (0, 0, 10, 10)
+
+
+def test_build_invalid_order_raises():
+    """Line 817: _build raises ValueError when left > right or top > bottom."""
+    import pytest
+
+    with pytest.raises(ValueError, match="correct order"):
+        BoundingBox.from_ltrb(10, 0, 5, 20, is_normalized=False)
+
+
+def test_from_points_sequence_input():
+    """Line 230: from_points with sequence (list) of floats."""
+    bbox = BoundingBox.from_points([[0.0, 0.0], [1.0, 1.0]])
+    assert bbox.top_left.x == 0.0
+    assert bbox.bottom_right.x == 1.0
+
+
+def test_normalized_out_of_range_raises():
+    """Line 190: is_normalized=True but coordinates outside [0,1] raises ValueError."""
+    import pytest
+
+    with pytest.raises(ValueError, match="normalized"):
+        BoundingBox.from_ltrb(0.1, 0.1, 2.0, 0.9, is_normalized=True)
+
+
+def test_has_usable_coordinates_returns_false_on_exception():
+    """Lines 130-131: Exception in has_usable_coordinates returns False."""
+    from unittest.mock import PropertyMock, patch
+
+    from pd_book_tools.geometry.bounding_box import BoundingBox
+
+    bb = BoundingBox.from_ltrb(0, 0, 10, 10)
+    with patch.object(
+        type(bb), "minX", new_callable=PropertyMock, side_effect=RuntimeError("fail")
+    ):
+        assert bb.has_usable_coordinates is False
+
+
+def test_from_points_with_dict_input():
+    """Line 221: BoundingBox.from_points accepts dict with x/y keys."""
+    from pd_book_tools.geometry.bounding_box import BoundingBox
+
+    bb = BoundingBox.from_points([{"x": 0, "y": 0}, {"x": 10, "y": 10}])
+    assert bb.minX == 0
+    assert bb.maxX == 10
+
+
+def test_from_points_with_shapely_point():
+    """Lines 223-224: BoundingBox.from_points accepts shapely Point objects."""
+    from shapely.geometry import Point as ShapelyPoint
+
+    from pd_book_tools.geometry.bounding_box import BoundingBox
+
+    bb = BoundingBox.from_points([ShapelyPoint(0, 0), ShapelyPoint(10, 10)])
+    assert bb.minX == 0
+    assert bb.maxX == 10

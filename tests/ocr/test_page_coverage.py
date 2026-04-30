@@ -260,6 +260,14 @@ class TestRemoveEmptyItems:
 
 
 class TestCv2NumpyImage:
+    def test_constructor_accepts_ndarray(self):
+        """Lines 113-115: cv2_numpy_page_image passed to Page constructor."""
+        img = np.zeros((100, 200, 3), dtype=np.uint8)
+        page = Page(
+            width=200, height=100, page_index=0, items=[], cv2_numpy_page_image=img
+        )
+        assert page.cv2_numpy_page_image is not None
+
     def test_setter_validates_type(self, simple_page):
         with pytest.raises(TypeError, match="ndarray"):
             simple_page.cv2_numpy_page_image = "not an array"
@@ -662,6 +670,14 @@ class TestRefineBoundingBoxes:
     def test_refine_no_image(self, simple_page):
         # When image is None, refine_bounding_boxes is a no-op
         simple_page.refine_bounding_boxes(None)
+
+    def test_refine_with_explicit_image_covers_false_branch(self, simple_page):
+        """Line 2985->2992 False branch: image is NOT None, skip the if-image-is-None block."""
+        import numpy as np
+
+        img = np.zeros((100, 200, 3), dtype=np.uint8)
+        # Pass image directly; skips the 'if image is None' block at 2985
+        simple_page.refine_bounding_boxes(img)
 
 
 # Finalize page structure -----------------------------------------------------

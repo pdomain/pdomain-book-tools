@@ -306,6 +306,17 @@ class TestExpandBbox:
         result = pixel_word.expand_bbox(-2.0, 100, 100)
         assert result is False
 
+    def test_expand_bbox_pixel_zero_page_width(self, pixel_word):
+        """Covers 519->521 False branch: pixel word, page_width=0 → no min-clamp on nx2."""
+        # pixel_word: 10,10 -> 30,20; page_width=0, page_height=50
+        result = pixel_word.expand_bbox(2.0, 0, 50)
+        assert result is True  # nx2 = 32 (no clamping), ny2 = min(22, 50)
+
+    def test_expand_bbox_pixel_zero_page_height(self, pixel_word):
+        """Covers 521->524 False branch: pixel word, page_height=0 → no min-clamp on ny2."""
+        result = pixel_word.expand_bbox(2.0, 100, 0)
+        assert result is True  # nx2 = min(32, 100), ny2 = 22 (no clamping)
+
 
 class TestExpandThenRefineBbox:
     def test_expand_then_refine_no_image(self, pixel_word):

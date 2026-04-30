@@ -305,6 +305,30 @@ class TestFromImageOcrViaDoctr:
             Document.from_image_ocr_via_doctr(img)
             mock_get_default.assert_called_once()
 
+    def test_with_rgba_pil_image_covers_4channel_path(self):
+        """Lines 156->169 (False) and 181: PIL image with 4 channels (RGBA)."""
+        try:
+            from PIL import Image as PILImageModule
+        except ImportError:
+            pytest.skip("PIL not installed")
+
+        # RGBA image: shape (20, 20, 4) → shape[2] == 4, not 3 → goes to line 181
+        pil_image = PILImageModule.fromarray(
+            np.zeros((20, 20, 4), dtype=np.uint8), mode="RGBA"
+        )
+
+        fake_predictor = MagicMock()
+        doctr_result = MagicMock()
+        doctr_result.render.return_value = ["rendered"]
+        doctr_result.export.return_value = {
+            "metadata": {},
+            "pages": [{"dimensions": [20, 20], "blocks": []}],
+        }
+        fake_predictor.return_value = doctr_result
+
+        doc = Document.from_image_ocr_via_doctr(pil_image, predictor=fake_predictor)
+        assert isinstance(doc, Document)
+
 
 class TestFromDoctrOutputEdgeCases:
     def test_geometry_missing_for_block_and_line(self):
@@ -406,3 +430,109 @@ class TestToFromDictEmptyPages:
         assert doc.source_lib == ""
         assert doc.source_path is None
         assert doc.pages == []
+
+
+class TestSafePackageVersionExceptionClause:
+    def test_exception_returns_unknown(self, monkeypatch):
+        """Line 376-377: catches generic Exception from package_version."""
+        from pd_book_tools.ocr import document as doc_module
+
+        def raise_runtime(*args, **kwargs):
+            raise RuntimeError("unexpected error")
+
+        monkeypatch.setattr(doc_module, "package_version", raise_runtime)
+        result = Document._safe_package_version("any_package")
+        assert result == "unknown"
+
+
+class TestFromTesseractUnknownPytesseractVersion:
+    def test_unknown_version_skips_fingerprint(self, monkeypatch):
+        """Line 436->441 False branch: pytesseract_version == 'unknown'."""
+        from pandas import DataFrame
+
+        from pd_book_tools.ocr import document as doc_module
+
+        monkeypatch.setattr(
+            doc_module.Document,
+            "_safe_package_version",
+            lambda *args, **kwargs: "unknown",
+        )
+        df = DataFrame(
+            {
+                "level": [1, 2, 3, 4, 5],
+                "page_num": [1, 1, 1, 1, 1],
+                "block_num": [0, 1, 1, 1, 1],
+                "par_num": [0, 0, 1, 1, 1],
+                "line_num": [0, 0, 0, 1, 1],
+                "left": [0, 10, 20, 30, 40],
+                "top": [0, 10, 20, 30, 40],
+                "width": [100, 90, 80, 70, 60],
+                "height": [200, 190, 180, 170, 160],
+                "text": ["", "", "", "", "hello"],
+                "conf": [0, 0, 0, 0, 90],
+            }
+        )
+        doc = Document.from_tesseract(df)
+        # Should succeed; when version is unknown, fingerprint comes from source_lib only
+        assert doc.pages
+        prov = doc.pages[0].ocr_provenance
+        # fingerprint should be "tesseract" (from source_lib), not include pytesseract version
+        assert prov is None or "pytesseract" not in (prov.config_fingerprint or "")
+
+
+class TestDetectTesseractVersionFalsyResult:
+    def test_falsy_detected_version_returns_unknown(self, monkeypatch):
+        """Line 385->389: when get_tesseract_version returns falsy value."""
+        import pytesseract
+
+        monkeypatch.setattr(pytesseract, "get_tesseract_version", lambda: None)
+        result = Document._detect_tesseract_engine_version()
+        assert result == "unknown"
+
+
+class TestFromTesseractEmptyPagesWithString:
+    def test_tesseract_string_not_assigned_when_no_pages(self):
+        """Line 593->596 False branch: tesseract_string provided but no pages."""
+        from pandas import DataFrame
+
+        # Empty DataFrame produces no pages
+        cols = [
+            "level",
+            "page_num",
+            "block_num",
+            "par_num",
+            "line_num",
+            "left",
+            "top",
+            "width",
+            "height",
+            "text",
+            "conf",
+        ]
+        df = DataFrame(columns=cols)
+        doc = Document.from_tesseract(df, tesseract_string="ignored text")
+        # Should succeed even if pages is empty
+        assert isinstance(doc, Document)
+
+
+class TestFromTesseractStringSourcePath:
+    def test_string_source_path_converted_to_path(self):
+        """Line 426: source_path as str is converted to Path."""
+        from pandas import DataFrame
+
+        cols = [
+            "level",
+            "page_num",
+            "block_num",
+            "par_num",
+            "line_num",
+            "left",
+            "top",
+            "width",
+            "height",
+            "text",
+            "conf",
+        ]
+        df = DataFrame(columns=cols)
+        doc = Document.from_tesseract(df, source_path="test/path.png")
+        assert isinstance(doc, Document)
