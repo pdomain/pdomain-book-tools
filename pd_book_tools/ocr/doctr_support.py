@@ -2,6 +2,11 @@ from os import PathLike
 from pathlib import Path
 from typing import Mapping
 
+# Default vocabulary used when training and loading models.
+# Trainers and predictors should both reference these so the vocab stays in sync.
+DEFAULT_VOCAB_LIBRARY: list[str] = ["multilingual", "currency"]
+DEFAULT_VOCAB_EXTRA_CHARS: str = "⸺¡¿—‘’“”′″⁄"
+
 
 def _read_arch_sidecar(pt_file: PathLike) -> str | None:
     """Return the architecture name written in a ``<stem>.arch`` sidecar, if any.
@@ -13,6 +18,18 @@ def _read_arch_sidecar(pt_file: PathLike) -> str | None:
     """
     try:
         sidecar = Path(pt_file).with_suffix(".arch")
+        if sidecar.is_file():
+            value = sidecar.read_text(encoding="utf-8").strip()
+            return value or None
+    except Exception:
+        return None
+    return None
+
+
+def _read_vocab_sidecar(pt_file: PathLike) -> str | None:
+    """Return the vocab string written in a ``<stem>.vocab`` sidecar, if any."""
+    try:
+        sidecar = Path(pt_file).with_suffix(".vocab")
         if sidecar.is_file():
             value = sidecar.read_text(encoding="utf-8").strip()
             return value or None
@@ -180,12 +197,15 @@ def get_finetuned_torch_doctr_predictor(
         det_model.load_state_dict(det_params)
 
         if not vocab:
-            # assume the model was fine-tuned on mostly english book data with some additional unicode characters
-            # (⁄ is the "fraction" character not forward slash)
-            vocab = "".join(
+            vocab = _read_vocab_sidecar(recognition_pt_file) or "".join(
                 sorted(
                     dict.fromkeys(
-                        VOCABS["multilingual"] + "⸺¡¿—‘’“”′″⁄" + VOCABS["currency"]
+                        "".join(
+                            VOCABS[name]
+                            for name in DEFAULT_VOCAB_LIBRARY
+                            if name in VOCABS
+                        )
+                        + DEFAULT_VOCAB_EXTRA_CHARS
                     )
                 )
             )
