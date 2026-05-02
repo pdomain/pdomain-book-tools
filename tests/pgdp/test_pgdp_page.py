@@ -65,7 +65,15 @@ def test_remove_trailing_asterisk_after_em_dash():
 def test_fix_footnotes():
     src = "Line[12] more[3]"
     out = PGDPResults.fix_footnotes(src)
-    assert out == "Line 12 more 3"
+    assert out == "Line12 more3"
+
+
+def test_fix_footnotes_no_space_before_marker():
+    # Marker attached to preceding word should not get a space inserted
+    src = "word[2] and standalone [5] text"
+    out = PGDPResults.fix_footnotes(src)
+    assert out == "word2 and standalone 5 text"
+    assert " 2" not in out
 
 
 def test_fix_pgdp_diacritics_subset():
@@ -109,8 +117,8 @@ def test_pgdp_page_process_integration(tmp_path):
     assert "—" in page.processed_page_text or "⸺" in page.processed_page_text
     # Hyphen wrap line split: look for wrap- newline Word
     assert "wrap-\nWord" in page.processed_page_text
-    # Footnote number separated
-    assert "Footnote 23" in page.processed_page_text
+    # Footnote marker brackets removed, no space inserted before the number
+    assert "Footnote23" in page.processed_page_text
     # Diacritics line converted (at least subset present)
     for ch in ["Ā", "ā", "Ë", "Ċ", "Ù", "ý", "ç"]:
         assert ch in page.processed_page_text

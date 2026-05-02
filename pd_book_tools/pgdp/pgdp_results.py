@@ -176,7 +176,7 @@ class PGDPResults:
 
     @classmethod
     def fix_footnotes(cls, text):
-        text = regex.sub(r"\[(\d+)\]", r" \1", text)
+        text = regex.sub(r"\[(\d+)\]", r"\1", text)
         return text
 
     @classmethod

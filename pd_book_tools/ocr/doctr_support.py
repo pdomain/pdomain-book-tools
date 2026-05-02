@@ -118,6 +118,7 @@ def get_finetuned_torch_doctr_predictor(
     full_predictor = None
 
     try:
+        import torch as _torch
         from torch import load as torch_load
         from torch.cuda import is_available as torch_cuda_is_available
     except ImportError:
@@ -159,10 +160,16 @@ def get_finetuned_torch_doctr_predictor(
     # check if file exists
     if Path.exists(dectection_pt_file) and Path.exists(recognition_pt_file):
         print("Loading pre-trained OCR models...")
-        # Check if CUDA is available
-        device, device_nbr = (
-            ("cuda", "cuda:0") if torch_cuda_is_available() else ("cpu", "cpu")
-        )
+        # Select compute device: CUDA > MPS (Apple Silicon) > CPU
+        if torch_cuda_is_available():
+            device, device_nbr = "cuda", "cuda:0"
+        elif (
+            getattr(_torch.backends, "mps", None) and _torch.backends.mps.is_available()
+        ):
+            device, device_nbr = "mps", "mps"
+        else:
+            device, device_nbr = "cpu", "cpu"
+        print(f"Using device: {device}")
 
         # ---- Detection model -------------------------------------------------
         det_params = torch_load(dectection_pt_file, map_location=device_nbr)
