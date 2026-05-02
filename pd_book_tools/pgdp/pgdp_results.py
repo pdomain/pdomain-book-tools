@@ -167,7 +167,10 @@ class PGDPResults:
         text = text.strip()
         if text[0:1] == "*":
             text = text[1:]
-        if text[-2:] == "-*":
+        # Trailing asterisk: drop the '*'. If preceded by a hyphen or em/long
+        # dash, the dash is preserved (indicating a word continued onto the
+        # next page); if there is no preceding dash, no dash is added.
+        if text.endswith("*"):
             text = text[:-1]
         return text
 

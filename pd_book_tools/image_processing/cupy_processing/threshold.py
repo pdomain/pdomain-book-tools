@@ -53,6 +53,24 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     return binary_img_cp_float
 
 
+def binary_thresh_gpu(img_cp: cp.ndarray, level: int = 127) -> cp.ndarray:
+    """
+    Fixed-level binary threshold on a GPU array.
+
+    Pixels > level become 255; all others become 0.
+    Equivalent to cv2.threshold(img, level, 255, cv2.THRESH_BINARY).
+
+    img_cp: 2-D uint8 CuPy array.
+    Returns uint8 CuPy array.
+    """
+    return (img_cp > level).astype(cp.uint8) * 255
+
+
+def np_uint8_binary_thresh(img: np.ndarray, level: int = 127) -> np.ndarray:
+    """Transfers img to GPU, applies fixed-level threshold, returns CPU uint8 array."""
+    return cp.asnumpy(binary_thresh_gpu(cp.asarray(img), level))
+
+
 def np_uint8_float_binary_thresh(
     img: np.ndarray,
 ):

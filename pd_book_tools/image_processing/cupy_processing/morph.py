@@ -2,6 +2,7 @@
 import logging
 
 import cupy as cp
+import numpy as np
 from cupy.lib.stride_tricks import sliding_window_view
 
 logger = logging.getLogger(__name__)
@@ -56,3 +57,8 @@ def morph_fill(img: cp.ndarray, shape=(6, 6)):
     opened = dilate(opened, kernel)
 
     return opened
+
+
+def np_uint8_morph_fill(img: np.ndarray, shape=(6, 6)) -> np.ndarray:
+    """Transfers img to GPU, applies morph_fill, returns CPU uint8 array."""
+    return cp.asnumpy(morph_fill(cp.asarray(img), shape=shape))

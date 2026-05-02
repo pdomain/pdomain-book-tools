@@ -41,6 +41,27 @@ def test_remove_leading_trailing_asterisk():
     assert out == "Some text-"
 
 
+def test_remove_trailing_asterisk_no_dash():
+    # Trailing '*' without a preceding hyphen/em-dash: drop '*', add nothing.
+    src = "Some text*"
+    out = PGDPResults.remove_leading_trailing_asterisk(src)
+    assert out == "Some text"
+
+
+def test_remove_leading_asterisk_no_following_word_split():
+    # Leading '*' without a hyphenated wrap context: just drop the '*'.
+    src = "*Some text"
+    out = PGDPResults.remove_leading_trailing_asterisk(src)
+    assert out == "Some text"
+
+
+def test_remove_trailing_asterisk_after_em_dash():
+    # Trailing '—*' should keep the em dash and drop the '*'.
+    src = "Some text—*"
+    out = PGDPResults.remove_leading_trailing_asterisk(src)
+    assert out == "Some text—"
+
+
 def test_fix_footnotes():
     src = "Line[12] more[3]"
     out = PGDPResults.fix_footnotes(src)
