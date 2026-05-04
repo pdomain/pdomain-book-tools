@@ -1,6 +1,9 @@
+from logging import getLogger
 from os import PathLike
 from pathlib import Path
 from typing import Mapping
+
+logger = getLogger(__name__)
 
 # Default vocabulary used when training and loading models.
 # Trainers and predictors should both reference these so the vocab stays in sync.
@@ -176,7 +179,7 @@ def get_finetuned_torch_doctr_predictor(
 
     # check if file exists
     if Path.exists(dectection_pt_file) and Path.exists(recognition_pt_file):
-        print("Loading pre-trained OCR models...")
+        logger.info("Loading pre-trained OCR models...")
         # Select compute device: CUDA > MPS (Apple Silicon) > CPU
         if torch_cuda_is_available():
             device, device_nbr = "cuda", "cuda:0"
@@ -186,7 +189,7 @@ def get_finetuned_torch_doctr_predictor(
             device, device_nbr = "mps", "mps"
         else:
             device, device_nbr = "cpu", "cpu"
-        print(f"Using device: {device}")
+        logger.info("Using device: %s", device)
 
         # ---- Detection model -------------------------------------------------
         det_params = torch_load(dectection_pt_file, map_location=device_nbr)
