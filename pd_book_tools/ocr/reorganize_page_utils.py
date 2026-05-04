@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import List, Tuple
 
+import numpy as np
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
-from cv2 import addWeighted as cv2_addWeighted
 from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
@@ -587,6 +587,260 @@ def reconcile_dropped_words(
     return list(final_blocks) + [recovered]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Drop-cap detection — find the oversized initial letter at the start of a
+# paragraph (e.g. "R" in "READER!") and stitch it into the same line as the
+# rest of the word so the text output reads as one logical word. The word is
+# tagged ``word_components += ["drop cap"]`` for downstream consumers.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _is_single_visible_word_paragraph(paragraph: Block) -> Word | None:
+    """Return the lone meaningful Word in a paragraph, or None.
+
+    A drop-cap paragraph is structurally trivial: one LINE child holding one
+    Word with non-empty text. Anything more complex is not a drop cap.
+    """
+    if paragraph.block_category != BlockCategory.PARAGRAPH:
+        return None
+    line_children = [
+        l for l in paragraph.items if l.block_category == BlockCategory.LINE
+    ]
+    if len(line_children) != 1:
+        return None
+    line = line_children[0]
+    visible_words = [w for w in line.words if (w.text or "").strip()]
+    if len(visible_words) != 1:
+        return None
+    return visible_words[0]
+
+
+def _looks_like_drop_cap_word(word: Word, metrics: PageMetrics) -> bool:
+    """Drop-cap candidates: very tall, very short text.
+
+    Drop caps are typically rendered ~2.5× the body cap-height. We use a
+    1.8× threshold against ``median_word_h`` to pick up shorter caps too.
+    Text length must be small (1 visible character common; allow up to 2 to
+    handle OCR oddities like ``R'`` where the apostrophe is part of the
+    same OCR word).
+    """
+    bb = word.bounding_box
+    if bb is None:
+        return False
+    if metrics.median_word_h <= 0:
+        return False
+    if bb.height < 1.8 * metrics.median_word_h:
+        return False
+    text = (word.text or "").strip()
+    if not text or len(text) > 2:
+        return False
+    return True
+
+
+def _next_word_attached_to_drop_cap(
+    drop_cap: Word,
+    candidates: List[Word],
+    metrics: PageMetrics,
+) -> Word | None:
+    """Return the body-text word immediately to the right of ``drop_cap``.
+
+    A drop cap visually flows into the first body word with no real gap. We
+    pick the candidate whose minX is just after ``drop_cap.maxX`` and whose
+    Y range overlaps the upper portion of ``drop_cap`` (the body word sits
+    next to the top of the cap, not its bottom).
+    """
+    cap_bb = drop_cap.bounding_box
+    if cap_bb is None:
+        return None
+    cap_top_y = cap_bb.minY
+    cap_mid_x = (cap_bb.minX + cap_bb.maxX) / 2.0
+    body_h = max(metrics.median_word_h, 1e-6)
+
+    candidates_sorted = sorted(
+        (
+            w
+            for w in candidates
+            if w is not drop_cap and w.bounding_box and (w.text or "").strip()
+        ),
+        key=lambda w: w.bounding_box.minX,
+    )
+    for w in candidates_sorted:
+        wb = w.bounding_box
+        # Allow a small overlap — OCR can place the body word's left edge
+        # slightly inside the drop-cap glyph's bbox. Use centroid-comparison:
+        # the body word must sit to the right of the drop cap's centre.
+        word_mid_x = (wb.minX + wb.maxX) / 2.0
+        if word_mid_x <= cap_mid_x:
+            continue
+        gap = wb.minX - cap_bb.maxX
+        # Tight gap: drop cap is visually fused with the next word. Allow a
+        # small negative gap (overlap) up to ~25% of the cap's width.
+        max_gap = max(2.5 * body_h, 0.04)
+        min_gap = -0.25 * cap_bb.width
+        if gap > max_gap or gap < min_gap:
+            continue
+        # The body word sits at the top of the cap (within ~1 line height).
+        if wb.minY < cap_top_y - 0.5 * body_h:
+            continue
+        if wb.minY > cap_top_y + 1.5 * body_h:
+            continue
+        return w
+    return None
+
+
+def _trim_drop_cap_to_first_character(cap_word: Word) -> None:
+    """Keep only the first character of a drop-cap word's text.
+
+    OCR often picks up a stray glyph alongside the oversized cap (a smudge,
+    a stylized initial flourish, or in the preface-with-drop-cap fixture
+    a curly apostrophe-looking artifact next to the ``R``). Once we've
+    identified the word as a
+    drop cap and committed to merging it with the next body word, only the
+    initial letter is meaningful — the trailing artifacts produce wrong
+    output like ``"R'EADER!"`` when ``"READER!"`` is intended.
+
+    The bbox is left untouched (the cap glyph occupies the whole bbox);
+    only the text label is trimmed. ``ground_truth_text`` is trimmed in
+    parallel when present.
+    """
+    text = (cap_word.text or "").strip()
+    if len(text) > 1:
+        cap_word.text = text[0]
+    gt = (cap_word.ground_truth_text or "").strip()
+    if len(gt) > 1:
+        cap_word.ground_truth_text = gt[0]
+
+
+def _attach_drop_cap_to_target_line(
+    drop_cap_word: Word,
+    target_line: Block,
+) -> None:
+    """Tag ``drop_cap_word`` with ``word_components=["drop cap"]`` and prepend
+    it to ``target_line``'s word list.
+
+    The drop cap stays as its own ``Word`` so the per-letter geometry / OCR
+    confidence / training data is preserved (the labeler shows it as a
+    distinct token, drop-cap labelled). Line ``text`` rendering joins a
+    drop-cap word to the next word with NO trailing space — see
+    ``Block.text`` — so the output reads ``"R'EADER!"`` rather than
+    ``"R' EADER!"``, while the structural model still flags the cap.
+    """
+    if "drop cap" not in (drop_cap_word.word_components or []):
+        drop_cap_word.word_components = list(
+            (drop_cap_word.word_components or []) + ["drop cap"]
+        )
+    if target_line.block_category != BlockCategory.LINE:
+        return
+    target_line.items = [drop_cap_word] + list(target_line.items)
+    target_line.recompute_bounding_box()
+
+
+def stitch_drop_caps(blocks: List[Block], metrics: PageMetrics) -> List[Block]:
+    """Detect drop caps inside body BLOCKs and merge them into the next line.
+
+    Walks each body block's paragraphs in order. Whenever the *current*
+    paragraph is a single-word, oversized paragraph that fits the drop-cap
+    profile AND the *next* paragraph's first line starts with a body word
+    immediately to the right at the same baseline, the drop-cap word is
+    moved to the front of that line, tagged ``word_components=["drop cap"]``,
+    and the now-empty paragraph is dropped from the block.
+
+    Special blocks (page header, footer, sidenote, poetry, blockquote,
+    recovered) are skipped — drop caps only appear in body text.
+    """
+    SKIP_ROLES = {
+        "page header",
+        "page footer",
+        "sidenote",
+        "poetry",
+        "blockquote",
+        "recovered",
+        "page number",
+        "printers mark",
+    }
+
+    for outer in blocks:
+        roles = outer.block_role_labels or []
+        if any(r in SKIP_ROLES for r in roles):
+            continue
+        paragraphs = list(outer.items)
+        if len(paragraphs) < 2:
+            continue
+
+        kept_paragraphs: List[Block] = []
+        skip_idx: set[int] = set()
+        for i, paragraph in enumerate(paragraphs):
+            if i in skip_idx:
+                continue
+            cap_word = _is_single_visible_word_paragraph(paragraph)
+            if cap_word is None or not _looks_like_drop_cap_word(cap_word, metrics):
+                kept_paragraphs.append(paragraph)
+                continue
+            # Look at the next paragraph's first line.
+            if i + 1 >= len(paragraphs):
+                kept_paragraphs.append(paragraph)
+                continue
+            next_para = paragraphs[i + 1]
+            next_line_children = [
+                l for l in next_para.items if l.block_category == BlockCategory.LINE
+            ]
+            if not next_line_children:
+                kept_paragraphs.append(paragraph)
+                continue
+            target_line = next_line_children[0]
+            attached_to = _next_word_attached_to_drop_cap(
+                cap_word, target_line.words, metrics
+            )
+            if attached_to is None:
+                kept_paragraphs.append(paragraph)
+                continue
+            # Stitch: tag + move into target line, then trim the cap text
+            # down to its first character so OCR noise around the glyph
+            # doesn't pollute the rendered text. Drop the now-empty
+            # paragraph by NOT appending it to kept_paragraphs.
+            _attach_drop_cap_to_target_line(cap_word, target_line)
+            _trim_drop_cap_to_first_character(cap_word)
+            next_para.recompute_bounding_box()
+
+        if len(kept_paragraphs) != len(paragraphs):
+            outer.items = kept_paragraphs
+            outer.recompute_bounding_box()
+
+    return blocks
+
+
+def emit_step_dropcap_debug(
+    page,
+    debug_sections: List[tuple],
+    final_blocks: List[Block],
+) -> None:
+    """Append a Step DC summary listing every word now tagged ``drop cap``."""
+    if not layout_debug_enabled():
+        return
+    summary = ["Step DC: drop-cap detection + stitch"]
+    found = 0
+    for outer in final_blocks:
+        for paragraph in outer.items:
+            for line in paragraph.items:
+                if not hasattr(line, "words"):
+                    continue
+                for w in line.words:
+                    if "drop cap" in (w.word_components or []):
+                        found += 1
+                        bb = w.bounding_box
+                        if bb is None:
+                            continue
+                        summary.append(
+                            f"  drop cap word={w.text!r} "
+                            f"bb=({bb.minX:.4f},{bb.minY:.4f})-"
+                            f"({bb.maxX:.4f},{bb.maxY:.4f}) "
+                            f"h={bb.height:.4f}"
+                        )
+    if found == 0:
+        summary.append("  (no drop caps detected)")
+    debug_sections.append(("Step DC", summary))
+
+
 def assemble_final_blocks(
     page_header_block: Block | None,
     body_blocks: List[Block],
@@ -747,7 +1001,7 @@ def write_step_row_blocks_debug_overlay_png(
 ) -> "pathlib.Path | None":
     """Write a debug PNG framing each row block in a distinct color.
 
-    Row blocks are the output of vertical region grouping (Step F/G). Each
+    Row blocks are the output of vertical region grouping (Step F). Each
     block gets a unique color and a numeric label showing reading order.
     """
     base_image = page.cv2_numpy_page_image
@@ -1134,1002 +1388,6 @@ def gaps_are_consistent(gaps: List[float]) -> bool:
     return med >= 0.0 and std <= max(1.0, 0.65 * max(med, 1.0))
 
 
-def _word_interval_gap(min1: float, max1: float, min2: float, max2: float) -> float:
-    return max(0.0, max(min1, min2) - min(max1, max2))
-
-
-def _line_bands_from_group_words(words: List[Word], y_tol: float) -> List[List[Word]]:
-    sorted_words = sorted(
-        [w for w in words if w.bounding_box],
-        key=lambda w: (
-            w.bounding_box.vertical_midpoint if w.bounding_box else 0,
-            w.bounding_box.minX if w.bounding_box else 0,
-        ),
-    )
-    if not sorted_words:
-        return []
-
-    bands: List[List[Word]] = [[sorted_words[0]]]
-    band_centers: List[float] = [
-        sorted_words[0].bounding_box.vertical_midpoint
-        if sorted_words[0].bounding_box
-        else 0.0
-    ]
-
-    for word in sorted_words[1:]:
-        y_mid = word.bounding_box.vertical_midpoint if word.bounding_box else 0.0
-        best_idx = -1
-        best_dist = float("inf")
-        for idx, center in enumerate(band_centers):
-            dist = abs(y_mid - center)
-            if dist <= y_tol and dist < best_dist:
-                best_idx = idx
-                best_dist = dist
-        if best_idx == -1:
-            bands.append([word])
-            band_centers.append(y_mid)
-        else:
-            bands[best_idx].append(word)
-            members = [
-                w.bounding_box.vertical_midpoint
-                for w in bands[best_idx]
-                if w.bounding_box
-            ]
-            band_centers[best_idx] = (
-                float(np_mean(members)) if members else band_centers[best_idx]
-            )
-
-    for band in bands:
-        band.sort(key=lambda w: w.bounding_box.minX if w.bounding_box else 0)
-    bands.sort(
-        key=lambda b: min((w.bounding_box.minY for w in b if w.bounding_box), default=0)
-    )
-    return bands
-
-
-def _split_group_second_pass(words: List[Word], coord_width: float) -> List[List[Word]]:
-    if len(words) < 12:
-        return [words]
-
-    median_h = float(
-        np_median([w.bounding_box.height for w in words if w.bounding_box] or [0.01])
-    )
-    bands = _line_bands_from_group_words(words, y_tol=max(0.55 * median_h, 1e-6))
-    if len(bands) < 3:
-        return [words]
-
-    band_boxes = []
-    for band in bands:
-        min_x = min((w.bounding_box.minX for w in band if w.bounding_box), default=0.0)
-        max_x = max((w.bounding_box.maxX for w in band if w.bounding_box), default=0.0)
-        min_y = min((w.bounding_box.minY for w in band if w.bounding_box), default=0.0)
-        max_y = max((w.bounding_box.maxY for w in band if w.bounding_box), default=0.0)
-        band_boxes.append((min_x, max_x, min_y, max_y))
-
-    gaps = [
-        max(0.0, band_boxes[i + 1][2] - band_boxes[i][3]) for i in range(len(bands) - 1)
-    ]
-    gap_mean = float(np_mean(gaps)) if gaps else 0.0
-    gap_std = float(np_std(gaps)) if len(gaps) > 1 else 0.0
-    gap_trigger = max(1.2 * median_h, gap_mean + 1.25 * gap_std)
-
-    group_min_x = min((bb[0] for bb in band_boxes), default=0.0)
-    group_max_x = max((bb[1] for bb in band_boxes), default=0.0)
-    group_w = max(1e-6, group_max_x - group_min_x)
-
-    split_indices: List[int] = []
-    for i in range(len(bands) - 1):
-        gap = gaps[i]
-
-        prev_band_words = [w for w in bands[i] if w.bounding_box]
-        next_band_words = [w for w in bands[i + 1] if w.bounding_box]
-
-        left_boundary_x = group_min_x + 0.40 * group_w
-        right_boundary_x = group_min_x + 0.60 * group_w
-
-        prev_left = [
-            w
-            for w in prev_band_words
-            if w.bounding_box and w.bounding_box.horizontal_midpoint <= left_boundary_x
-        ]
-        next_left = [
-            w
-            for w in next_band_words
-            if w.bounding_box and w.bounding_box.horizontal_midpoint <= left_boundary_x
-        ]
-        prev_right = [
-            w
-            for w in prev_band_words
-            if w.bounding_box and w.bounding_box.horizontal_midpoint >= right_boundary_x
-        ]
-        next_right = [
-            w
-            for w in next_band_words
-            if w.bounding_box and w.bounding_box.horizontal_midpoint >= right_boundary_x
-        ]
-
-        def side_continuous(prev_side: List[Word], next_side: List[Word]) -> bool:
-            if not prev_side or not next_side:
-                return False
-
-            prev_min_x = min(
-                (w.bounding_box.minX for w in prev_side if w.bounding_box), default=0.0
-            )
-            prev_max_x = max(
-                (w.bounding_box.maxX for w in prev_side if w.bounding_box), default=0.0
-            )
-            next_min_x = min(
-                (w.bounding_box.minX for w in next_side if w.bounding_box), default=0.0
-            )
-            next_max_x = max(
-                (w.bounding_box.maxX for w in next_side if w.bounding_box), default=0.0
-            )
-            prev_max_y = max(
-                (w.bounding_box.maxY for w in prev_side if w.bounding_box), default=0.0
-            )
-            next_min_y = min(
-                (w.bounding_box.minY for w in next_side if w.bounding_box), default=0.0
-            )
-
-            side_w_prev = max(1e-6, prev_max_x - prev_min_x)
-            side_w_next = max(1e-6, next_max_x - next_min_x)
-            side_overlap = max(
-                0.0, min(prev_max_x, next_max_x) - max(prev_min_x, next_min_x)
-            )
-            side_overlap_ratio = side_overlap / max(1e-6, min(side_w_prev, side_w_next))
-            side_y_gap = max(0.0, next_min_y - prev_max_y)
-
-            return side_overlap_ratio >= 0.30 and side_y_gap <= max(
-                0.85 * median_h, 0.006 * coord_width
-            )
-
-        left_continuous = side_continuous(prev_left, next_left)
-        right_continuous = side_continuous(prev_right, next_right)
-
-        hard_gap_split = gap >= gap_trigger
-
-        # Do not split a continuous full-width body stream into top/bottom just
-        # because of one large vertical void (e.g., figure area in the middle).
-        if hard_gap_split:
-            upper_bands = bands[: i + 1]
-            lower_bands = bands[i + 1 :]
-
-            upper_words = [w for band in upper_bands for w in band if w.bounding_box]
-            lower_words = [w for band in lower_bands for w in band if w.bounding_box]
-
-            upper_count = len(upper_words)
-            lower_count = len(lower_words)
-            total_count = max(1, len(words))
-
-            upper_min_x = min(
-                (w.bounding_box.minX for w in upper_words if w.bounding_box),
-                default=0.0,
-            )
-            upper_max_x = max(
-                (w.bounding_box.maxX for w in upper_words if w.bounding_box),
-                default=0.0,
-            )
-            lower_min_x = min(
-                (w.bounding_box.minX for w in lower_words if w.bounding_box),
-                default=0.0,
-            )
-            lower_max_x = max(
-                (w.bounding_box.maxX for w in lower_words if w.bounding_box),
-                default=0.0,
-            )
-            upper_w = max(1e-6, upper_max_x - upper_min_x)
-            lower_w = max(1e-6, lower_max_x - lower_min_x)
-
-            both_large = upper_count >= int(0.25 * total_count) and lower_count >= int(
-                0.25 * total_count
-            )
-            both_body_like = upper_w >= 0.70 * group_w and lower_w >= 0.70 * group_w
-            similar_margins = (
-                abs(upper_min_x - lower_min_x) <= 0.05 * coord_width
-                and abs(upper_max_x - lower_max_x) <= 0.05 * coord_width
-            )
-
-            if both_large and both_body_like and similar_margins:
-                hard_gap_split = False
-
-        if hard_gap_split:
-            # Require evidence of a true boundary across the text flow.
-            # If right side remains continuous while only left side breaks,
-            # keep the group intact (common around figure/caption intrusions).
-            if right_continuous and not left_continuous:
-                hard_gap_split = False
-
-        if hard_gap_split:
-            split_indices.append(i)
-
-    if not split_indices:
-        return [words]
-
-    segments: List[List[Word]] = []
-    start = 0
-    for idx in split_indices:
-        segment_bands = bands[start : idx + 1]
-        segment_words = [w for band in segment_bands for w in band]
-        if segment_words:
-            segments.append(segment_words)
-        start = idx + 1
-
-    tail_words = [w for band in bands[start:] for w in band]
-    if tail_words:
-        segments.append(tail_words)
-
-    return segments if len(segments) > 1 else [words]
-
-
-def _split_group_horizontal_pass(
-    words: List[Word], coord_width: float
-) -> List[List[Word]]:
-    """Split groups that contain a strong left/right gap across line bands."""
-    if len(words) < 10:
-        return [words]
-
-    median_h = float(
-        np_median([w.bounding_box.height for w in words if w.bounding_box] or [0.01])
-    )
-    bands = _line_bands_from_group_words(words, y_tol=max(0.55 * median_h, 1e-6))
-    if not bands:
-        return [words]
-
-    all_gaps: List[float] = []
-    candidate_split_mids: List[float] = []
-    for band in bands:
-        band_words = sorted(
-            [w for w in band if w.bounding_box],
-            key=lambda w: w.bounding_box.minX if w.bounding_box else 0,
-        )
-        if len(band_words) < 2:
-            continue
-        band_gaps: List[tuple[float, float]] = []
-        for i in range(len(band_words) - 1):
-            a = band_words[i].bounding_box
-            b = band_words[i + 1].bounding_box
-            if a is None or b is None:
-                continue
-            gap = max(0.0, b.minX - a.maxX)
-            mid = (a.maxX + b.minX) / 2.0
-            if gap > 0:
-                all_gaps.append(gap)
-                band_gaps.append((gap, mid))
-
-        if not band_gaps:
-            continue
-        # Use only the dominant gap from each band to reduce noise.
-        max_gap, max_mid = max(band_gaps, key=lambda t: t[0])
-        candidate_split_mids.append(max_mid)
-
-    if not all_gaps or not candidate_split_mids:
-        return [words]
-
-    med_gap = float(np_median(all_gaps)) if all_gaps else 0.0
-    abs_gap_threshold = max(0.04 * coord_width, 3.0 * med_gap)
-
-    strong_band_mids: List[float] = []
-    for band in bands:
-        band_words = sorted(
-            [w for w in band if w.bounding_box],
-            key=lambda w: w.bounding_box.minX if w.bounding_box else 0,
-        )
-        if len(band_words) < 2:
-            continue
-        band_gaps: List[tuple[float, float]] = []
-        for i in range(len(band_words) - 1):
-            a = band_words[i].bounding_box
-            b = band_words[i + 1].bounding_box
-            if a is None or b is None:
-                continue
-            gap = max(0.0, b.minX - a.maxX)
-            mid = (a.maxX + b.minX) / 2.0
-            band_gaps.append((gap, mid))
-        if not band_gaps:
-            continue
-        gap, mid = max(band_gaps, key=lambda t: t[0])
-        if gap >= abs_gap_threshold:
-            strong_band_mids.append(mid)
-
-    # Need support from multiple bands (or one very large band split) to avoid
-    # breaking normal paragraph lines.
-    if not strong_band_mids:
-        return [words]
-    if len(strong_band_mids) == 1 and len(words) > 20:
-        # Allow single-band split only when gap is very pronounced.
-        lone_mid = strong_band_mids[0]
-        split_x = lone_mid
-    else:
-        split_x = float(np_median(strong_band_mids))
-
-    left = [
-        w
-        for w in words
-        if w.bounding_box and w.bounding_box.horizontal_midpoint <= split_x
-    ]
-    right = [
-        w
-        for w in words
-        if w.bounding_box and w.bounding_box.horizontal_midpoint > split_x
-    ]
-    if len(left) < 3 or len(right) < 3:
-        return [words]
-
-    left_max_x = max((w.bounding_box.maxX for w in left if w.bounding_box), default=0.0)
-    right_min_x = min(
-        (w.bounding_box.minX for w in right if w.bounding_box), default=1.0
-    )
-    if right_min_x - left_max_x < 0.02 * coord_width:
-        return [words]
-
-    return [left, right]
-
-
-def _legacy_magic_wand_subgroups(
-    words: List[Word],
-    coord_width: float,
-    coord_height: float,
-) -> List[List[Word]]:
-    """Original lightweight adjacency grouping, reused for small groups."""
-    words_with_bbox = [w for w in words if w.bounding_box]
-    if len(words_with_bbox) < 2:
-        return [words]
-
-    median_h = float(
-        np_median(
-            [w.bounding_box.height for w in words_with_bbox if w.bounding_box] or [0.01]
-        )
-    )
-    same_row_y_tol = max(0.50 * median_h, 0.004 * coord_height)
-    same_row_x_gap = max(1.8 * median_h, 0.028 * coord_width)
-    next_row_y_gap = max(1.1 * median_h, 0.006 * coord_height)
-
-    n = len(words_with_bbox)
-    visited = [False] * n
-    groups: List[List[Word]] = []
-
-    def are_adjacent(i: int, j: int) -> bool:
-        a = words_with_bbox[i].bounding_box
-        b = words_with_bbox[j].bounding_box
-        if a is None or b is None:
-            return False
-
-        y_mid_delta = abs(a.vertical_midpoint - b.vertical_midpoint)
-        x_gap = _word_interval_gap(a.minX, a.maxX, b.minX, b.maxX)
-        y_gap = _word_interval_gap(a.minY, a.maxY, b.minY, b.maxY)
-        x_overlap = max(0.0, min(a.maxX, b.maxX) - max(a.minX, b.minX))
-        min_w = max(min(a.width, b.width), 1e-6)
-        overlap_ratio = x_overlap / min_w
-
-        if y_mid_delta <= same_row_y_tol and x_gap <= same_row_x_gap:
-            return True
-        if y_gap <= next_row_y_gap and overlap_ratio >= 0.22:
-            return True
-        return False
-
-    for i in range(n):
-        if visited[i]:
-            continue
-        stack = [i]
-        visited[i] = True
-        comp: List[int] = []
-        while stack:
-            idx = stack.pop()
-            comp.append(idx)
-            for j in range(n):
-                if visited[j]:
-                    continue
-                if are_adjacent(idx, j):
-                    visited[j] = True
-                    stack.append(j)
-        groups.append([words_with_bbox[k] for k in comp])
-
-    if len(groups) <= 1:
-        return [words]
-
-    # Preserve original order by top-left position.
-    groups.sort(
-        key=lambda g: (
-            min((w.bounding_box.minY for w in g if w.bounding_box), default=0.0),
-            min((w.bounding_box.minX for w in g if w.bounding_box), default=0.0),
-        )
-    )
-    return groups
-
-
-def compute_next_word_space_stats(
-    words: List[Word],
-) -> tuple[float, float, float, float, float, float, float, float]:
-    """Return nearest-gap stats:
-
-    (mean_x, std_x, mean_y, std_y, median_x, median_y, p90_x, p90_y)
-
-    For each word, we compute the nearest positive X gap to another word on
-    roughly the same row, and nearest positive Y gap to another word on roughly
-    the same column. We then take the max of those nearest gaps.
-    """
-    words_with_bbox = [w for w in words if w.bounding_box]
-    if len(words_with_bbox) < 2:
-        return 0.0, 0.0
-
-    median_h = float(
-        np_median(
-            [w.bounding_box.height for w in words_with_bbox if w.bounding_box] or [1]
-        )
-    )
-    median_w = float(
-        np_median(
-            [w.bounding_box.width for w in words_with_bbox if w.bounding_box] or [1]
-        )
-    )
-
-    same_row_tol = max(0.60 * median_h, 1e-6)
-    same_col_tol = max(0.60 * median_w, 1e-6)
-
-    nearest_x_gaps: List[float] = []
-    nearest_y_gaps: List[float] = []
-
-    for w in words_with_bbox:
-        bb = w.bounding_box
-        if bb is None:
-            continue
-        nearest_x = None
-        nearest_y = None
-
-        for other in words_with_bbox:
-            if other is w or other.bounding_box is None:
-                continue
-            ob = other.bounding_box
-
-            y_mid_delta = abs(ob.vertical_midpoint - bb.vertical_midpoint)
-            if y_mid_delta <= same_row_tol:
-                x_gap = _word_interval_gap(bb.minX, bb.maxX, ob.minX, ob.maxX)
-                if x_gap > 0:
-                    nearest_x = x_gap if nearest_x is None else min(nearest_x, x_gap)
-
-            x_mid_delta = abs(ob.horizontal_midpoint - bb.horizontal_midpoint)
-            if x_mid_delta <= same_col_tol:
-                y_gap = _word_interval_gap(bb.minY, bb.maxY, ob.minY, ob.maxY)
-                if y_gap > 0:
-                    nearest_y = y_gap if nearest_y is None else min(nearest_y, y_gap)
-
-        if nearest_x is not None:
-            nearest_x_gaps.append(nearest_x)
-        if nearest_y is not None:
-            nearest_y_gaps.append(nearest_y)
-
-    mean_x = float(np_mean(nearest_x_gaps)) if nearest_x_gaps else 0.0
-    std_x = float(np_std(nearest_x_gaps)) if len(nearest_x_gaps) > 1 else 0.0
-    mean_y = float(np_mean(nearest_y_gaps)) if nearest_y_gaps else 0.0
-    std_y = float(np_std(nearest_y_gaps)) if len(nearest_y_gaps) > 1 else 0.0
-
-    med_x = float(np_median(nearest_x_gaps)) if nearest_x_gaps else 0.0
-    med_y = float(np_median(nearest_y_gaps)) if nearest_y_gaps else 0.0
-
-    if nearest_x_gaps:
-        x_sorted = sorted(nearest_x_gaps)
-        idx = min(len(x_sorted) - 1, max(0, int(0.9 * (len(x_sorted) - 1))))
-        p90_x = float(x_sorted[idx])
-    else:
-        p90_x = 0.0
-
-    if nearest_y_gaps:
-        y_sorted = sorted(nearest_y_gaps)
-        idx = min(len(y_sorted) - 1, max(0, int(0.9 * (len(y_sorted) - 1))))
-        p90_y = float(y_sorted[idx])
-    else:
-        p90_y = 0.0
-
-    return mean_x, std_x, mean_y, std_y, med_x, med_y, p90_x, p90_y
-
-
-def _group_sort_key(group: List[Word]) -> tuple[float, float]:
-    min_y = min((w.bounding_box.minY for w in group if w.bounding_box), default=0.0)
-    min_x = min((w.bounding_box.minX for w in group if w.bounding_box), default=0.0)
-    return (min_y, min_x)
-
-
-def _detect_word_groups_internal(
-    page,
-) -> tuple[List[List[Word]], List[List[Word]], List[List[Word]], List[List[Word]]]:
-    """Return grouped words for each sub-pass:
-
-    (seed_groups, vertical_split_groups, horizontal_split_groups, final_groups)
-    """
-    words = [w for w in page.words if w.bounding_box and (w.text or "").strip()]
-    if not words:
-        return ([], [], [], [])
-
-    page_w, page_h = page.resolved_dimensions
-
-    bbox_max_x = max(
-        (w.bounding_box.maxX for w in words if w.bounding_box), default=1.0
-    )
-    bbox_max_y = max(
-        (w.bounding_box.maxY for w in words if w.bounding_box), default=1.0
-    )
-    # Use coordinate-domain dimensions (normalized vs pixel) for thresholds.
-    coord_width = (
-        1.0 if bbox_max_x <= 2.0 else float(page_w or page.width or bbox_max_x)
-    )
-    coord_height = (
-        1.0 if bbox_max_y <= 2.0 else float(page_h or page.height or bbox_max_y)
-    )
-
-    median_h = float(
-        np_median([w.bounding_box.height for w in words if w.bounding_box] or [1])
-    )
-    avg_word_gap = estimate_average_word_distance(words, page.width)
-    (
-        mean_next_x_space,
-        std_next_x_space,
-        mean_next_y_space,
-        std_next_y_space,
-        med_next_x_space,
-        med_next_y_space,
-        p90_next_x_space,
-        p90_next_y_space,
-    ) = compute_next_word_space_stats(words)
-
-    # Dynamic thresholds (with global floors) used during group growth.
-    same_row_y_tol_floor = max(0.55 * median_h, 0.004 * coord_height)
-    same_row_x_tol_floor = max(2.4 * avg_word_gap, 0.012 * coord_width)
-    stack_x_tol_floor = max(1.2 * avg_word_gap, 0.010 * coord_width)
-    stack_y_tol_floor = max(1.8 * median_h, 0.010 * coord_height)
-    # Use median nearest spacing as the primary cap and p90 as a robust upper
-    # ceiling so single large outliers don't connect distant regions.
-    row_link_x_cap = max(
-        1.0 * avg_word_gap,
-        1.15 * (mean_next_x_space + 2.0 * std_next_x_space),
-        1.10 * med_next_x_space,
-    )
-    if p90_next_x_space > 0:
-        row_link_x_cap = min(row_link_x_cap, 1.10 * p90_next_x_space)
-
-    stack_link_y_cap = max(
-        0.90 * median_h,
-        1.15 * (mean_next_y_space + 2.0 * std_next_y_space),
-        1.10 * med_next_y_space,
-    )
-    if p90_next_y_space > 0:
-        stack_link_y_cap = min(stack_link_y_cap, 1.10 * p90_next_y_space)
-
-    x_std_eps = max(std_next_x_space, 1e-6)
-    y_std_eps = max(std_next_y_space, 1e-6)
-
-    unassigned = set(range(len(words)))
-    seed_groups: List[List[Word]] = []
-    global_min_y = min(
-        (w.bounding_box.minY for w in words if w.bounding_box), default=0.0
-    )
-    top_guard_band_end = global_min_y + max(3.0 * median_h, 0.02 * coord_height)
-
-    while unassigned:
-        seed_idx = min(
-            unassigned,
-            key=lambda i: (
-                words[i].bounding_box.minY if words[i].bounding_box else 0,
-                words[i].bounding_box.minX if words[i].bounding_box else 0,
-            ),
-        )
-        group_indices = {seed_idx}
-        unassigned.remove(seed_idx)
-
-        changed = True
-        while changed and unassigned:
-            changed = False
-
-            g_words = [words[i] for i in group_indices if words[i].bounding_box]
-            if not g_words:
-                break
-
-            g_med_x_mid = float(
-                np_median(
-                    [
-                        w.bounding_box.horizontal_midpoint
-                        for w in g_words
-                        if w.bounding_box
-                    ]
-                )
-            )
-            g_med_y_mid = float(
-                np_median(
-                    [
-                        w.bounding_box.vertical_midpoint
-                        for w in g_words
-                        if w.bounding_box
-                    ]
-                )
-            )
-            g_min_y = min(
-                (w.bounding_box.minY for w in g_words if w.bounding_box), default=0.0
-            )
-            g_med_h = float(
-                np_median(
-                    [w.bounding_box.height for w in g_words if w.bounding_box]
-                    or [median_h]
-                )
-            )
-            g_med_w = float(
-                np_median(
-                    [w.bounding_box.width for w in g_words if w.bounding_box]
-                    or [0.02 * coord_width]
-                )
-            )
-
-            same_row_y_tol = max(0.55 * g_med_h, same_row_y_tol_floor)
-            same_row_x_tol = max(0.75 * g_med_w, same_row_x_tol_floor)
-            stack_x_tol = max(0.35 * g_med_w, stack_x_tol_floor)
-            stack_y_tol = max(1.6 * g_med_h, stack_y_tol_floor)
-            # Keep early vertical growth strict only in the top guard band
-            # (page number/running header area). Else allow captions/blocks to
-            # grow vertically from small seeds.
-            in_top_guard_band = g_min_y <= top_guard_band_end
-            allow_vertical_links = (len(group_indices) >= 6) or (not in_top_guard_band)
-
-            to_add: List[int] = []
-            for idx in list(unassigned):
-                bb = words[idx].bounding_box
-                if bb is None:
-                    continue
-
-                x_mid_dist = abs(bb.horizontal_midpoint - g_med_x_mid)
-                y_mid_dist = abs(bb.vertical_midpoint - g_med_y_mid)
-
-                # Nearest relation to current group (prevents broad transitive grabs).
-                nearest_x_gap = float("inf")
-                nearest_y_gap = float("inf")
-                nearest_y_mid = float("inf")
-                nearest_x_mid = float("inf")
-                nearest_y_overlap_ratio = 0.0
-                nearest_x_overlap_ratio = 0.0
-                for gw in g_words:
-                    gbb = gw.bounding_box
-                    if gbb is None:
-                        continue
-                    nearest_x_gap = min(
-                        nearest_x_gap,
-                        _word_interval_gap(gbb.minX, gbb.maxX, bb.minX, bb.maxX),
-                    )
-                    nearest_y_gap = min(
-                        nearest_y_gap,
-                        _word_interval_gap(gbb.minY, gbb.maxY, bb.minY, bb.maxY),
-                    )
-                    nearest_y_mid = min(
-                        nearest_y_mid,
-                        abs(gbb.vertical_midpoint - bb.vertical_midpoint),
-                    )
-                    nearest_x_mid = min(
-                        nearest_x_mid,
-                        abs(gbb.horizontal_midpoint - bb.horizontal_midpoint),
-                    )
-
-                    y_overlap = max(
-                        0.0, min(gbb.maxY, bb.maxY) - max(gbb.minY, bb.minY)
-                    )
-                    x_overlap = max(
-                        0.0, min(gbb.maxX, bb.maxX) - max(gbb.minX, bb.minX)
-                    )
-                    min_h = max(min(gbb.height, bb.height), 1e-6)
-                    min_w = max(min(gbb.width, bb.width), 1e-6)
-                    nearest_y_overlap_ratio = max(
-                        nearest_y_overlap_ratio, y_overlap / min_h
-                    )
-                    nearest_x_overlap_ratio = max(
-                        nearest_x_overlap_ratio, x_overlap / min_w
-                    )
-
-                x_z = (nearest_x_gap - mean_next_x_space) / x_std_eps
-                y_z = (nearest_y_gap - mean_next_y_space) / y_std_eps
-
-                same_row_like = (
-                    min(y_mid_dist, nearest_y_mid) <= same_row_y_tol
-                    and nearest_x_gap <= min(same_row_x_tol, row_link_x_cap)
-                    and x_z <= 1.9
-                    and nearest_y_overlap_ratio >= 0.42
-                )
-                stacked_like = (
-                    (
-                        min(x_mid_dist, nearest_x_mid) <= stack_x_tol
-                        and nearest_y_gap <= min(stack_y_tol, stack_link_y_cap)
-                        and y_z <= 1.9
-                        and nearest_x_overlap_ratio >= 0.24
-                    )
-                    if allow_vertical_links
-                    else False
-                )
-                touching_like = (
-                    (
-                        nearest_x_gap <= 0.60 * min(same_row_x_tol, row_link_x_cap)
-                        and nearest_y_gap <= 0.70 * min(stack_y_tol, stack_link_y_cap)
-                        and x_z <= 1.3
-                        and y_z <= 1.3
-                    )
-                    if allow_vertical_links
-                    else False
-                )
-
-                if same_row_like or stacked_like or touching_like:
-                    to_add.append(idx)
-
-            if to_add:
-                for idx in to_add:
-                    if idx in unassigned:
-                        unassigned.remove(idx)
-                        group_indices.add(idx)
-                changed = True
-
-        seed_groups.append([words[i] for i in sorted(group_indices)])
-
-    # Second pass: split broad groups at strong inter-line boundaries.
-    vertical_split_groups: List[List[Word]] = []
-    for group in seed_groups:
-        vertical_split_groups.extend(_split_group_second_pass(group, coord_width))
-
-    horizontal_split_groups: List[List[Word]] = []
-    for group in vertical_split_groups:
-        horizontal_split_groups.extend(_split_group_horizontal_pass(group, coord_width))
-
-    # Reuse the original lightweight magic-wand logic for small groups.
-    # This helps avoid overfitting of strict global rules in compact regions.
-    legacy_refined: List[List[Word]] = []
-    for group in horizontal_split_groups:
-        if 2 <= len(group) <= 36:
-            legacy_refined.extend(
-                _legacy_magic_wand_subgroups(
-                    group,
-                    coord_width=coord_width,
-                    coord_height=coord_height,
-                )
-            )
-        else:
-            legacy_refined.append(group)
-    final_groups = legacy_refined
-
-    # Stable top-to-bottom, then left-to-right ordering.
-    seed_groups.sort(key=_group_sort_key)
-    vertical_split_groups.sort(key=_group_sort_key)
-    horizontal_split_groups.sort(key=_group_sort_key)
-    final_groups.sort(key=_group_sort_key)
-    return (seed_groups, vertical_split_groups, horizontal_split_groups, final_groups)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Step 1 — word-level region grouping. Three sub-passes (1a seed growth,
-# 1b vertical hard-gap split, 1c horizontal split + legacy small-group
-# refinement) feed into ``detect_word_groups``.
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def detect_word_groups(page) -> List[List[Word]]:
-    """Detect disconnected word groups via staged geometry refinement."""
-    _, _, _, final_groups = _detect_word_groups_internal(page)
-    return final_groups
-
-
-def _group_summary_lines(groups: List[List[Word]]) -> List[str]:
-    out: List[str] = []
-    out.append(f"Word group count: {len(groups)}")
-    for idx, group in enumerate(groups, start=1):
-        min_x = min((w.bounding_box.minX for w in group if w.bounding_box), default=0.0)
-        min_y = min((w.bounding_box.minY for w in group if w.bounding_box), default=0.0)
-        max_x = max((w.bounding_box.maxX for w in group if w.bounding_box), default=0.0)
-        max_y = max((w.bounding_box.maxY for w in group if w.bounding_box), default=0.0)
-        sample = " ".join((w.text or "").strip() for w in group[:6]).strip()
-        out.append(
-            f"  group-{idx:02d}: words={len(group)} bbox=({min_x:.4f},{min_y:.4f})-({max_x:.4f},{max_y:.4f})"
-        )
-        if sample:
-            out.append(f"    sample: {sample}")
-    return out
-
-
-def _base_step1_geometry_lines(page) -> List[str]:
-    words = [w for w in page.words if w.bounding_box and (w.text or "").strip()]
-    paragraphs = [p for p in page.paragraphs if p.bounding_box]
-    lines = [l for l in page.lines if l.bounding_box]
-
-    if not words:
-        return ["Step 1: no words available."]
-
-    out: List[str] = []
-    page_w, page_h = page.resolved_dimensions
-    max_word_x = max(
-        (w.bounding_box.maxX for w in words if w.bounding_box), default=0.0
-    )
-    max_word_y = max(
-        (w.bounding_box.maxY for w in words if w.bounding_box), default=0.0
-    )
-    (
-        mean_next_x_space,
-        std_next_x_space,
-        mean_next_y_space,
-        std_next_y_space,
-        med_next_x_space,
-        med_next_y_space,
-        p90_next_x_space,
-        p90_next_y_space,
-    ) = compute_next_word_space_stats(words)
-    out.append(f"Max X/Y (words): {max_word_x:.4f}, {max_word_y:.4f}")
-    out.append(f"Max X/Y (page resolved): {float(page_w):.4f}, {float(page_h):.4f}")
-    out.append(
-        f"Median X/Y space to next word: {med_next_x_space:.4f}, {med_next_y_space:.4f}"
-    )
-    out.append(
-        f"Mean+Std X/Y space to next word: {mean_next_x_space:.4f}+{std_next_x_space:.4f}, {mean_next_y_space:.4f}+{std_next_y_space:.4f}"
-    )
-    out.append(
-        f"P90 X/Y space to next word: {p90_next_x_space:.4f}, {p90_next_y_space:.4f}"
-    )
-    out.append(f"Word count: {len(words)}")
-    out.append(f"Line count: {len(lines)}")
-    out.append(f"Paragraph count: {len(paragraphs)}")
-
-    widths = [w.bounding_box.width for w in words if w.bounding_box]
-    heights = [w.bounding_box.height for w in words if w.bounding_box]
-    if widths:
-        out.append(f"Median word width: {float(np_median(widths)):.4f}")
-    if heights:
-        out.append(f"Median word height: {float(np_median(heights)):.4f}")
-    out.append("Overlay: paragraphs=green@25%, words=blue@15%")
-    return out
-
-
-def debug_step1_subgroup_sections(page) -> List[tuple[str, List[str]]]:
-    """Return explicit Step 1a/1b/1c sections for sub-group passes."""
-    seed_groups, vertical_groups, horizontal_groups, final_groups = (
-        _detect_word_groups_internal(page)
-    )
-
-    step1a = ["Step 1a: seed region growth (raw magic-wand connectivity)"]
-    step1a.extend(_base_step1_geometry_lines(page))
-    step1a.extend(_group_summary_lines(seed_groups))
-    png_1a = write_step_groups_debug_overlay_png(page, seed_groups, "step1a")
-    if png_1a is not None:
-        step1a.append(f"Overlay PNG: {png_1a}")
-
-    step1b = ["Step 1b: vertical hard-gap split pass"]
-    step1b.append(f"Input groups from 1a: {len(seed_groups)}")
-    step1b.extend(_group_summary_lines(vertical_groups))
-    png_1b = write_step_groups_debug_overlay_png(page, vertical_groups, "step1b")
-    if png_1b is not None:
-        step1b.append(f"Overlay PNG: {png_1b}")
-
-    step1c = ["Step 1c: horizontal split + legacy small-group refinement"]
-    step1c.append(f"Input groups from 1b: {len(vertical_groups)}")
-    step1c.append(f"Post-horizontal group count: {len(horizontal_groups)}")
-    step1c.extend(_group_summary_lines(final_groups))
-    png_1c = write_step_groups_debug_overlay_png(page, final_groups, "step1c")
-    if png_1c is not None:
-        step1c.append(f"Overlay PNG: {png_1c}")
-
-    return [("Step 1a", step1a), ("Step 1b", step1b), ("Step 1c", step1c)]
-
-
-def write_step_groups_debug_overlay_png(
-    page,
-    groups: List[List[Word]],
-    suffix: str,
-) -> pathlib.Path | None:
-    """Write a debug PNG with overlays and supplied group boundaries."""
-    base_image = page.cv2_numpy_page_image
-    if base_image is None:
-        return None
-
-    words = [w for w in page.words if w.bounding_box and (w.text or "").strip()]
-    if not words:
-        return None
-
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
-
-    paragraph_layer = overlay.copy()
-    for paragraph in page.paragraphs:
-        bb = paragraph.bounding_box
-        rect = _bbox_to_px_rect(bb, image_w, image_h)
-        if rect is None:
-            continue
-        min_x, min_y, max_x, max_y = rect
-        cv2_rectangle(
-            paragraph_layer,
-            (min_x, min_y),
-            (max_x, max_y),
-            (0, 180, 0),  # green in BGR
-            -1,
-        )
-    overlay = cv2_addWeighted(paragraph_layer, 0.25, overlay, 0.75, 0.0)
-
-    word_layer = overlay.copy()
-    for word in words:
-        bb = word.bounding_box
-        rect = _bbox_to_px_rect(bb, image_w, image_h)
-        if rect is None:
-            continue
-        min_x, min_y, max_x, max_y = rect
-        cv2_rectangle(
-            word_layer,
-            (min_x, min_y),
-            (max_x, max_y),
-            (220, 90, 40),  # blue-toned in BGR
-            -1,
-        )
-    overlay = cv2_addWeighted(word_layer, 0.15, overlay, 0.85, 0.0)
-
-    # Thin outlines keep boxes legible on dense regions.
-    for paragraph in page.paragraphs:
-        bb = paragraph.bounding_box
-        rect = _bbox_to_px_rect(bb, image_w, image_h)
-        if rect is None:
-            continue
-        min_x, min_y, max_x, max_y = rect
-        cv2_rectangle(
-            overlay,
-            (min_x, min_y),
-            (max_x, max_y),
-            (0, 140, 0),
-            1,
-        )
-    for word in words:
-        bb = word.bounding_box
-        rect = _bbox_to_px_rect(bb, image_w, image_h)
-        if rect is None:
-            continue
-        min_x, min_y, max_x, max_y = rect
-        cv2_rectangle(
-            overlay,
-            (min_x, min_y),
-            (max_x, max_y),
-            (255, 120, 60),
-            1,
-        )
-
-    # Add thin group-level outlines to visualize disconnected components.
-    group_colors = [
-        (20, 20, 220),
-        (220, 120, 20),
-        (180, 20, 180),
-        (20, 160, 220),
-        (220, 220, 20),
-        (20, 220, 120),
-    ]
-    for group_idx, group in enumerate(groups, start=1):
-        min_x = min((w.bounding_box.minX for w in group if w.bounding_box), default=0.0)
-        min_y = min((w.bounding_box.minY for w in group if w.bounding_box), default=0.0)
-        max_x = max((w.bounding_box.maxX for w in group if w.bounding_box), default=0.0)
-        max_y = max((w.bounding_box.maxY for w in group if w.bounding_box), default=0.0)
-
-        rect = _bbox_to_px_rect(
-            _LooseBBox(min_x, min_y, max_x, max_y), image_w, image_h
-        )
-        if rect is None:
-            continue
-        gx0, gy0, gx1, gy1 = rect
-        group_color = group_colors[(group_idx - 1) % len(group_colors)]
-        cv2_rectangle(
-            overlay,
-            (gx0, gy0),
-            (gx1, gy1),
-            group_color,
-            2,
-        )
-        label = f"G{group_idx} ({len(group)})"
-        label_y = max(12, gy0 - 4)
-        cv2_putText(
-            overlay,
-            label,
-            (gx0 + 2, label_y),
-            cv2_FONT_HERSHEY_SIMPLEX,
-            0.45,
-            group_color,
-            1,
-        )
-
-    debug_txt_path = layout_debug_output_path(page)
-    png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
-    return png_path
-
-
 def write_layout_debug_report(
     page, step_sections: List[tuple[str, List[str]]]
 ) -> pathlib.Path:
@@ -2198,37 +1456,93 @@ def interval_gap(min1: float, max1: float, min2: float, max2: float) -> float:
     return max(0.0, max(min1, min2) - min(max1, max2))
 
 
+def _cache_bbox_arrays(
+    words: List[Word],
+) -> tuple[
+    List[Word], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+]:
+    """Materialize bbox attributes for ``words`` into NumPy arrays.
+
+    Reading ``bb.minX`` etc. routes through pydantic property accessors
+    (with validator wrappers) and is ~5× slower than reading a NumPy
+    scalar. The reorg pipeline's row-block step has tight O(N²) inner
+    loops over word pairs; calling those accessors millions of times
+    dominates wall time on word-rich pages. Cache once, read many.
+
+    Returns the (filtered) words list paired with float64 arrays of
+    minX, maxX, minY, maxY, mid_y (vertical midpoint), height — all
+    aligned on the same index. Words without a bounding box are
+    dropped.
+    """
+    filtered = [w for w in words if w.bounding_box]
+    n = len(filtered)
+    minX = np.empty(n, dtype=np.float64)
+    maxX = np.empty(n, dtype=np.float64)
+    minY = np.empty(n, dtype=np.float64)
+    maxY = np.empty(n, dtype=np.float64)
+    for i, w in enumerate(filtered):
+        bb = w.bounding_box
+        minX[i] = bb.minX
+        maxX[i] = bb.maxX
+        minY[i] = bb.minY
+        maxY[i] = bb.maxY
+    height = maxY - minY
+    mid_y = (minY + maxY) * 0.5
+    return filtered, minX, maxX, minY, maxY, mid_y, height
+
+
 def estimate_average_word_distance(words: List[Word], page_width: int) -> float:
-    """Estimate average local word spacing for neighborhood growth."""
-    words_with_bbox = [w for w in words if w.bounding_box]
-    if len(words_with_bbox) < 2:
+    """Estimate average local word spacing for neighborhood growth.
+
+    Implementation note: the inner loop is bounded by a horizontal-gap
+    window (``max_horizontal_gap``). Sorting words by ``minX`` lets us
+    bisect down to the candidate slice instead of scanning every other
+    word, turning the worst-case cost from O(N²) into roughly
+    O(N · k) where k is the number of words within one window. Bbox
+    attributes are read from NumPy arrays so the inner loop never
+    touches pydantic accessors.
+    """
+    words_with_bbox, minX, maxX, _minY, _maxY, mid_y, height = _cache_bbox_arrays(words)
+    n = len(words_with_bbox)
+    if n < 2:
         return 0.02 * float(page_width)
 
-    bbox_max_x = max(
-        (w.bounding_box.maxX for w in words_with_bbox if w.bounding_box),
-        default=float(page_width),
-    )
+    bbox_max_x = float(maxX.max())
     coord_width = 1.0 if bbox_max_x <= 2.0 else float(page_width)
     max_horizontal_gap = 0.08 * coord_width
 
+    # Sort by minX so np.searchsorted can prune the inner loop. The
+    # original code only considered "other.minX >= bb.minX" candidates,
+    # so the search window starts at bb.minX; the gap-cap upper bound is
+    # bb.maxX + max_horizontal_gap because gap = other.minX - bb.maxX.
+    order = np.argsort(minX, kind="stable")
+    minX_s = minX[order]
+    maxX_s = maxX[order]
+    mid_y_s = mid_y[order]
+    height_s = height[order]
+
     gaps: list[float] = []
-    for word in words_with_bbox:
-        bb = word.bounding_box
-        if not bb:
-            continue
-        nearest_gap = None
-        for other_word in words_with_bbox:
-            if other_word is word or not other_word.bounding_box:
+    for i in range(n):
+        bb_minX = minX_s[i]
+        bb_maxX = maxX_s[i]
+        bb_mid = mid_y_s[i]
+        bb_h = height_s[i]
+        lo = int(np.searchsorted(minX_s, bb_minX, side="left"))
+        hi = int(np.searchsorted(minX_s, bb_maxX + max_horizontal_gap, side="right"))
+        nearest_gap: float | None = None
+        for j in range(lo, hi):
+            if j == i:
                 continue
-            other = other_word.bounding_box
-            if other.minX < bb.minX:
+            other_h = height_s[j]
+            max_h = bb_h if bb_h > other_h else other_h
+            if abs(mid_y_s[j] - bb_mid) > 1.5 * max_h:
                 continue
-            max_h = max(bb.height, other.height)
-            if abs(other.vertical_midpoint - bb.vertical_midpoint) > 1.5 * max_h:
-                continue
-            gap = max(0.0, other.minX - bb.maxX)
+            gap = minX_s[j] - bb_maxX
+            if gap < 0.0:
+                gap = 0.0
             if gap <= max_horizontal_gap:
-                nearest_gap = gap if nearest_gap is None else min(nearest_gap, gap)
+                if nearest_gap is None or gap < nearest_gap:
+                    nearest_gap = gap
         if nearest_gap is not None:
             gaps.append(nearest_gap)
 
@@ -2243,75 +1557,90 @@ def build_word_seeded_row_blocks(
     page_height: int,
     source_lines: List[Block] | None = None,
 ) -> Block | None:
-    """Build full text blocks by expanding from words, then split to lines."""
-    words_with_bbox = [w for w in words if w.bounding_box]
-    if len(words_with_bbox) < 10:
+    """Build full text blocks by expanding from words, then split to lines.
+
+    The connected-components grow uses cached NumPy bbox arrays plus a
+    Y-axis bisect window so the inner neighbour scan is bounded by
+    ``y_expand`` rather than the full word list. On word-rich pages
+    (~1500 words) this drops the BFS cost from O(N²) ≈ 2 M ops + 10 M
+    pydantic accessor calls down to a few hundred thousand array reads.
+    """
+    words_with_bbox, minX, maxX, minY, maxY, _mid_y, height = _cache_bbox_arrays(words)
+    n = len(words_with_bbox)
+    if n < 10:
         return None
 
-    bbox_max_x = max(
-        (w.bounding_box.maxX for w in words_with_bbox if w.bounding_box),
-        default=float(page_width),
-    )
-    bbox_max_y = max(
-        (w.bounding_box.maxY for w in words_with_bbox if w.bounding_box),
-        default=float(page_height),
-    )
+    bbox_max_x = float(maxX.max())
+    bbox_max_y = float(maxY.max())
     coord_width = 1.0 if bbox_max_x <= 2.0 else float(page_width)
     coord_height = 1.0 if bbox_max_y <= 2.0 else float(page_height)
 
     avg_word_gap = estimate_average_word_distance(words_with_bbox, page_width)
-    median_word_height = float(
-        np_median(
-            [w.bounding_box.height for w in words_with_bbox if w.bounding_box]
-            or [0.02 * coord_height]
-        )
-    )
+    median_word_height = float(np_median(height) if n else 0.02 * coord_height)
 
     x_expand = max(2.0 * avg_word_gap, 0.015 * coord_width)
     y_expand = max(1.25 * median_word_height, 0.01 * coord_height)
 
-    n = len(words_with_bbox)
-    visited = [False] * n
+    # Sort by minY so we can bisect a Y window around any seed bbox.
+    # The Y window is the tighter of the two interval-gap constraints
+    # for typical page layouts, so it's the better axis to prune on.
+    y_order = np.argsort(minY, kind="stable")
+    minY_s = minY[y_order]
+    maxY_s = maxY[y_order]
+    minX_s = minX[y_order]
+    maxX_s = maxX[y_order]
+
+    visited = np.zeros(n, dtype=bool)
     components: List[List[Word]] = []
 
-    for i in range(n):
-        if visited[i]:
+    for start in range(n):
+        if visited[start]:
             continue
 
-        stack = [i]
-        visited[i] = True
+        stack = [start]
+        visited[start] = True
         comp_indices: List[int] = []
 
         while stack:
             idx = stack.pop()
             comp_indices.append(idx)
-            bb = words_with_bbox[idx].bounding_box
-            if not bb:
-                continue
+            bb_minX = minX_s[idx]
+            bb_maxX = maxX_s[idx]
+            bb_minY = minY_s[idx]
+            bb_maxY = maxY_s[idx]
 
-            for j in range(n):
+            # Candidate window: any j whose Y interval can be within
+            # y_expand of [bb_minY, bb_maxY]. Since the array is sorted
+            # by minY, j's minY must be <= bb_maxY + y_expand. The lower
+            # bound is set by maxY_s[j] >= bb_minY - y_expand, but maxY
+            # isn't sorted; the cheap correct lower-bound is just 0
+            # (a few extra checks are fine — the inner gap test rejects
+            # them). Empirically the upper bound alone gives most of
+            # the win.
+            hi = int(np.searchsorted(minY_s, bb_maxY + y_expand, side="right"))
+            for j in range(hi):
                 if visited[j]:
                     continue
-                other_bb = words_with_bbox[j].bounding_box
-                if not other_bb:
+                # Y interval gap (cheap; rejects the majority of pairs).
+                y_gap = bb_minY - maxY_s[j]
+                if y_gap < 0.0:
+                    y_gap = minY_s[j] - bb_maxY
+                    if y_gap < 0.0:
+                        y_gap = 0.0
+                if y_gap > y_expand:
                     continue
-                x_gap = interval_gap(
-                    bb.minX,
-                    bb.maxX,
-                    other_bb.minX,
-                    other_bb.maxX,
-                )
-                y_gap = interval_gap(
-                    bb.minY,
-                    bb.maxY,
-                    other_bb.minY,
-                    other_bb.maxY,
-                )
-                if x_gap <= x_expand and y_gap <= y_expand:
-                    visited[j] = True
-                    stack.append(j)
+                # X interval gap.
+                x_gap = bb_minX - maxX_s[j]
+                if x_gap < 0.0:
+                    x_gap = minX_s[j] - bb_maxX
+                    if x_gap < 0.0:
+                        x_gap = 0.0
+                if x_gap > x_expand:
+                    continue
+                visited[j] = True
+                stack.append(j)
 
-        components.append([words_with_bbox[k] for k in comp_indices])
+        components.append([words_with_bbox[y_order[k]] for k in comp_indices])
 
     # Single-word components must NOT be dropped — that loses real content
     # like a centered chapter heading ("PREFACE.") which sits in its own
@@ -3176,7 +2505,7 @@ def expand_row_blocks(
     row_blocks: Block,
     debug_squeezed_lines: List[str],
 ) -> Tuple[List[Block], List[dict]]:
-    """Pipeline Step H/I — dispatch each row block to the right expander."""
+    """Pipeline Step H — dispatch each row block to the right expander."""
     expanded_row_blocks: List[Block] = []
     step_h_decisions: List[dict] = []
     for row_idx, b in enumerate(row_blocks.items, start=1):
@@ -3623,13 +2952,13 @@ def run_step_e_extract_header_footer(
     )
 
 
-def run_step_fg_row_blocks(
+def run_step_f_row_blocks(
     page,
     body_lines: List[Block],
     body_words: List[Word],
     debug_sections: List[tuple],
 ) -> Block | None:
-    """Step F/G — pick between legacy and seeded row-block grouping."""
+    """Step F — pick between legacy and seeded row-block grouping."""
     legacy_row_blocks = compute_text_row_blocks(body_lines)
     seeded_row_blocks = build_word_seeded_row_blocks(
         body_words, page.width, page.height, source_lines=body_lines
@@ -3645,7 +2974,7 @@ def run_step_fg_row_blocks(
 
     if layout_debug_enabled():
         step_rb_lines = [
-            "Step F/G: vertical row block grouping",
+            "Step F: vertical row block grouping",
             f"Source picked: {row_blocks_source}",
             f"Row block count: {len(row_blocks.items) if row_blocks else 0}",
             f"Legacy quality: {row_block_quality(legacy_row_blocks):.2f}",
@@ -3654,10 +2983,10 @@ def run_step_fg_row_blocks(
             step_rb_lines.append(
                 f"Seeded quality: {row_block_quality(seeded_row_blocks):.2f}"
             )
-        png_rb = write_step_row_blocks_debug_overlay_png(page, row_blocks, "stepFG")
+        png_rb = write_step_row_blocks_debug_overlay_png(page, row_blocks, "stepF")
         if png_rb is not None:
             step_rb_lines.append(f"Overlay PNG: {png_rb}")
-        debug_sections.append(("Step F/G", step_rb_lines))
+        debug_sections.append(("Step F", step_rb_lines))
     return row_blocks
 
 

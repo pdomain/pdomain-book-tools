@@ -144,6 +144,43 @@ results = PGDPResults("001.png", "Some -- raw [*proof note*] text")
 print(results.processed_page_text)
 ```
 
+### OCR a page (with auto-rotate)
+
+```python
+from pd_book_tools.ocr.document import Document
+
+doc = Document.from_image_ocr_via_doctr("page.png")
+page = doc.pages[0]
+
+# `auto_rotate=True` is the default. If the upright OCR pass had mean
+# per-word confidence below the threshold (0.6 by default), DocTR is
+# re-run at 90°/180°/270° and the highest-confidence orientation wins.
+# `page.rotation_applied` records the chosen rotation in degrees clockwise
+# (one of 0/90/180/270). Bbox coordinates are in the rotated frame.
+print(f"OCR ran at {page.rotation_applied}° rotation")
+
+# Opt out (skip the fallback probes; pay only one OCR pass).
+doc = Document.from_image_ocr_via_doctr("page.png", auto_rotate=False)
+
+# Loosen the threshold (more pages take the fast path; fewer fallbacks).
+doc = Document.from_image_ocr_via_doctr(
+    "page.png", auto_rotate_threshold=0.4
+)
+```
+
+See [`docs/architecture/rotation.md`](docs/architecture/rotation.md) for
+the threshold rationale, the rotated-frame coordinate convention, and
+what this is *not* (no arbitrary deskew, no separate orientation
+classifier).
+
+### Layout-regression fixture corpus
+
+`tests/fixtures/layout_regression/` holds 30 hand-picked public-domain
+pages plus their OCR / layout / reorganize artifacts; it's the contract
+that pins the layout pipeline to known-good output. Workflow for adding
+a fixture and regenerating after a pipeline change is in
+[`docs/architecture/layout_regression_fixtures.md`](docs/architecture/layout_regression_fixtures.md).
+
 ## License
 
 See LICENSE file.

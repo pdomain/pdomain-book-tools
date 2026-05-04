@@ -9,10 +9,12 @@ reference material.
 
 ```text
 docs/
-├── README.md                    ← you are here
-└── architecture/                ← how the pieces fit together: data models,
-    │                              algorithms, pipelines
-    └── reorganize_pipeline.md   ← Page.reorganize_page step-by-step
+├── README.md                          ← you are here
+└── architecture/                      ← how the pieces fit together: data
+    │                                    models, algorithms, pipelines
+    ├── reorganize_pipeline.md         ← Page.reorganize_page step-by-step
+    ├── rotation.md                    ← OCR-time orientation detection
+    └── layout_regression_fixtures.md  ← fixture corpus + regen workflow
 ```
 
 When you reach for documentation, expect:

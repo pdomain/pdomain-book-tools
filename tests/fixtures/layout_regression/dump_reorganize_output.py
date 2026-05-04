@@ -2,7 +2,7 @@
 
 Use when bootstrapping a new ``expected_text/baseline/<case>.reorganize.txt``:
 
-    python tests/fixtures/layout_regression/dump_reorganize_output.py test4
+    python tests/fixtures/layout_regression/dump_reorganize_output.py preface-with-drop-cap
 
 Prints the reorganize pipeline's textual output to stdout. Pipe / redirect
 into ``expected_text/baseline/<case>.reorganize.txt`` once you've eyeballed

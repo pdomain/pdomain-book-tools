@@ -1,0 +1,71 @@
+{
+  "regions": [
+    {
+      "type": "text",
+      "L": 78,
+      "R": 1146,
+      "T": 760,
+      "B": 1078,
+      "confidence": 0.9829043745994568,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 71,
+      "R": 1141,
+      "T": 1367,
+      "B": 1780,
+      "confidence": 0.9824188351631165,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 75,
+      "R": 1144,
+      "T": 1088,
+      "B": 1358,
+      "confidence": 0.9811084866523743,
+      "raw_label": "text"
+    },
+    {
+      "type": "title",
+      "L": 89,
+      "R": 1138,
+      "T": 383,
+      "B": 460,
+      "confidence": 0.8830662965774536,
+      "raw_label": "doc_title"
+    },
+    {
+      "type": "section",
+      "L": 484,
+      "R": 748,
+      "T": 594,
+      "B": 629,
+      "confidence": 0.6681761145591736,
+      "raw_label": "paragraph_title"
+    },
+    {
+      "type": "section",
+      "L": 415,
+      "R": 812,
+      "T": 686,
+      "B": 714,
+      "confidence": 0.5717313289642334,
+      "raw_label": "paragraph_title"
+    },
+    {
+      "type": "text",
+      "L": 415,
+      "R": 812,
+      "T": 686,
+      "B": 714,
+      "confidence": 0.524735152721405,
+      "raw_label": "text"
+    }
+  ],
+  "image_width": 1275,
+  "image_height": 1938,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 575
+}

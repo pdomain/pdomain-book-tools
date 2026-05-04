@@ -1,0 +1,393 @@
+{
+  "source_lib": "doctr",
+  "source_identifier": "",
+  "source_path": "/workspaces/ocr-container/pd-book-tools/tests/fixtures/layout_regression/inputs/plate-iquique-landscape.png",
+  "pages": [
+    {
+      "type": "Page",
+      "width": 1629,
+      "height": 1068,
+      "page_index": 0,
+      "bounding_box": {
+        "top_left": {
+          "x": 0.4794921875,
+          "y": 0.4091385402036517,
+          "is_normalized": true
+        },
+        "bottom_right": {
+          "x": 0.9296875,
+          "y": 0.7517309295997191,
+          "is_normalized": true
+        },
+        "is_normalized": true
+      },
+      "items": [
+        {
+          "type": "Block",
+          "child_type": "BLOCKS",
+          "block_category": "PARAGRAPH",
+          "block_labels": null,
+          "block_role_labels": [],
+          "block_position_labels": [],
+          "line_role_labels": [],
+          "line_position_labels": [],
+          "baseline": null,
+          "bounding_box": {
+            "top_left": {
+              "x": 0.4794921875,
+              "y": 0.4091385402036517,
+              "is_normalized": true
+            },
+            "bottom_right": {
+              "x": 0.9296875,
+              "y": 0.7517309295997191,
+              "is_normalized": true
+            },
+            "is_normalized": true
+          },
+          "items": [
+            {
+              "type": "Block",
+              "child_type": "WORDS",
+              "block_category": "LINE",
+              "block_labels": null,
+              "block_role_labels": [],
+              "block_position_labels": [],
+              "line_role_labels": [],
+              "line_position_labels": [],
+              "baseline": null,
+              "bounding_box": {
+                "top_left": {
+                  "x": 0.51171875,
+                  "y": 0.4091385402036517,
+                  "is_normalized": true
+                },
+                "bottom_right": {
+                  "x": 0.544921875,
+                  "y": 0.42552339360955055,
+                  "is_normalized": true
+                },
+                "is_normalized": true
+              },
+              "items": [
+                {
+                  "type": "Word",
+                  "text": "Hiat",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.51171875,
+                      "y": 0.4091385402036517,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.544921875,
+                      "y": 0.42552339360955055,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.3533704876899719,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                }
+              ],
+              "override_page_sort_order": null,
+              "unmatched_ground_truth_words": [],
+              "additional_block_attributes": {},
+              "base_ground_truth_text": ""
+            },
+            {
+              "type": "Block",
+              "child_type": "WORDS",
+              "block_category": "LINE",
+              "block_labels": null,
+              "block_role_labels": [],
+              "block_position_labels": [],
+              "line_role_labels": [],
+              "line_position_labels": [],
+              "baseline": null,
+              "bounding_box": {
+                "top_left": {
+                  "x": 0.5166015625,
+                  "y": 0.4582931004213483,
+                  "is_normalized": true
+                },
+                "bottom_right": {
+                  "x": 0.525390625,
+                  "y": 0.4746779538272472,
+                  "is_normalized": true
+                },
+                "is_normalized": true
+              },
+              "items": [
+                {
+                  "type": "Word",
+                  "text": "a",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.5166015625,
+                      "y": 0.4582931004213483,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.525390625,
+                      "y": 0.4746779538272472,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.39919009804725647,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                }
+              ],
+              "override_page_sort_order": null,
+              "unmatched_ground_truth_words": [],
+              "additional_block_attributes": {},
+              "base_ground_truth_text": ""
+            },
+            {
+              "type": "Block",
+              "child_type": "WORDS",
+              "block_category": "LINE",
+              "block_labels": null,
+              "block_role_labels": [],
+              "block_position_labels": [],
+              "line_role_labels": [],
+              "line_position_labels": [],
+              "baseline": null,
+              "bounding_box": {
+                "top_left": {
+                  "x": 0.4794921875,
+                  "y": 0.7174716906601124,
+                  "is_normalized": true
+                },
+                "bottom_right": {
+                  "x": 0.52734375,
+                  "y": 0.7413042047050562,
+                  "is_normalized": true
+                },
+                "is_normalized": true
+              },
+              "items": [
+                {
+                  "type": "Word",
+                  "text": "Iquique.",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.4794921875,
+                      "y": 0.7174716906601124,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.52734375,
+                      "y": 0.7413042047050562,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.8105529546737671,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                }
+              ],
+              "override_page_sort_order": null,
+              "unmatched_ground_truth_words": [],
+              "additional_block_attributes": {},
+              "base_ground_truth_text": ""
+            },
+            {
+              "type": "Block",
+              "child_type": "WORDS",
+              "block_category": "LINE",
+              "block_labels": null,
+              "block_role_labels": [],
+              "block_position_labels": [],
+              "line_role_labels": [],
+              "line_position_labels": [],
+              "baseline": null,
+              "bounding_box": {
+                "top_left": {
+                  "x": 0.8388671875,
+                  "y": 0.7293879476825843,
+                  "is_normalized": true
+                },
+                "bottom_right": {
+                  "x": 0.9296875,
+                  "y": 0.7517309295997191,
+                  "is_normalized": true
+                },
+                "is_normalized": true
+              },
+              "items": [
+                {
+                  "type": "Word",
+                  "text": "[To:",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.8388671875,
+                      "y": 0.7293879476825843,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.8603515625,
+                      "y": 0.7517309295997191,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.7871425151824951,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "face",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.8583984375,
+                      "y": 0.7293879476825843,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.8818359375,
+                      "y": 0.7487518653441011,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.7204462885856628,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "page",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.8818359375,
+                      "y": 0.7323670119382022,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.9072265625,
+                      "y": 0.7517309295997191,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.9998557567596436,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "138.",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.9072265625,
+                      "y": 0.7293879476825843,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.9296875,
+                      "y": 0.7487518653441011,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.9981710910797119,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                }
+              ],
+              "override_page_sort_order": null,
+              "unmatched_ground_truth_words": [],
+              "additional_block_attributes": {},
+              "base_ground_truth_text": ""
+            }
+          ],
+          "override_page_sort_order": null,
+          "unmatched_ground_truth_words": [],
+          "additional_block_attributes": {},
+          "base_ground_truth_text": ""
+        }
+      ],
+      "ocr_provenance": {
+        "engine": "doctr",
+        "models": [],
+        "engine_version": "unknown"
+      }
+    }
+  ]
+}

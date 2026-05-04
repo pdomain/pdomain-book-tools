@@ -1,0 +1,26 @@
+{
+  "regions": [
+    {
+      "type": "text",
+      "L": 97,
+      "R": 955,
+      "T": 721,
+      "B": 941,
+      "confidence": 0.7051112651824951,
+      "raw_label": "text"
+    },
+    {
+      "type": "section",
+      "L": 394,
+      "R": 685,
+      "T": 586,
+      "B": 632,
+      "confidence": 0.516103208065033,
+      "raw_label": "paragraph_title"
+    }
+  ],
+  "image_width": 1100,
+  "image_height": 1595,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 589
+}

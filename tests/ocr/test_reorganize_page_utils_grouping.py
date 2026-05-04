@@ -1,4 +1,6 @@
+import datetime
 import json
+import os
 from difflib import unified_diff
 from pathlib import Path
 
@@ -7,7 +9,6 @@ import pytest
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.reorganize_page_utils import (
-    _split_group_second_pass,
     build_word_seeded_row_blocks,
     validate_word_preservation,
 )
@@ -18,9 +19,9 @@ INPUT_DIR = FIXTURE_ROOT / "inputs"
 TEXT_BASELINE_DIR = FIXTURE_ROOT / "expected_text" / "baseline"
 TEXT_CURRENT_DIR = FIXTURE_ROOT / "expected_text" / "current"
 TEXT_DIFF_DIR = FIXTURE_ROOT / "expected_text" / "diff"
-# Debug PNGs / text reports for each pipeline step land here, one folder per
-# fixture case. Keeping the location alongside baseline/current/diff makes the
-# entire reorganize pipeline state inspectable after every test run.
+# Debug PNGs / text reports land under a per-run timestamped subfolder so old
+# runs accumulate and can be diffed across changes. The whole tree is
+# gitignored — `rm -rf debug/` to reclaim disk.
 DEBUG_DIR = FIXTURE_ROOT / "debug"
 
 
@@ -30,6 +31,53 @@ def _w(text: str, x0: float, y0: float, w: float = 0.06, h: float = 0.004) -> Wo
         bounding_box=BoundingBox.from_ltrb(x0, y0, x0 + w, y0 + h),
         ocr_confidence=1.0,
     )
+
+
+def test_preface_dropcap_is_tagged_and_stitched() -> None:
+    """Regression: the oversized initial 'R' on the preface-with-drop-cap
+    fixture should be tagged ``word_components=["drop cap"]`` and stitched
+    into the same line as the rest of the body word so the text emits as a
+    single line.
+    """
+    import cv2
+
+    from pd_book_tools.ocr.document import Document
+
+    case = "preface-with-drop-cap"
+    doc = Document.from_dict(
+        json.loads((INPUT_DIR / f"{case}.json").read_text(encoding="utf-8"))
+    )
+    page = doc.pages[0]
+    page.cv2_numpy_page_image = cv2.imread(str(INPUT_DIR / f"{case}.png"))
+    page.reorganize_page()
+
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
+    assert len(drop_caps) == 1, f"expected exactly 1 drop cap, got {len(drop_caps)}"
+    drop = drop_caps[0]
+    assert drop.bounding_box is not None
+    # The cap word's text is trimmed to a single character (the noisy
+    # apostrophe-like artifact from the OCR is dropped) so GT matching
+    # downstream sees a clean cap glyph + body word pair.
+    assert drop.text == "R", f"cap text={drop.text!r}, expected 'R'"
+
+    # Find the line that holds the drop cap; the body word must follow
+    # immediately and the rendered line text must read "READER!" — i.e.
+    # the cap and body word are joined with no separator.
+    found = False
+    for line in page.lines:
+        words = list(line.words)
+        if drop in words:
+            assert words[0] is drop, "drop cap should be the first word of the line"
+            assert len(words) >= 2, "drop cap must be followed by a body word"
+            assert words[1].text == "EADER!", (
+                f"body word text={words[1].text!r}, expected 'EADER!'"
+            )
+            assert line.text.startswith("READER!"), (
+                f"line.text={line.text!r}, expected to start with 'READER!'"
+            )
+            found = True
+            break
+    assert found, "drop-cap word not found in any final line"
 
 
 def test_seeded_row_blocks_keep_single_word_component() -> None:
@@ -70,79 +118,54 @@ def test_seeded_row_blocks_keep_single_word_component() -> None:
     )
 
 
-def test_step1b_does_not_split_when_only_left_side_breaks() -> None:
-    """Regression guard for one-sided gap boundaries around embedded figure bands.
+def _new_run_dir(prefix: str) -> Path:
+    """Create a fresh timestamped subfolder under :data:`DEBUG_DIR`.
 
-    The left side disappears across one inter-band boundary while the right side
-    remains vertically continuous. Step 1b should keep this as one group.
+    Used by both the reorganize regression tests and
+    :mod:`regenerate_layouts` to give each run its own isolated tree, so a
+    human can diff debug PNGs across runs (e.g. before/after a heuristic
+    change) without losing the previous output. The prefix
+    (``test`` / ``regen``) makes the producer obvious in ``ls -t``.
     """
+    DEBUG_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    run = DEBUG_DIR / f"{prefix}-{timestamp}"
+    counter = 0
+    # Disambiguate when two runs land in the same wall-clock second
+    # (parallel pytest workers; back-to-back invocations).
+    while run.exists():
+        counter += 1
+        run = DEBUG_DIR / f"{prefix}-{timestamp}.{counter}"
+    run.mkdir(parents=True)
+    return run
 
-    words: list[Word] = []
 
-    # Band 0 (full width)
-    y0 = 0.100
-    words.extend(
-        [
-            _w("b0l1", 0.06, y0),
-            _w("b0l2", 0.14, y0),
-            _w("b0r1", 0.76, y0),
-            _w("b0r2", 0.84, y0),
-        ]
-    )
+@pytest.fixture(scope="session")
+def run_dir() -> Path:
+    """Per-session debug output directory.
 
-    # Band 1 (full width)
-    y1 = 0.105  # gap from band 0: 0.001
-    words.extend(
-        [
-            _w("b1l1", 0.06, y1),
-            _w("b1l2", 0.14, y1),
-            _w("b1r1", 0.76, y1),
-            _w("b1r2", 0.84, y1),
-        ]
-    )
-
-    # Band 2 (right side only)
-    # gap from band 1: 0.005 (large enough to be a hard-gap candidate)
-    y2 = 0.114
-    words.extend(
-        [
-            _w("b2r1", 0.76, y2),
-            _w("b2r2", 0.84, y2),
-            _w("b2r3", 0.90, y2),
-        ]
-    )
-
-    # Band 3 (full width continuation)
-    y3 = 0.119  # gap from band 2: 0.001
-    words.extend(
-        [
-            _w("b3l1", 0.06, y3),
-            _w("b3l2", 0.14, y3),
-            _w("b3r1", 0.76, y3),
-            _w("b3r2", 0.84, y3),
-        ]
-    )
-
-    split = _split_group_second_pass(words, coord_width=1.0)
-
-    assert len(split) == 1
-    assert len(split[0]) == len(words)
+    Each pytest session gets its own ``debug/test-<timestamp>/`` folder so
+    a human can diff debug PNGs across runs (e.g. before/after a heuristic
+    change) without losing the previous output. Old timestamped runs
+    accumulate under ``debug/`` and are gitignored — clean up with
+    ``rm -rf debug/`` when they get noisy.
+    """
+    return _new_run_dir("test")
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _wipe_debug_outputs():
-    """Clear the debug + per-run text/diff output trees before any tests run.
+def _wipe_text_outputs():
+    """Wipe per-run text output directories at session start.
 
-    The reorganize regression tests write debug PNGs, the layout debug report,
-    and the unified diff into ``tests/fixtures/layout_regression/``. Wiping the
-    output trees once per pytest session keeps the directory canonical: a
-    removed test case never leaves a stale folder behind, a renamed pipeline
-    step doesn't leave behind an old PNG, and the diff against baseline always
-    reflects the current run.
+    The text-comparison output dirs (``current`` / ``diff``) have no
+    historical value — every test invocation rewrites them — so they're
+    cleared at session start to keep them canonical. Debug PNGs are *not*
+    wiped here; ``run_dir`` gives each session its own subfolder so old
+    runs are preserved.
     """
     import shutil
 
-    for d in (DEBUG_DIR, TEXT_CURRENT_DIR, TEXT_DIFF_DIR):
+    for d in (TEXT_CURRENT_DIR, TEXT_DIFF_DIR):
         if d.exists():
             shutil.rmtree(d)
     yield
@@ -162,31 +185,123 @@ def _load_fixture_page(case_name: str):
     return page
 
 
-@pytest.mark.parametrize("case_name", ["test1", "test2", "test3"])
+# Cases whose committed baseline reflects the *desired* output the algorithm
+# should eventually produce, but which the current pipeline does not yet
+# match. Each entry is "case → reason" so the xfail message names the gap
+# explicitly. Flip a case off this map (and add a regression note) when the
+# behaviour catches up.
+KNOWN_FAILING_BASELINES: dict[str, str] = {
+    "figures-side-by-side-with-captions": (
+        "figure-internal noise: orphan 'A' between body and FIG. 72 caption "
+        "should be dropped (small word inside figure region)"
+    ),
+    "frontispiece-madison-portrait": (
+        "figure-internal noise: leading '-' from engraving artefact should be dropped"
+    ),
+    "frontispiece-on-deck-dual-caption": (
+        "figure-internal noise: 5 char-noise lines from engraving above "
+        "the caption should be dropped"
+    ),
+    "plate-ii-celestial-influences": (
+        "figure-internal noise: ~5 single-char lines from circular figure "
+        "interior should be dropped"
+    ),
+    "plate-rio-harbour-photo": (
+        "figure-internal noise: ~7 short lines from the photograph should be dropped"
+    ),
+    "plate-service-on-board": (
+        "figure-internal noise: ~5 noise lines from the engraving should be dropped"
+    ),
+    "rotated-peutinger-map": (
+        "trailing-whitespace artefact on the map's caption line; baseline "
+        "expects clean trim"
+    ),
+}
+
+
+def _all_baseline_cases() -> list:
+    """Enumerate every case that has both an OCR fixture and a baseline.
+
+    Auto-discovery so adding a new fixture (its `.png` + `.json` + a
+    baseline `.reorganize.txt`) is enough to grow the parametrize list —
+    no source edit required. Cases listed in :data:`KNOWN_FAILING_BASELINES`
+    are wrapped in ``pytest.param(..., marks=xfail(...))`` so CI stays
+    green while marking the gap between current output and the baseline
+    we want.
+    """
+    if not TEXT_BASELINE_DIR.exists():
+        return []
+    cases = []
+    for baseline in sorted(TEXT_BASELINE_DIR.glob("*.reorganize.txt")):
+        case = baseline.stem.replace(".reorganize", "")
+        if (INPUT_DIR / f"{case}.png").exists() and (
+            INPUT_DIR / f"{case}.json"
+        ).exists():
+            xfail_reason = KNOWN_FAILING_BASELINES.get(case)
+            if xfail_reason is not None:
+                cases.append(
+                    pytest.param(
+                        case,
+                        marks=pytest.mark.xfail(reason=xfail_reason, strict=True),
+                    )
+                )
+            else:
+                cases.append(case)
+    return cases
+
+
+@pytest.mark.parametrize("case_name", _all_baseline_cases())
 def test_reorganize_page_expected_text_outputs(
-    case_name: str, monkeypatch: pytest.MonkeyPatch
+    case_name: str, run_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     TEXT_CURRENT_DIR.mkdir(parents=True, exist_ok=True)
     TEXT_DIFF_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Always write per-step debug PNGs and the layout debug text report
-    # into a per-case folder so a failing diff can be inspected visually
-    # without re-running with environment variables set by hand. The
-    # session-scoped fixture above wipes the debug tree once per run, so we
-    # only need to recreate the case folder here.
-    case_debug_dir = DEBUG_DIR / case_name
-    case_debug_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("PD_OCR_LAYOUT_DEBUG", "1")
-    monkeypatch.setenv("PD_OCR_LAYOUT_DEBUG_DIR", str(case_debug_dir))
-    # Strict mode: any future regression that drops an OCR word during
-    # reorganize must raise here rather than silently auto-recover.
+    # By default the test writes per-step debug PNGs + layout-model
+    # overlay + the layout debug text report into a per-case folder so a
+    # failing diff can be inspected visually without re-running with env
+    # vars set by hand. CI runs that don't need the overlays can opt out
+    # by setting ``PD_OCR_TEST_NO_DEBUG=1``; on a 30-fixture run the
+    # ~7 cv2.imwrite calls per case add measurable wall time.
+    debug_pngs_enabled = os.environ.get(
+        "PD_OCR_TEST_NO_DEBUG", ""
+    ).strip().lower() not in {"1", "true", "yes", "on"}
+
+    case_debug_dir = run_dir / case_name
+    if debug_pngs_enabled:
+        case_debug_dir.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setenv("PD_OCR_LAYOUT_DEBUG", "1")
+        monkeypatch.setenv("PD_OCR_LAYOUT_DEBUG_DIR", str(case_debug_dir))
+        # Force the debug text path to a stable filename inside the case dir
+        # so all PNG suffixes (e.g. .stepE.png) land next to it.
+        monkeypatch.setenv(
+            "PD_OCR_LAYOUT_DEBUG_FILE",
+            str(case_debug_dir / "layout-debug.txt"),
+        )
+
+    # Strict mode is independent of debug PNGs: any future regression
+    # that drops an OCR word during reorganize must raise rather than
+    # silently auto-recover. Always on.
     monkeypatch.setenv("PD_OCR_REORGANIZE_STRICT", "1")
-    # Force the debug text path to a stable filename inside the case dir so
-    # all PNG suffixes (e.g. .stepE.png) land next to it deterministically.
-    monkeypatch.setenv(
-        "PD_OCR_LAYOUT_DEBUG_FILE",
-        str(case_debug_dir / "layout-debug.txt"),
-    )
+
+    # Drop a copy of the layout-model overlay into the same dir so a
+    # failing diff can be eyeballed alongside the per-step PNGs. We rebuild
+    # this from the committed ``<case>.layout.json`` rather than depend on
+    # ``regenerate_layouts.py`` having been run — every pytest run wants
+    # its own copy in its own timestamped folder.
+    layout_json_path = INPUT_DIR / f"{case_name}.layout.json"
+    if debug_pngs_enabled and layout_json_path.exists():
+        from pd_book_tools.layout.types import PageLayout
+        from pd_book_tools.layout.visualize import draw_layout_overlay
+
+        layout = PageLayout.from_dict(
+            json.loads(layout_json_path.read_text(encoding="utf-8"))
+        )
+        draw_layout_overlay(
+            INPUT_DIR / f"{case_name}.png",
+            layout,
+            case_debug_dir / "layout-regions.png",
+        )
 
     page = _load_fixture_page(case_name)
     page.reorganize_page()

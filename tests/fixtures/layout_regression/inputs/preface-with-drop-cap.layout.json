@@ -1,0 +1,35 @@
+{
+  "regions": [
+    {
+      "type": "text",
+      "L": 79,
+      "R": 1141,
+      "T": 698,
+      "B": 1003,
+      "confidence": 0.9653944969177246,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 77,
+      "R": 1141,
+      "T": 1017,
+      "B": 1532,
+      "confidence": 0.9653154611587524,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 74,
+      "R": 1137,
+      "T": 1549,
+      "B": 1856,
+      "confidence": 0.9385091662406921,
+      "raw_label": "text"
+    }
+  ],
+  "image_width": 1275,
+  "image_height": 1938,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 621
+}

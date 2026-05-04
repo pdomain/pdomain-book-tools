@@ -6,7 +6,19 @@ from hashlib import sha256
 from json import dump as json_dump
 from json import load as json_load
 from logging import getLogger
-from typing import Any, Callable, Collection, Dict, List, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Collection,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+)
+
+if TYPE_CHECKING:
+    from pd_book_tools.layout.types import PageLayout
 
 # from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
 from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
@@ -91,6 +103,7 @@ class Page:
         provenance_live_ocr: Dict[str, Any] | None = None,
         provenance_saved_ocr: Dict[str, Any] | None = None,
         provenance_saved: Dict[str, Any] | None = None,
+        rotation_applied: int = 0,
     ):
         self.width = width
         self.height = height
@@ -129,6 +142,18 @@ class Page:
         self.provenance_live_ocr: Dict[str, Any] | None = provenance_live_ocr
         self.provenance_saved_ocr: Dict[str, Any] | None = provenance_saved_ocr
         self.provenance_saved: Dict[str, Any] | None = provenance_saved
+
+        # Rotation OCR applied to the source image before recognition. 0
+        # means OCR ran on the page as it sat on disk; 90/180/270 mean the
+        # image was rotated clockwise by that many degrees first because
+        # the upright pass was below confidence threshold. Pixel and bbox
+        # coordinates on this Page index into the rotated frame, not the
+        # original. See pd_book_tools.ocr.rotation.
+        if rotation_applied not in (0, 90, 180, 270):
+            raise ValueError(
+                f"rotation_applied must be one of 0/90/180/270, got {rotation_applied}"
+            )
+        self.rotation_applied: int = rotation_applied
 
     @property
     def index(self) -> int:
@@ -2564,13 +2589,15 @@ class Page:
             result["provenance_saved_ocr"] = self.provenance_saved_ocr
         if self.provenance_saved is not None:
             result["provenance_saved"] = self.provenance_saved
+        if self.rotation_applied:
+            result["rotation_applied"] = self.rotation_applied
         return result
 
     def copy(self) -> "Page":
         # Copy the page to a new object via serialization/deserialization
         return self.from_dict(self.to_dict())
 
-    def reorganize_page(self):
+    def reorganize_page(self, layout: Optional["PageLayout"] = None):
         """Top-level reorganize pipeline — thin orchestration shim.
 
         All pipeline-step logic lives in
@@ -2578,8 +2605,51 @@ class Page:
         ``docs/architecture/reorganize_pipeline.md`` for the per-step
         heuristics, debug-PNG outputs, and the rationale behind each
         threshold.
+
+        When ``layout`` is supplied, layout-derived hints feed two extra
+        passes — see :mod:`pd_book_tools.ocr.layout_aware_reorg` for the
+        helpers and rationale. Layout is treated as a hint (low-confidence
+        regions are ignored); the existing geometric heuristics run as a
+        safety net regardless.
         """
         logger.debug("Reorganizing Page")
+
+        if layout is not None:
+            from pd_book_tools.layout.types import RegionType
+            from pd_book_tools.ocr import layout_aware_reorg
+
+            # Folded into the pipeline as Step Layout-1a: tag every word with
+            # the region(s) it sits in. Downstream steps (and post-reorg
+            # consumers) see these as ``layout:<type>`` entries in
+            # ``word.word_labels``.
+            layout_aware_reorg.tag_words_with_layout(self, layout)
+
+            # Step Layout-1b: geometric fallback — tag clear left/right
+            # margin-column words as ``layout:sidenote``. PP-DocLayout
+            # often lumps narrow marginalia into the body's wide text
+            # region; this catches what the model misses.
+            layout_aware_reorg.detect_geometric_sidenotes(self)
+
+            # Step Layout-2a: drop high-confidence header / footer / footnote
+            # / abandoned regions before the geometric pipeline runs.
+            layout_aware_reorg.drop_layout_regions(
+                self,
+                layout,
+                drop_types={
+                    RegionType.header,
+                    RegionType.footer,
+                    RegionType.footnote,
+                    RegionType.abandoned,
+                },
+            )
+
+            # Step Layout-2b: drop OCR lines that are entirely figure-internal
+            # noise — only when *every* word in the line is purely tagged
+            # ``layout:figure`` with no other layout tag. Body text that
+            # wraps around a figure is preserved because PP-DocLayout emits
+            # a separate text region for the wrap zone, so wrap words also
+            # carry ``layout:text``.
+            layout_aware_reorg.drop_figure_internal_words(self, layout)
 
         # Step A — image-based bounding box tightening.
         if self._cv2_numpy_page_image is not None:
@@ -2593,10 +2663,6 @@ class Page:
 
         debug_sections: List[tuple[str, List[str]]] = []
         debug_squeezed_lines: List[str] = []
-        if reorganize_page_utils.layout_debug_enabled():
-            debug_sections.extend(
-                reorganize_page_utils.debug_step1_subgroup_sections(self)
-            )
 
         # Step B — merge OCR-fragmented lines back together.
         for block in self.items:
@@ -2615,8 +2681,8 @@ class Page:
             page_footer_block,
         ) = reorganize_page_utils.run_step_e_extract_header_footer(self, debug_sections)
 
-        # Step F/G — vertical row-block grouping.
-        row_blocks = reorganize_page_utils.run_step_fg_row_blocks(
+        # Step F — vertical row-block grouping.
+        row_blocks = reorganize_page_utils.run_step_f_row_blocks(
             self, body_lines, body_words, debug_sections
         )
 
@@ -2628,12 +2694,18 @@ class Page:
             reorganize_page_utils.emit_band_only_blocks(
                 self, page_header_block, page_footer_block
             )
+            if layout is not None:
+                from pd_book_tools.ocr import layout_aware_reorg
+
+                layout_aware_reorg.bubble_block_roles_from_layout(self._items)
+                layout_aware_reorg.route_sidenote_reading_order(self)
+                layout_aware_reorg.associate_captions(self, layout)
             return
 
         for block in row_blocks.items:
             reorganize_page_utils.reorganize_lines(block)
 
-        # Step H/I — column / floated-figure expansion of each row block.
+        # Step H — column / floated-figure expansion of each row block.
         expanded_row_blocks, step_h_decisions = reorganize_page_utils.expand_row_blocks(
             self, row_blocks, debug_squeezed_lines
         )
@@ -2644,6 +2716,14 @@ class Page:
         # Step L — classify and paragraphize each expanded block.
         reset_paragraph_blocks = reorganize_page_utils.classify_and_paragraphize_blocks(
             self, expanded_row_blocks
+        )
+
+        # Step DC — detect drop caps in the body blocks and stitch them
+        # into the next paragraph's first line. Tags the word with
+        # ``word_components=["drop cap"]`` for downstream consumers.
+        page_metrics = reorganize_page_utils.compute_page_metrics(self)
+        reset_paragraph_blocks = reorganize_page_utils.stitch_drop_caps(
+            reset_paragraph_blocks, page_metrics
         )
 
         # Final assembly — weave header/footer back in.
@@ -2670,8 +2750,29 @@ class Page:
 
         reorganize_page_utils.emit_step_k_debug(self, debug_sections, final_blocks)
         reorganize_page_utils.emit_step_l_debug(self, debug_sections, final_blocks)
+        reorganize_page_utils.emit_step_dropcap_debug(
+            self, debug_sections, final_blocks
+        )
         if reorganize_page_utils.layout_debug_enabled():
             reorganize_page_utils.write_layout_debug_report(self, debug_sections)
+
+        if layout is not None:
+            from pd_book_tools.ocr import layout_aware_reorg
+
+            # Step Layout-3: stamp block_role_labels on each top-level block
+            # based on the dominant ``layout:*`` tag inside. Runs *before*
+            # caption association so the placeholder illustration / caption
+            # blocks emitted by associate_captions don't get re-tagged.
+            layout_aware_reorg.bubble_block_roles_from_layout(self._items)
+
+            # Step Layout-3b: route sidenote blocks — left margin emits at
+            # the top of the page, right margin at the bottom — so they
+            # don't interleave with body lines.
+            layout_aware_reorg.route_sidenote_reading_order(self)
+
+            # Step Layout-4: emit placeholder illustration + caption blocks
+            # for high-confidence figure / decoration / table regions.
+            layout_aware_reorg.associate_captions(self, layout)
 
     def add_ground_truth(self, text: str):
         update_page_with_ground_truth_text(self, text)
@@ -2710,6 +2811,7 @@ class Page:
             provenance_live_ocr=data.get("provenance_live_ocr"),
             provenance_saved_ocr=data.get("provenance_saved_ocr"),
             provenance_saved=data.get("provenance_saved"),
+            rotation_applied=data.get("rotation_applied", 0),
         )
 
     def recompute_bounding_box(self):

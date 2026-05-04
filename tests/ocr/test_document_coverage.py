@@ -204,7 +204,9 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         img = np.zeros((50, 50, 3), dtype=np.uint8)
-        doc = Document.from_image_ocr_via_doctr(img, predictor=fake_predictor)
+        doc = Document.from_image_ocr_via_doctr(
+            img, predictor=fake_predictor, auto_rotate=False
+        )
         assert isinstance(doc, Document)
         assert doc.pages[0].cv2_numpy_page_image is img
         fake_predictor.assert_called_once()
@@ -220,7 +222,9 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         gray = np.zeros((50, 50), dtype=np.uint8)
-        doc = Document.from_image_ocr_via_doctr(gray, predictor=fake_predictor)
+        doc = Document.from_image_ocr_via_doctr(
+            gray, predictor=fake_predictor, auto_rotate=False
+        )
         assert isinstance(doc, Document)
 
     def test_with_single_channel_3d_ndarray(self):
@@ -234,7 +238,9 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         img = np.zeros((50, 50, 1), dtype=np.uint8)
-        doc = Document.from_image_ocr_via_doctr(img, predictor=fake_predictor)
+        doc = Document.from_image_ocr_via_doctr(
+            img, predictor=fake_predictor, auto_rotate=False
+        )
         assert isinstance(doc, Document)
 
     def test_with_path_loads_via_imread(self, tmp_path):
@@ -253,7 +259,9 @@ class TestFromImageOcrViaDoctr:
         }
         fake_predictor.return_value = doctr_result
 
-        doc = Document.from_image_ocr_via_doctr(str(img_path), predictor=fake_predictor)
+        doc = Document.from_image_ocr_via_doctr(
+            str(img_path), predictor=fake_predictor, auto_rotate=False
+        )
         assert isinstance(doc, Document)
         assert doc.source_path == Path(str(img_path))
 
@@ -261,7 +269,9 @@ class TestFromImageOcrViaDoctr:
         fake_predictor = MagicMock()
         with pytest.raises(ValueError, match="Failed to load image"):
             Document.from_image_ocr_via_doctr(
-                "/path/that/does/not/exist.png", predictor=fake_predictor
+                "/path/that/does/not/exist.png",
+                predictor=fake_predictor,
+                auto_rotate=False,
             )
 
     def test_with_pil_image(self):
@@ -283,7 +293,9 @@ class TestFromImageOcrViaDoctr:
         }
         fake_predictor.return_value = doctr_result
 
-        doc = Document.from_image_ocr_via_doctr(pil_image, predictor=fake_predictor)
+        doc = Document.from_image_ocr_via_doctr(
+            pil_image, predictor=fake_predictor, auto_rotate=False
+        )
         assert isinstance(doc, Document)
 
     def test_default_predictor_invokes_get_default_doctr_predictor(self):
@@ -302,7 +314,7 @@ class TestFromImageOcrViaDoctr:
             return_value=fake_predictor,
         ) as mock_get_default:
             img = np.zeros((10, 10, 3), dtype=np.uint8)
-            Document.from_image_ocr_via_doctr(img)
+            Document.from_image_ocr_via_doctr(img, auto_rotate=False)
             mock_get_default.assert_called_once()
 
     def test_with_rgba_pil_image_covers_4channel_path(self):
@@ -326,7 +338,9 @@ class TestFromImageOcrViaDoctr:
         }
         fake_predictor.return_value = doctr_result
 
-        doc = Document.from_image_ocr_via_doctr(pil_image, predictor=fake_predictor)
+        doc = Document.from_image_ocr_via_doctr(
+            pil_image, predictor=fake_predictor, auto_rotate=False
+        )
         assert isinstance(doc, Document)
 
 
