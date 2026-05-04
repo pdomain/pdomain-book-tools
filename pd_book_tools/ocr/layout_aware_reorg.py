@@ -235,10 +235,14 @@ def _purge_word_from_blocks(blocks: list[Block], targets: Set[int]) -> None:
                     block.bounding_box = None
         else:
             _purge_word_from_blocks(list(block._items), targets)
+            # Drop child blocks left empty by the recursive purge — their
+            # bounding boxes were cleared to None and would poison the
+            # parent's recompute.
+            block._items = [b for b in block._items if not b.is_empty]
             if block._items:
-                non_empty = [b for b in block._items if not b.is_empty]
-                if non_empty:
-                    block.recompute_bounding_box()
+                block.recompute_bounding_box()
+            else:
+                block.bounding_box = None
 
 
 def drop_layout_regions(

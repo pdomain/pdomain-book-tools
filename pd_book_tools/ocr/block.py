@@ -312,13 +312,20 @@ class Block:
         return self._items.copy()
 
     def recompute_bounding_box(self) -> None:
-        """Recompute the bounding box of the block based on its items."""
-        if not self._items:
+        """Recompute the bounding box of the block based on its items.
+
+        Items with no bounding box (e.g. empty child blocks left over after
+        a layout-aware purge) are skipped — ``BoundingBox.union`` is strict
+        about None entries, and the caller wants the union of whatever
+        coordinates are actually available.
+        """
+        bboxes = [
+            item.bounding_box for item in self._items if item.bounding_box is not None
+        ]
+        if not bboxes:
             self.bounding_box = None
             return
-        self.bounding_box = BoundingBox.union(
-            [item.bounding_box for item in self._items]
-        )
+        self.bounding_box = BoundingBox.union(bboxes)
 
     def add_item(self, item):
         """Add an item to the block"""
