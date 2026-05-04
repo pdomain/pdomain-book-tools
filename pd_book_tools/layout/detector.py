@@ -78,8 +78,9 @@ class ContourDetector:
 
     All output regions are tagged :attr:`RegionType.figure`. The downstream
     illustration extractor in pd-prep-for-pgdp may post-classify some as
-    ``decoration`` based on size/position (see "Open design questions" #3
-    in PLAN-layout-aware-ocr.md).
+    ``decoration`` based on size/position — see the
+    "Decoration-vs-figure post-classification" item in
+    ``pd-book-tools/docs/ROADMAP.md``.
     """
 
     KEY = "contour"
