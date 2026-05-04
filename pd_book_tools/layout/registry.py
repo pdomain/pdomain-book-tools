@@ -14,7 +14,6 @@ from pd_book_tools.layout.detector import (
     ContourDetector,
     LayoutDetector,
     NullDetector,
-    _load_image,
 )
 from pd_book_tools.layout.types import PageLayout
 
@@ -72,7 +71,8 @@ def get_detector(
     """Return a memoised detector instance for ``key``.
 
     Available keys: ``"none"``, ``"contour"``, ``"pp-doclayout-plus-l"``.
-    The model adapter requires the ``[layout]`` extra (``transformers>=4.45``).
+    The model adapter pulls in ``transformers>=4.45``, which ships as a
+    core dependency (no install extra needed).
     """
     cache_key: _CacheKey = (key, device, confidence, checkpoint_path)
     cached = _DETECTOR_CACHE.get(cache_key)
@@ -90,7 +90,3 @@ def clear_detector_cache() -> None:
 
 
 __all__ = ["clear_detector_cache", "get_detector"]
-
-
-# Re-exported so adapters can share the helper without importing _detector_internal.
-_ = _load_image
