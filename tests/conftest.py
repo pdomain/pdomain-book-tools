@@ -60,6 +60,10 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "slow: mark test as slow (skip with -m 'not slow')"
     )
+    config.addinivalue_line(
+        "markers",
+        "layout: mark test as requiring the [layout] extra (transformers)",
+    )
 
 
 # GPU Fixtures ================================================================

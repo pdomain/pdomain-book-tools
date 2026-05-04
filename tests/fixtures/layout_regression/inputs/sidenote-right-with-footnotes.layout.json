@@ -1,0 +1,71 @@
+{
+  "regions": [
+    {
+      "type": "text",
+      "L": 36,
+      "R": 838,
+      "T": 332,
+      "B": 774,
+      "confidence": 0.985499918460846,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 37,
+      "R": 840,
+      "T": 35,
+      "B": 329,
+      "confidence": 0.9838137626647949,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 33,
+      "R": 835,
+      "T": 777,
+      "B": 895,
+      "confidence": 0.9688883423805237,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 33,
+      "R": 835,
+      "T": 917,
+      "B": 963,
+      "confidence": 0.7238464951515198,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 33,
+      "R": 834,
+      "T": 964,
+      "B": 1122,
+      "confidence": 0.6848256587982178,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 33,
+      "R": 833,
+      "T": 1170,
+      "B": 1310,
+      "confidence": 0.6710883378982544,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 35,
+      "R": 833,
+      "T": 1124,
+      "B": 1169,
+      "confidence": 0.5894627571105957,
+      "raw_label": "text"
+    }
+  ],
+  "image_width": 1000,
+  "image_height": 1378,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 749
+}

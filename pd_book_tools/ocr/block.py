@@ -51,6 +51,20 @@ class Block:
             # the end so the OCR word multiset round-trips. Visible to
             # consumers so they can flag / strip / re-flow these as needed.
             "recovered",
+            # Layout-derived roles (set by the layout-aware reorg helpers).
+            # PGDP serialisation wraps these as `[Illustration: …]` (figure /
+            # illustration / decoration) or as a caption attached to the
+            # adjacent illustration block.
+            "illustration",
+            "decoration",
+            "caption",
+            "figure",
+            "table",
+            "footnote",
+            "title",
+            "section",
+            "list",
+            "formula",
         }
     )
 
@@ -427,12 +441,23 @@ class Block:
     @property
     def text(self) -> str:
         """Get the full text of the block.
-        If child type is words, join text by spaces.
+        If child type is words, join text by spaces — except a word tagged
+        with ``word_components=["drop cap"]`` is fused to the next word
+        without any separator (so ``"R'" + "EADER!" → "R'EADER!"``).
         Otherwise join text by carriage returns.
         This automatically adds additional CRs between blocks/paragraphs.
         """
         if self.child_type == BlockChildType.WORDS:
-            return " ".join(item.text for item in self._items)
+            parts: list[str] = []
+            for idx, item in enumerate(self._items):
+                if idx == 0:
+                    parts.append(item.text)
+                    continue
+                prev = self._items[idx - 1]
+                prev_components = getattr(prev, "word_components", None) or []
+                sep = "" if "drop cap" in prev_components else " "
+                parts.append(sep + item.text)
+            return "".join(parts)
         elif self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(item.text for item in self._items)
         else:

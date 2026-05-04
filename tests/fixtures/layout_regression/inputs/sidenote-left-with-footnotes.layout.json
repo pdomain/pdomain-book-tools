@@ -1,0 +1,44 @@
+{
+  "regions": [
+    {
+      "type": "text",
+      "L": 157,
+      "R": 954,
+      "T": 632,
+      "B": 1163,
+      "confidence": 0.9869073629379272,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 156,
+      "R": 955,
+      "T": 40,
+      "B": 629,
+      "confidence": 0.9861646890640259,
+      "raw_label": "text"
+    },
+    {
+      "type": "text",
+      "L": 158,
+      "R": 954,
+      "T": 1166,
+      "B": 1223,
+      "confidence": 0.9428903460502625,
+      "raw_label": "text"
+    },
+    {
+      "type": "footnote",
+      "L": 156,
+      "R": 953,
+      "T": 1243,
+      "B": 1315,
+      "confidence": 0.8839067220687866,
+      "raw_label": "footnote"
+    }
+  ],
+  "image_width": 1000,
+  "image_height": 1390,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 704
+}

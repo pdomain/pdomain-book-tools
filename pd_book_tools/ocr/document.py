@@ -117,6 +117,9 @@ class Document:
         image: Union[str, PathLike, ndarray, PILImage],
         source_identifier: str = "",
         predictor=None,
+        *,
+        auto_rotate: bool = True,
+        auto_rotate_threshold: float | None = None,
     ) -> "Document":
         """
         Perform OCR on a single cv2 image using the doctr library.
@@ -124,8 +127,18 @@ class Document:
            - A file path (str or PathLike, will use cv2 to load the image)
            - numpy ndarray (usually from cv2, as BGR, RGB, or Grayscale)
            - PIL Image
-        :param image_path_override: The source image path or identifier for the OCR results.
+        :param source_identifier: The source image path or identifier for the OCR results.
         :param predictor: The DocTR OCR predictor to use. If None, it will use the default pre-trained model.
+        :param auto_rotate: If True (default), run OCR upright first; if mean
+           per-word confidence is below ``auto_rotate_threshold``, also try
+           90°/180°/270° and pick whichever produces the highest mean
+           confidence. The chosen rotation is recorded on
+           ``page.rotation_applied``. Set to False to skip the fallback
+           probes and always OCR the image as-is.
+        :param auto_rotate_threshold: Mean per-word confidence at which the
+           upright pass is considered good enough; ignored when
+           ``auto_rotate`` is False. Defaults to
+           :data:`pd_book_tools.ocr.rotation.DEFAULT_CONFIDENCE_THRESHOLD`.
         :return: Document containing the OCR results.
         """
         if predictor is None:
@@ -180,18 +193,44 @@ class Document:
             # Already in RGB or unsupported format - use as is
             image_rgb = image_ndarray
 
-        image_list = [image_rgb]
+        def _ocr_one(rgb: ndarray) -> "Document":
+            doctr_result = predictor([rgb])
+            return cls.from_doctr_result(
+                doctr_result=doctr_result,
+                source_path=source_path,
+                source_identifier=source_identifier,
+            )
 
-        doctr_result = predictor(image_list)
-        ocr_doc: Document = cls.from_doctr_result(
-            doctr_result=doctr_result,
-            source_path=source_path,
-            source_identifier=source_identifier,
-        )
+        if auto_rotate:
+            # Lazy import: avoid the small overhead when callers opt out.
+            from pd_book_tools.ocr.rotation import (  # noqa: PLC0415
+                DEFAULT_CONFIDENCE_THRESHOLD,
+                detect_best_rotation,
+                rotate_image,
+            )
 
-        # Always 1 page per OCR in this case
-        ocr_page: Page = ocr_doc.pages[0]
-        ocr_page.cv2_numpy_page_image = image_ndarray
+            threshold = (
+                DEFAULT_CONFIDENCE_THRESHOLD
+                if auto_rotate_threshold is None
+                else auto_rotate_threshold
+            )
+            chosen, ocr_doc, _probes = detect_best_rotation(
+                image_rgb,
+                ocr_fn=_ocr_one,
+                confidence_threshold=threshold,
+            )
+            # Stash the rotated source image on the page so downstream
+            # consumers (layout detector, reorganize_page, labeler UI) all
+            # see pixels in the same frame OCR did.
+            rotated_source = rotate_image(image_ndarray, chosen)
+            ocr_page: Page = ocr_doc.pages[0]
+            ocr_page.cv2_numpy_page_image = rotated_source
+            ocr_page.rotation_applied = chosen
+        else:
+            ocr_doc = _ocr_one(image_rgb)
+            ocr_page = ocr_doc.pages[0]
+            ocr_page.cv2_numpy_page_image = image_ndarray
+            # rotation_applied stays at its default 0
 
         return ocr_doc
 

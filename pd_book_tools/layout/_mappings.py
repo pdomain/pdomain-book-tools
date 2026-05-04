@@ -1,0 +1,39 @@
+"""Per-adapter native-label → :class:`RegionType` mappings.
+
+PP-DocLayout_plus-L emits 20 native categories. The rest of the pipeline
+cares about a smaller, PGDP-flavoured taxonomy (see :class:`RegionType`).
+``None`` means "drop this region entirely" — the adapter detected it,
+the consumer ignores it.
+"""
+
+# Mapping is intentionally exposed as a plain dict so users / pd-prep-for-pgdp
+# can override per-book via ``ProjectConfig.layout_category_overrides``.
+PP_DOCLAYOUT_TO_PGDP: dict[str, str | None] = {
+    # Body text — kept as text regions, no special handling
+    "paragraph_title": "section",
+    "doc_title": "title",
+    "text": "text",
+    "abstract": "text",
+    # Figures and decorative content
+    "image": "figure",
+    "chart": "figure",
+    "figure_title": "caption",
+    # Tables
+    "table": "table",
+    "table_title": "caption",
+    # Math
+    "formula": "formula",
+    "formula_number": None,  # subsumed by adjacent formula
+    # Page chrome — dropped before reorg
+    "header": "header",
+    "footer": "footer",
+    "page_number": "footer",
+    "footnote": "footnote",
+    # Lists & navigation
+    "list_of_references": "list",
+    "reference": "list",
+    "sidebar_text": "abandoned",
+    "algorithm": "text",
+    # Stamps / seals (engraved insignia)
+    "seal": "decoration",
+}

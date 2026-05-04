@@ -1,0 +1,44 @@
+{
+  "regions": [
+    {
+      "type": "text",
+      "L": 213,
+      "R": 1086,
+      "T": 636,
+      "B": 1378,
+      "confidence": 0.9859948754310608,
+      "raw_label": "text"
+    },
+    {
+      "type": "section",
+      "L": 378,
+      "R": 921,
+      "T": 568,
+      "B": 598,
+      "confidence": 0.8513036370277405,
+      "raw_label": "paragraph_title"
+    },
+    {
+      "type": "section",
+      "L": 529,
+      "R": 782,
+      "T": 486,
+      "B": 521,
+      "confidence": 0.7637926340103149,
+      "raw_label": "paragraph_title"
+    },
+    {
+      "type": "title",
+      "L": 255,
+      "R": 1046,
+      "T": 399,
+      "B": 442,
+      "confidence": 0.6693567037582397,
+      "raw_label": "doc_title"
+    }
+  ],
+  "image_width": 1100,
+  "image_height": 1634,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 552
+}

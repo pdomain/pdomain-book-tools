@@ -1,0 +1,26 @@
+{
+  "regions": [
+    {
+      "type": "figure",
+      "L": 150,
+      "R": 1455,
+      "T": 52,
+      "B": 810,
+      "confidence": 0.985333263874054,
+      "raw_label": "image"
+    },
+    {
+      "type": "caption",
+      "L": 186,
+      "R": 1402,
+      "T": 825,
+      "B": 850,
+      "confidence": 0.876204252243042,
+      "raw_label": "figure_title"
+    }
+  ],
+  "image_width": 1505,
+  "image_height": 900,
+  "detector": "pp-doclayout-plus-l",
+  "inference_ms": 602
+}

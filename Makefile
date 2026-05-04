@@ -1,4 +1,10 @@
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs ci release-patch release-minor release-major _do-release help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+
+# Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
+HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
+HF_LAYOUT_FORK     ?= CT2534/PP-DocLayout_plus-L
+HF_LAYOUT_MIRROR   ?= /tmp/pp-doclayout-mirror
+HF_LAYOUT_ADAPTER  := pd_book_tools/layout/adapters/pp_doclayout.py
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -95,12 +101,15 @@ build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."
 	uv build
 
-ci: ## Run complete CI pipeline (install [idempotent], pre-commit, test, build)
+ci: ## Run complete CI pipeline (install [idempotent], pre-commit, test, build, layout-fork-info)
 	@echo "🚀 Running complete CI pipeline..."
 	@$(MAKE) --no-print-directory install
 	@$(MAKE) --no-print-directory pre-commit-check
 	@$(MAKE) --no-print-directory test
 	@$(MAKE) --no-print-directory build
+	@echo ""
+	@echo "🔎 Layout-detector fork drift check..."
+	@$(MAKE) --no-print-directory layout-fork-info
 	@echo "✅ CI pipeline complete!"
 
 clean: ## Clean up cache and temporary files (keeps venv and UV cache)
@@ -121,6 +130,17 @@ clean-logs: ## Remove log files from logs/ if present
 	find logs -type f -name "*.log" -delete 2>/dev/null || true
 	@echo "✅ Log cleanup complete!"
 
+clean-debug: ## Remove all timestamped debug runs from layout_regression/debug/
+	@echo "🧹 Removing timestamped debug runs (test-* and regen-*)..."
+	@DEBUG=tests/fixtures/layout_regression/debug; \
+	if [ -d "$$DEBUG" ]; then \
+	  COUNT=$$(find "$$DEBUG" -maxdepth 1 -type d \( -name 'test-*' -o -name 'regen-*' \) | wc -l); \
+	  find "$$DEBUG" -maxdepth 1 -type d \( -name 'test-*' -o -name 'regen-*' \) -exec rm -rf {} +; \
+	  echo "✅ Removed $$COUNT timestamped run(s)."; \
+	else \
+	  echo "ℹ️  $$DEBUG does not exist; nothing to clean."; \
+	fi
+
 release-patch: ## Bump patch version and create a git tag (e.g. 0.3.0 → 0.3.1)
 	uv version --bump patch
 	@$(MAKE) --no-print-directory _do-release
@@ -132,6 +152,59 @@ release-minor: ## Bump minor version and create a git tag (e.g. 0.3.0 → 0.4.0)
 release-major: ## Bump major version and create a git tag (e.g. 0.3.0 → 1.0.0)
 	uv version --bump major
 	@$(MAKE) --no-print-directory _do-release
+
+layout-fork-info: ## Show pinned layout SHA + upstream / fork latest SHAs (warns on divergence; never fails)
+	@PINNED=$$(grep '^_DEFAULT_REVISION' $(HF_LAYOUT_ADAPTER) | sed -E 's/.*"([^"]+)".*/\1/'); \
+	UPSTREAM=$$(git ls-remote https://huggingface.co/$(HF_LAYOUT_UPSTREAM) HEAD 2>/dev/null | cut -f1); \
+	FORK=$$(git ls-remote https://huggingface.co/$(HF_LAYOUT_FORK) HEAD 2>/dev/null | cut -f1); \
+	echo "pinned (in $(HF_LAYOUT_ADAPTER)): $$PINNED"; \
+	echo "fork  ($(HF_LAYOUT_FORK)): $${FORK:-<unreachable>}"; \
+	echo "upstream ($(HF_LAYOUT_UPSTREAM)): $${UPSTREAM:-<unreachable>}"; \
+	if [ -z "$$FORK" ] || [ -z "$$UPSTREAM" ]; then \
+	  echo "ℹ️  Skipping divergence check — could not reach Hugging Face (network/auth issue)." >&2; \
+	  exit 0; \
+	fi; \
+	if [ "$$PINNED" = "$$FORK" ] && [ "$$FORK" = "$$UPSTREAM" ]; then \
+	  echo "✅ pinned == fork == upstream"; \
+	elif [ "$$PINNED" != "$$FORK" ]; then \
+	  echo "⚠️  WARNING: pinned SHA ($$PINNED) does not match fork HEAD ($$FORK) — run 'make layout-fork-pin SHA=$$FORK'" >&2; \
+	elif [ "$$FORK" != "$$UPSTREAM" ]; then \
+	  echo "⚠️  WARNING: upstream has moved past the fork — run 'make layout-fork-update' to refresh, then 'make layout-fork-pin'" >&2; \
+	fi
+
+layout-fork-update: ## Re-sync layout-detector fork from upstream and print the new SHA
+	@command -v hf >/dev/null 2>&1 || { echo "ERROR: 'hf' CLI not found. uv add huggingface_hub or pip install -U huggingface_hub"; exit 1; }
+	@echo "🔁 Re-downloading $(HF_LAYOUT_UPSTREAM) → $(HF_LAYOUT_MIRROR) ..."
+	@rm -rf "$(HF_LAYOUT_MIRROR)"
+	@hf download "$(HF_LAYOUT_UPSTREAM)" --local-dir "$(HF_LAYOUT_MIRROR)" >/dev/null
+	@echo "⬆️  Uploading mirror → $(HF_LAYOUT_FORK) ..."
+	@hf upload "$(HF_LAYOUT_FORK)" "$(HF_LAYOUT_MIRROR)" . \
+	  --commit-message "Re-sync from $(HF_LAYOUT_UPSTREAM) ($$(date -u +%Y-%m-%dT%H:%M:%SZ))" >/dev/null
+	@SHA=$$(git ls-remote https://huggingface.co/$(HF_LAYOUT_FORK) HEAD | cut -f1); \
+	echo "✅ Fork now at $$SHA"; \
+	echo "   Pin it with: make layout-fork-pin SHA=$$SHA"
+
+layout-fixtures-regenerate: ## Re-run the layout model on tests/fixtures/.../inputs/*.png and cache JSON
+	@echo "🔁 Regenerating layout JSON fixtures (downloads ~132 MB model on first run)..."
+	@uv run python tests/fixtures/layout_regression/regenerate_layouts.py
+	@echo "✅ Layout fixtures regenerated. Inspect diffs and commit if intended."
+
+layout-fork-pin: ## Pin a SHA into pp_doclayout.py (usage: make layout-fork-pin SHA=<commit>)
+	@if [ -z "$(SHA)" ]; then \
+	  echo "❌ Missing SHA. Usage: make layout-fork-pin SHA=<commit>"; \
+	  exit 1; \
+	fi
+	@if ! [ -f "$(HF_LAYOUT_ADAPTER)" ]; then \
+	  echo "❌ Adapter not found at $(HF_LAYOUT_ADAPTER)"; exit 1; \
+	fi
+	@OLD=$$(grep '^_DEFAULT_REVISION' $(HF_LAYOUT_ADAPTER) | sed -E 's/.*"([^"]+)".*/\1/'); \
+	if [ "$$OLD" = "$(SHA)" ]; then \
+	  echo "ℹ️  $(HF_LAYOUT_ADAPTER) is already pinned at $$OLD"; \
+	  exit 0; \
+	fi; \
+	sed -i.bak -E 's|^(_DEFAULT_REVISION = ").*(")|\1$(SHA)\2|' $(HF_LAYOUT_ADAPTER); \
+	rm -f $(HF_LAYOUT_ADAPTER).bak; \
+	echo "📌 Pinned $(HF_LAYOUT_ADAPTER): $$OLD → $(SHA)"
 
 _do-release:
 	@VERSION=$$(uv version --short); \

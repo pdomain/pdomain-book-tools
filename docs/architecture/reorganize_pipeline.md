@@ -73,7 +73,7 @@ demands them):
    │       build_page_header_block / footer
    │
    ▼
- [Step F/G] compute_text_row_blocks            + write_step_row_blocks_debug_overlay_png
+ [Step F] compute_text_row_blocks            + write_step_row_blocks_debug_overlay_png
    │       _build_word_seeded_row_blocks       (chooses lower-cost variant)
    │       _row_block_quality
    │
@@ -81,7 +81,7 @@ demands them):
  [Step B'] reorganize_lines per row block      (re-merge after grouping)
    │
    ▼
- [Step H/I] expand_row_blocks                  + write_step_h_debug_overlay_png
+ [Step H] expand_row_blocks                  + write_step_h_debug_overlay_png
    │       expand_floated_flow_row_block
    │       expand_mixed_column_row_block
    │       expand_multi_column_row_block
@@ -95,6 +95,11 @@ demands them):
    │       — Step K paragraph splits run inside this for body blocks
    │
    ▼
+ [Step DC] stitch_drop_caps                    + emit_step_dropcap_debug
+   │       Tag oversized initial letter with word_components=["drop cap"]
+   │       and merge it into the next paragraph's first line.
+   │
+   ▼
  [Final] assemble_final_blocks                 (weave header/footer back in,
                                                  stamp override_page_sort_order)
    │
@@ -105,13 +110,20 @@ demands them):
 Steps C, J, and M from the original design are folded in implicitly:
 
 - **Step C** (assign words to baseline-rows) is performed inside
-  `_line_bands_from_group_words` and `_build_word_seeded_row_blocks`.
+  `build_word_seeded_row_blocks`'s line-bucketing pass.
 - **Step J** (reading order) is the natural output ordering of
   `expand_row_blocks` — left column emitted before right column, narrow
   wrapped flow before its caption, etc.
 - **Step M** (block tree → text) is `Page.text`, which simply joins the items.
 
-Each step (D, E, F/G, H, K, L) writes a debug PNG into
+The previous design also exposed Step 1a/1b/1c "seed-region growth" debug
+overlays, computed by an independent word-grouping algorithm. That code
+path was vestigial — the result was never consumed by the pipeline, only
+visualised — and dominated debug-on test runtime by a factor of ~250×.
+It was removed; if you need to inspect word grouping today, the row-block
+debug PNG (`stepF`) is the live equivalent.
+
+Each step (D, E, F, H, K, L) writes a debug PNG into
 `tests/fixtures/layout_regression/debug/<case>/` when the
 `PD_OCR_LAYOUT_DEBUG=1` environment variable is set. The regression test
 enables this automatically. An auto-generated `index.html` lets you scroll
@@ -139,7 +151,7 @@ two adjacent `LINE` children when:
 - Their X gap is less than 10 % of the median line width in the block.
 
 Runs once before row-block grouping (on each existing OCR block), and once
-per row block after Step F/G as a refinement pass.
+per row block after Step F as a refinement pass.
 
 ### Step D — split mixed-content lines
 
@@ -176,9 +188,9 @@ the X gap between them is far wider than any normal word gap.
 
 `extract_bottom_footer_lines` is the symmetric mirror.
 
-The header/footer words are removed from the body pool before Step F/G runs.
+The header/footer words are removed from the body pool before Step F runs.
 
-### Step F/G — vertical row-block grouping
+### Step F — vertical row-block grouping
 
 Two grouping strategies run; `_row_block_quality` picks the better one:
 
@@ -194,7 +206,7 @@ Two grouping strategies run; `_row_block_quality` picks the better one:
 `_row_block_quality` scores by counting suspicious lines (very short, single
 word, Y backtracks). The pipeline keeps the lower-scoring variant.
 
-### Step H/I — column / floated-figure expansion
+### Step H — column / floated-figure expansion
 
 `expand_row_blocks(page, row_blocks, debug_squeezed_lines)` iterates every
 row block and dispatches to one of:
@@ -254,6 +266,72 @@ body X extent). Possible classifications:
 
 Special blocks get a thin wrapper via `wrap_special_role_block`. Body blocks
 get full paragraph splitting via `compute_text_paragraph_blocks`.
+
+### Step DC — drop-cap detection and stitching
+
+`stitch_drop_caps(blocks, metrics)` walks each body BLOCK's paragraphs and
+detects the oversized initial letter ("drop cap") that opens the first body
+paragraph after a chapter heading. A paragraph qualifies as a drop cap when:
+
+- It is a single-word paragraph (one LINE child, one visible Word).
+- The word's height is at least `1.8 * median_word_h`.
+- The word's text is 1–2 visible characters (handles OCR oddities like
+  ``R'`` where the apostrophe is part of the same OCR token).
+
+The next paragraph's first line is checked for a body word that:
+
+- Sits to the right of the drop-cap centre (centroid comparison; small
+  X-overlap is allowed because OCR can place the body word's left edge
+  slightly inside the drop-cap glyph's bbox — up to 25% of cap width).
+- Has its `minY` near the drop cap's `minY` (within `~1.5 * median_word_h`),
+  i.e. shares the top baseline with the cap.
+
+When detected:
+
+1. The cap word's `word_components` get `"drop cap"` appended (using the
+   existing `Word.word_components` schema; the label flows through to the
+   labeler / training exports).
+2. The cap word is moved to the front of the target line.
+3. The cap word's text is trimmed to its first character — OCR
+   commonly grabs an extra glyph alongside the oversized cap (a smudge,
+   a stylistic flourish, or in the test4 case an apostrophe-like
+   artifact). Trimming gives the labeler / GT matcher a clean cap-letter
+   token and lets the rendered text read as one correct word
+   (``"R"`` + ``"EADER!"`` → ``"READER!"`` instead of ``"R'EADER!"``).
+4. The now-empty single-word paragraph is dropped from the block.
+
+The cap and body word stay as two distinct ``Word`` objects in the line
+so downstream tooling can reason about them separately:
+
+- ``Word.text`` for the cap = the single initial letter (``"R"``).
+- ``Word.bounding_box`` for the cap = the full cap-glyph bbox (large).
+- ``Word.text`` for the body = the rest of the original word
+  (``"EADER!"``).
+- ``Block.text`` joins them with no separator because the cap carries
+  ``word_components=["drop cap"]``, see :class:`Block`.
+
+Ground-truth matching therefore sees two ``Word`` elements ``R`` and
+``EADER!`` to align against the GT word ``READER!``: the matcher splits
+the GT word's first character to the drop-cap word and the remainder to
+the body word, and the cap's ``"drop cap"`` component flag survives the
+match.
+
+Special-role blocks (page header, footer, sidenote, poetry, blockquote,
+recovered, page number, printers mark) are skipped — drop caps only appear
+at the start of body paragraphs.
+
+This decouples drop-cap handling from the OCR model. Two equally valid
+approaches exist:
+
+1. **Train the OCR model to read a drop cap as one word** — produces
+   ``"READER!"`` directly. Requires labelled data and does not survive a
+   model swap.
+2. **Treat the cap as two words and stitch geometrically** — what this step
+   does. Robust to model changes, easy to inspect (the `"drop cap"`
+   component is a structured tag rather than baked-in text), and the
+   downstream consumer can decide whether to render the cap differently.
+
+We use approach 2.
 
 ### Final assembly
 

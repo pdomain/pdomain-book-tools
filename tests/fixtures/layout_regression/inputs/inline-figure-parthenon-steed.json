@@ -1,0 +1,363 @@
+{
+  "source_lib": "doctr",
+  "source_identifier": "",
+  "source_path": "/workspaces/ocr-container/pd-book-tools/tests/fixtures/layout_regression/inputs/inline-figure-parthenon-steed.png",
+  "pages": [
+    {
+      "type": "Page",
+      "width": 700,
+      "height": 623,
+      "page_index": 0,
+      "bounding_box": {
+        "top_left": {
+          "x": 0.22265625,
+          "y": 0.9202510533707865,
+          "is_normalized": true
+        },
+        "bottom_right": {
+          "x": 0.7724609375,
+          "y": 0.989378511235955,
+          "is_normalized": true
+        },
+        "is_normalized": true
+      },
+      "items": [
+        {
+          "type": "Block",
+          "child_type": "BLOCKS",
+          "block_category": "PARAGRAPH",
+          "block_labels": null,
+          "block_role_labels": [],
+          "block_position_labels": [],
+          "line_role_labels": [],
+          "line_position_labels": [],
+          "baseline": null,
+          "bounding_box": {
+            "top_left": {
+              "x": 0.22265625,
+              "y": 0.9202510533707865,
+              "is_normalized": true
+            },
+            "bottom_right": {
+              "x": 0.7724609375,
+              "y": 0.989378511235955,
+              "is_normalized": true
+            },
+            "is_normalized": true
+          },
+          "items": [
+            {
+              "type": "Block",
+              "child_type": "WORDS",
+              "block_category": "LINE",
+              "block_labels": null,
+              "block_role_labels": [],
+              "block_position_labels": [],
+              "line_role_labels": [],
+              "line_position_labels": [],
+              "baseline": null,
+              "bounding_box": {
+                "top_left": {
+                  "x": 0.22265625,
+                  "y": 0.9202510533707865,
+                  "is_normalized": true
+                },
+                "bottom_right": {
+                  "x": 0.7724609375,
+                  "y": 0.9520716292134832,
+                  "is_normalized": true
+                },
+                "is_normalized": true
+              },
+              "items": [
+                {
+                  "type": "Word",
+                  "text": "FIG.",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.22265625,
+                      "y": 0.9202510533707865,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.275390625,
+                      "y": 0.949877106741573,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.6512105464935303,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "4.-HEAD",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.2822265625,
+                      "y": 0.9202510533707865,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.416015625,
+                      "y": 0.9520716292134832,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.5428904294967651,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "OF",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.4296875,
+                      "y": 0.9213483146067416,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.470703125,
+                      "y": 0.9476825842696629,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.9977710247039795,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "PARTHENON",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.48828125,
+                      "y": 0.9246400983146068,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.662109375,
+                      "y": 0.9443908005617978,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.967940111955007,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "STEED",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.681640625,
+                      "y": 0.9224455758426966,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.7724609375,
+                      "y": 0.9465853230337078,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.965977132320404,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                }
+              ],
+              "override_page_sort_order": null,
+              "unmatched_ground_truth_words": [],
+              "additional_block_attributes": {},
+              "base_ground_truth_text": ""
+            },
+            {
+              "type": "Block",
+              "child_type": "WORDS",
+              "block_category": "LINE",
+              "block_labels": null,
+              "block_role_labels": [],
+              "block_position_labels": [],
+              "line_role_labels": [],
+              "line_position_labels": [],
+              "baseline": null,
+              "bounding_box": {
+                "top_left": {
+                  "x": 0.43359375,
+                  "y": 0.9553634129213483,
+                  "is_normalized": true
+                },
+                "bottom_right": {
+                  "x": 0.560546875,
+                  "y": 0.989378511235955,
+                  "is_normalized": true
+                },
+                "is_normalized": true
+              },
+              "items": [
+                {
+                  "type": "Word",
+                  "text": "Sce",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.43359375,
+                      "y": 0.9553634129213483,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.474609375,
+                      "y": 0.9816976825842696,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.9604214429855347,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "page",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.4794921875,
+                      "y": 0.9608497191011236,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.5341796875,
+                      "y": 0.989378511235955,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.9999032020568848,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                },
+                {
+                  "type": "Word",
+                  "text": "3.",
+                  "bounding_box": {
+                    "top_left": {
+                      "x": 0.541015625,
+                      "y": 0.9630442415730337,
+                      "is_normalized": true
+                    },
+                    "bottom_right": {
+                      "x": 0.560546875,
+                      "y": 0.9860867275280899,
+                      "is_normalized": true
+                    },
+                    "is_normalized": true
+                  },
+                  "ocr_confidence": 0.998568058013916,
+                  "word_labels": [],
+                  "text_style_labels": [
+                    "regular"
+                  ],
+                  "text_style_label_scopes": {
+                    "regular": "whole"
+                  },
+                  "word_components": [],
+                  "baseline": null,
+                  "ground_truth_text": null,
+                  "ground_truth_bounding_box": null,
+                  "ground_truth_match_keys": {}
+                }
+              ],
+              "override_page_sort_order": null,
+              "unmatched_ground_truth_words": [],
+              "additional_block_attributes": {},
+              "base_ground_truth_text": ""
+            }
+          ],
+          "override_page_sort_order": null,
+          "unmatched_ground_truth_words": [],
+          "additional_block_attributes": {},
+          "base_ground_truth_text": ""
+        }
+      ],
+      "ocr_provenance": {
+        "engine": "doctr",
+        "models": [],
+        "engine_version": "unknown"
+      }
+    }
+  ]
+}
