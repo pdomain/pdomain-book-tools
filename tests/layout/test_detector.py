@@ -1,7 +1,8 @@
 """Tests for the no-model detectors and the registry.
 
-The PP-DocLayout adapter is exercised by ``test_pp_doclayout.py`` and gated
-behind ``pytest.mark.layout`` (skipped if ``transformers`` is unavailable).
+The PP-DocLayout adapter is exercised by ``test_pp_doclayout.py``; the
+end-to-end smoke test there is gated behind ``pytest.mark.slow`` because
+the first run downloads ~132 MB of weights.
 """
 
 import numpy as np

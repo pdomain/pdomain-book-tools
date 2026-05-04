@@ -62,7 +62,8 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers",
-        "layout: mark test as requiring the [layout] extra (transformers)",
+        "layout: mark test as requiring transformers (core dep — kept for "
+        "explicit gating if transformers ever moves to an optional extra)",
     )
 
 
