@@ -139,3 +139,10 @@ training-output/
 doctr_package/**
 
 .ruff_cache
+
+# Reorganize-pipeline regression test outputs — regenerated on every pytest
+# run from inputs/ + expected_text/baseline/. Only the inputs and baselines
+# belong in source control.
+tests/fixtures/layout_regression/debug/
+tests/fixtures/layout_regression/expected_text/current/
+tests/fixtures/layout_regression/expected_text/diff/

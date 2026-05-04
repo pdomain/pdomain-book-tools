@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
@@ -173,13 +174,13 @@ class TestComputeTextRowBlocksDetailed:
         # Two lines side by side at the same y range
         line1 = _make_line([_make_word("a", 0, 0, 10, 10)])
         line2 = _make_line([_make_word("b", 20, 0, 30, 10)])
-        result = Page.compute_text_row_blocks([line1, line2])
+        result = reorganize_page_utils.compute_text_row_blocks([line1, line2])
         assert result is not None
 
     def test_with_lines_at_different_rows(self):
         line1 = _make_line([_make_word("a", 0, 0, 10, 10)])
         line2 = _make_line([_make_word("b", 0, 30, 10, 40)])
-        result = Page.compute_text_row_blocks([line1, line2])
+        result = reorganize_page_utils.compute_text_row_blocks([line1, line2])
         assert result is not None
 
 
@@ -187,7 +188,7 @@ class TestComputeTextParagraphBlocks:
     def test_with_consecutive_lines(self):
         line1 = _make_line([_make_word("a", 0, 0, 10, 10)])
         line2 = _make_line([_make_word("b", 0, 12, 10, 22)])
-        result = Page.compute_text_paragraph_blocks([line1, line2])
+        result = reorganize_page_utils.compute_text_paragraph_blocks([line1, line2])
         assert result is not None
 
 
@@ -282,7 +283,9 @@ class TestComputeTextRowBlocksWithTolerance:
             child_type=BlockChildType.WORDS,
         )
         # Pass explicit tolerance → skips the 2821 None-check → covers 2821->2826 False
-        result = Page.compute_text_row_blocks([line1, line2], tolerance=5.0)
+        result = reorganize_page_utils.compute_text_row_blocks(
+            [line1, line2], tolerance=5.0
+        )
         assert result is not None
 
 
@@ -319,7 +322,7 @@ class TestReorganizeLinesSwapBranch:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        Page.reorganize_lines(para)
+        reorganize_page_utils.reorganize_lines(para)
         assert len(para.items) >= 1
 
 

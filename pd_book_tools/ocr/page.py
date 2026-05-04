@@ -16,12 +16,10 @@ from cv2 import cvtColor as cv2_cvtColor
 from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
-from numpy import mean as np_mean
-from numpy import median as np_median
 from numpy import ndarray
-from numpy import std as np_std
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.ground_truth_matching import update_page_with_ground_truth_text
 from pd_book_tools.ocr.provenance import OCRProvenance
@@ -153,7 +151,10 @@ class Page:
     def _sort_items(self):
         self._items.sort(
             key=lambda item: (
-                item.bounding_box.top_left.y if item.bounding_box else 0,
+                item.override_page_sort_order
+                if item.override_page_sort_order is not None
+                else 10**9,
+                round(item.bounding_box.top_left.y, 2) if item.bounding_box else 0,
                 item.bounding_box.top_left.x if item.bounding_box else 0,
             ),
         )
@@ -222,7 +223,10 @@ class Page:
         self._items = sorted(
             values,
             key=lambda block: (
-                block.bounding_box.top_left.y if block.bounding_box else 0,
+                block.override_page_sort_order
+                if block.override_page_sort_order is not None
+                else 10**9,
+                round(block.bounding_box.top_left.y, 2) if block.bounding_box else 0,
                 block.bounding_box.top_left.x if block.bounding_box else 0,
             ),
         )
@@ -2567,44 +2571,107 @@ class Page:
         return self.from_dict(self.to_dict())
 
     def reorganize_page(self):
-        """
-        Reogranize the page into paragraphs and blocks.
-        This is a post-processing step to ensure that the text is
-        organized into logical sections for text generated output.
+        """Top-level reorganize pipeline — thin orchestration shim.
+
+        All pipeline-step logic lives in
+        :mod:`pd_book_tools.ocr.reorganize_page_utils`. See
+        ``docs/architecture/reorganize_pipeline.md`` for the per-step
+        heuristics, debug-PNG outputs, and the rationale behind each
+        threshold.
         """
         logger.debug("Reorganizing Page")
 
-        # Merge lines for each block if they didn't get recognzied together
+        # Step A — image-based bounding box tightening.
+        if self._cv2_numpy_page_image is not None:
+            self.refine_bounding_boxes()
+
+        # Snapshot the pre-pipeline word set so the post-pipeline reconciler
+        # can detect drops and either recover them or hard-fail (strict mode).
+        # Captured AFTER refine_bounding_boxes so signatures are computed
+        # against the same coordinates used by the pipeline.
+        pre_reorg_words = list(self.words)
+
+        debug_sections: List[tuple[str, List[str]]] = []
+        debug_squeezed_lines: List[str] = []
+        if reorganize_page_utils.layout_debug_enabled():
+            debug_sections.extend(
+                reorganize_page_utils.debug_step1_subgroup_sections(self)
+            )
+
+        # Step B — merge OCR-fragmented lines back together.
         for block in self.items:
-            self.reorganize_lines(block)
+            reorganize_page_utils.reorganize_lines(block)
 
-        row_blocks = self.compute_text_row_blocks(self.lines)
+        # Step D — split mixed-content (caption + body) OCR lines.
+        reorganize_page_utils.run_step_d_split_mixed_content(self, debug_sections)
 
-        # TODO: Add logic to detect and handle multiple columns of text
+        # Step E — peel page header / footer bands.
+        (
+            _header_lines,
+            _footer_lines,
+            body_lines,
+            body_words,
+            page_header_block,
+            page_footer_block,
+        ) = reorganize_page_utils.run_step_e_extract_header_footer(self, debug_sections)
+
+        # Step F/G — vertical row-block grouping.
+        row_blocks = reorganize_page_utils.run_step_fg_row_blocks(
+            self, body_lines, body_words, debug_sections
+        )
 
         if not row_blocks or len(row_blocks.items) == 0:
             logger.debug("No blocks to reorganize")
+            if reorganize_page_utils.layout_debug_enabled():
+                debug_sections.append(("Step 2", ["No row blocks to reorganize."]))
+                reorganize_page_utils.write_layout_debug_report(self, debug_sections)
+            reorganize_page_utils.emit_band_only_blocks(
+                self, page_header_block, page_footer_block
+            )
             return
 
-        # Recompute lines within blocks
         for block in row_blocks.items:
-            # Recompute lines for each paragraph block
-            self.reorganize_lines(block)
+            reorganize_page_utils.reorganize_lines(block)
 
-        reset_paragraph_blocks = []
+        # Step H/I — column / floated-figure expansion of each row block.
+        expanded_row_blocks, step_h_decisions = reorganize_page_utils.expand_row_blocks(
+            self, row_blocks, debug_squeezed_lines
+        )
+        reorganize_page_utils.emit_step_h_debug(
+            self, debug_sections, debug_squeezed_lines, step_h_decisions
+        )
 
-        # Reoragnize into paragraph blocks
-        for b in list(row_blocks.items):
-            paragraph_blocks = self.compute_text_paragraph_blocks(b.lines)
-            reset_paragraph_blocks.append(paragraph_blocks)
-        self.items = reset_paragraph_blocks
+        # Step L — classify and paragraphize each expanded block.
+        reset_paragraph_blocks = reorganize_page_utils.classify_and_paragraphize_blocks(
+            self, expanded_row_blocks
+        )
 
-        paragraph_blocks = self.paragraphs
+        # Final assembly — weave header/footer back in.
+        final_blocks = reorganize_page_utils.assemble_final_blocks(
+            page_header_block, reset_paragraph_blocks, page_footer_block
+        )
 
+        # Word-preservation safety net. The pipeline must not drop OCR
+        # words; if it does, either raise (strict mode for tests/CI) or
+        # recover by appending the dropped words as a tagged block + emit a
+        # big stderr warning. Re-stamps override_page_sort_order so the
+        # recovered block sorts to the very end.
+        final_blocks = reorganize_page_utils.reconcile_dropped_words(
+            self, pre_reorg_words, final_blocks
+        )
+        for idx, block in enumerate(final_blocks):
+            block.override_page_sort_order = idx
+
+        self.items = final_blocks
         logger.debug(
-            "Page Block Count after adding paragraphs:" + str(len(paragraph_blocks))
+            "Page Block Count after adding paragraphs:" + str(len(self.paragraphs))
         )
         self.refresh_page_images()
+
+        reorganize_page_utils.emit_step_k_debug(self, debug_sections, final_blocks)
+        reorganize_page_utils.emit_step_l_debug(self, debug_sections, final_blocks)
+        if reorganize_page_utils.layout_debug_enabled():
+            reorganize_page_utils.write_layout_debug_report(self, debug_sections)
 
     def add_ground_truth(self, text: str):
         update_page_with_ground_truth_text(self, text)
@@ -2644,332 +2711,6 @@ class Page:
             provenance_saved_ocr=data.get("provenance_saved_ocr"),
             provenance_saved=data.get("provenance_saved"),
         )
-
-    @classmethod
-    def _reorganize_lines_log_debug_lines(cls, message, line1text, line2text):
-        logger.debug(
-            message
-            + "\nFirst line: "
-            + str(line1text[0:10] + ("..." if len(line1text) > 10 else ""))
-            + "\nSecond line: "
-            + str(line2text[0:10] + ("..." if len(line2text) > 10 else ""))
-        )
-
-    @classmethod
-    def _reorganize_lines_check_overlap(cls, line: Block, next_line: Block):
-        # TODO move this to the Block class
-
-        if not line.bounding_box:
-            cls._reorganize_lines_log_debug_lines(
-                "First Line has no bounding box.",
-                line.text,
-                next_line.text,
-            )
-            return False
-        if not next_line.bounding_box:
-            cls._reorganize_lines_log_debug_lines(
-                "Second Line has no bounding box.",
-                line.text,
-                next_line.text,
-            )
-            return False
-
-        y_overlap_h = line.bounding_box.overlap_y_amount(next_line.bounding_box)
-        x_overlap_w = line.bounding_box.overlap_x_amount(next_line.bounding_box)
-
-        overlap_not_ok = False
-        if y_overlap_h < (
-            0.4 * (np_mean([line.bounding_box.height, next_line.bounding_box.height]))
-        ):
-            cls._reorganize_lines_log_debug_lines(
-                f"Lines not overlapping on Y axis enough. Overlap is {y_overlap_h}",
-                line.text,
-                next_line.text,
-            )
-            overlap_not_ok = True
-
-        if x_overlap_w > (0.1 * line.bounding_box.width):
-            cls._reorganize_lines_log_debug_lines(
-                f"Lines overlapping on X axis too much. Overlap is {x_overlap_w}",
-                line.text,
-                next_line.text,
-            )
-            overlap_not_ok = True
-        return overlap_not_ok
-
-    @classmethod
-    def reorganize_lines(cls, block: Block):
-        """
-        # TODO move this to the Block class
-
-        Reorganizes the lines of text in a given paragraph.
-        In some cases the OCR accidently creates two lines
-        in a single block for a single line of text
-
-        This is not for multi-column layouts where lines are clearly delineated
-        with a margin of space along all lines
-
-        Use hueristics of surrounding text to determine if two lines really should be one
-        """
-        if not block.items:
-            return
-        lines: List[Block] = block.items
-        if not all(hasattr(line, "block_category") for line in lines) and not all(
-            line.block_category == BlockCategory.LINE for line in lines
-        ):
-            raise TypeError("All items in lines must have a block_category of LINE")
-
-        logger.debug("Recomputing lines for block " + str(block.text[0:10] + "..."))
-
-        # Iterate through each line, finding "nearly adjacent" lines on X axis
-        if len(lines) < 2:
-            # If only one line, no need to recompute
-            return
-
-        median_line_width = np_median(
-            [line.bounding_box.width if line.bounding_box else 0 for line in lines]
-        )
-
-        i = -1
-        while True:
-            i = i + 1
-            # this is being mutated, get it each time through the loop
-            lines: List[Block] = block.items
-
-            if i >= len(lines) - 1:
-                break
-
-            line: Block = lines[i]
-            next_line: Block = lines[i + 1]
-
-            if cls._reorganize_lines_check_overlap(line, next_line):
-                continue
-
-            if not line.bounding_box or not next_line.bounding_box:
-                continue
-
-            # Only check lines that are "approximately" the same height (to account for drop-caps)
-            # use a 10% height tolerance
-            logger.debug("line.bounding_box.height: " + str(line.bounding_box.height))
-            logger.debug(
-                "next_line.bounding_box.height: " + str(next_line.bounding_box.height)
-            )
-            logger.debug(
-                "Height difference: "
-                + str(abs(line.bounding_box.height - next_line.bounding_box.height))
-            )
-            logger.debug("Tolerance: " + str(0.50 * line.bounding_box.height))
-            if abs(line.bounding_box.height - next_line.bounding_box.height) > (
-                0.50 * line.bounding_box.height
-            ):
-                cls._reorganize_lines_log_debug_lines(
-                    "Line height difference too large.", line.text, next_line.text
-                )
-                continue
-
-            # Figure out which line should come "first" and reorder them
-            if line.bounding_box.minX > next_line.bounding_box.minX:
-                line, next_line = next_line, line
-
-            if not line.bounding_box or not next_line.bounding_box:
-                continue
-
-            # Compute X space between lines
-            x_space_between = max(
-                next_line.bounding_box.minX - line.bounding_box.maxX, 0
-            )
-
-            # Compute 10% of line length of all lines in block
-            ten_percent_median_line_length = median_line_width * 0.10
-            if x_space_between < ten_percent_median_line_length:
-                # Merge the two lines into one. Subtract 1 from the index
-                # So that we can continue merging if there's more than two broken up lines
-                cls._reorganize_lines_log_debug_lines(
-                    "Merging Lines.", line.text, next_line.text
-                )
-                line.merge(next_line)
-                block.remove_item(next_line)
-                i = i - 1
-                continue
-            else:
-                cls._reorganize_lines_log_debug_lines(
-                    "Lines not split on X axis enough.", line.text, next_line.text
-                )
-                continue
-
-    @classmethod
-    def compute_text_row_blocks(cls, lines: List[Block], tolerance=None):
-        """
-        Use dynamic vertical spacing to group lines into "blocks" of text.
-
-        This generally splits a page into logical sections
-        like headers, body, blockquotes, and footers.
-
-        After finding blocks, we can compute columns within each block.
-        """
-        logger.debug("Computing text row blocks")
-        # Single Line Block
-        if len(lines) == 0:
-            return None
-        # if len(lines) == 1:
-        #     logger.debug("Only one line, no blocks to compute")
-        #     b = Block(items=lines, block_category=BlockCategory.PARAGRAPH)
-        #     new_block = Block(items=[b], block_category=BlockCategory.BLOCK)
-        #     return new_block
-
-        # Tolerance is 20% of average line height by default
-        if tolerance is None:
-            tolerance = 0.2 * np_mean(
-                [line.bounding_box.height if line.bounding_box else 0 for line in lines]
-            )
-
-        logger.debug("Tolerance: " + str(tolerance))
-
-        # Sort lines by their Y position
-        lines.sort(key=lambda line: line.bounding_box.minY if line.bounding_box else 0)
-
-        # Compute spacing after each line
-        min_y_positions = [
-            line.bounding_box.minY if line.bounding_box else 0 for line in lines
-        ]
-        max_y_positions = [
-            line.bounding_box.maxY if line.bounding_box else 0 for line in lines
-        ]
-
-        # Compute difference between the max Y of the previous line and the min Y of the current line
-        line_spacings = [
-            max(0, min_y_positions[i] - max_y_positions[i - 1])
-            for i in range(1, len(lines))
-        ]
-
-        # This gives us the spacing between lines, which we can use to determine
-        # if they are part of the same block or not. "blocks" will be separated by
-        # vertical gaps larger than the norm.
-
-        # Use 1/2 of the standard deviation, or 15% of the avarage line height
-        # as the tolerance for line spacing
-        median_line_height_spacing = float(
-            np_median(
-                [line.bounding_box.height if line.bounding_box else 0 for line in lines]
-            )
-            * 0.10
-        )
-        logger.debug("Median Line Height Spacing: " + str(median_line_height_spacing))
-
-        std_line_height_spacing = (
-            float(np_std(line_spacings)) * 0.75 if line_spacings else 0.0
-        )
-        logger.debug(
-            "Standard Deviation Line Height Spacing: " + str(std_line_height_spacing)
-        )
-
-        tolerance_spacing = tolerance + max(
-            float(std_line_height_spacing), (median_line_height_spacing * 0.25)
-        )
-        logger.debug("Tolerance Spacing: " + str(tolerance_spacing))
-
-        blocks = []
-        current_block = [lines[0]]
-        logger.debug("Starting Block: " + str(current_block[0].text[0:25] + "..."))
-        for i in range(1, len(lines)):
-            prev_line_space_after = max(line_spacings[i - 1], 0)
-            logger.debug("Line: " + str(lines[i].text[0:25] + "..."))
-            logger.debug("Previous line space after: " + str(prev_line_space_after))
-            if prev_line_space_after >= 0 and prev_line_space_after > tolerance_spacing:
-                b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
-                logger.debug("New Block: " + str(b.text[0:25] + "..."))
-                blocks.append(b)
-                current_block = [lines[i]]
-            else:
-                current_block.append(lines[i])
-
-        # Final Block
-        if current_block:
-            b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
-            blocks.append(b)
-
-        logger.debug("Block Count: " + str(len(blocks)))
-
-        for block in blocks:
-            logger.debug("Block: " + str(block.text[0:10] + "..."))
-
-        new_block = Block(items=blocks, block_category=BlockCategory.BLOCK)
-        return new_block
-
-    @classmethod
-    def compute_text_paragraph_blocks(cls, lines: List[Block]):
-        logger.debug("Computing Paragraph Blocks")
-
-        min_x_positions = [
-            line.bounding_box.minX if line.bounding_box else 0 for line in lines
-        ]
-        max_x_positions = [
-            line.bounding_box.maxX if line.bounding_box else 0 for line in lines
-        ]
-
-        median_line_length = np_median(
-            [line.bounding_box.width if line.bounding_box else 0 for line in lines]
-        )
-
-        median_left_indent = np_median(min_x_positions)
-        median_right_indent = np_median(max_x_positions)
-
-        left_tolerance = 0.02 * median_line_length  # np.std(min_x_positions) * 2
-        right_tolerance = 0.15 * median_line_length  # np.std(max_x_positions) * 2
-
-        left_max = median_left_indent + left_tolerance
-        right_min = median_right_indent - right_tolerance
-
-        # def cluster_numbers(numbers, threshold):
-        #     numbers.sort()
-        #     clusters = [[numbers[0]]]
-
-        #     for number in numbers[1:]:
-        #         if abs(number - clusters[-1][-1]) <= threshold:
-        #             clusters[-1].append(number)
-        #         else:
-        #             clusters.append([number])
-
-        #     return clusters
-
-        # TODO - Dramas & pages with lots of dialog are unique in that they
-        # have many one-line indented paragraphs,
-        # and as such often will have MORE lines that are indented than not.
-        # Add clustering logic to detect this and handle it. Look for two similar
-        # sets of left-aligned locations that are fairly close to each other
-        # compared to the page width, and have multiple lines that match each.
-
-        # Perform Clustering
-        # left_clusters = cluster_numbers(min_x_positions, left_tolerance)
-
-        blocks = []
-        current_block = [lines[0]]
-        logger.debug("First Paragraph" + str(current_block[0].text[0:10] + "..."))
-        for i in range(1, len(lines)):
-            # If previous line right indent is < median,
-            #   previous line *might* be end of paragraph
-            # If current line left indent is > median, start of paragraph
-
-            prev_x_end_paragraph = max_x_positions[i - 1] <= right_min
-            current_x_start_paragraph = min_x_positions[i] >= left_max
-
-            if (prev_x_end_paragraph) or (current_x_start_paragraph):
-                b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
-                logger.debug("New Paragraph: " + str(b.text[0:10] + "..."))
-                blocks.append(b)
-                current_block = [lines[i]]
-            else:
-                current_block.append(lines[i])
-
-        # Final Block
-        if current_block:
-            b = Block(items=current_block, block_category=BlockCategory.PARAGRAPH)
-            blocks.append(b)
-
-        new_block = Block(items=blocks, block_category=BlockCategory.BLOCK)
-        logger.debug("New Block Paragraph Count: " + str(len(new_block.items)))
-        logger.debug("New Block Line Count: " + str(len(new_block.lines)))
-        return new_block
 
     def recompute_bounding_box(self):
         """Recompute the bounding box of the page based on its items"""

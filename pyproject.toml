@@ -86,6 +86,13 @@ directory = "htmlcov"
 [tool.coverage.xml]
 output = "coverage.xml"
 
+[tool.ruff.lint]
+# `l` is widely used as the loop-variable name for "line" in the OCR layout
+# code. Renaming everywhere is invasive and the meaning is always
+# unambiguous from context (always paired with `.bounding_box`, `.text`,
+# `.minX/minY/...`). Suppressing E741 keeps the convention consistent.
+ignore = ["E741"]
+
 # Pytest configuration
 [tool.pytest.ini_options]
 addopts = "--cov=pd_book_tools --cov-report=term-missing:skip-covered --cov-report=html"
