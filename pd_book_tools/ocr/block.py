@@ -47,6 +47,10 @@ class Block:
             "printers mark",
             "blockquote",
             "poetry",
+            # Words that the reorganize pipeline dropped but were re-added at
+            # the end so the OCR word multiset round-trips. Visible to
+            # consumers so they can flag / strip / re-flow these as needed.
+            "recovered",
         }
     )
 

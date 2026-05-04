@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
@@ -416,7 +417,7 @@ def test_page_reorganize_lines_merge():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    Page.reorganize_lines(para)
+    reorganize_page_utils.reorganize_lines(para)
     # Lines should merge into one
     assert len(para.items) == 1
     assert "helloworld" in para.text.replace(" ", "")
@@ -427,7 +428,7 @@ def test_page_compute_text_row_blocks():
     l1 = _make_line(["a"], 0)
     l2 = _make_line(["b"], 12)
     l3 = _make_line(["c"], 60)
-    rb = Page.compute_text_row_blocks([l1, l2, l3])
+    rb = reorganize_page_utils.compute_text_row_blocks([l1, l2, l3])
     assert rb is not None
     # Should have at least 2 paragraph blocks inside
     assert len(rb.items) >= 2
@@ -439,7 +440,7 @@ def test_page_compute_text_paragraph_blocks():
     l2 = _make_line(["short2"], 12)
     # Indent third line to start a new paragraph (large minX)
     l3 = _make_line(["indent"], 24, x_start=100)
-    pb = Page.compute_text_paragraph_blocks([l1, l2, l3])
+    pb = reorganize_page_utils.compute_text_paragraph_blocks([l1, l2, l3])
     assert pb is not None
     assert len(pb.items) >= 2  # paragraphs
 
@@ -890,7 +891,7 @@ def test_page_reorganize_lines_edge_branches():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    Page.reorganize_lines(single)
+    reorganize_page_utils.reorganize_lines(single)
     assert len(single.items) == 1
     # lines with large height diff -> skip merge
     l1 = _make_line(["AAA"], 0, height=10)
@@ -900,7 +901,7 @@ def test_page_reorganize_lines_edge_branches():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    Page.reorganize_lines(para)
+    reorganize_page_utils.reorganize_lines(para)
     assert len(para.items) == 2
     # overlapping x too much (second starts inside first) => no merge
     a1 = _make_line(["abc"], 0)
@@ -922,18 +923,18 @@ def test_page_reorganize_lines_edge_branches():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    Page.reorganize_lines(para2)
+    reorganize_page_utils.reorganize_lines(para2)
     assert len(para2.items) == 2
 
 
 def test_page_compute_text_row_blocks_empty():
-    assert Page.compute_text_row_blocks([]) is None
+    assert reorganize_page_utils.compute_text_row_blocks([]) is None
 
 
 def test_page_compute_text_row_blocks_single_line():
     line = _make_line(["solo"], 0)
 
-    block = Page.compute_text_row_blocks([line])
+    block = reorganize_page_utils.compute_text_row_blocks([line])
 
     assert block is not None
     assert len(block.items) == 1
@@ -1074,6 +1075,50 @@ def test_page_reorganize_page_flow():
     # After reorganize, items should be paragraph blocks only; merged line content present
     # After reorganize, top-level items should be paragraph blocks; search their text for merged token
     assert any("alphabeta" in blk.text.replace(" ", "") for blk in page.items)
+
+
+def test_page_detect_mixed_column_split_with_trailing_body_lines():
+    # Simulate side-by-side figure captions followed by full-width body lines
+    # that all fell into one row block.  Caption lines are expanded to be wide
+    # enough (>= 15% of page width) to pass the candidate-line filter inside
+    # _detect_mixed_column_split.
+    lines = [
+        _make_line(["FIG72", "left", "a"], y_top=100, x_start=50),
+        _make_line(["FIG73", "right", "a"], y_top=100, x_start=650),
+        _make_line(["left", "b"], y_top=115, x_start=50),
+        _make_line(["right", "b"], y_top=115, x_start=650),
+        _make_line(["left", "c"], y_top=130, x_start=50),
+        _make_line(["right", "c"], y_top=130, x_start=650),
+        _make_line(["body", "line", "one", "after", "captions"], y_top=150, x_start=40),
+        _make_line(["body", "line", "two", "after", "captions"], y_top=165, x_start=40),
+    ]
+
+    # Expand caption lines to clearly fall into their columns (left stays < 500,
+    # right stays > 500) and be wide enough to pass the minimum-width filter.
+    for idx in range(6):  # caption lines
+        bb = lines[idx].bounding_box
+        lines[idx].bounding_box = BoundingBox.from_ltrb(
+            bb.minX, bb.minY, bb.minX + 200, bb.maxY
+        )
+
+    # Expand the two body lines so they clearly span the middle gutter.
+    for idx in (6, 7):
+        bb = lines[idx].bounding_box
+        lines[idx].bounding_box = BoundingBox.from_ltrb(40, bb.minY, 920, bb.maxY)
+
+    from pd_book_tools.ocr.reorganize_page_utils import _detect_mixed_column_split
+
+    split = _detect_mixed_column_split(lines, page_width=1000)
+    assert split is not None
+
+    left_lines, right_lines, spanning_lines = split
+    assert len(left_lines) == 3
+    assert len(right_lines) == 3
+    assert len(spanning_lines) == 2
+
+    assert all(l.bounding_box.maxX <= 500 for l in left_lines)
+    assert all(l.bounding_box.minX > 500 for l in right_lines)
+    assert all(l.bounding_box.minX < 500 < l.bounding_box.maxX for l in spanning_lines)
 
 
 def test_page_convert_to_training_set_missing_image(tmp_path):

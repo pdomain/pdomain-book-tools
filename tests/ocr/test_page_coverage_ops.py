@@ -1,6 +1,7 @@
 """Coverage tests for page.py operational methods (merge, delete, split, rebox)."""
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
@@ -902,7 +903,7 @@ class TestReorganizeLinesEdge:
         # Now clear line1's bbox after structure is set
         line1.bounding_box = None
         # Should not raise; the pair is skipped (no merge)
-        Page.reorganize_lines(para)
+        reorganize_page_utils.reorganize_lines(para)
         assert len(para.items) == 2
 
     def test_skips_pair_with_large_height_difference_and_no_x_overlap(self):
@@ -929,7 +930,7 @@ class TestReorganizeLinesEdge:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        Page.reorganize_lines(para)
+        reorganize_page_utils.reorganize_lines(para)
         assert len(para.items) == 2  # no merge due to height diff
 
     def test_reorders_and_skips_lines_with_large_x_space(self):
@@ -963,7 +964,7 @@ class TestReorganizeLinesEdge:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        Page.reorganize_lines(para)
+        reorganize_page_utils.reorganize_lines(para)
         # No merge because x_space is large (columns)
         assert len(para.items) == 2
 
@@ -994,7 +995,7 @@ class TestReorganizeLinesEdge:
         # Clear line2's bbox after structure is built (so sorting already happened)
         line2.bounding_box = None
         # Should not raise; the pair is skipped
-        Page.reorganize_lines(para)
+        reorganize_page_utils.reorganize_lines(para)
         assert len(para.items) == 2
 
 

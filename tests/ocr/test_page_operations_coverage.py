@@ -3,6 +3,7 @@
 import pytest
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pd_book_tools.ocr.page import Page
 from pd_book_tools.ocr.word import Word
@@ -268,11 +269,11 @@ class TestReorganizePage:
 class TestComputeTextRowBlocks:
     def test_compute_with_lines(self, multi_paragraph_page):
         lines = list(multi_paragraph_page.lines)
-        result = Page.compute_text_row_blocks(lines)
+        result = reorganize_page_utils.compute_text_row_blocks(lines)
         assert result is not None
 
     def test_compute_with_no_lines(self):
-        result = Page.compute_text_row_blocks([])
+        result = reorganize_page_utils.compute_text_row_blocks([])
         # Either None or empty result; should not crash
         assert result is None or hasattr(result, "items")
 
@@ -283,7 +284,7 @@ class TestComputeTextRowBlocks:
 class TestComputeTextParagraphBlocks:
     def test_compute_paragraph_blocks_with_lines(self, multi_paragraph_page):
         lines = list(multi_paragraph_page.lines)
-        result = Page.compute_text_paragraph_blocks(lines)
+        result = reorganize_page_utils.compute_text_paragraph_blocks(lines)
         # Should not crash
         assert result is not None or result is None
 
@@ -294,7 +295,7 @@ class TestComputeTextParagraphBlocks:
 class TestReorganizeLines:
     def test_reorganize_lines_block(self, multi_paragraph_page):
         para = multi_paragraph_page.items[0]
-        Page.reorganize_lines(para)
+        reorganize_page_utils.reorganize_lines(para)
         # Should not crash
 
     def test_reorganize_empty_block(self):
@@ -303,7 +304,7 @@ class TestReorganizeLines:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        Page.reorganize_lines(block)
+        reorganize_page_utils.reorganize_lines(block)
 
 
 # Add ground truth ------------------------------------------------------------
