@@ -162,12 +162,16 @@ def _wipe_text_outputs():
     cleared at session start to keep them canonical. Debug PNGs are *not*
     wiped here; ``run_dir`` gives each session its own subfolder so old
     runs are preserved.
+
+    ``ignore_errors=True`` makes this safe under ``pytest -n auto``:
+    multiple xdist workers each enter this session-scoped fixture and
+    race on the rmtree. We don't care which worker wins — only that the
+    dirs are gone before tests start writing into them.
     """
     import shutil
 
     for d in (TEXT_CURRENT_DIR, TEXT_DIFF_DIR):
-        if d.exists():
-            shutil.rmtree(d)
+        shutil.rmtree(d, ignore_errors=True)
     yield
 
 
