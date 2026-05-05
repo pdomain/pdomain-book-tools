@@ -40,6 +40,7 @@ Categories sort by what the page exercises in the pipeline.
 | `plate-rio-harbour-photo` | `projectID63ac684a641d4/p0101.png` | photographic plate; different visual texture, same dual-caption layout |
 | `plate-iquique-landscape` | `projectID63ac684a641d4/p1381.png` | wide landscape engraving; signature embedded in plate |
 | `plate-coronel-text-in-image` | `projectID63ac684a641d4/p0322.png` | town panorama with OCR-trap text inside the picture (signage) |
+| `plate-chairs-beauvais-tapestry` | `projectID66c62fca99a93/215.png` | full-page tapestry/chair plate with 2-line caption (titlecase title + italic parenthetical subtitle); regression-guards the `Page.recompute_bounding_box` empty-list crash that previously bit this layout |
 
 ### Plates with extended multi-line captions
 
