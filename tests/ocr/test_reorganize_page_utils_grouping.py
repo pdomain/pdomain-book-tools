@@ -206,6 +206,10 @@ KNOWN_FAILING_BASELINES: dict[str, str] = {
         "figure-internal noise: 5 char-noise lines from engraving above "
         "the caption should be dropped"
     ),
+    "plate-chairs-beauvais-tapestry": (
+        "figure-internal noise: ~10 single-char lines from the tapestry "
+        "interior should be dropped (full-page plate + 2-line caption)"
+    ),
     "plate-ii-celestial-influences": (
         "figure-internal noise: ~5 single-char lines from circular figure "
         "interior should be dropped"

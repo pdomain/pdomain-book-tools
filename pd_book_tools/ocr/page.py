@@ -228,15 +228,25 @@ class Page:
         return removed
 
     def remove_empty_items(self):
-        """Remove empty child blocks from the page."""
-        if not self.items:
+        """Remove empty child blocks from the page.
+
+        Bulk-removes all empties and recomputes the bounding box once,
+        mirroring :meth:`Block.remove_empty_items`. The previous
+        per-item ``remove_item`` loop was O(n²) and could trip the
+        union-of-empty-list crash mid-loop because partly-purged
+        children with ``bounding_box=None`` were still in ``_items``
+        when each intermediate ``recompute_bounding_box`` ran.
+        """
+        if not self._items:
             return
-        item: Block
-        for item in self.items:
+        for item in self._items:
             item.remove_empty_items()
-            if not item.items:
-                logger.debug("Empty block removed")
-                self.remove_item(item)
+        before = len(self._items)
+        self._items = [item for item in self._items if item.items]
+        if len(self._items) != before:
+            self._sort_items()
+            self.recompute_bounding_box()
+            logger.debug("Empty blocks removed from page")
 
     @items.setter
     def items(self, values):
@@ -2815,14 +2825,22 @@ class Page:
         )
 
     def recompute_bounding_box(self):
-        """Recompute the bounding box of the page based on its items"""
+        """Recompute the bounding box of the page based on its items.
+
+        ``BoundingBox.union`` is strict about empty input, so we also
+        bail out when every item happens to have no bounding box (which
+        can happen mid-removal in ``remove_empty_items`` while emptied
+        children still occupy the items list).
+        """
         if not self.items:
             self.bounding_box = None
             logger.debug("No items in page to recompute bounding box")
             return
-        self.bounding_box = BoundingBox.union(
-            [item.bounding_box for item in self.items if item.bounding_box]
-        )
+        bboxes = [item.bounding_box for item in self.items if item.bounding_box]
+        if not bboxes:
+            self.bounding_box = None
+            return
+        self.bounding_box = BoundingBox.union(bboxes)
 
     def refine_bounding_boxes(self, image: ndarray | None = None, padding_px: int = 0):
         if image is None:
