@@ -2031,10 +2031,11 @@ wheels = [
 
 [[package]]
 name = "pd-book-tools"
-version = "0.7.3"
+version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "cupy-cuda12x" },
+    { name = "huggingface-hub" },
     { name = "ipython", version = "8.39.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.13.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "ipywidgets" },
@@ -2071,6 +2072,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "cupy-cuda12x", specifier = ">=13.4.1" },
+    { name = "huggingface-hub", specifier = ">=0.23" },
     { name = "ipython", specifier = ">=8.34" },
     { name = "ipywidgets", specifier = ">=8.1" },
     { name = "isort", specifier = ">=6.0" },

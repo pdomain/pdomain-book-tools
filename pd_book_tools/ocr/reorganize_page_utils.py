@@ -110,6 +110,327 @@ def compute_page_metrics(page) -> PageMetrics:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Heuristic figure-noise drop — pure-geometry fallback to layout-aware drops
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Plates and figures often produce OCR fragments that the engine emits as their
+# own short lines: stray dashes, dots, single letters, character noise from
+# textures inside the engraving. When a layout model is available we drop
+# those via :func:`layout_aware_reorg.drop_figure_internal_words`. This
+# pure-geometry pass catches the same shape of garbage when no layout is
+# supplied, at the cost of false-positive risk on tiny, isolated, *real*
+# tokens — see the conservative cluster / isolation rules below.
+
+
+def _line_alphanumeric_count(line: Block) -> int:
+    return sum(1 for c in (line.text or "") if c.isalnum())
+
+
+def _line_words(line: Block) -> List[Word]:
+    return list(line.words) if hasattr(line, "words") else []
+
+
+def _is_weak_noise_line(
+    line: Block,
+    metrics: PageMetrics,
+    *,
+    protect_drop_caps: bool = True,
+) -> bool:
+    """Classify a LINE block as figure-internal-noise candidate.
+
+    Conservative: a line is "weak" only if it carries at most two short
+    words (≤3 chars each) summing to ≤2 alphanumeric characters.
+
+    ``protect_drop_caps`` exempts drop-cap-tall single-letter lines from
+    the weak set so :func:`stitch_drop_caps` can find them later. Set
+    False on plate / frontispiece pages — those don't contain body
+    paragraphs and therefore can't host a drop cap, so a tall single
+    letter there is just oversized engraving noise.
+    """
+    words = _line_words(line)
+    if not words or len(words) > 2:
+        return False
+    text = (line.text or "").strip()
+    if not text:
+        return False
+    if _line_alphanumeric_count(line) > 2:
+        return False
+    for w in words:
+        wt = (w.text or "").strip()
+        if len(wt) > 3:
+            return False
+    if protect_drop_caps and len(words) == 1:
+        only_text = (words[0].text or "").strip()
+        if len(only_text) <= 2 and any(c.isalpha() for c in only_text):
+            bb = words[0].bounding_box
+            if (
+                bb is not None
+                and metrics.median_word_h > 0
+                and bb.height >= 1.8 * metrics.median_word_h
+            ):
+                return False
+    return True
+
+
+def _purge_words_from_blocks(blocks: List[Block], targets: "set[int]") -> None:
+    """Recursively remove words by ``id()`` from a block tree.
+
+    Mirrors :func:`layout_aware_reorg._purge_word_from_blocks` but is
+    duplicated here to avoid pulling that module (which depends on
+    PageLayout types) into the geometry pipeline. After purging, empty
+    line / paragraph children are pruned and bounding boxes are recomputed.
+    """
+    for block in blocks:
+        if block.child_type == BlockChildType.WORDS:
+            kept = [w for w in block._items if id(w) not in targets]
+            if len(kept) != len(block._items):
+                block._items = kept
+                if kept:
+                    block.recompute_bounding_box()
+                else:
+                    block.bounding_box = None
+        else:
+            _purge_words_from_blocks(list(block._items), targets)
+            block._items = [b for b in block._items if not b.is_empty]
+            if block._items:
+                block.recompute_bounding_box()
+            else:
+                block.bounding_box = None
+
+
+def _is_gibberish_line(line: Block) -> bool:
+    """Classify a 3–5-char LINE as plate-page-noise gibberish.
+
+    Patterns we catch:
+      * **No vowels** in a multi-letter alphabetic token — printed words
+        in this fixture set always carry at least one vowel, so an
+        all-consonant token like ``AMV`` is OCR noise from a figure
+        interior, not a real abbreviation.
+      * **Mixed letters and digits** — ``II1s1`` style splatter where
+        the OCR confused glyph shapes from a halftone or engraving for
+        a digit-letter mix that no body-text token would produce.
+      * **Mixed casing inside a token** — runs that don't match the
+        usual capitalization shapes (``Title``, ``UPPER``, ``lower``).
+        ``TEor`` (two caps then two lowers) fits this pattern; real
+        body words don't.
+
+    Stricter than :func:`_is_weak_noise_line`: only valid on plate /
+    frontispiece pages — a body page can legitimately contain weird
+    short tokens (variable names in code samples, monogrammed marks,
+    abbreviations) so this is not a general-purpose noise classifier.
+    """
+    text = (line.text or "").strip()
+    if not (3 <= len(text) <= 5):
+        return False
+    if any(c in text for c in " \t"):
+        # Multi-word lines are handled by the standard weak-line path.
+        return False
+    if not text.isalnum():
+        return False
+    has_letters = any(c.isalpha() for c in text)
+    has_digits = any(c.isdigit() for c in text)
+    if has_letters and has_digits:
+        return True
+    if not has_letters:
+        return False
+    vowels = sum(1 for c in text.lower() if c in "aeiouy")
+    if vowels == 0:
+        return True
+    case_pattern = "".join(
+        "U" if c.isupper() else "L" if c.islower() else "_" for c in text
+    )
+    standard_patterns = {
+        "U" * len(text),
+        "L" * len(text),
+        "U" + "L" * (len(text) - 1),
+    }
+    if case_pattern not in standard_patterns:
+        return True
+    return False
+
+
+def _line_is_pure_punctuation(line: Block) -> bool:
+    """Line whose entire visible text contains no alphanumeric characters."""
+    text = (line.text or "").strip()
+    if not text:
+        return False
+    return not any(c.isalnum() for c in text)
+
+
+def drop_heuristic_figure_noise(page) -> int:
+    """Drop OCR lines that look like figure-internal noise — pure heuristic.
+
+    Pure-text/geometry fallback for pages reorganized without a layout
+    model. Identifies clusters of "weak" lines (so short and so isolated
+    that they cannot represent meaningful body text — typically the
+    1-2-character splatter that engravings, plates and photographic
+    halftones produce when fed through OCR) and drops them.
+
+    Drop rules (deliberately conservative — favour false negatives over
+    eating real content):
+
+    * **Multi-line cluster** — two or more weak lines, vertically
+      reachable through a chain of weak-only neighbours each within
+      ``8 × median_word_h`` of the next, with no strong line breaking
+      the chain. Real text never produces back-to-back single-character
+      lines, so multi-line clusters are the safe case to drop wholesale.
+    * **Solo, pure-punctuation, isolated** — a single weak line whose
+      visible text is *only* punctuation/symbols (e.g. ``-``, ``:``,
+      ``/``) AND has at least ``3 × median_word_h`` of empty vertical
+      space to the nearest strong line on both sides. Pure-punctuation
+      content never appears standalone in body text; this catches the
+      lone-dash-above-a-portrait pattern without endangering page
+      numbers (digit-only) or short chapter labels (alphanumeric).
+
+    Solo *alphanumeric* weak lines are NEVER dropped — too risky against
+    page numbers, sidenote markers, chapter heads, and labels.
+
+    Drop caps are protected because they are excluded from the
+    weak-line definition (their oversized height fails the drop-cap-tall
+    guard in :func:`_is_weak_noise_line`).
+
+    Returns the count of words removed.
+    """
+    metrics = compute_page_metrics(page)
+    if metrics.median_word_h <= 0 or metrics.word_count == 0:
+        return 0
+
+    # Skip empty / textless lines: they have a bbox but contribute no real
+    # signal, and would otherwise inflate the strong-line count and Y-span
+    # used by the plate-page guard below.
+    all_lines = [
+        l for l in page.lines if l.bounding_box is not None and (l.text or "").strip()
+    ]
+    if not all_lines:
+        return 0
+    all_lines.sort(key=lambda l: (l.bounding_box.minY, l.bounding_box.minX))
+    # Use the looser (drop-cap-protection-off) classification for
+    # plate-shape detection: a body page with a drop cap still has many
+    # other strong body lines so the strong-line count exceeds the plate
+    # threshold and we exit. A plate page with an oversized engraving
+    # initial would otherwise read as "1 strong drop cap + 1 strong
+    # caption = 2 groups, plate-like" and *protect* the noise.
+    weak_flags = [
+        _is_weak_noise_line(l, metrics, protect_drop_caps=False) for l in all_lines
+    ]
+    if not any(weak_flags):
+        return 0
+    strong_lines = [l for l, w in zip(all_lines, weak_flags) if not w]
+    if not strong_lines:
+        return 0
+
+    # Plate-page guard. Only fire on pages whose strong (real) lines look
+    # like a small caption block — at most a handful of lines, clustered
+    # into one or two groups (top / bottom or a single block). Pages
+    # dominated by body text, or pages with strong text spread across
+    # many independent groups (maps, diagrams, contents pages with column
+    # page numbers), aren't plate-like and skip the filter so we don't
+    # eat their real content.
+    plate_like = len(strong_lines) <= 5
+    group_gap = 8.0 * metrics.median_word_h
+    if plate_like:
+        strong_sorted = sorted(strong_lines, key=lambda l: l.bounding_box.minY)
+        n_groups = 1
+        for i in range(1, len(strong_sorted)):
+            if (
+                strong_sorted[i].bounding_box.minY
+                - strong_sorted[i - 1].bounding_box.maxY
+            ) > group_gap:
+                n_groups += 1
+                if n_groups > 2:
+                    plate_like = False
+                    break
+
+    if not plate_like:
+        return 0
+
+    # Plate-page extension: also flag 3–5-char gibberish tokens (no
+    # vowels, digit/letter mix, weird capitalization) as weak. These
+    # land in the noise set together with the ≤2-alphanum lines so the
+    # cluster / solo logic below operates on the full noise picture.
+    weak_flags = [wf or _is_gibberish_line(l) for wf, l in zip(weak_flags, all_lines)]
+    strong_lines = [l for l, w in zip(all_lines, weak_flags) if not w]
+    if not strong_lines:
+        return 0
+
+    cluster_gap = 8.0 * metrics.median_word_h
+    figure_gap = 5.0 * metrics.median_word_h
+    solo_isolation_gap = 3.0 * metrics.median_word_h
+
+    clusters: List[List[int]] = []
+    cur: List[int] = []
+    for i, line in enumerate(all_lines):
+        if not weak_flags[i]:
+            if cur:
+                clusters.append(cur)
+                cur = []
+            continue
+        if not cur:
+            cur = [i]
+            continue
+        prev_max_y = all_lines[cur[-1]].bounding_box.maxY
+        if line.bounding_box.minY - prev_max_y <= cluster_gap:
+            cur.append(i)
+        else:
+            clusters.append(cur)
+            cur = [i]
+    if cur:
+        clusters.append(cur)
+
+    targets: "set[int]" = set()
+    for cluster in clusters:
+        cluster_y_min = min(all_lines[i].bounding_box.minY for i in cluster)
+        cluster_y_max = max(all_lines[i].bounding_box.maxY for i in cluster)
+        strong_above = [l for l in strong_lines if l.bounding_box.maxY <= cluster_y_min]
+        strong_below = [l for l in strong_lines if l.bounding_box.minY >= cluster_y_max]
+        up_gap = (
+            cluster_y_min - max(l.bounding_box.maxY for l in strong_above)
+            if strong_above
+            else float("inf")
+        )
+        down_gap = (
+            min(l.bounding_box.minY for l in strong_below) - cluster_y_max
+            if strong_below
+            else float("inf")
+        )
+
+        drop = False
+        if len(cluster) >= 2:
+            drop = True
+        elif len(cluster) == 1:
+            line = all_lines[cluster[0]]
+            if _line_is_pure_punctuation(line):
+                drop = up_gap >= solo_isolation_gap and down_gap >= solo_isolation_gap
+            elif up_gap >= figure_gap and down_gap >= figure_gap:
+                # Solo alphanumeric weak line surrounded by large empty
+                # bands on both sides — that's a figure interior even on
+                # a plate page, drop it. (Plate guard above ensures we
+                # only do this for plate-shaped pages.)
+                # Page-number guard: digit-only solo lines might be a
+                # standalone page number that Step E failed to catch
+                # (e.g. ``5`` at the foot of a contents page). Leave them
+                # alone — losing a page number is worse than keeping a
+                # rare stray digit on a plate.
+                text = (line.text or "").strip()
+                stripped = text.replace(".", "").replace(",", "").replace(" ", "")
+                if not (stripped and stripped.isdigit()):
+                    drop = True
+        if not drop:
+            continue
+        for idx in cluster:
+            for w in all_lines[idx].words:
+                targets.add(id(w))
+
+    if not targets:
+        return 0
+    _purge_words_from_blocks(list(page._items), targets)
+    page.remove_empty_items()
+    page.recompute_bounding_box()
+    logger.debug("drop_heuristic_figure_noise: removed %d words", len(targets))
+    return len(targets)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Pipeline Step E — page header / page footer band extraction
 # ─────────────────────────────────────────────────────────────────────────────
 #
@@ -249,7 +570,7 @@ def _build_band_block(
     all_words: List[Word] = []
     for line in band_lines:
         all_words.extend(line.words)
-    all_words = [w for w in all_words if w.bounding_box]
+    all_words = [w for w in all_words if w.bounding_box and (w.text or "").strip()]
     if not all_words:
         return None
 
@@ -2916,6 +3237,12 @@ def run_step_e_extract_header_footer(
     footer_lines, body_lines = extract_bottom_footer_lines(
         after_header_lines, page_metrics
     )
+    # Drop body lines whose words are all textless (OCR detected a bbox
+    # but no glyph). Without this they survive into Step F as empty
+    # row blocks that the late assembly tags ``page header`` purely on
+    # Y-position, leaving the rendered ``page.text`` with phantom blank
+    # lines at the top.
+    body_lines = [l for l in body_lines if any((w.text or "").strip() for w in l.words)]
     page_header_block = build_page_header_block(header_lines)
     page_footer_block = build_page_footer_block(footer_lines)
 
@@ -2952,6 +3279,40 @@ def run_step_e_extract_header_footer(
     )
 
 
+def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
+    """Drop any row block whose word set is fully covered by an earlier one.
+
+    Belt-and-braces invariant: a single OCR ``Word`` instance must appear
+    in at most one row block. The seeded grouping path can violate this
+    when the BFS splits a wide-gap line (e.g. a centred caption with a
+    big inter-word gap) into two components — comp 1 claims the full
+    source line, comp 2 falls through and emits a fresh LINE holding the
+    *same word instances*. Duplicates would survive into ``page.text``
+    (rendering the right half of the caption twice). Walking row blocks
+    in reading order and skipping any whose words are wholly contained
+    in earlier ones guarantees each word renders exactly once without
+    perturbing the legacy / seeded selection logic upstream.
+    """
+    if row_blocks is None or not row_blocks.items:
+        return row_blocks
+    seen_word_ids: set[int] = set()
+    kept: List[Block] = []
+    for rb in row_blocks.items:
+        rb_word_ids = {id(w) for line in rb.lines for w in line.words}
+        if rb_word_ids and rb_word_ids.issubset(seen_word_ids):
+            continue
+        seen_word_ids.update(rb_word_ids)
+        kept.append(rb)
+    if len(kept) == len(row_blocks.items):
+        return row_blocks
+    row_blocks._items = kept
+    if kept:
+        row_blocks.recompute_bounding_box()
+    else:
+        row_blocks.bounding_box = None
+    return row_blocks
+
+
 def run_step_f_row_blocks(
     page,
     body_lines: List[Block],
@@ -2971,6 +3332,7 @@ def run_step_f_row_blocks(
     else:
         row_blocks = legacy_row_blocks
         row_blocks_source = "legacy"
+    row_blocks = _dedupe_row_blocks(row_blocks)
 
     if layout_debug_enabled():
         step_rb_lines = [

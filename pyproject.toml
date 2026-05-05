@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pd-book-tools"
-version = "0.7.3"
+version = "0.8.0"
 description = "Python tools for working with public domain book scans"
 authors = [
     { name = "CT", email = "concavetrillion@gmail.com" }
@@ -16,6 +16,7 @@ license = { text = "Unlicense" }
 requires-python = ">=3.10,<4.0"
 dependencies = [
     "cupy-cuda12x>=13.4.1",
+    "huggingface_hub>=0.23",
     "ipython>=8.34",
     "ipywidgets>=8.1",
     "isort>=6.0",

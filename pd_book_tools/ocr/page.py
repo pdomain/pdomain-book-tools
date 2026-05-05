@@ -2607,7 +2607,12 @@ class Page:
         # Copy the page to a new object via serialization/deserialization
         return self.from_dict(self.to_dict())
 
-    def reorganize_page(self, layout: Optional["PageLayout"] = None):
+    def reorganize_page(
+        self,
+        layout: Optional["PageLayout"] = None,
+        *,
+        drop_figure_internal_text: bool = True,
+    ):
         """Top-level reorganize pipeline — thin orchestration shim.
 
         All pipeline-step logic lives in
@@ -2621,6 +2626,15 @@ class Page:
         helpers and rationale. Layout is treated as a hint (low-confidence
         regions are ignored); the existing geometric heuristics run as a
         safety net regardless.
+
+        ``drop_figure_internal_text`` toggles the heuristic figure-noise
+        sweep at Step B2. Default is on because PGDP-style ground truth
+        rarely transcribes characters that fall inside an illustration
+        (engraving textures, halftone speckle, map-interior fragments),
+        so dropping them aligns the OCR output with the human-edited
+        reference. Pass ``False`` to keep every OCR token — useful when
+        the consumer needs the raw OCR (e.g. training data prep where a
+        glyph inside a figure is still a labelled glyph).
         """
         logger.debug("Reorganizing Page")
 
@@ -2665,18 +2679,30 @@ class Page:
         if self._cv2_numpy_page_image is not None:
             self.refine_bounding_boxes()
 
-        # Snapshot the pre-pipeline word set so the post-pipeline reconciler
-        # can detect drops and either recover them or hard-fail (strict mode).
-        # Captured AFTER refine_bounding_boxes so signatures are computed
-        # against the same coordinates used by the pipeline.
-        pre_reorg_words = list(self.words)
-
         debug_sections: List[tuple[str, List[str]]] = []
         debug_squeezed_lines: List[str] = []
 
         # Step B — merge OCR-fragmented lines back together.
         for block in self.items:
             reorganize_page_utils.reorganize_lines(block)
+
+        # Step B2 — heuristic figure-noise drop. Pure-geometry fallback to
+        # the layout-aware drop above; runs whether or not a layout was
+        # supplied so unmodelled figure interiors (or noise the model
+        # missed) still get filtered. Sequenced AFTER reorganize_lines so
+        # OCR fragments destined to be merged into longer lines aren't
+        # mistaken for solo weak noise. Snapshotting pre_reorg_words AFTER
+        # this step makes its drops intentional rather than something
+        # strict-mode reconciliation flags.
+        if drop_figure_internal_text:
+            reorganize_page_utils.drop_heuristic_figure_noise(self)
+
+        # Snapshot the pre-pipeline word set so the post-pipeline reconciler
+        # can detect drops and either recover them or hard-fail (strict mode).
+        # Captured AFTER refine_bounding_boxes + Step B + heuristic noise
+        # filter so the snapshot reflects what the rest of the pipeline is
+        # supposed to preserve through Step D onwards.
+        pre_reorg_words = list(self.words)
 
         # Step D — split mixed-content (caption + body) OCR lines.
         reorganize_page_utils.run_step_d_split_mixed_content(self, debug_sections)
