@@ -199,16 +199,9 @@ KNOWN_FAILING_BASELINES: dict[str, str] = {
         "figure-internal noise: orphan 'A' between body and FIG. 72 caption "
         "should be dropped (small word inside figure region)"
     ),
-    "frontispiece-madison-portrait": (
-        "figure-internal noise: leading '-' from engraving artefact should be dropped"
-    ),
     "frontispiece-on-deck-dual-caption": (
         "figure-internal noise: 5 char-noise lines from engraving above "
         "the caption should be dropped"
-    ),
-    "plate-chairs-beauvais-tapestry": (
-        "figure-internal noise: ~10 single-char lines from the tapestry "
-        "interior should be dropped (full-page plate + 2-line caption)"
     ),
     "plate-ii-celestial-influences": (
         "figure-internal noise: ~5 single-char lines from circular figure "
@@ -219,10 +212,6 @@ KNOWN_FAILING_BASELINES: dict[str, str] = {
     ),
     "plate-service-on-board": (
         "figure-internal noise: ~5 noise lines from the engraving should be dropped"
-    ),
-    "rotated-peutinger-map": (
-        "trailing-whitespace artefact on the map's caption line; baseline "
-        "expects clean trim"
     ),
 }
 

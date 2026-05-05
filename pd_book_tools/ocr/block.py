@@ -455,12 +455,22 @@ class Block:
         This automatically adds additional CRs between blocks/paragraphs.
         """
         if self.child_type == BlockChildType.WORDS:
+            # Trim trailing empty / whitespace-only words: OCR can emit
+            # positionally-tracked but textless tokens (artefact of a bbox
+            # without a recognised glyph) which otherwise render as a
+            # stray separator and leave trailing whitespace on the line.
+            # Leading / interior empty words are preserved so existing
+            # output (where a leading empty word yields a leading-space
+            # prefix) round-trips unchanged.
+            items = list(self._items)
+            while items and not (items[-1].text or "").strip():
+                items.pop()
             parts: list[str] = []
-            for idx, item in enumerate(self._items):
+            for idx, item in enumerate(items):
                 if idx == 0:
                     parts.append(item.text)
                     continue
-                prev = self._items[idx - 1]
+                prev = items[idx - 1]
                 prev_components = getattr(prev, "word_components", None) or []
                 sep = "" if "drop cap" in prev_components else " "
                 parts.append(sep + item.text)
