@@ -817,6 +817,11 @@ class BoundingBox:
                     is_normalized=self.is_normalized,
                 )
             g = self.as_shapely().buffer(dx, join_style=2)  # type: ignore
+            if g.is_empty:  # type: ignore
+                raise ValueError(
+                    f"Expansion deltas collapse box to zero area "
+                    f"(dx=dy={dx} applied to {self.width}x{self.height} box)"
+                )
             minx, miny, maxx, maxy = g.bounds  # type: ignore
             return BoundingBox.from_ltrb(
                 minx, miny, maxx, maxy, is_normalized=self.is_normalized
