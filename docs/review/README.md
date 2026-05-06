@@ -460,17 +460,33 @@ now sweeps `bugs-medium.md` top-to-bottom.
   file existence so its `if predictor is None` guard is unreachable
   post-fix; observable behavior unchanged. — fix `0a8b68e`, doc mark
   `<pending>`
+- M-23 `ocr/doctr_support.py` `get_finetuned_torch_doctr_predictor`
+  invoked `det_model.load_state_dict(det_params)` and
+  `reco_model.load_state_dict(reco_params)` unguarded. Architecture
+  detection in the module is heuristic
+  (`_detect_detection_arch` / `_detect_recognition_arch`), so a
+  finetune'd or unfamiliar checkpoint could cause torch to raise
+  `RuntimeError("size mismatch ...")` or `KeyError(missing_key)` deep
+  inside its own machinery — the user got a confusing torch traceback
+  that did not name the offending checkpoint file or the
+  heuristically-detected arch. Wrapped each call in
+  `try/except (RuntimeError, KeyError)` re-raising as
+  `RuntimeError(f"Failed to load DocTR <kind> checkpoint {path} into
+  architecture {arch!r}: {orig}") from orig`; original exception is
+  preserved on `__cause__` so the underlying torch traceback remains
+  available. Two regression tests cover the detection and recognition
+  paths. — fix `5773daf`, doc mark `<pending>`
 
-**Next pick:** M-23 — `ocr/doctr_support.py`.
-`det_model.load_state_dict(det_params)` and
-`reco_model.load_state_dict(reco_params)` are unguarded; a checkpoint
-whose architecture doesn't match the heuristically-detected arch
-raises `RuntimeError` (shape mismatch) or `KeyError` (missing key)
-deep inside torch with a stack trace that doesn't name the offending
-file. Architecture detection is heuristic so this is a realistic
-failure mode. Fix candidate: wrap each `load_state_dict` in a
-`try/except (RuntimeError, KeyError)` that re-raises with the
-checkpoint path and detected arch name in the message.
+**Next pick:** M-24 — `ocr/doctr_support.py`.
+`_build_arch(det_arch_name, pretrained=True)` (originally line 199;
+now further down post M-22 / M-23) downloads pretrained weights from
+the internet and the very next statement,
+`det_model.load_state_dict(det_params)`, overwrites all of them. The
+download is pure waste (and an unwanted network dependency at this
+call site). Fix candidate: pass `pretrained=False` where the
+constructed model's weights are immediately overwritten by
+`load_state_dict`. Verify the recognition arch construction (which
+also takes `pretrained_backbone`) before changing it.
 
 **Workflow per iteration** (one bug per commit, no push):
 
