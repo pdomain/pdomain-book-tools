@@ -279,11 +279,15 @@ class PGDPExport:
 
     @classmethod
     def from_json(cls, json_str: str, path_prefix: pathlib.Path | str):
+        # Hoisted above the loop (L-26): when ``pages`` is empty the loop
+        # body never runs, so the in-loop str->Path conversion left
+        # ``path_prefix`` as a ``str`` and ``path_prefix.stem`` raised
+        # ``AttributeError`` on the return line. Convert once up front.
+        if isinstance(path_prefix, str):
+            path_prefix = pathlib.Path(path_prefix)
         pages = json.loads(json_str)
         new_pages = []
         for png_file, page_text in pages.items():
-            if isinstance(path_prefix, str):
-                path_prefix = pathlib.Path(path_prefix)
             png_full_file_path = pathlib.Path(path_prefix, png_file)
             new_pages.append(PGDPResults(png_full_file_path, page_text))
         return cls(pages=new_pages, project_id=path_prefix.stem)
