@@ -297,7 +297,7 @@ Regression-locked with two tests in `tests/hf/test_hf.py`:
 
 ---
 
-## H-21 — `ground_truth_matching.py` — `include_starting_quote` / `include_ending_quote` test total combination count, not current span
+## [FIXED in ee3e0a0] ~~H-21 — `ground_truth_matching.py` — `include_starting_quote` / `include_ending_quote` test total combination count, not current span~~
 
 **File:** `pd_book_tools/ocr/ground_truth_matching.py`, lines 612, 629
 **Affects:** quote handling in all combined-word ground-truth matching

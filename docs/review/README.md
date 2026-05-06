@@ -164,21 +164,32 @@ remembering prior turns. Update this when an iteration completes (after the
   `layout_checkpoint`. Regression-locked the precedence with two tests
   so a future refactor can't reorder the branches. — test/lock
   `ca08728`, doc mark `<pending>`
+- H-21 `ocr/ground_truth_matching.py` `include_starting_quote` /
+  `include_ending_quote` in `try_matching_combined_words` gated on
+  `len(ocr_combination_tuple) > 1` — the *total* number of word-pair
+  combinations across the whole line, not the current span size. For
+  two-word OCR lines that's always exactly 1 combination, so the gate
+  never fired and quote-promotion silently dropped trailing/leading
+  apostrophes from merged ground-truth words. Fixed to use
+  `(combination_end - combination_start) > 1` (the in-scope locals
+  unpacked from `combination_start_end`; the review's suggested
+  `(ocr_word_end - ocr_word_start)` referenced list-comprehension
+  locals not in scope at the use site). Regression test constructs a
+  two-word span where combined fuzz ratio (57) beats both individuals
+  but fails all three downstream length-band thresholds, so the flag
+  is the only path through. — fix `ee3e0a0`, doc mark `<pending>`
 
-**Top-10 H-XX list complete.** Every entry from the "Highest-priority
-fixes" section above is now resolved. The /loop now sweeps the remaining
-`bugs-high.md` entries top-to-bottom — pick the first unstruck H-XX from
-the file in document order.
+**bugs-high.md fully cleared.** All 21 high-severity bugs have been
+processed (fixes plus stale-but-regression-locked entries). The /loop
+now sweeps `bugs-medium.md` top-to-bottom.
 
-**Next pick:** H-21 — `ocr/ground_truth_matching.py`
-`include_starting_quote` / `include_ending_quote` test
-`len(ocr_combination_tuple)` (the total number of word-pair
-combinations, always large) instead of whether the current span covers
-more than one word. Both conditions are therefore always `True` for any
-non-trivial input, causing spurious quote inclusion. Fix is to use
-`(ocr_word_end - ocr_word_start) > 1` from `combination_start_end`.
-H-21 is the last unstruck entry in `bugs-high.md` — clearing it
-finishes the high-severity sweep.
+**Next pick:** M-01 — `image_processing/cv2_processing/perspective_adjustment.py`
+lines 36–42. The column-sum used to detect skew starts at hardcoded
+`Y1 = 0` (image top) instead of `minY` (the detected content top edge),
+so stray noise pixels above the text block corrupt the detected skew
+angle. The cupy counterpart correctly uses
+`img_cp[minY : minY + h_percent, ...]`. Fix is to set `Y1 = minY`
+at line 36.
 
 **Workflow per iteration** (one bug per commit, no push):
 
