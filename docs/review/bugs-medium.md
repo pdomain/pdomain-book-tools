@@ -124,7 +124,7 @@ For book scans where text runs close to the gutter, this silently deletes valid 
 
 ---
 
-## M-09 — Cupy `morph.py` — 432 MB+ redundant intermediate allocation per morphological op
+## [FIXED in 423cea2] ~~M-09 — Cupy `morph.py` — 432 MB+ redundant intermediate allocation per morphological op~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/morph.py`, lines 24, 41
 

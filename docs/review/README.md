@@ -269,16 +269,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   plain `BORDER_REFLECT` and is wrong here). Regression locked with a
   cross-backend equality test on `erode` and on `morph_fill`. — fix
   `a9741d4`, doc mark `<pending>`
+- M-09 `image_processing/cupy_processing/morph.py` `dilate` / `erode`
+  did `cp.max(windows * kernel, axis=(-2,-1))` /
+  `cp.min(windows * kernel, axis=(-2,-1))`. The only call site
+  (`morph_fill`) builds `kernel` as `cp.ones(...)`, so the multiply
+  was a no-op that nonetheless materialized a full
+  `(H, W, kh, kw)` intermediate before reducing — ~432 MB for a
+  3000x4000 page with a 6x6 kernel, ~1.7 GB peak across the four ops
+  in `morph_fill`. Path: dropped `* kernel` outright (the simple case;
+  the kernel really is always all-ones at the only call site).
+  Function signatures unchanged for API stability; comment in each
+  function points at `cupyx.scipy.ndimage.grey_dilation` /
+  `grey_erosion` for any future non-trivial structuring element.
+  Locked with a cv2-parity test on a non-trivial 32x48 random pattern
+  with a 5x5 all-ones kernel. — fix `423cea2`, doc mark `<pending>`
 
-**Next pick:** M-09 — `pd_book_tools/image_processing/cupy_processing/morph.py`
-`cp.max(windows * kernel, axis=(-2,-1))` (and the matching `cp.min` in
-`erode`) allocates an `(H, W, kh, kw)` intermediate before reducing.
-For a 3000×4000 page with a 6×6 kernel this is ~432 MB per op; the
-four ops in `morph_fill` peak around 1.7 GB GPU memory. `kernel` is
-always all-ones, so the multiplication is a no-op. Fix: drop the
-`* kernel` factor (use `cp.max(windows, axis=(-2,-1))` /
-`cp.min(windows, axis=(-2,-1))`); for non-trivial kernels prefer
-`cupyx.scipy.ndimage.grey_dilation` / `grey_erosion`.
+**Next pick:** M-10 — `image_processing/cv2_processing/contours.py`
+`find_and_draw_contours` returns `(original_grayscale_img, [])` (a 2D
+array) when no contours are found and `(new_bgr_img_with_drawings,
+contours)` (a 3-channel array) otherwise. Callers must runtime-dispatch
+on shape; no return type annotation warns of it. Fix: always convert
+to 3-channel before returning, add a return type annotation.
 
 **Workflow per iteration** (one bug per commit, no push):
 
