@@ -241,7 +241,7 @@ guarded pattern used at every other level.
 
 ---
 
-## M-17 — `colorToGray.py` — `np_uint8_float_colorToGray` silently corrupts float input
+## [FIXED in 27a113f] ~~M-17 — `colorToGray.py` — `np_uint8_float_colorToGray` silently corrupts float input~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/colorToGray.py`, line 87
 
