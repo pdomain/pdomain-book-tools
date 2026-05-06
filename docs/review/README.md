@@ -82,15 +82,29 @@ remembering prior turns. Update this when an iteration completes (after the
   value itself; strict-`>` binarization is therefore all-zero). Review
   was partly stale on the symptom but the underlying defect (no uniform
   guard) was real. — fix `92d7c32`, doc mark `<pending>`
+- H-16 `image_processing/cupy_processing/threshold.py` `otsu_binary_thresh`
+  returned `cp.float32` 0.0/1.0 while the cv2 backend's same-named function
+  returns `uint8` 0/255. Pipeline code switching backends silently got
+  incompatible dtype/range, breaking downstream `invert_image` etc. Aligned
+  cupy's contract to `cp.uint8` {0, 255}; updated the H-15 uniform-image
+  early-return to emit uint8 too; simplified `np_uint8_float_binary_thresh`
+  wrapper since the underlying call now returns 0/255 already. — fix
+  `53ed3f5`, doc mark `<pending>`
 
-**Next pick:** H-16 — `pd_book_tools/image_processing/cupy_processing/threshold.py`
-lines 49–52 (Cupy `otsu_binary_thresh` returns `float32` 0.0/1.0 while
-the cv2 version returns `uint8` 0/255 — pipelines switching backends
-get a silently incompatible dtype/range). Last of the threshold.py
-cluster, same file as H-14/H-15 so the regression-test infrastructure
-is already in place. H-13 (`doctr_support.py` `Path.exists` unbound
-class method) remains deferred per the "Highest-priority fixes"
-ordering — README top-10 jumps from H-12 to H-14/15/16.
+**Top-10 H-XX list complete.** With H-16 fixed, every entry from the
+"Highest-priority fixes" section above is now resolved (H-13 was
+deferred per the original review ordering and remains the only unfixed
+top-10 item — it gets picked up in the sequential sweep below). The
+/loop now sweeps the remaining `bugs-high.md` entries top-to-bottom —
+pick the first unstruck H-XX from the file in document order.
+
+**Next pick:** H-09 — `pd_book_tools/ocr/word.py` line 665. `Word.from_dict`
+uses hard key access `dict["ocr_confidence"]`, raising `KeyError` on any
+JSON saved before the `ocr_confidence` field was added. `Character.from_dict`
+already uses the safer `.get("ocr_confidence")` pattern. Mechanical fix:
+swap `data["ocr_confidence"]` for `data.get("ocr_confidence")`. Add a
+regression test that round-trips a serialized `Word` dict missing the
+`ocr_confidence` key.
 
 **Workflow per iteration** (one bug per commit, no push):
 
