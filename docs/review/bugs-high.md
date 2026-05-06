@@ -168,7 +168,7 @@ processing, including ground-truth matching and final text output.
 
 ---
 
-## H-12 — DocTR `original_text` indexes the rendered string by character, not by page
+## [FIXED in 06f22c3] ~~H-12 — DocTR `original_text` indexes the rendered string by character, not by page~~
 
 **Files:** `pd_book_tools/ocr/document.py` line 245; `pd_book_tools/ocr/doctr_support.py`
 **Affects:** `original_ocr_tool_text` on every page of every DocTR document
