@@ -394,16 +394,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   legitimate; aligned the setter so partial OCR words and empty child
   blocks are admitted, otherwise the document.py fix alone would raise
   `TypeError` one frame later. — fix `f27c766`, doc mark `<pending>`
+- M-18 `image_processing/cupy_processing/colorToGray.py`
+  `_compute_envelopes` did `height, width, _ = img.shape` at entry, so
+  a 2-D grayscale input raised `ValueError: not enough values to
+  unpack` deep inside the helper instead of being rejected at the
+  public `cupy_colorToGray` boundary. The function also silently
+  accepted 4-channel RGBA via `img[ny, nx, :3]` (alpha dropped without
+  notice). Validated input shape at the public entry: `ndim != 3` or
+  `channels < 3` raises `ValueError` naming the actual issue;
+  `channels == 4` is accepted and explicitly sliced to the first 3
+  channels (matches `cv2.cvtColor(..., COLOR_BGRA2GRAY)` policy of
+  ignoring rather than alpha-blending) with a one-time `logger.info`
+  notice; `channels > 4` raises. Regression test asserts a 4-channel
+  input with random alpha produces output bit-equal to running on the
+  BGR-only slice — alpha is observably ignored. — fix `feb2eb8`,
+  doc mark `<pending>`
 
-**Next pick:** M-18 — `image_processing/cupy_processing/colorToGray.py`
-`_compute_envelopes` does `height, width, _ = img.shape` at entry, so a
-2-D (grayscale) image raises a confusing `ValueError: not enough values
-to unpack` deep inside the helper instead of being rejected at the
-public `cupy_colorToGray` boundary. The function also silently accepts
-4-channel RGBA via `img[ny, nx, :3]` (drops alpha). Fix: validate
-`img.ndim == 3 and img.shape[2] >= 3` at the entry of
-`cupy_colorToGray` so the contract is checked once at the public
-surface.
+**Next pick:** M-19 — `ocr/cv2_tesseract.py` line 33 hardcodes
+`--dpi 300` regardless of the input image's actual scan resolution.
+For 150 or 600 DPI scans, Tesseract mis-estimates character sizes and
+OCR accuracy degrades. Fix: make DPI a parameter with a default of
+`300`; consider deriving from image metadata when available.
 
 **Workflow per iteration** (one bug per commit, no push):
 

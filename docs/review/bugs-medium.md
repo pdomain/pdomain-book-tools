@@ -257,7 +257,7 @@ stating the input must be `np.uint8`.
 
 ---
 
-## M-18 — `colorToGray.py` — `_compute_envelopes` crashes on 2D (grayscale) input
+## [FIXED in feb2eb8] ~~M-18 — `colorToGray.py` — `_compute_envelopes` crashes on 2D (grayscale) input~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/colorToGray.py`, line 17
 
