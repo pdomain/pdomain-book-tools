@@ -329,6 +329,46 @@ def test_page_recompute_bounding_box_empty():
     assert p.bounding_box is None
 
 
+def test_page_recompute_bounding_box_h04_regression():
+    """Regression lock for H-04: ``Page.recompute_bounding_box`` must exist as
+    an instance method and must be invokable without raising
+    ``AttributeError`` from any of the call sites flagged in the May 2026
+    review (page.py:752 via ``_recompute_nested_bounding_boxes``, plus the
+    paragraph-editing methods at 953/967/998). The May 2026 review claimed the
+    method was undefined; the implementation has been present since commit
+    2248366 (April 2025) but was never explicitly regression-locked against
+    this AttributeError contract.
+    """
+    # Direct method existence and union semantics.
+    assert callable(getattr(Page, "recompute_bounding_box", None)), (
+        "Page.recompute_bounding_box must be defined; H-04 reproduction"
+    )
+
+    p = Page(width=100, height=100, page_index=0, items=[])
+
+    # Empty -> None (no exception).
+    p.recompute_bounding_box()
+    assert p.bounding_box is None
+
+    # With items -> union of children.
+    line_a = _make_line(["aa"], 0)
+    line_b = _make_line(["bb"], 50)
+    block = Block(
+        items=[line_a, line_b],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    p.add_item(block)
+    p.recompute_bounding_box()
+    assert isinstance(p.bounding_box, BoundingBox)
+
+    # Exercise the static recursive caller from page.py:744-751 — this is
+    # the call site H-04 specifically named (would raise AttributeError if
+    # the method were missing on Page).
+    Page._recompute_nested_bounding_boxes(p)
+    assert isinstance(p.bounding_box, BoundingBox)
+
+
 # ============================================================================
 # Scaling & normalization
 # ============================================================================
