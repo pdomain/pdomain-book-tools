@@ -155,7 +155,7 @@ threshold and potentially triggering spurious rotation probes on perfectly good 
 
 ---
 
-## H-11 — Tesseract NaN text cell produces `Word(text='nan', ...)`
+## [FIXED in 779bd59] ~~H-11 — Tesseract NaN text cell produces `Word(text='nan', ...)`~~
 
 **File:** `pd_book_tools/ocr/document.py`, line 588
 **Affects:** any page where Tesseract returns a rejected word with no text
