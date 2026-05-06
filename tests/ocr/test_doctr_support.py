@@ -96,6 +96,46 @@ class TestGetFinetunedTorchDoctrPredictor:
         # Files do not exist, so the helper falls through and returns None
         assert result is None
 
+    def test_missing_files_with_str_paths_returns_none(self, monkeypatch, tmp_path):
+        """Regression for H-13: callers may pass `str` paths.
+
+        ``Path.exists`` is an instance method, not a classmethod — invoking it as
+        ``Path.exists(some_str)`` raises ``AttributeError: 'str' object has no
+        attribute 'stat'`` while binding the unbound descriptor. The fix uses
+        ``Path(x).exists()``. Verify the existence-check branch handles ``str``
+        without raising and returns ``None`` on the missing-file path.
+        """
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock()
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock()
+        fake_models.db_resnet50 = MagicMock()
+        fake_models.detection_predictor = MagicMock()
+        fake_models.ocr_predictor = MagicMock()
+        fake_models.recognition_predictor = MagicMock()
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        # str paths, not Path objects — the broken `Path.exists(x)` call would
+        # raise AttributeError here before the function could return None.
+        result = get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=str(tmp_path / "missing_det.pt"),
+            recognition_pt_file=str(tmp_path / "missing_reco.pt"),
+        )
+        assert result is None
+
     def test_happy_path_with_existing_files(self, monkeypatch, tmp_path):
         """With pretrained files present, the helper should construct a predictor."""
         det_path = tmp_path / "det.pt"
