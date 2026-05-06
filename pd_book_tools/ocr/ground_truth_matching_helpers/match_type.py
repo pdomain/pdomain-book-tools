@@ -18,7 +18,12 @@ class MatchType(Enum):
     LINE_INSERT = "difflib-line-insert"
 
     # Word-level match types (For use with LINE_REPLACE)
-    LINE_REPLACE_WORD_EQUAL = LINE_REPLACE + "-word-equal"
+    # TODO: re-introduce LINE_REPLACE_WORD_EQUAL when
+    # update_line_with_ground_truth_replace_words actually distinguishes
+    # post-replace exact-equal pairings (fuzz_score == 100) from genuine
+    # replacements. Removed because nothing in the matching pipeline ever
+    # assigned it (current code stamps every replace-pass word as
+    # LINE_REPLACE_WORD_REPLACE regardless of resulting fuzz score).
     LINE_REPLACE_WORD_REPLACE = LINE_REPLACE + "-word-replace"
     LINE_REPLACE_WORD_REPLACE_COMBINED = LINE_REPLACE + "-word-replace-combined"
     LINE_REPLACE_WORD_DELETE = LINE_REPLACE + "-word-delete"
