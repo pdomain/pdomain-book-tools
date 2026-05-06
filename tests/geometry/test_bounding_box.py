@@ -111,6 +111,41 @@ def test_bounding_box_contains_point():
     assert not bbox.contains_point(Point(1.5, 1.5))
 
 
+def test_bounding_box_contains_point_boundary_inclusive():
+    """R-12 lock: boundary points (corners and edges) must be considered
+    contained — Shapely's ``covers`` is closed, and any replacement
+    implementation must preserve that semantics. ``Point`` enforces
+    non-negative coordinates, so we test outside-the-box with points
+    inside the larger image but outside the inner bbox.
+    """
+    bbox = BoundingBox(Point(5, 5), Point(15, 15))
+    # all four corners
+    assert bbox.contains_point(Point(5, 5))
+    assert bbox.contains_point(Point(15, 5))
+    assert bbox.contains_point(Point(5, 15))
+    assert bbox.contains_point(Point(15, 15))
+    # midpoints of all four edges
+    assert bbox.contains_point(Point(10, 5))
+    assert bbox.contains_point(Point(10, 15))
+    assert bbox.contains_point(Point(5, 10))
+    assert bbox.contains_point(Point(15, 10))
+    # strictly outside on each axis (still non-negative)
+    assert not bbox.contains_point(Point(4.9, 10))
+    assert not bbox.contains_point(Point(15.1, 10))
+    assert not bbox.contains_point(Point(10, 4.9))
+    assert not bbox.contains_point(Point(10, 15.1))
+
+
+def test_bounding_box_contains_point_normalized_space():
+    """R-12 lock: normalized-coordinate boxes also report containment via
+    inclusive comparison; both points share normalized state."""
+    bbox = BoundingBox.from_ltrb(0.2, 0.3, 0.6, 0.8)
+    assert bbox.contains_point(Point(0.4, 0.5))
+    assert bbox.contains_point(Point(0.2, 0.3))  # corner
+    assert bbox.contains_point(Point(0.6, 0.8))  # corner
+    assert not bbox.contains_point(Point(0.7, 0.5))
+
+
 def test_bounding_box_intersects():
     # Use pixel-space boxes so both share coordinate system
     bbox1 = BoundingBox(Point(0, 0), Point(2, 2))

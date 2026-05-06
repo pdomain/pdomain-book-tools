@@ -387,8 +387,15 @@ class BoundingBox:
         )
 
     def contains_point(self, point: Point) -> bool:
-        """Check if the bounding box covers the given point (inclusive of edges)."""
-        return self.as_shapely().covers(ShapelyPoint(point.x, point.y))  # type: ignore
+        """Check if the bounding box covers the given point (inclusive of edges).
+
+        Implementation note: this is a trivial axis-aligned containment test;
+        we previously delegated to ``shapely.geometry.box(...).covers(...)``
+        which is functionally equivalent but allocates two Shapely geometries
+        per call. Inclusive comparison matches Shapely's ``covers`` semantics
+        (closed on the boundary).
+        """
+        return self.minX <= point.x <= self.maxX and self.minY <= point.y <= self.maxY
 
     @staticmethod
     def _require_same_coords(fn):  # type: ignore
