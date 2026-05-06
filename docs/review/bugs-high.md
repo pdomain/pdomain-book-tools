@@ -141,7 +141,7 @@ when the value is `None`.
 
 ---
 
-## H-10 — Tesseract `conf == -1` stored as `-1.0`, corrupting rotation detection and confidence stats
+## [FIXED in 4c946b2] ~~H-10 — Tesseract `conf == -1` stored as `-1.0`, corrupting rotation detection and confidence stats~~
 
 **File:** `pd_book_tools/ocr/document.py`, line 590
 **Affects:** rotation detection; `Block.mean_ocr_confidence`; any downstream confidence filtering
