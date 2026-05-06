@@ -56,6 +56,37 @@ class LayoutRegion:
     confidence: float = 1.0
     raw_label: str = ""
 
+    def __post_init__(self) -> None:
+        # Reject inverted rectangles up front. Without this, ``width`` /
+        # ``height`` go negative, ``area`` silently returns 0 (masking the
+        # bad input), and ``contains_point`` returns the wrong answer for
+        # every query. Adapters that emit pixel-space rectangles (model
+        # adapters, contour fallback) always have L<=R / T<=B by
+        # construction; a violation here means a coordinate-system mix-up
+        # upstream, which we want to surface loudly. Zero-width or
+        # zero-height boxes (L == R or T == B) are still accepted — they're
+        # degenerate but well-formed and produce ``area == 0``. Negative
+        # absolute coordinates are clamped to 0 (the source-image frame
+        # never has negative pixel indices).
+        if self.L > self.R:
+            raise ValueError(
+                f"LayoutRegion has L > R ({self.L} > {self.R}); "
+                "coordinates must satisfy L <= R"
+            )
+        if self.T > self.B:
+            raise ValueError(
+                f"LayoutRegion has T > B ({self.T} > {self.B}); "
+                "coordinates must satisfy T <= B"
+            )
+        if self.L < 0:
+            self.L = 0
+        if self.T < 0:
+            self.T = 0
+        if self.R < 0:
+            self.R = 0
+        if self.B < 0:
+            self.B = 0
+
     @property
     def width(self) -> int:
         return self.R - self.L
