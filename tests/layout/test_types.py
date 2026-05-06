@@ -61,6 +61,16 @@ class TestLayoutRegion:
         assert roundtripped == r
         assert roundtripped.type is RegionType.caption
 
+    def test_hashable(self):
+        # L-32: regions need to be usable in sets / dict keys so callers
+        # don't have to fall back to identity-based ``r is figure`` checks
+        # (see ``caption_for_figure`` for the historical workaround).
+        r1 = _region(L=10, R=110, T=20, B=220, type=RegionType.figure)
+        r2 = _region(L=10, R=110, T=20, B=220, type=RegionType.figure)
+        r3 = _region(L=10, R=110, T=20, B=220, type=RegionType.caption)
+        assert hash(r1) == hash(r2)
+        assert {r1, r2, r3} == {r1, r3}
+
     def test_from_dict_unknown_type_raises(self):
         with pytest.raises(ValueError):
             LayoutRegion.from_dict(

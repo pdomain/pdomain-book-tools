@@ -38,7 +38,7 @@ class RegionType(str, Enum):
     sidenote = "sidenote"
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class LayoutRegion:
     """One typed rectangle from a layout detector.
 
