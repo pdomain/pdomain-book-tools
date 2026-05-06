@@ -245,7 +245,7 @@ it to surface the float output (e.g., `otsu_binary_thresh_float_gpu`) and docume
 
 ---
 
-## H-17 — `pyproject.toml` declares both `opencv-python` and `opencv-contrib-python`
+## [FIXED in 364bcd2] ~~H-17 — `pyproject.toml` declares both `opencv-python` and `opencv-contrib-python`~~
 
 **File:** `pd_book_tools/pyproject.toml`, lines 25–27
 **Affects:** package installation
