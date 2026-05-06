@@ -41,6 +41,22 @@ def test_page_chrome_labels_are_preserved_not_dropped(raw_label, expected):
     assert RegionType(mapped) is expected
 
 
+def test_reference_label_is_not_mapped_to_list():
+    """L-12: PP-DocLayout's ``reference`` is a bibliography citation item.
+
+    Mapping it to ``RegionType.list`` causes PGDP-aware tools to apply
+    list (bullet/numbered) formatting to bibliography entries. ``text``
+    is the correct generic destination until a dedicated
+    ``RegionType.reference`` is introduced.
+    """
+    mapped = PP_DOCLAYOUT_TO_PGDP["reference"]
+    assert mapped != "list", (
+        "L-12 regression: PP-DocLayout 'reference' (bibliography item) must "
+        "not map to RegionType.list — list formatting on citations is wrong."
+    )
+    assert RegionType(mapped) is RegionType.text
+
+
 def test_mappings_module_comment_does_not_claim_dropped():
     """L-11: the page-chrome comment must not claim the regions are dropped here."""
     src = Path("pd_book_tools/layout/_mappings.py").read_text(encoding="utf-8")

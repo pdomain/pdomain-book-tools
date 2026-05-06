@@ -35,7 +35,11 @@ PP_DOCLAYOUT_TO_PGDP: dict[str, str | None] = {
     "footnote": "footnote",
     # Lists & navigation
     "list_of_references": "list",
-    "reference": "list",
+    # PP-DocLayout ``reference`` is a single bibliography citation item,
+    # not a generic list entry — mapping to ``list`` would make PGDP-aware
+    # consumers apply bullet/numbered formatting to citations. Until a
+    # dedicated ``RegionType.reference`` is introduced, send it to ``text``.
+    "reference": "text",
     "sidebar_text": "abandoned",
     "algorithm": "text",
     # Stamps / seals (engraved insignia)
