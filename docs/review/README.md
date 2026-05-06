@@ -27,6 +27,33 @@ Start here before anything else:
 9. **H-12** `document.py` — DocTR `original_text` indexes by character, not page
 10. **H-14/15/16** `threshold.py` — Cupy Otsu off-by-one, crash on uniform images, wrong return type
 
+## Loop progress
+
+Durable state for the `/loop` bug-fix run, so a fresh session can resume without
+remembering prior turns. Update this when an iteration completes (after the
+`docs(review): mark H-XX fixed` commit).
+
+**Fixed so far:**
+
+- H-01 `encoding.py` BGR/RGB swap — fix `702d402`, doc mark `b4f1140`
+- H-02 `pgdp_results.py` unescaped diacritic `.` regexes — fix `6b1ff5b`, doc mark `466d1df`
+- H-03 `ipynb_widgets.py` malformed HTML (operator-precedence) — fix `1f26286`, doc mark `e0da955`
+
+**Next pick:** H-04 — `page.py` `recompute_bounding_box` undefined, called from
+page.py:752/953/967/998. Define it as
+`BoundingBox.union([b.bounding_box for b in self._items if b.bounding_box is not None])`.
+
+**Workflow per iteration** (one bug per commit, no push):
+
+1. Verify bug still present in the production code.
+2. Write a failing test that reproduces the symptom from the review doc.
+3. Implement minimal fix; re-run test; run module test suite for regressions.
+4. Commit `fix(<module>): <one-line>` referencing the review ID in the body.
+5. Edit `docs/review/bugs-*.md`: prepend `[FIXED in <short-sha>]` and wrap the
+   heading text in `~~...~~` (matching H-01..H-03 format).
+6. Update **Fixed so far** and **Next pick** in this README.
+7. Commit `docs(review): mark H-XX fixed`.
+
 ## Modules reviewed
 
 - `pd_book_tools/geometry/` — bounding_box.py, point.py
