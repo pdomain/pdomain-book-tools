@@ -546,6 +546,25 @@ def test_expand_variants():
         bbox.expand(-100, 0)
 
 
+def test_expand_uniform_collapse_raises_clear_error():
+    """L-03: uniform shrink that exceeds half-size collapses Shapely buffer.
+
+    Pre-fix the buffer returned empty geometry with bounds == (nan, nan, nan,
+    nan); from_ltrb then raised the unrelated
+    `Cannot mark as normalized: coordinates must lie within [0,1]` for
+    normalized boxes, or silently returned a NaN-coord box for pixel boxes.
+    Post-fix the user gets a clear `Expansion deltas collapse box to zero
+    area` ValueError up-front.
+    """
+    bbox_norm = BoundingBox.from_ltrb(0.1, 0.1, 0.3, 0.3, is_normalized=True)
+    with pytest.raises(ValueError, match="collapse box to zero area"):
+        bbox_norm.expand(-0.5, -0.5)
+
+    bbox_pix = BoundingBox.from_ltrb(10, 10, 20, 20, is_normalized=False)
+    with pytest.raises(ValueError, match="collapse box to zero area"):
+        bbox_pix.expand(-100, -100)
+
+
 def test_interval_overlap_static():
     f = BoundingBox._interval_overlap
     assert f(0, 10, 5, 15) == 5
