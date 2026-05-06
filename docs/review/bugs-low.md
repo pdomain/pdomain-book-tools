@@ -271,7 +271,7 @@ never be reached — if the lengths were equal, `word_idx` never exceeds the las
 
 ---
 
-## L-21 — `match_type.py` — `WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION` defined but never assigned
+## ~~L-21 — `match_type.py` — `WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION` defined but never assigned~~ [FIXED in f8c8b6c]
 
 **File:** `pd_book_tools/ocr/ground_truth_matching_helpers/match_type.py`, line 8
 
@@ -284,7 +284,7 @@ or remove it.
 
 ---
 
-## L-22 — `LINE_REPLACE_WORD_EQUAL` defined in `match_type.py` but never assigned in matching code
+## ~~L-22 — `LINE_REPLACE_WORD_EQUAL` defined in `match_type.py` but never assigned in matching code~~ [FIXED in c57f0d5]
 
 **File:** `pd_book_tools/ocr/ground_truth_matching_helpers/match_type.py`, line 18 vs `ground_truth_matching.py`
 
@@ -298,7 +298,7 @@ assign `MatchType.LINE_REPLACE_WORD_EQUAL` when inside a replace operation.
 
 ---
 
-## L-23 — `Block.items` and `Page.items` re-sort on every read
+## ~~L-23 — `Block.items` and `Page.items` re-sort on every read~~ [PARTLY STALE + DEFERRED, regression-locked in 7a959eb]
 
 **Files:**
 
@@ -314,7 +314,7 @@ reordered.
 
 ---
 
-## L-24 — `copy_ocr_to_ground_truth` uses `any([list comp])` — misleadingly eager evaluation
+## ~~L-24 — `copy_ocr_to_ground_truth` uses `any([list comp])` — misleadingly eager evaluation~~ [FIXED in bc85919]
 
 **Files:**
 
@@ -331,7 +331,7 @@ to make the eager-evaluation intent explicit.
 
 ---
 
-## L-25 — `image_utilities.crop_image_to_bbox` swallows all exceptions silently
+## ~~L-25 — `image_utilities.crop_image_to_bbox` swallows all exceptions silently~~ [FIXED in b40c892]
 
 **File:** `pd_book_tools/ocr/image_utilities.py`, lines 43–45
 
