@@ -84,6 +84,19 @@ class TestOCRProvenance:
         p = OCRProvenance.from_dict({})
         assert p.engine == UNKNOWN_METADATA_VALUE
 
+    def test_empty_string_engine_version_round_trips_as_empty_string(self):
+        """L-17: ``to_dict`` must distinguish ``""`` (intentional empty) from
+        ``None`` (unknown). Pre-fix the truthy guard
+        ``if self.engine_version`` omitted ``""`` from the dict, and
+        ``from_dict`` then defaulted the missing key back to ``None`` — so
+        ``engine_version=""`` silently round-tripped to ``None``. Same for
+        ``config_fingerprint``.
+        """
+        p = OCRProvenance(engine="x", engine_version="", config_fingerprint="")
+        round_tripped = OCRProvenance.from_dict(p.to_dict())
+        assert round_tripped.engine_version == ""
+        assert round_tripped.config_fingerprint == ""
+
 
 class TestOCRProvenanceImmutability:
     """L-15: ``models`` is a tuple so the ``frozen=True`` promise is real.
