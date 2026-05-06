@@ -78,3 +78,53 @@ class TestFindEdges:
         # With zero fuzz, bounds should still tightly enclose content
         assert 0 <= minX <= 40
         assert 59 <= maxX <= 99
+
+    def test_fuzzy_override_zero_is_honored(self):
+        """Regression for M-03: `fuzzy_px_w_override=0` / `fuzzy_px_h_override=0`
+        must be respected as "no fuzzy window", not silently treated as falsy
+        and replaced with `int(w * fuzzy_pct)` / `int(h * fuzzy_pct)`.
+
+        Pre-fix: `if fuzzy_px_w_override:` evaluates 0 as False, so the default
+        `int(w * fuzzy_pct)` is applied, smearing content across the convolution
+        kernel. Post-fix mirrors the cupy backend: `is not None` check, so
+        explicit 0 disables fuzzing.
+
+        The cupy backend already uses `is not None`.
+        """
+        # 100x100 black image with a single isolated 1-pixel-wide bright column
+        # at x=50 and a single isolated 1-pixel-wide bright row at y=50, each
+        # exactly meeting the pixel_count threshold.
+        img = np.zeros((100, 100), dtype=np.uint8)
+        img[10:13, 50] = 255  # 3 bright pixels in column x=50
+        img[50, 10:13] = 255  # 3 bright pixels in row y=50
+
+        # fuzzy_pct=0.10 so the buggy default fuzz_w/h = int(100 * 0.10) = 10,
+        # producing a convolution kernel of size 21 that smears the bright
+        # column across columns [40..60] (similarly for the row). With the
+        # override honored as 0, the kernel is size 1 (identity) and only
+        # the actual bright column/row indices are detected.
+        minX, maxX, minY, maxY = find_edges(
+            img,
+            fuzzy_pct=0.10,
+            pixel_count_columns=3,
+            pixel_count_rows=3,
+            fuzzy_px_w_override=0,
+            fuzzy_px_h_override=0,
+        )
+        # Post-fix: only x=50, y=50 satisfy threshold (no fuzzing).
+        assert minX == 50, (
+            f"expected minX=50 with override=0 honored; got {minX} "
+            "(pre-fix: 0 falsy, default fuzz_w=10 smears column to ~40)"
+        )
+        assert maxX == 50, (
+            f"expected maxX=50 with override=0 honored; got {maxX} "
+            "(pre-fix: 0 falsy, default fuzz_w=10 smears column to ~60)"
+        )
+        assert minY == 50, (
+            f"expected minY=50 with override=0 honored; got {minY} "
+            "(pre-fix: 0 falsy, default fuzz_h=10 smears row to ~40)"
+        )
+        assert maxY == 50, (
+            f"expected maxY=50 with override=0 honored; got {maxY} "
+            "(pre-fix: 0 falsy, default fuzz_h=10 smears row to ~60)"
+        )

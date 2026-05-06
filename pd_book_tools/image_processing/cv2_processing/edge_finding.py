@@ -34,8 +34,12 @@ def find_edges(
     h, w = img.shape[:2]
 
     # Compute fuzzy pixel width and height
-    fuzzy_px_w = fuzzy_px_w_override if fuzzy_px_w_override else int(w * fuzzy_pct)
-    fuzzy_px_h = fuzzy_px_h_override if fuzzy_px_h_override else int(h * fuzzy_pct)
+    fuzzy_px_w = (
+        fuzzy_px_w_override if fuzzy_px_w_override is not None else int(w * fuzzy_pct)
+    )
+    fuzzy_px_h = (
+        fuzzy_px_h_override if fuzzy_px_h_override is not None else int(h * fuzzy_pct)
+    )
 
     logger.debug(f"{log_prefix}fuzzy_px_w={fuzzy_px_w}, fuzzy_px_h={fuzzy_px_h}")
 
