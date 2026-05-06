@@ -372,7 +372,7 @@ version with the same defaults, or removing it from cv2 for consistency.
 
 ---
 
-## L-28 — `timing.py` — first log line uses root logger instead of the injected `logger`
+## ~~L-28 — `timing.py` — first log line uses root logger instead of the injected `logger`~~ [FIXED in c38f058]
 
 **File:** `pd_book_tools/utility/timing.py`, line 14
 
