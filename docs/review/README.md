@@ -621,12 +621,59 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   break consumers. Added regression coverage for the coincident
   zero-width-line, coincident point, and disjoint zero-area cases.
   — fix `3fd0b08`, doc mark `0858efa`
+- L-06 `layout/geometry.py` `caption_for_figure` only computed
+  `gap = r.T - figure.B` and rejected negatives, so any region whose
+  top edge fell above the figure's bottom was silently never selected
+  — including captions, plate numbers, and headings placed directly
+  above the figure (common in Victorian / 18th-century books). Added
+  opt-in `above: bool = False` parameter that also computes
+  `gap_above = figure.T - r.B` and considers the smaller non-negative
+  gap. Default `False` preserves prior below-only behaviour so
+  existing callers are unaffected. — fix `ec24ae6`, doc mark `e9d3a8e`
+- L-07 `layout/geometry.py` `region_reading_order` sorted purely by
+  `(T, L)`, silently producing wrong output for two-column layouts
+  (a right-column region with a slightly smaller top sorted before a
+  left-column region with a slightly larger top, interleaving
+  columns). Per the review's "at minimum" recommendation, added a
+  multi-column heuristic (left-side regions whose right edge sits in
+  the page's left 40% AND right-side regions whose left edge sits in
+  the right 40%, with at least one disjoint pair) that emits a
+  one-shot `UserWarning` citing L-07. Single-column input — including
+  pages where a region happens to start at the midline — does not
+  warn. Column-aware sorting itself is left as a follow-up. — fix
+  `bc8105c`, doc mark `5b7564e`
+- L-08 `layout/visualize.py` `draw_layout_overlay` ignored
+  `cv2.imwrite`'s boolean return and unconditionally returned
+  `dest_path`. Disk-full / permission / unsupported-extension
+  failures silently produced "success" — callers checking
+  `if draw_layout_overlay(...) is not None` believed the file was
+  written. Now raises `OSError` on imwrite failure with the resolved
+  path and likely causes; the missing-source `None` path is
+  preserved so the two failure modes remain distinguishable. — fix
+  `af9b8ce`, doc mark `f9f5cec`
+- L-09 `layout/visualize.py` `draw_layout_overlay` painted the label
+  rectangle and text starting at `r.L`, so any region near the right
+  edge (page numbers, sidenotes, right-margin annotations) had its
+  label run past `image_width` and become partially or fully
+  invisible. Clamped `lx = max(0, min(r.L, image_width - tw - 6))`
+  before drawing both the filled rectangle and the text. Floor at 0
+  keeps over-wide labels on a narrow image anchored at the left edge
+  rather than going negative. — fix `3cb3d58`, doc mark `1bc1aa6`
+- L-10 `layout/visualize.py` `_COLORS_BGR` had
+  `"text": (200, 200, 60),  # cyan-ish` — incorrect. In BGR that's
+  B=200, G=200, R=60: yellow-green. Cyan in BGR is (255, 255, 0).
+  Comment-only fix; no behavior change. Property-check regression
+  test asserts the literal word "cyan" does not appear in any
+  comment ahead of the "L-10" historical breadcrumb on the "text"
+  entry. — fix `67281c9`, doc mark `17ea79c`
 
-**Next pick:** L-06 — `layout/geometry.py` `caption_for_figure`
-searches only below a figure, never above (`gap = r.T - figure.B`,
-rejects gap < 0). Captions appearing above a figure (common in some
-Victorian book styles) are silently never found. Add `above=True`
-parameter or document the limitation.
+**Next pick:** L-11 — `layout/_mappings.py` comment "Page chrome —
+dropped before reorg" is false. The comment claims header/footer/
+footnote are dropped, but the mapping preserves them as typed regions
+(`RegionType.header`, `RegionType.footer`, `RegionType.footnote`).
+Whether they're dropped later depends on the call site, not on this
+mapping. Rewrite the comment to accurately describe what the mapping
+does.
 
 **Workflow per iteration** (one bug per commit, no push):
 
