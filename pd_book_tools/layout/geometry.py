@@ -138,8 +138,49 @@ def region_reading_order(regions: Iterable[LayoutRegion]) -> list[LayoutRegion]:
     multi-column reading order as an open design question — this is a sensible
     default for single-column books and a starting point for the column-aware
     sort to come.
+
+    .. warning::
+       Single-column only. For multi-column layouts (two-column body text,
+       a marginalia + body split, etc.) a right-column region with a slightly
+       smaller top can sort *before* a left-column region with a slightly
+       larger top, producing an interleaved (and wrong) reading order.
+       Multi-column input is detected heuristically via L/R-half coverage
+       and emits a one-shot :class:`UserWarning` so callers know the result
+       may be wrong; column-aware sorting is tracked as a separate L-07
+       follow-up. Cast to ``list`` first if you need deterministic detection
+       on a one-shot iterable.
     """
-    return sorted(regions, key=lambda r: (r.T, r.L))
+    import warnings
+
+    region_list = list(regions)
+    # Heuristic: detect a true column gap — at least one left-side region whose
+    # right edge sits well inside the page's left half, AND at least one
+    # right-side region whose left edge sits well inside the page's right half,
+    # with no horizontal overlap between any such pair. Avoids false positives
+    # on single-column docs where one region happens to start at the midline.
+    if len(region_list) >= 2:
+        page_l = min(r.L for r in region_list)
+        page_r = max(r.R for r in region_list)
+        page_w = page_r - page_l
+        if page_w > 0:
+            left_quarter = page_l + page_w * 0.4
+            right_quarter = page_l + page_w * 0.6
+            left_side = [r for r in region_list if r.R <= left_quarter]
+            right_side = [r for r in region_list if r.L >= right_quarter]
+            if left_side and right_side:
+                # Confirm at least one disjoint pair (true column gap).
+                disjoint_pair = any(
+                    lr.R <= rr.L for lr in left_side for rr in right_side
+                )
+                if disjoint_pair:
+                    warnings.warn(
+                        "region_reading_order: multi-column layout detected; "
+                        "(T, L) sort can interleave columns and produce wrong "
+                        "reading order. Column-aware sort is tracked as L-07.",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+    return sorted(region_list, key=lambda r: (r.T, r.L))
 
 
 __all__ = [
