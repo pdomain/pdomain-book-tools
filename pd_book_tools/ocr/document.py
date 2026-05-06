@@ -453,6 +453,32 @@ class Document:
             return 0.0
 
     @classmethod
+    def _tesseract_text(cls, val) -> str:
+        """Coerce a Tesseract ``text`` cell to a clean ``str``.
+
+        Tesseract's pandas DataFrame uses ``NaN`` for the ``text`` cell on
+        rejected/empty rows. ``str(float('nan'))`` is the literal string
+        ``'nan'``, so a naive ``str(word_row.text)`` ingest creates a ghost
+        Word with text ``'nan'`` that propagates as real OCR output into
+        ground-truth matching and final text. Map NaN / ``None`` to the
+        empty string instead of coercing them; everything else is passed
+        through ``str``.
+
+        We deliberately do not drop the row — keeping the geometry preserves
+        the no-silent-word-drop invariant the reorganize pipeline relies on.
+        """
+        if val is None:
+            return ""
+        if hasattr(val, "item"):
+            try:
+                val = val.item()
+            except Exception:
+                pass
+        if isinstance(val, float) and val != val:  # NaN
+            return ""
+        return str(val)
+
+    @classmethod
     def _tesseract_confidence(cls, val) -> Optional[float]:
         """Convert a Tesseract ``conf`` cell to ``Optional[float]``.
 
@@ -620,7 +646,7 @@ class Document:
                             )
 
                             word = Word(
-                                text=str(word_row.text),
+                                text=cls._tesseract_text(word_row.text),
                                 bounding_box=word_bounding_box,
                                 ocr_confidence=cls._tesseract_confidence(word_row.conf),
                             )
