@@ -323,7 +323,13 @@ class Document:
                         word = Word(
                             text=word_data.get("value", ""),
                             bounding_box=word_bounding_box,
-                            ocr_confidence=word_data.get("confidence", 0.0),
+                            # L-19: a missing ``confidence`` means
+                            # "unknown", not "0% confident". ``Word``
+                            # explicitly types this as ``float | None``;
+                            # defaulting to ``0.0`` poisoned downstream
+                            # confidence-based filters and quality
+                            # reports with phantom certain-error scores.
+                            ocr_confidence=word_data.get("confidence"),
                         )
                         words.append(word)
 
