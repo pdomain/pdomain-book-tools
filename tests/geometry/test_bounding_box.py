@@ -489,11 +489,33 @@ def test_clamp_to_image():
     # Normalized box already within [0,1]; clamp should be identity
     bbox_norm = BoundingBox.from_ltrb(0.0, 0.0, 0.9, 0.8, is_normalized=True)
     clamped_norm = bbox_norm.clamp_to_image(100, 50)
+    assert clamped_norm is not None
     assert clamped_norm.to_ltrb() == bbox_norm.to_ltrb()
     # Pixel path
     bbox_pix = BoundingBox.from_ltrb(10, 5, 120, 60, is_normalized=False)
     clamped_pix = bbox_pix.clamp_to_image(100, 50)
+    assert clamped_pix is not None
     assert clamped_pix.to_ltrb() == (10.0, 5.0, 100.0, 50.0)
+
+
+def test_clamp_to_image_returns_none_when_outside_image():
+    """L-02: a box entirely off the image clamps to zero area; signal None.
+
+    Pre-fix the function would silently return a zero-width or zero-height
+    BoundingBox, leaving callers to crash later on divide-by-zero or empty
+    crops. Post-fix, the caller gets an explicit None and can skip.
+    """
+    # Pixel: box lies entirely to the right of the image -> width collapses
+    bbox_right = BoundingBox.from_ltrb(150, 10, 200, 40, is_normalized=False)
+    assert bbox_right.clamp_to_image(100, 50) is None
+
+    # Pixel: box lies entirely below the image -> height collapses
+    bbox_below = BoundingBox.from_ltrb(10, 80, 40, 90, is_normalized=False)
+    assert bbox_below.clamp_to_image(100, 50) is None
+
+    # Box that touches the right edge exactly (zero width after clamp) also None
+    bbox_touch = BoundingBox.from_ltrb(100, 10, 110, 40, is_normalized=False)
+    assert bbox_touch.clamp_to_image(100, 50) is None
 
 
 def test_from_shapely_invalid_input():

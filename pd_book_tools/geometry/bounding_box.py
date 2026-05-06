@@ -676,25 +676,34 @@ class BoundingBox:
     def crop_top(self, image: ndarray) -> "BoundingBox":
         return self._vertical_crop(image, keep="top")
 
-    def clamp_to_image(self, width: int, height: int) -> "BoundingBox":
+    def clamp_to_image(self, width: int, height: int) -> "BoundingBox | None":
         """Return new box clamped to [0,width]x[0,height] in pixel or [0,1] if normalized.
 
         If normalized, simply clamps to [0,1].
+
+        When the box lies entirely outside the image (so clamping collapses
+        it to zero width or zero height), returns ``None`` rather than a
+        degenerate zero-area box. Callers that previously got back a box
+        with ``left == right`` or ``top == bottom`` would have hit
+        divide-by-zero or empty-crop errors downstream; the explicit
+        ``None`` lets them skip cleanly.
         """
         if self.is_normalized:
-            return BoundingBox.from_ltrb(
-                max(0.0, min(1.0, self.minX)),
-                max(0.0, min(1.0, self.minY)),
-                max(0.0, min(1.0, self.maxX)),
-                max(0.0, min(1.0, self.maxY)),
-                is_normalized=True,
-            )
+            left = max(0.0, min(1.0, self.minX))
+            top = max(0.0, min(1.0, self.minY))
+            right = max(0.0, min(1.0, self.maxX))
+            bottom = max(0.0, min(1.0, self.maxY))
+            if left >= right or top >= bottom:
+                return None
+            return BoundingBox.from_ltrb(left, top, right, bottom, is_normalized=True)
+        left_p = max(0.0, min(width, self.minX))
+        top_p = max(0.0, min(height, self.minY))
+        right_p = max(0.0, min(width, self.maxX))
+        bottom_p = max(0.0, min(height, self.maxY))
+        if left_p >= right_p or top_p >= bottom_p:
+            return None
         return BoundingBox.from_ltrb(
-            max(0.0, min(width, self.minX)),
-            max(0.0, min(height, self.minY)),
-            max(0.0, min(width, self.maxX)),
-            max(0.0, min(height, self.maxY)),
-            is_normalized=False,
+            left_p, top_p, right_p, bottom_p, is_normalized=False
         )
 
     def crop_image(self, image: ndarray) -> ndarray | None:
