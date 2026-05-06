@@ -271,7 +271,7 @@ assigned to the wrong parent block.
 
 ---
 
-## H-19 — `Page.__init__` calls `BoundingBox.union` without filtering `None` bboxes
+## [FIXED in 6ea4828] ~~H-19 — `Page.__init__` calls `BoundingBox.union` without filtering `None` bboxes~~
 
 **File:** `pd_book_tools/ocr/page.py`, lines 115–117
 **Affects:** constructing any `Page` that contains a block with `bounding_box=None`
