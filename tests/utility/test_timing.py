@@ -151,6 +151,71 @@ class TestFuncLogExecutionTime:
         assert "1 kwargs" in all_messages
         assert "str" in all_messages  # type name of the sentinel arg
 
+    def test_inspect_stack_skipped_when_logger_disabled(self, monkeypatch):
+        """L-30 regression: ``inspect.stack()`` is expensive (it walks the
+        whole Python call stack) and must not run on every decorated
+        invocation when the logger will not emit at ``logLevel``.
+
+        Patches ``inspect.stack`` on the timing module to a sentinel that
+        records call count, then invokes a DEBUG-decorated function with
+        the injected logger pinned at WARNING (DEBUG is suppressed).
+        Pre-fix the wrapper called ``inspect.stack`` unconditionally so
+        the counter incremented; post-fix the call is gated by
+        ``logger.isEnabledFor(logLevel)`` and the counter stays at 0.
+        """
+        from pd_book_tools.utility import timing as timing_mod
+
+        call_count = {"n": 0}
+        original_stack = timing_mod.inspect.stack
+
+        def counting_stack(*a, **kw):
+            call_count["n"] += 1
+            return original_stack(*a, **kw)
+
+        monkeypatch.setattr(timing_mod.inspect, "stack", counting_stack)
+
+        logger = logging.getLogger("test_inspect_stack_skipped_when_logger_disabled")
+        logger.setLevel(logging.WARNING)  # DEBUG records will not be emitted
+
+        @func_log_excution_time(logger, logLevel=logging.DEBUG)
+        def noop():
+            return None
+
+        for _ in range(5):
+            noop()
+
+        assert call_count["n"] == 0, (
+            f"L-30: inspect.stack was called {call_count['n']} times despite "
+            "the logger being silenced at DEBUG"
+        )
+
+    def test_inspect_stack_runs_when_logger_enabled(self, monkeypatch):
+        """L-30 sanity check: when the logger IS enabled at ``logLevel``,
+        the gated ``inspect.stack`` call still happens (otherwise the
+        ``called from {caller}`` log line would lose its caller info).
+        """
+        from pd_book_tools.utility import timing as timing_mod
+
+        call_count = {"n": 0}
+        original_stack = timing_mod.inspect.stack
+
+        def counting_stack(*a, **kw):
+            call_count["n"] += 1
+            return original_stack(*a, **kw)
+
+        monkeypatch.setattr(timing_mod.inspect, "stack", counting_stack)
+
+        logger = logging.getLogger("test_inspect_stack_runs_when_logger_enabled")
+        logger.setLevel(logging.DEBUG)
+
+        @func_log_excution_time(logger, logLevel=logging.DEBUG)
+        def noop():
+            return None
+
+        noop()
+        noop()
+        assert call_count["n"] == 2
+
     def test_measures_execution_time(self, caplog):
         """The end log message should include a 6-decimal seconds value."""
         logger = logging.getLogger("test_measures_execution_time")

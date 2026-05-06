@@ -10,32 +10,44 @@ def func_log_excution_time(logger: logging.Logger, logLevel=logging.DEBUG):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            caller = inspect.stack()[1].function  # Get caller function
-            # L-28: route the call-site log line through the injected
-            # ``logger`` rather than the root ``logging`` module so the
-            # caller's per-module logger configuration (level, handlers,
-            # propagation) is honoured.
-            # L-29: log argument *count and types* rather than raw values.
-            # Raw values for OCR pipelines mean megabytes of NumPy /
-            # CuPy ndarray repr per call, plus an inadvertent log of any
-            # sensitive material a caller hands the wrapped function.
-            arg_types = [type(a).__name__ for a in args]
-            kwarg_summary = {k: type(v).__name__ for k, v in kwargs.items()}
-            logger.log(
-                logLevel,
-                f"Function {func.__name__} called from {caller} with "
-                f"{len(args)} positional args (types={arg_types}) and "
-                f"{len(kwargs)} kwargs (types={kwarg_summary})",
-            )
+            # L-30: ``inspect.stack()`` walks the entire Python call stack
+            # on every invocation — measured at hundreds of microseconds
+            # per call on a typical OCR pipeline frame depth, which makes
+            # the decorator measurably expensive even when the logger is
+            # silenced. Skip the entire pre-call instrumentation block
+            # when the logger will not emit at ``logLevel`` so a disabled
+            # ``DEBUG`` decorator becomes essentially free.
+            log_enabled = logger.isEnabledFor(logLevel)
+            if log_enabled:
+                caller = inspect.stack()[1].function  # Get caller function
+                # L-28: route the call-site log line through the injected
+                # ``logger`` rather than the root ``logging`` module so
+                # the caller's per-module logger configuration (level,
+                # handlers, propagation) is honoured.
+                # L-29: log argument *count and types* rather than raw
+                # values. Raw values for OCR pipelines mean megabytes of
+                # NumPy / CuPy ndarray repr per call, plus an inadvertent
+                # log of any sensitive material a caller hands the
+                # wrapped function.
+                arg_types = [type(a).__name__ for a in args]
+                kwarg_summary = {k: type(v).__name__ for k, v in kwargs.items()}
+                logger.log(
+                    logLevel,
+                    f"Function {func.__name__} called from {caller} with "
+                    f"{len(args)} positional args (types={arg_types}) and "
+                    f"{len(kwargs)} kwargs (types={kwarg_summary})",
+                )
             start_time = time.perf_counter()
-            logger.log(logLevel, f"'{func.__name__}' started at {start_time}")
+            if log_enabled:
+                logger.log(logLevel, f"'{func.__name__}' started at {start_time}")
             result = func(*args, **kwargs)
             end_time = time.perf_counter()
-            execution_time = end_time - start_time
-            logger.log(
-                logLevel,
-                f"'{func.__name__}' ended at {end_time}. Executed in {execution_time:.6f} seconds",
-            )
+            if log_enabled:
+                execution_time = end_time - start_time
+                logger.log(
+                    logLevel,
+                    f"'{func.__name__}' ended at {end_time}. Executed in {execution_time:.6f} seconds",
+                )
             return result
 
         return wrapper
