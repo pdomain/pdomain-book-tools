@@ -35,7 +35,7 @@ and document the behavior.
 
 ---
 
-## L-03 — `expand` produces a confusing error when Shapely buffer collapses to empty geometry
+## [FIXED in 72b51ce] ~~L-03 — `expand` produces a confusing error when Shapely buffer collapses to empty geometry~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 780–793
 
