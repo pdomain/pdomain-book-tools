@@ -241,12 +241,19 @@ class BoundingBox:
                 converted_points.append(Point(p[0], p[1]))  # type: ignore
             else:
                 raise TypeError("Unsupported point specification in from_points")
+        # Policy: zero-width / zero-height boxes are accepted across the
+        # constructor surface (`from_ltrb`, `from_float`, `from_ltwh`,
+        # `_build` all accept `left == right` and `top == bottom`). Use `>=`
+        # to match — only strictly inverted point pairs (second smaller than
+        # first) are rejected. Zero-area boxes are sometimes useful as
+        # singleton anchors / cursor positions; callers wanting a strict
+        # nonzero check should validate after construction.
         if not (
-            converted_points[1].x > converted_points[0].x
-            and converted_points[1].y > converted_points[0].y
+            converted_points[1].x >= converted_points[0].x
+            and converted_points[1].y >= converted_points[0].y
         ):
             raise ValueError(
-                "Second point should have larger x and y coordinates than the first point"
+                "Second point should have larger or equal x and y coordinates than the first point"
             )
         return cls._build(
             converted_points[0].x,
