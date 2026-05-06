@@ -129,7 +129,7 @@ when the value is `None`.
 
 ---
 
-## H-09 — `Word.from_dict` raises `KeyError` on JSON from older code
+## [FIXED in a0170a4] ~~H-09 — `Word.from_dict` raises `KeyError` on JSON from older code~~
 
 **File:** `pd_book_tools/ocr/word.py`, line 665
 **Affects:** loading any serialized document saved before `ocr_confidence` was added

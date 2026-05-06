@@ -90,6 +90,11 @@ remembering prior turns. Update this when an iteration completes (after the
   early-return to emit uint8 too; simplified `np_uint8_float_binary_thresh`
   wrapper since the underlying call now returns 0/255 already. — fix
   `53ed3f5`, doc mark `<pending>`
+- H-09 `ocr/word.py` `Word.from_dict` used hard key access
+  `dict["ocr_confidence"]`, raising `KeyError` on legacy JSON serialized
+  before `ocr_confidence` was added. `Character.from_dict` already used
+  `.get()`; aligned `Word.from_dict` to the same tolerant pattern so
+  missing key defaults to `None`. — fix `a0170a4`, doc mark `<pending>`
 
 **Top-10 H-XX list complete.** With H-16 fixed, every entry from the
 "Highest-priority fixes" section above is now resolved (H-13 was
@@ -98,13 +103,17 @@ top-10 item — it gets picked up in the sequential sweep below). The
 /loop now sweeps the remaining `bugs-high.md` entries top-to-bottom —
 pick the first unstruck H-XX from the file in document order.
 
-**Next pick:** H-09 — `pd_book_tools/ocr/word.py` line 665. `Word.from_dict`
-uses hard key access `dict["ocr_confidence"]`, raising `KeyError` on any
-JSON saved before the `ocr_confidence` field was added. `Character.from_dict`
-already uses the safer `.get("ocr_confidence")` pattern. Mechanical fix:
-swap `data["ocr_confidence"]` for `data.get("ocr_confidence")`. Add a
-regression test that round-trips a serialized `Word` dict missing the
-`ocr_confidence` key.
+**Next pick:** H-10 — `pd_book_tools/ocr/document.py` line 590. Tesseract
+returns `conf == -1` for rejected/empty words, but `safe_float(-1)` stores
+`-1.0` rather than `None`. The negative confidence then passes the
+`word.ocr_confidence is not None` guard in `rotation.py`'s mean-confidence
+calculation, dragging means below the `0.6` threshold and triggering
+spurious rotation probes on otherwise-clean pages; it also corrupts
+`Block.mean_ocr_confidence` and any downstream confidence filtering. Fix:
+treat `conf <= 0` (specifically the Tesseract `-1` sentinel) as
+"no confidence" and store `None`. Add a regression test that builds a
+Tesseract row with `conf == -1` and asserts the resulting `Word.ocr_confidence`
+is `None` (and that the rotation/mean code paths skip it as expected).
 
 **Workflow per iteration** (one bug per commit, no push):
 
