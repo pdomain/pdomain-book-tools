@@ -571,9 +571,62 @@ now sweeps `bugs-medium.md` top-to-bottom.
 **bugs-medium.md fully cleared.** All 30 medium-severity bugs have been
 processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
 
-**Next pick:** L-01 — `geometry/bounding_box.py` `has_usable_coordinates`
-check is effectively always `True`; should validate
-`math.isfinite(c)` and surface real errors instead of swallowing them.
+- L-01 `geometry/bounding_box.py` `has_usable_coordinates` checked only
+  `c is not None` (trivially True for any validly-constructed box) and
+  swallowed real underlying errors with a bare `except Exception`.
+  Added `math.isfinite(c)` to the per-corner predicate so NaN / inf
+  leaking from upstream Shapely-empty-geometry operations now read as
+  unrenderable; dropped the try/except so genuine attribute / property
+  failures surface as the bugs they are. Updated existing exception
+  test from "returns False" to "propagates"; added NaN/inf coverage
+  patching each of the four corners. — fix `b921c74`, doc mark
+  `4765984`
+- L-02 `geometry/bounding_box.py` `clamp_to_image` returned a
+  zero-width or zero-height BoundingBox when the input lay entirely
+  outside the image extents (`from_ltrb` accepts `left == right`),
+  leaving callers to crash on later divide-by-zero or empty crops with
+  no context. Switched to returning `None` for the post-clamp
+  zero-area case, mirroring `crop_image`'s "empty result -> None"
+  convention; updated return type annotation and docstring. No
+  external pd-* repos call this method; the only in-tree caller is
+  test-only. — fix `36939fa`, doc mark `1b8b5e5`
+- L-03 `geometry/bounding_box.py` `expand` uniform-shrink branch
+  passed Shapely's empty-geometry NaN bounds straight to `from_ltrb`,
+  which raised the unrelated `Cannot mark as normalized` for
+  normalized boxes (or silently constructed a NaN-coord BoundingBox
+  for pixel boxes). The anisotropic branch already had a half-size
+  pre-check; the uniform branch was the lone hole. Added an
+  `is_empty` guard before `.bounds` extraction that raises a clear
+  `Expansion deltas collapse box to zero area` ValueError naming the
+  input dimensions and offending delta. — fix `72b51ce`, doc mark
+  `fe713ea`
+- L-04 `geometry/bounding_box.py` `from_points` enforced strict
+  `point2 > point1`, raising on degenerate zero-area inputs while the
+  four sibling constructors (`from_ltrb`, `from_float`, `from_ltwh`,
+  `from_nested_float`) all accept equal coords. The inconsistency was
+  undocumented and surfaced as counter-intuitive crashes when callers
+  built singleton anchors or single-pixel rulers. Aligned to the
+  permissive `>=` policy; strictly-inverted pairs still raise. The
+  pre-existing inverted-case test still passes; new test covers
+  zero-width, zero-height, singleton, and inverted. — fix
+  `1a817d6`, doc mark `e0bc281`
+- L-05 `layout/geometry.py` `iou()` returned 0.0 for two identical
+  zero-area regions where strict mathematical convention would say
+  1.0 (IoU of identical sets). Reviewed the call sites — IoU here
+  is a "meaningful spatial overlap" signal for dedupe / clustering,
+  not a set-equality check, and zero-area regions carry no coverage
+  to overlap on. The 0.0 was being produced incidentally via the
+  `union <= 0` early return; documented it as the intentional module
+  convention so a future "fix" can't flip the contract and silently
+  break consumers. Added regression coverage for the coincident
+  zero-width-line, coincident point, and disjoint zero-area cases.
+  — fix `3fd0b08`, doc mark `0858efa`
+
+**Next pick:** L-06 — `layout/geometry.py` `caption_for_figure`
+searches only below a figure, never above (`gap = r.T - figure.B`,
+rejects gap < 0). Captions appearing above a figure (common in some
+Victorian book styles) are silently never found. Add `above=True`
+parameter or document the limitation.
 
 **Workflow per iteration** (one bug per commit, no push):
 
