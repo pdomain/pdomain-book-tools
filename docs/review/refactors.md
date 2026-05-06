@@ -151,7 +151,7 @@ inconsistent behavior. The docstring on `refine_bounding_box` is also placed aft
 
 ---
 
-## R-05 — `_purge_word_from_blocks` is duplicated between two modules
+## [FIXED in 2fab29c] ~~R-05 — `_purge_word_from_blocks` is duplicated between two modules~~
 
 **Files:**
 
@@ -166,7 +166,7 @@ to import from there.
 
 ---
 
-## R-06 — `cupy_processing/canvas.py` has a hard dependency on `cv2_processing` for an enum
+## [FIXED in 59495ff] ~~R-06 — `cupy_processing/canvas.py` has a hard dependency on `cv2_processing` for an enum~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/canvas.py`, line 7
 
