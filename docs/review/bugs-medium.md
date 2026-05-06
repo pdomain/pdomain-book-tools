@@ -272,7 +272,7 @@ accepts 4-channel RGBA images (drops alpha via `img[ny, nx, :3]`).
 
 ---
 
-## M-19 — `cv2_tesseract.py` — hardcoded `--dpi 300` ignores actual scan resolution
+## [FIXED in d7f341a] ~~M-19 — `cv2_tesseract.py` — hardcoded `--dpi 300` ignores actual scan resolution~~
 
 **File:** `pd_book_tools/ocr/cv2_tesseract.py`, line 33
 
