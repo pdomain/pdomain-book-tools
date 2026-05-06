@@ -1036,6 +1036,27 @@ significant blast radius (pd-ocr-labeler call sites, mock idioms in
 labeler tests, downstream tests in pd-ocr-cli). Better tackled as
 coordinated multi-repo PRs than unilateral library changes.
 
+**Refactors fixed so far:**
+
+- R-04 `Word.refine_bounding_box` and `Word.refine_bbox` consolidated.
+  Surviving contract: `refine_bbox(image, padding_px=1) -> bool` with
+  crop_bottom fallback; `refine_bounding_box` kept as a back-compat
+  shim returning None and inheriting the fallback. `Block.refine_bounding_boxes`
+  switched to `refine_bbox` directly. Cross-repo grep confirmed no
+  external callers of either name. — fix `31d09a9`, doc mark `934079e`
+- R-05 `_purge_word_from_blocks` deduplicated by hoisting the shared
+  logic to a new module-level `block.purge_words_from_blocks`. Both
+  legacy module-private wrappers (`layout_aware_reorg._purge_word_from_blocks`,
+  `reorganize_page_utils._purge_words_from_blocks`) now alias the
+  shared helper, preserving call-site abstraction without leaking the
+  layout-types dependency into the geometry pipeline. — fix `2fab29c`,
+  doc mark `e482844`
+- R-06 `cupy_processing/canvas.py` cv2 hard dependency for `Alignment`
+  was already incidentally fixed by bug fix M-27 (`Alignment` moved to
+  the backend-neutral `image_processing/types.py`). Marked stale-but-fixed
+  rather than re-doing the work. — fix `59495ff` (M-27),
+  doc mark `e482844`
+
 **Deferred so far:**
 
 - R-01 image-ops on `Word` / `Block` / `Page` belong in
@@ -1060,9 +1081,12 @@ coordinated multi-repo PRs than unilateral library changes.
   landing module) and benefit is speculative since cv2 is a hard
   runtime dependency anyway. Track with R-01. Doc mark `d680137`.
 
-**Next pick:** `refactors.md` R-04 — `refine_bounding_box` and
-`refine_bbox` consolidation on `Word`. Single-file refactor, no
-cross-repo signature change since both methods stay on `Word`.
+**Next pick:** `refactors.md` R-07 — `Point.__getattr__` delegates to
+Shapely, leaking all Shapely internals as public API. Single-file
+geometry refactor; cross-repo blast radius likely small (callers
+typically only use the documented `x` / `y` / `is_normalized`
+properties), but pre-refactor needs a grep to confirm no external
+caller relies on a leaked Shapely attribute.
 
 Same per-iteration workflow (verify-first, regression-lock-on-stale,
 one commit per item) applies, but refactors are structural / API /
