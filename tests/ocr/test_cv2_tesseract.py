@@ -324,6 +324,98 @@ class TestTesseractOcrCv2Image:
             assert "--dpi 300" not in cfg
 
 
+class TestM20InputShapeDispatch:
+    """M-20 regression tests for `tesseract_ocr_cv2_image` input dispatch.
+
+    Pre-fix the dispatch only handled `ndim == 2` and
+    `ndim == 3 and shape[2] == 3`; anything else fell through with
+    ``image_grayscale = None`` and pytesseract then crashed deep inside.
+    """
+
+    @pytest.fixture
+    def mock_tesseract_dataframe(self):
+        return pd.DataFrame(
+            {
+                "level": [1, 2, 3, 4, 5],
+                "page_num": [1, 1, 1, 1, 1],
+                "block_num": [0, 1, 1, 1, 1],
+                "par_num": [0, 0, 1, 1, 1],
+                "line_num": [0, 0, 0, 1, 1],
+                "word_num": [0, 0, 0, 0, 1],
+                "left": [0, 10, 20, 30, 40],
+                "top": [0, 10, 20, 30, 40],
+                "width": [100, 90, 80, 70, 60],
+                "height": [200, 190, 180, 170, 160],
+                "conf": [0, 0, 0, 0, 95],
+                "text": ["", "", "", "", "test"],
+            }
+        )
+
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    def test_rgba_input_drops_alpha_and_calls_tesseract(
+        self,
+        mock_from_tesseract,
+        mock_image_to_string,
+        mock_image_to_data,
+        mock_tesseract_dataframe,
+    ):
+        """RGBA / 4-channel input must be accepted: alpha is dropped (matches
+        cv2 COLOR_BGRA2GRAY semantics, mirroring the M-18 cupy fix) and a
+        valid 2D grayscale array is forwarded to pytesseract."""
+        mock_image_to_data.return_value = mock_tesseract_dataframe
+        mock_image_to_string.return_value = "test\n"
+
+        mock_page = Mock(spec=Page)
+        mock_doc = Mock(spec=Document)
+        mock_doc.pages = [mock_page]
+        mock_from_tesseract.return_value = mock_doc
+
+        # Build an RGBA image whose alpha varies; if alpha leaked into the
+        # gray conversion we'd get a different result than the BGR-only
+        # slice would have produced.
+        rgba = np.zeros((20, 30, 4), dtype=np.uint8)
+        rgba[..., :3] = np.random.randint(0, 255, size=(20, 30, 3), dtype=np.uint8)
+        rgba[..., 3] = np.random.randint(0, 255, size=(20, 30), dtype=np.uint8)
+
+        result = tesseract_ocr_cv2_image(rgba, "test_path")
+
+        assert result is mock_page
+
+        # pytesseract must have been called with an actual 2D grayscale
+        # array, not None.
+        assert mock_image_to_data.call_count == 1
+        forwarded = mock_image_to_data.call_args[0][0]
+        assert forwarded is not None
+        assert isinstance(forwarded, np.ndarray)
+        assert forwarded.ndim == 2
+        assert forwarded.shape == (20, 30)
+
+        # Output must equal cv2's COLOR_BGRA2GRAY on the same input
+        # (alpha-ignoring policy, matching M-18 cupy).
+        from cv2 import COLOR_BGRA2GRAY
+        from cv2 import cvtColor as real_cvtColor
+
+        expected = real_cvtColor(rgba, COLOR_BGRA2GRAY)
+        np.testing.assert_array_equal(forwarded, expected)
+
+    def test_unsupported_two_channel_raises_value_error(self):
+        """A 3D image with 2 channels (neither grayscale nor BGR/BGRA) must
+        raise a clear ValueError naming the actual shape, not silently pass
+        ``None`` to pytesseract."""
+        bad = np.zeros((10, 10, 2), dtype=np.uint8)
+        with pytest.raises(ValueError, match=r"shape="):
+            tesseract_ocr_cv2_image(bad)
+
+    def test_unsupported_ndim_raises_value_error(self):
+        """A 4D array (e.g. accidental batch dimension) must raise a clear
+        ValueError, not silently fall through to pytesseract with None."""
+        bad = np.zeros((1, 10, 10, 3), dtype=np.uint8)
+        with pytest.raises(ValueError, match=r"shape="):
+            tesseract_ocr_cv2_image(bad)
+
+
 class TestImportError:
     """Test import error handling."""
 
