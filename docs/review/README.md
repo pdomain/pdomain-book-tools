@@ -443,16 +443,34 @@ now sweeps `bugs-medium.md` top-to-bottom.
   `test_tesseract_config_no_textord_noise_debug` as the regression.
   YAGNI on an `extra_config` parameter — add when a real caller needs
   it. — fix `1c961eb`, doc mark `<pending>`
+- M-22 `ocr/doctr_support.py` `get_finetuned_torch_doctr_predictor`
+  initialized `full_predictor = None` and only assigned it inside the
+  `if Path(det).exists() and Path(reco).exists():` happy-path branch,
+  so a missing checkpoint silently returned `None` and callers crashed
+  later at first use with a confusing `AttributeError` that did not
+  name the offending path. Replaced the truthy-AND guard with two
+  explicit `raise FileNotFoundError` calls — one per file — so the
+  failure mode is loud, immediate, and self-describing. Dropped the
+  now-unused `full_predictor = None` initializer and dedented the load
+  body (no semantic change to the happy path). In-tree callers: only
+  the two existing `result is None` test assertions, flipped to
+  `pytest.raises(FileNotFoundError)`; added a third test for the
+  one-missing-file case. External caller
+  `scripts/ocr_to_txt.py` (outside pd-book-tools) already pre-checks
+  file existence so its `if predictor is None` guard is unreachable
+  post-fix; observable behavior unchanged. — fix `0a8b68e`, doc mark
+  `<pending>`
 
-**Next pick:** M-22 — `ocr/doctr_support.py`.
-`get_finetuned_torch_doctr_predictor` initializes
-`full_predictor = None` and only assigns it when both checkpoint files
-exist; when either file is missing, the function returns `None` with
-no warning or exception, and callers crash later with a confusing
-`TypeError` / `AttributeError` at first use. Fix is to raise
-`FileNotFoundError` (or at minimum `logger.warning`) before returning
-`None`. (Note: H-13 already touched this same function for the
-`Path.exists` mis-call; check current state before writing the test.)
+**Next pick:** M-23 — `ocr/doctr_support.py`.
+`det_model.load_state_dict(det_params)` and
+`reco_model.load_state_dict(reco_params)` are unguarded; a checkpoint
+whose architecture doesn't match the heuristically-detected arch
+raises `RuntimeError` (shape mismatch) or `KeyError` (missing key)
+deep inside torch with a stack trace that doesn't name the offending
+file. Architecture detection is heuristic so this is a realistic
+failure mode. Fix candidate: wrap each `load_state_dict` in a
+`try/except (RuntimeError, KeyError)` that re-raises with the
+checkpoint path and detected arch name in the message.
 
 **Workflow per iteration** (one bug per commit, no push):
 
