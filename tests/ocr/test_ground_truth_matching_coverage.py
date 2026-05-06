@@ -314,15 +314,17 @@ class TestTryMatchingCombinedWords:
 
 
 class TestBuildCurrentWorkGtLineFromPrev:
-    def test_returns_empty_when_boundary_is_space(self):
-        """When the char at prev boundary is a space, returns '' (line 1028)."""
+    def test_returns_gt_text_when_boundary_is_space(self):
+        """M-25: When the char at prev boundary is a space, fall back to the
+        unmodified ground_truth_text instead of returning '' (which inserted a
+        dead zero-score variant). The intent was to skip prepending."""
         # previous_ground_truth_text[-1] == ' '
         result = _build_current_work_gt_line_from_prev(
             prev_char_count=1,
             previous_ground_truth_text="word ",
             ground_truth_text="current",
         )
-        assert result == ""
+        assert result == "current"
 
     def test_returns_combined_when_boundary_is_word_char(self):
         """When boundary char is not space, prepends the suffix (normal path)."""
@@ -332,6 +334,25 @@ class TestBuildCurrentWorkGtLineFromPrev:
             ground_truth_text="current",
         )
         assert result == "ord current"
+
+    def test_no_silent_drop_when_boundary_is_space_in_full_pipeline(self):
+        """M-25 no-silent-drop adjacent invariant: a previous-line GT whose
+        last word's leading boundary is a space (i.e. prev_char_count selects
+        exactly the trailing space) must not cause the candidate list inside
+        generate_best_matched_ground_truth_line to lose the
+        ground_truth_text content. After the fix, the unmodified
+        ground_truth_text appears among the variants and the scorer can pick
+        it; pre-fix the variant at that prev_char_count was '' and the only
+        non-empty candidate came from prev_char_count=0 (still present here,
+        so the bug was scoring-harmless — but the invariant is that no
+        OCR/GT content is silently elided in any candidate path)."""
+        result, score = generate_best_matched_ground_truth_line(
+            ocr_text="hello world",
+            ground_truth_text="hello world",
+            previous_ground_truth_text="prev line ",
+        )
+        assert result == "hello world"
+        assert score == 100
 
 
 # ---------------------------------------------------------------------------
