@@ -118,6 +118,39 @@ class TestFuncLogExecutionTime:
                 f"expected the injected logger {injected_name!r}"
             )
 
+    def test_call_site_log_does_not_emit_raw_arg_values(self, caplog):
+        """L-29 regression: the call-site log must not include raw
+        argument values. Pre-fix the wrapper formatted ``args`` and
+        ``kwargs`` directly into the log message, producing megabytes
+        of output for NumPy/CuPy arrays and risking inadvertent
+        logging of sensitive values.
+
+        Asserts that a unique sentinel string passed both positionally
+        and via kwargs does NOT appear in any captured log message,
+        while the count / type summary does.
+        """
+        logger = logging.getLogger("test_call_site_log_does_not_emit_raw_arg_values")
+        logger.setLevel(logging.DEBUG)
+        sentinel = "PD_BOOK_TOOLS_L29_SECRET_VALUE_DO_NOT_LOG"
+
+        @func_log_excution_time(logger)
+        def takes_args(positional, *, kw):
+            return None
+
+        with caplog.at_level(
+            logging.DEBUG, logger="test_call_site_log_does_not_emit_raw_arg_values"
+        ):
+            takes_args(sentinel, kw=sentinel)
+
+        all_messages = "\n".join(r.getMessage() for r in caplog.records)
+        assert sentinel not in all_messages, (
+            "L-29: raw argument value leaked into the timing log"
+        )
+        # Positive assertion: the count/type summary IS emitted.
+        assert "1 positional args" in all_messages
+        assert "1 kwargs" in all_messages
+        assert "str" in all_messages  # type name of the sentinel arg
+
     def test_measures_execution_time(self, caplog):
         """The end log message should include a 6-decimal seconds value."""
         logger = logging.getLogger("test_measures_execution_time")
