@@ -142,7 +142,7 @@ Cyan in BGR is `(255, 255, 0)`.
 
 ---
 
-## L-11 — `_mappings.py` — comment "Page chrome — dropped before reorg" is false
+## [FIXED in f114a3a] ~~L-11 — `_mappings.py` — comment "Page chrome — dropped before reorg" is false~~
 
 **File:** `pd_book_tools/layout/_mappings.py`, line 27
 
