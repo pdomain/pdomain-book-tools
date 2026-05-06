@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -44,15 +44,15 @@ reset-full: ## Nuclear option: clear everything and redownload
 	@$(MAKE) --no-print-directory install
 	@echo "💥 Full reset complete! Everything is fresh!"
 
-test: ## Run tests with parallelization
+test: sync-gpu ## Run tests with parallelization
 	@echo "🧪 Running tests (parallelized)..."
 	uv run pytest -n auto -v -ra
 
-test-verbose: ## Run tests with verbose output and parallelization
+test-verbose: sync-gpu ## Run tests with verbose output and parallelization
 	@echo "🧪 Running tests (verbose mode, parallelized)..."
 	uv run pytest -n auto -v -ra
 
-test-single: ## Run one pytest node id (usage: make test-single TEST='tests/...::test_name')
+test-single: sync-gpu ## Run one pytest node id (usage: make test-single TEST='tests/...::test_name')
 	@if [ -z "$(TEST)" ]; then \
 		echo "❌ Missing TEST parameter."; \
 		echo "   Example: make test-single TEST='tests/ocr/test_word.py::TestWord::test_word_scale'"; \
@@ -61,7 +61,7 @@ test-single: ## Run one pytest node id (usage: make test-single TEST='tests/...:
 	@echo "🧪 Running single test (parallelized): $(TEST)"
 	uv run pytest -n auto "$(TEST)"
 
-test-k: ## Run tests by pytest -k expression (usage: make test-k K='pattern')
+test-k: sync-gpu ## Run tests by pytest -k expression (usage: make test-k K='pattern')
 	@if [ -z "$(K)" ]; then \
 		echo "❌ Missing K parameter."; \
 		echo "   Example: make test-k K='test_word_scale'"; \
@@ -70,10 +70,19 @@ test-k: ## Run tests by pytest -k expression (usage: make test-k K='pattern')
 	@echo "🧪 Running tests with -k (parallelized): $(K)"
 	uv run pytest -n auto -k "$(K)"
 
-coverage: ## Run tests with coverage report (parallelized)
+coverage: sync-gpu ## Run tests with coverage report (parallelized)
 	@echo "🧪 Running tests with coverage (parallelized)..."
 	uv run pytest --cov=pd_book_tools --cov-report=html -n auto -v -ra
 	@echo "📊 Coverage report generated in htmlcov/index.html"
+
+sync-gpu: ## Ensure the [gpu] extra (CuPy) is installed (skipped when CI=true)
+	@if [ -n "$$CI" ]; then \
+	  echo "ℹ️  CI=$$CI detected; skipping [gpu] extra sync (CPU-only CI)."; \
+	else \
+	  echo "📦 Syncing [gpu] extra (CuPy) for local GPU tests..."; \
+	  uv sync --group dev --extra gpu; \
+	fi
+
 
 upgrade-deps: ## Upgrade dependencies and sync local environment
 	@echo "⬆️ Upgrading dependency lockfile..."
