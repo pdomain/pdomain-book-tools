@@ -5,7 +5,7 @@ edge cases, or create subtle silent failures. Should be fixed before the next re
 
 ---
 
-## M-01 — `perspective_adjustment.py` — top-strip scan starts at row 0 instead of `minY`
+## [FIXED in 533c23e] ~~M-01 — `perspective_adjustment.py` — top-strip scan starts at row 0 instead of `minY`~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py`, lines 36–42
 **Affects:** deskew accuracy on pages with content above the text block
