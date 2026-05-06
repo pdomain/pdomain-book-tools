@@ -149,3 +149,28 @@ class TestReadingOrder:
         b = R(0, 0, 80, 50)
         c = R(0, 100, 200, 200)
         assert region_reading_order([c, a, b]) == [b, a, c]
+
+    def test_multi_column_warns(self):
+        """L-07: two-column layouts emit a UserWarning so callers know the
+        (T, L) sort can interleave columns."""
+        # Left column (L=0..400) and right column (L=600..1000) — clearly
+        # disjoint in the lateral half-split heuristic.
+        left_top = R(0, 100, 400, 200)
+        right_top = R(600, 110, 1000, 210)
+        left_bot = R(0, 300, 400, 400)
+        right_bot = R(600, 310, 1000, 410)
+        with pytest.warns(UserWarning, match="L-07"):
+            ordered = region_reading_order([right_top, left_top, right_bot, left_bot])
+        # And no words/regions are silently dropped — count is preserved.
+        assert len(ordered) == 4
+        for r in (right_top, left_top, right_bot, left_bot):
+            assert r in ordered
+
+    def test_single_column_no_warn(self):
+        """L-07: single-column input must not emit the warning."""
+        a = R(100, 0, 300, 50)
+        b = R(100, 80, 300, 130)
+        with __import__("warnings").catch_warnings():
+            __import__("warnings").simplefilter("error", UserWarning)
+            # Should not raise — no warning emitted.
+            assert region_reading_order([b, a]) == [a, b]
