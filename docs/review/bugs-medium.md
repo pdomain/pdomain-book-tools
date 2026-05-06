@@ -392,7 +392,7 @@ backends import from there.
 
 ---
 
-## M-28 — `Block.merge` silently drops unmatched ground-truth words from one side
+## [FIXED in cc0dc03] ~~M-28 — `Block.merge` silently drops unmatched ground-truth words from one side~~
 
 **File:** `pd_book_tools/ocr/block.py`, lines 865–867
 
