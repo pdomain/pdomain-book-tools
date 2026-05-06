@@ -53,7 +53,7 @@ def tesseract_ocr_cv2_image(
         # 4-channel BGRA / RGBA input: drop alpha (matches the
         # cv2 COLOR_BGRA2GRAY policy of ignoring the alpha channel
         # rather than alpha-blending). Mirrors the M-18 cupy
-        # `cupy_colorToGray` fix so both backends behave identically.
+        # `cupy_color_to_gray` fix so both backends behave identically.
         global _RGBA_NOTICE_LOGGED
         if not _RGBA_NOTICE_LOGGED:
             logger.info(

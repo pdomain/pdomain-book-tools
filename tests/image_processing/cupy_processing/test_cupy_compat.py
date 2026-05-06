@@ -32,7 +32,7 @@ _CUPY_PROCESSING_MODULES = [
     "pd_book_tools.image_processing.cupy_processing._cupy_compat",
     "pd_book_tools.image_processing.cupy_processing.canvas",
     "pd_book_tools.image_processing.cupy_processing.colors",
-    "pd_book_tools.image_processing.cupy_processing.colorToGray",
+    "pd_book_tools.image_processing.cupy_processing.color_to_gray",
     "pd_book_tools.image_processing.cupy_processing.contours",
     "pd_book_tools.image_processing.cupy_processing.crop",
     "pd_book_tools.image_processing.cupy_processing.deskew",
