@@ -5,7 +5,7 @@ inconsistencies. Worth fixing but not blocking.
 
 ---
 
-## L-01 — `has_usable_coordinates` check is effectively always `True`
+## [FIXED in b921c74] ~~L-01 — `has_usable_coordinates` check is effectively always `True`~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 124–131
 
