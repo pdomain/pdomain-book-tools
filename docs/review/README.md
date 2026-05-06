@@ -367,6 +367,19 @@ now sweeps `bugs-medium.md` top-to-bottom.
   keep, render, or strip them, matching how "footnote" /
   "illustration" / "page header" already work. — fix `4819bd0`,
   doc mark `<pending>`
+- M-17 `image_processing/cupy_processing/colorToGray.py`
+  `np_uint8_float_colorToGray` did `img.astype(np.float32) / 255.0`
+  unconditionally. The function name documents a uint8-input contract
+  (the /255 normalizes uint8 [0, 255] into [0, 1] before delegating to
+  the cupy backend), but float32 [0, 1] callers — a normal intermediate
+  format — silently had their values collapsed to [0, 0.004], producing
+  near-black grayscale output with no warning. Picked the explicit
+  contract: added a dtype guard at function entry that raises
+  `TypeError` naming the offending dtype and pointing the caller at
+  `cupy_colorToGray` for already-float input. Sibling
+  `np_uint8_float_binary_thresh` in `threshold.py` has the same
+  unconditional /255 pattern; flagged for a future iteration rather
+  than bundled here. — fix `27a113f`, doc mark `<pending>`
 - M-16 `ocr/document.py` DocTR adapter accessed `word_data["geometry"]`
   with a hard key while block, line, and (post-M-15) artefact geometry
   already used guarded `.get("geometry")`. A DocTR word with no
@@ -382,12 +395,15 @@ now sweeps `bugs-medium.md` top-to-bottom.
   blocks are admitted, otherwise the document.py fix alone would raise
   `TypeError` one frame later. — fix `f27c766`, doc mark `<pending>`
 
-**Next pick:** M-17 — `image_processing/cupy_processing/colorToGray.py`
-`np_uint8_float_colorToGray` does `img.astype(np.float32) / 255.0`
-unconditionally; if `img` is already `float32` in `[0, 1]` (a normal
-intermediate format), the divide collapses values to `[0, 0.004]` and
-silently produces near-black output. Fix: branch on `img.dtype` so
-already-float input skips the division.
+**Next pick:** M-18 — `image_processing/cupy_processing/colorToGray.py`
+`_compute_envelopes` does `height, width, _ = img.shape` at entry, so a
+2-D (grayscale) image raises a confusing `ValueError: not enough values
+to unpack` deep inside the helper instead of being rejected at the
+public `cupy_colorToGray` boundary. The function also silently accepts
+4-channel RGBA via `img[ny, nx, :3]` (drops alpha). Fix: validate
+`img.ndim == 3 and img.shape[2] >= 3` at the entry of
+`cupy_colorToGray` so the contract is checked once at the public
+surface.
 
 **Workflow per iteration** (one bug per commit, no push):
 
