@@ -288,7 +288,7 @@ Several places serialize and immediately deserialize through a dict to obtain a 
 
 ---
 
-## R-12 — `contains_point` uses Shapely for a trivial axis-aligned containment check
+## [FIXED in 39bcf86] ~~R-12 — `contains_point` uses Shapely for a trivial axis-aligned containment check~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, line 373
 
