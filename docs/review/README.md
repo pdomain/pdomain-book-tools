@@ -113,26 +113,30 @@ remembering prior turns. Update this when an iteration completes (after the
   mapping `NaN` / `None` to the empty string and used it at the word
   ingest site. Row geometry is preserved as an empty-text Word — we do
   not silently drop OCR rows. — fix `779bd59`, doc mark `<pending>`
+- H-13 `ocr/doctr_support.py` `get_finetuned_torch_doctr_predictor` did
+  `Path.exists(dectection_pt_file)` as if `Path.exists` were a classmethod.
+  It worked accidentally for `Path` arguments (descriptor binding) but
+  raised `AttributeError: 'str' object has no attribute 'stat'` on
+  Python 3.13 when callers passed `str`, despite the function's
+  `PathLike` parameter contract. Existing tests passed `tmp_path / "..."`
+  so they masked the bug. Fixed to `Path(x).exists()` for both files;
+  added a regression test exercising the missing-files branch with `str`
+  paths. — fix `ed5937b`, doc mark `<pending>`
 
-**Top-10 H-XX list complete.** With H-16 fixed, every entry from the
-"Highest-priority fixes" section above is now resolved (H-13 was
-deferred per the original review ordering and remains the only unfixed
-top-10 item — it gets picked up in the sequential sweep below). The
-/loop now sweeps the remaining `bugs-high.md` entries top-to-bottom —
-pick the first unstruck H-XX from the file in document order.
+**Top-10 H-XX list complete.** Every entry from the "Highest-priority
+fixes" section above is now resolved. The /loop now sweeps the remaining
+`bugs-high.md` entries top-to-bottom — pick the first unstruck H-XX from
+the file in document order.
 
-**Next pick:** H-13 — `pd_book_tools/ocr/doctr_support.py` line 181.
-`Path.exists(dectection_pt_file)` is invoked as if `Path.exists` were
-a static/classmethod, but it is an instance method — when the caller
-passes a plain `str` for `dectection_pt_file`, Python 3.13 raises
-`AttributeError: 'str' object has no attribute 'stat'` while resolving
-`Path.exists` against a non-Path argument. Fix: `Path(dectection_pt_file).exists()`.
-Regression test: call the affected loader (or a thin wrapper around the
-existence check, depending on what's testable without DocTR weights on
-disk) with a `str` path and assert it does not raise `AttributeError`
-on the missing-file branch. Verify the bug still reproduces in current
-source first — the review is from May 2026 and prior iterations
-(H-04, H-08) found stale entries already fixed in earlier commits.
+**Next pick:** H-17 — `pyproject.toml` declares both `opencv-python` and
+`opencv-contrib-python`. Per the review, having both packages installed
+means whichever loads last wins, and runtime behavior depends on import
+order across the wider environment (notably affects xfeatures2d, SIFT,
+and other contrib-only modules). Fix is to drop `opencv-python` and keep
+only `opencv-contrib-python` (which is a strict superset). Verify the
+problem still applies — check current `pyproject.toml` for both pins —
+and audit downstream pd-* repos lightly for any direct import that
+would behave differently under the contrib-only build.
 
 **Workflow per iteration** (one bug per commit, no push):
 
