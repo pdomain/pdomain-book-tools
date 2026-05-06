@@ -85,6 +85,28 @@ def test_fix_pgdp_diacritics_subset():
     assert len(out) == 8
 
 
+def test_fix_pgdp_diacritics_dot_above_does_not_swallow_other_brackets():
+    """The dot-above patterns (e.g. r"\\[.A\\]") used unescaped '.', which is a regex
+    wildcard. Any [xA]-shaped bracket sequence then got incorrectly replaced with
+    the dot-above letter instead of running through its proper diacritic pattern.
+
+    Regression for H-02 in docs/review/bugs-high.md.
+    """
+    # Acute-A: should become Á, NOT Ȧ (dot-above A).
+    assert PGDPResults.fix_pgdp_diacritics("['A]") == "Á"
+    # Grave-A: should become À, NOT Ȧ.
+    assert PGDPResults.fix_pgdp_diacritics("[`A]") == "À"
+    # Breve-A: should become Ă, NOT Ȧ.
+    assert PGDPResults.fix_pgdp_diacritics("[)A]") == "Ă"
+    # Acute-E / grave-E / breve-E should not be swallowed by the dot-above-E pattern.
+    assert PGDPResults.fix_pgdp_diacritics("['E]") == "É"
+    assert PGDPResults.fix_pgdp_diacritics("[`E]") == "È"
+    assert PGDPResults.fix_pgdp_diacritics("[)E]") == "Ĕ"
+    # Mixed input: each bracket sequence should be replaced correctly.
+    src = "['A][`A][)A][.A]"
+    assert PGDPResults.fix_pgdp_diacritics(src) == "ÁÀĂȦ"
+
+
 def test_convert_straight_to_curly_quotes_cases():
     src = "'Tis 'word' \"Hello\" can't don't —'after 'end'"
     out = PGDPResults.convert_straight_to_curly_quotes(src)
