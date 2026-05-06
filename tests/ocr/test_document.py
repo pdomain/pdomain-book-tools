@@ -198,3 +198,44 @@ def test_document_from_tesseract_treats_conf_minus_one_as_none():
     mean_conf, count = _mean_confidence(doc)
     assert count == 1
     assert mean_conf == 95.0
+
+
+def test_document_from_tesseract_skips_nan_text_rows():
+    """Regression test for H-11.
+
+    Tesseract emits rejected/empty rows where the ``text`` cell is a pandas
+    ``NaN``. Calling ``str(NaN)`` yields the literal string ``'nan'``, so the
+    naive ``Word(text=str(word_row.text), ...)`` ingest creates a ghost Word
+    with text ``'nan'`` that propagates as real OCR output into ground-truth
+    matching and final text. The fix must keep the row's geometry around (we
+    do not silently drop OCR rows) while ensuring its text is empty rather
+    than the string ``'nan'``.
+    """
+    import math
+
+    df = DataFrame(
+        {
+            "level": [1, 2, 3, 4, 5, 5],
+            "page_num": [1, 1, 1, 1, 1, 1],
+            "block_num": [0, 1, 1, 1, 1, 1],
+            "par_num": [0, 0, 1, 1, 1, 1],
+            "line_num": [0, 0, 0, 1, 1, 1],
+            "left": [0, 10, 20, 30, 40, 110],
+            "top": [0, 10, 20, 30, 40, 40],
+            "width": [200, 190, 180, 170, 60, 60],
+            "height": [200, 190, 180, 170, 160, 160],
+            # Second word row's text is a real NaN — Tesseract's
+            # rejected/empty-text sentinel for that column.
+            "text": ["", "", "", "", "Hello", math.nan],
+            "conf": [0, 0, 0, 0, 95, -1],
+        }
+    )
+    doc = Document.from_tesseract(df)
+
+    word_texts = [w.text for w in doc.pages[0].words]
+    # The literal string 'nan' must NEVER leak through as OCR output.
+    assert "nan" not in word_texts, (
+        f"NaN text cell produced ghost 'nan' word: {word_texts}"
+    )
+    # The Hello word is preserved as-is.
+    assert "Hello" in word_texts
