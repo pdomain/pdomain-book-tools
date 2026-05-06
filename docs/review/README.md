@@ -134,6 +134,15 @@ remembering prior turns. Update this when an iteration completes (after the
   `pyproject.toml` (also guards against full+headless mixing).
   Lockfile refresh deferred to the user. — fix `364bcd2`,
   doc mark `<pending>`
+- H-19 `ocr/page.py` `Page.__init__` called
+  `BoundingBox.union([item.bounding_box for item in self.items])`
+  without filtering items whose `bounding_box` was `None`. An empty
+  child block can legitimately have `bounding_box=None`, and
+  `BoundingBox.union` accesses `.is_normalized` on the first element,
+  so constructing such a Page raised `AttributeError`. Mirrored
+  `Page.recompute_bounding_box`: filter to truthy bboxes, set
+  `self.bounding_box=None` when nothing remains. — fix `6ea4828`,
+  doc mark `<pending>`
 - H-18 `ocr/document.py` `Document.from_tesseract` iterated block /
   paragraph / line rows with ``enumerate`` and filtered child rows
   against ``block_idx + 1`` / ``paragraph_idx + 1`` / ``line_idx + 1``.
@@ -153,17 +162,14 @@ fixes" section above is now resolved. The /loop now sweeps the remaining
 `bugs-high.md` entries top-to-bottom — pick the first unstruck H-XX from
 the file in document order.
 
-**Next pick:** H-19 — `ocr/page.py` `Page.__init__` calls
-`BoundingBox.union([item.bounding_box for item in self.items])` without
-filtering out `None` bboxes. `Block.recompute_bounding_box` already
-filters; `Page.__init__` does not. Constructing any `Page` whose
-``items`` list contains a block with ``bounding_box=None`` raises
-``AttributeError`` from inside ``BoundingBox.union`` when it tries to
-read ``.is_normalized`` on ``None``. Verify by reading current
-`Page.__init__` (review cited lines 115–117) — confirm the union call
-exists and lacks the ``if b.bounding_box is not None`` guard, and that
-``BoundingBox.union`` does not itself tolerate ``None``. If
-`Page.__init__` already filters, mark the entry stale.
+**Next pick:** H-20 — `hf/models.py` `resolve_layout_source` ignores
+`layout_model="none"` when `layout_checkpoint` is also set (review
+cited lines 86–90). The checkpoint branch returns early without ever
+checking `layout_model`, so passing `layout_model="none"` to disable
+layout is silently bypassed if a checkpoint path is also provided.
+Verify the current early-return order in `resolve_layout_source`
+before fixing — if the `"none"` / `"contour"` short-circuits already
+run before the checkpoint branch, mark the entry stale.
 
 **Workflow per iteration** (one bug per commit, no push):
 
