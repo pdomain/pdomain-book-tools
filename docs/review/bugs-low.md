@@ -115,7 +115,7 @@ and a `UserWarning` for multi-column input.
 
 ---
 
-## L-09 — `visualize.py` — label text can overflow the right image boundary
+## [FIXED in 3cb3d58] ~~L-09 — `visualize.py` — label text can overflow the right image boundary~~
 
 **File:** `pd_book_tools/layout/visualize.py`, lines 66–69
 
