@@ -105,6 +105,27 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
         with pytest.raises(ValueError, match="Word mismatch"):
             update_line_match_difflib_lines_equal(line, ("hello", "DIFFERENT"))
 
+    def test_no_dead_word_idx_out_of_range_guard(self):
+        """L-20: the inner ``word_idx >= len(ground_truth_line)`` guard is
+        dead — the length-equality check before the loop already raises if
+        the lengths differ, and ``word_idx`` comes from
+        ``enumerate(line.words)`` so it can never exceed
+        ``len(ground_truth_line) - 1`` once that check passes. Property
+        check: the dead string must not appear in the function source.
+        """
+        import inspect
+
+        src = inspect.getsource(update_line_match_difflib_lines_equal)
+        assert "out of range for ground truth line" not in src
+
+    def test_happy_path_assigns_ground_truth(self):
+        """Behavioral lock so the dead-guard removal can't accidentally
+        break the equal-line happy path.
+        """
+        line = _make_line(["hello", "world"])
+        update_line_match_difflib_lines_equal(line, ("hello", "world"))
+        assert [w.ground_truth_text for w in line.words] == ["hello", "world"]
+
 
 class TestUpdatePageMatchDifflibLinesEqualErrors:
     def test_raises_on_line_count_mismatch(self):
