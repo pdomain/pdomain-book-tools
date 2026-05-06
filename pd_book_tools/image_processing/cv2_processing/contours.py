@@ -45,13 +45,26 @@ def remove_small_contours(
     Remove small or isolated contours from a grayscale image.
 
     For each contour:
-      - If both width and height are extremely small (<10 pixels by default), remove it.
+      - If both width and height are extremely small
+        (< ``small_contour_w`` × ``small_contour_h``, default 10×10), remove
+        it unconditionally — no neighborhood check.
       - Otherwise, if the contour is below a size threshold (relative to the image),
         compute a search area around it. If the sum of the surrounding pixels (after
         zeroing the contour area) is below a threshold, the contour is removed.
 
     The input ``img`` is not mutated — operations are performed on an internal
     copy, mirroring the cupy backend ``remove_small_contours_gpu`` (L-13).
+
+    Backend divergence (L-27)
+    -------------------------
+    The cv2 backend has the unconditional ``small_contour_w``/``small_contour_h``
+    fast path; the cupy backend ``remove_small_contours_gpu`` does NOT. A
+    nearly-isolated 9x9 dot with ≥ ``threshold_sum`` neighboring pixels is
+    therefore removed by cv2 but kept by cupy. To force cv2 to mirror cupy
+    (no fast path, neighborhood check decides every contour), pass
+    ``small_contour_w=0, small_contour_h=0`` — the ``w < 0 and h < 0``
+    predicate is always False for valid bounding rects, disabling the
+    fast path entirely.
 
     Returns:
       - The modified image (a fresh array; the input is left untouched).

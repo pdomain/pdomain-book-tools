@@ -266,3 +266,60 @@ class TestRemoveSmallContours:
         )
         # The contour should NOT be removed (search_sum >= threshold_sum=0)
         assert (out_kept[50:62, 50:62] == 255).all()
+
+    def test_l27_small_contour_fast_path_disabled_with_zero_thresholds(self):
+        """L-27: passing ``small_contour_w=0, small_contour_h=0`` disables the
+        cv2-only unconditional fast-path so cv2 mirrors the cupy backend's
+        neighborhood-only behavior.
+
+        Per the L-27 docstring escape hatch: with the fast path disabled,
+        a tiny 6x6 dot adjacent to a large support blob (well above
+        threshold_sum nearby pixels) is KEPT — the same outcome the cupy
+        ``remove_small_contours_gpu`` produces. With the default
+        ``small_contour_w=10, small_contour_h=10``, the same dot is
+        unconditionally removed (cv2 backend divergence). This test pins
+        BOTH outcomes so a future change cannot silently flip the cv2
+        default behavior or remove the escape-hatch contract.
+        """
+        from cv2 import (
+            CHAIN_APPROX_SIMPLE,
+            RETR_EXTERNAL,
+            findContours,
+        )
+
+        img = np.zeros((200, 200), dtype=np.uint8)
+        # Big neighbor blob: provides plenty of nearby pixels
+        img[80:160, 20:180] = 255
+        # Tiny 6x6 dot directly above the big blob (well within search radius)
+        img[60:66, 60:66] = 255
+
+        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+
+        # Default fast path: tiny dot < 10x10 -> unconditionally removed.
+        cleaned_default, _ = remove_small_contours(img.copy(), contours)
+        assert (cleaned_default[60:66, 60:66] == 0).all()
+
+        # Fast path disabled (mirrors cupy): neighborhood check sees the
+        # adjacent big blob and the dot is KEPT.
+        contours2, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        cleaned_no_fastpath, _ = remove_small_contours(
+            img.copy(),
+            contours2,
+            small_contour_w=0,
+            small_contour_h=0,
+        )
+        assert (cleaned_no_fastpath[60:66, 60:66] == 255).all()
+        # And the big blob is unaffected in either case.
+        assert (cleaned_no_fastpath[80:160, 20:180] == 255).all()
+
+    def test_l27_divergence_is_documented(self):
+        """L-27: the behavioral divergence between cv2 and cupy backends
+        must remain documented so future maintainers don't quietly delete
+        the escape-hatch contract.
+        """
+        from pd_book_tools.image_processing.cv2_processing.contours import (
+            remove_small_contours as cv2_fn,
+        )
+
+        assert "L-27" in (cv2_fn.__doc__ or "")
+        assert "small_contour_w=0" in (cv2_fn.__doc__ or "")
