@@ -35,7 +35,10 @@ def auto_deskew(img, pct=0.30):
     # Find Top Left first Column pixel, starting at top row and going down by 10%
     X1 = 0
     X2 = img_w - 1
-    Y1 = 0
+    # Use minY (detected content top edge) rather than 0; otherwise stray
+    # noise pixels above the text block corrupt the column-sum scan and
+    # bias the detected skew angle. Mirrors the cupy backend.
+    Y1 = minY
     Y2 = min(maxY, (minY + h_percent))
     top_of_img: np.ndarray = img[Y1:Y2, X1:X2]
     logger.debug("Top of Img: {}:{},{}:{}".format(X1, X2, Y1, Y2))
