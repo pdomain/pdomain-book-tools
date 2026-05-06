@@ -1043,7 +1043,7 @@ coordinated multi-repo PRs than unilateral library changes.
   functions breaks `word.refine_bbox(...)`, `word.crop_bottom(...)`,
   `page.refine_bounding_boxes(...)` API across the labeler (12+ call
   sites including monkey-patch test idioms). Needs cross-repo
-  coordination. Doc mark `<pending>`.
+  coordination. Doc mark `d680137`.
 - R-02 `Page` `@dataclass` + custom `__init__` redundancy. Pattern is
   real (review's `AttributeError` claim is partly stale — class-level
   defaults make the cache fields work in practice). The clean fix
@@ -1052,13 +1052,13 @@ coordinated multi-repo PRs than unilateral library changes.
   but no test exercises it) and explicit field declarations for ~10
   instance attributes set only in custom `__init__`. Best as a
   dedicated PR with a behavior-pinning regression test. Doc mark
-  `<pending>`.
+  `d680137`.
 - R-03 `BoundingBox` mixes geometry with cv2-using image ops. Same
   blast radius as R-01 — `bbox.refine(image)` / `bbox.crop_top(image)`
   / `bbox.crop_bottom(image)` callers in Word + labeler test mocks.
   Overlaps with R-01 (both funnel into the same image_utilities
   landing module) and benefit is speculative since cv2 is a hard
-  runtime dependency anyway. Track with R-01. Doc mark `<pending>`.
+  runtime dependency anyway. Track with R-01. Doc mark `d680137`.
 
 **Next pick:** `refactors.md` R-04 — `refine_bounding_box` and
 `refine_bbox` consolidation on `Word`. Single-file refactor, no
