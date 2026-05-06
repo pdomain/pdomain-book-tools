@@ -401,6 +401,82 @@ class TestGetFinetunedTorchDoctrPredictor:
         # Original cause preserved.
         assert isinstance(exc_info.value.__cause__, KeyError)
 
+    def test_arch_construction_skips_pretrained_download(self, monkeypatch, tmp_path):
+        """Regression for M-24: arch construction must pass ``pretrained=False``.
+
+        The next statement after each ``_build_arch`` call is
+        ``load_state_dict(...)``, which overwrites every weight. Constructing
+        the arch with ``pretrained=True`` (or letting it default to True via
+        the public ``pretrained``/``pretrained_backbone`` kwargs) downloads
+        weights from the internet only to immediately discard them — pure
+        network waste plus an unwanted runtime dependency.
+        """
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        # Even when callers pass the default ``pretrained=True`` /
+        # ``pretrained_backbone=True``, the arch builders must be invoked with
+        # ``pretrained=False`` because their weights are about to be
+        # overwritten by ``load_state_dict``.
+        get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=det_path,
+            recognition_pt_file=reco_path,
+            pretrained=True,
+            pretrained_backbone=True,
+        )
+
+        # Detection arch (db_resnet50 default for empty state_dict) was
+        # constructed with pretrained=False.
+        det_kwargs = fake_models.db_resnet50.call_args.kwargs
+        assert det_kwargs.get("pretrained") is False, (
+            f"detection arch constructor received pretrained={det_kwargs.get('pretrained')!r} "
+            "but should be False — load_state_dict immediately overwrites"
+        )
+
+        # Recognition arch (crnn_vgg16_bn default for empty state_dict) was
+        # constructed with pretrained=False AND pretrained_backbone=False.
+        reco_kwargs = fake_models.crnn_vgg16_bn.call_args.kwargs
+        assert reco_kwargs.get("pretrained") is False, (
+            f"recognition arch constructor received pretrained={reco_kwargs.get('pretrained')!r} "
+            "but should be False — load_state_dict immediately overwrites"
+        )
+        assert reco_kwargs.get("pretrained_backbone") is False, (
+            f"recognition arch constructor received "
+            f"pretrained_backbone={reco_kwargs.get('pretrained_backbone')!r} "
+            "but should be False — load_state_dict overwrites the entire model"
+        )
+
     def test_happy_path_with_cuda_available(self, monkeypatch, tmp_path):
         """When CUDA is available, the helper should use the cuda device strings."""
         det_path = tmp_path / "det.pt"
