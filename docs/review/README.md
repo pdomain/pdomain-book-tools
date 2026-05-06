@@ -225,13 +225,26 @@ now sweeps `bugs-medium.md` top-to-bottom.
   dtype=img_cp.dtype)` placeholders. In-tree callers were tests only;
   updated `test_zero_pct_returns_three_tuple` and simplified
   `test_straight_block_no_skew`. — fix `e74740c`, doc mark `<pending>`
+- M-05 `image_processing/cv2_processing/io.py` `read_image` returned
+  `cv2.imread`'s `None` sentinel silently when the file was missing,
+  unsupported, corrupt, or unreadable. `create_file_thumbnail` then
+  passed `None` to `rescale_image`, which crashed at `img.shape[:2]`
+  with a confusing `AttributeError: 'NoneType' object has no
+  attribute 'shape'` that did not name the offending path. Fixed
+  `read_image` to raise `FileNotFoundError` (with the resolved path)
+  when the file is absent, and `ValueError` (with the resolved path)
+  when `cv2.imread` returns `None` despite the file existing
+  (unsupported/corrupt/permission). Happy-path return type unchanged;
+  the only in-tree caller is `create_file_thumbnail` and no external
+  pd-* repos call `read_image`, so no caller updates were needed. —
+  fix `f0cd07b`, doc mark `<pending>`
 
-**Next pick:** M-05 — `image_processing/cv2_processing/{io.py,thumbnails.py}`
-`read_image` returns `None` silently when `cv2.imread` fails (missing
-file, unsupported format, permission error), and `create_file_thumbnail`
-then crashes downstream with an `AttributeError` on `None.shape`. Fix:
-`read_image` should raise an explicit `FileNotFoundError` / `OSError`
-(or document the `None` return and have every caller guard it).
+**Next pick:** M-06 — `image_processing/external_tools.py` `run_gegl_c2g`
+passes `c2gOptions` as a single string token to the subprocess
+(`args=["gegl", src, "-o", tgt, "--", "c2g", c2gOptions]`). For any
+multi-token options string (e.g. `"--samples 4 --iterations 10"`)
+GEGL receives one giant arg and rejects it. Fix: split with
+`shlex.split(c2gOptions)` (or change the parameter to `list[str]`).
 
 **Workflow per iteration** (one bug per commit, no push):
 
