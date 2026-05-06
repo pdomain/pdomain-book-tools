@@ -184,6 +184,46 @@ def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
     assert calls == ["weights.pt", "weights.arch", "weights.vocab"]
 
 
+def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path):
+    # L-35: ``filename.rsplit(".", 1)[0] + ext`` incorrectly splits on a
+    # dot in the directory portion when the filename itself has no
+    # extension. For "my.dir/weights" rsplit yields ["my", "dir/weights"]
+    # and the sidecar becomes "my.arch" — losing the directory and the
+    # base name. The sidecar must keep the same parent directory and
+    # only attach the new extension to the file's stem.
+    fake_main = tmp_path / "weights"
+    fake_main.write_bytes(b"x")
+
+    class _NotFound(Exception):
+        pass
+
+    calls: list[str] = []
+
+    def _hub_download(*, repo_id, filename, revision):
+        calls.append(filename)
+        if filename.endswith(".arch"):
+            raise _NotFound("missing")
+        return str(fake_main)
+
+    fake_hub = mock.MagicMock(
+        hf_hub_download=mock.MagicMock(side_effect=_hub_download),
+        try_to_load_from_cache=mock.MagicMock(return_value=str(fake_main)),
+        _CACHED_NO_EXIST=object(),
+    )
+    with mock.patch.dict(
+        "sys.modules",
+        {
+            "huggingface_hub": fake_hub,
+            "huggingface_hub.utils": mock.MagicMock(EntryNotFoundError=_NotFound),
+        },
+    ):
+        hf_download("repo/x", "my.dir/weights", sidecars=(".arch",))
+
+    # Sidecar must be sibling of the main file, preserving "my.dir/".
+    # Pre-fix this would have asked for "my.arch".
+    assert calls == ["my.dir/weights", "my.dir/weights.arch"]
+
+
 def test_resolve_ocr_models_returns_local_paths_when_provided(tmp_path):
     det = tmp_path / "det.pt"
     reco = tmp_path / "reco.pt"
