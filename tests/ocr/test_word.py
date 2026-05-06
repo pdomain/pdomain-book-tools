@@ -430,6 +430,45 @@ def test_split_styles_propagate():
     assert right.text_style_label_scopes == {"bold": "whole", "italics": "part"}
 
 
+def test_split_does_not_alias_mutable_state_between_words():
+    """Regression for L-38: parent + left + right Word must not share the
+    same underlying ``text_style_label_scopes`` / ``text_style_labels`` /
+    ``word_labels`` / ``word_components`` containers, even though
+    ``split`` passes ``self.<field>`` directly. The constructor's
+    normalize helpers always build fresh containers, so mutating any one
+    of the three Words must not bleed into the other two.
+    """
+    parent = Word(
+        text="abcd",
+        bounding_box=BoundingBox.from_ltrb(0, 0, 8, 8),
+        word_labels=["x"],
+        text_style_labels=["italics"],
+        text_style_label_scopes={"italics": "whole"},
+    )
+    left, right = parent.split(bbox_split_offset=3, character_split_index=2)
+
+    # Distinct dict / list identities for every mutable field.
+    assert left.text_style_label_scopes is not parent.text_style_label_scopes
+    assert right.text_style_label_scopes is not parent.text_style_label_scopes
+    assert left.text_style_label_scopes is not right.text_style_label_scopes
+    assert left.text_style_labels is not parent.text_style_labels
+    assert right.text_style_labels is not parent.text_style_labels
+    assert left.text_style_labels is not right.text_style_labels
+    assert left.word_labels is not parent.word_labels
+    assert right.word_labels is not parent.word_labels
+    assert left.word_labels is not right.word_labels
+
+    # Mutating one Word's scopes must not affect the others.
+    left.text_style_label_scopes["italics"] = "part"
+    assert parent.text_style_label_scopes == {"italics": "whole"}
+    assert right.text_style_label_scopes == {"italics": "whole"}
+
+    # Mutating one Word's labels list must not affect the others.
+    right.word_labels.append("new-label")
+    assert parent.word_labels == ["x"]
+    assert left.word_labels == ["x"]
+
+
 ###############################################################################
 # Merging (concatenation of adjacent words) – order, confidence, labels
 ###############################################################################
