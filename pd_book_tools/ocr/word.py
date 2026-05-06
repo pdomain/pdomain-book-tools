@@ -663,7 +663,7 @@ class Word:
         return Word(
             text=dict["text"],
             bounding_box=BoundingBox.from_dict(dict["bounding_box"]),
-            ocr_confidence=dict["ocr_confidence"],
+            ocr_confidence=dict.get("ocr_confidence"),
             word_labels=dict.get("word_labels", []),
             text_style_labels=dict.get("text_style_labels", []),
             text_style_label_scopes=dict.get("text_style_label_scopes"),
