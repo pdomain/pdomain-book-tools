@@ -43,13 +43,15 @@ remembering prior turns. Update this when an iteration completes (after the
   regression-locked via test in fix `bd4ece9`, doc mark `<pending>`
 - H-05 `bounding_box.py` `_vertical_crop` discarded `original_is_normalized`
   and always normalized output — fix `2327d2f`, doc mark `<pending>`
+- H-06 `word.py` `crop_bottom` / `crop_top` overwrote `self.bounding_box`
+  with `None` on the blank-ROI warning path — fix `645c825`, doc mark `<pending>`
 
-**Next pick:** H-06 — `word.py` `crop_bottom` / `crop_top` (lines 1080–1108)
-assign `self.bounding_box = cropped_bbox` even when `cropped_bbox` is `None`
-(blank ROI path in `BoundingBox._extract_roi`). All subsequent attribute
-access on the word's bounding box raises `AttributeError`. Fix: only assign
-when the result is not `None`; the existing warning log already covers the
-diagnostic.
+**Next pick:** H-07 — `block.py` `Block.mean_ocr_confidence` (lines 896–913)
+calls `sum(scores) / len(scores)` on the output of `ocr_confidence_scores()`,
+which can contain `None` after any `Word.split()` (split sets
+`ocr_confidence=None` on both halves). `sum()` on a list with `None` raises
+`TypeError`. Fix: filter `None` from `scores` before averaging, and decide a
+sensible return when no scores remain.
 
 **Workflow per iteration** (one bug per commit, no push):
 
