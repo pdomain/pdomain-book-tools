@@ -199,7 +199,7 @@ instance method.
 
 ---
 
-## H-14 — Cupy Otsu thresholding has off-by-one in `mean2`/`weight2`
+## [FIXED in 2e1b2be] ~~H-14 — Cupy Otsu thresholding has off-by-one in `mean2`/`weight2`~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/threshold.py`, lines 38–43
 **Affects:** all GPU-path Otsu thresholding; produces biased (too-low) thresholds

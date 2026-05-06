@@ -60,14 +60,23 @@ remembering prior turns. Update this when an iteration completes (after the
   list, masking the bug. Fixed to pass
   `[page.render() for page in doctr_result.pages]`. — fix `06f22c3`,
   doc mark `<pending>`
+- H-14 `image_processing/cupy_processing/threshold.py` `otsu_binary_thresh`
+  defined `weight2 = weight1[-1] - weight1` (exclusive suffix sum), which
+  combined with `weight2[1:]` / `mean2[1:]` in the variance expression
+  excluded bin `k+1` from both classes and biased the threshold high on
+  realistic bimodal images. Switched to
+  `weight2 = cp.flip(cp.cumsum(cp.flip(hist)))` (inclusive suffix sum,
+  matching `skimage.filters.threshold_otsu`). Verified live with cupy and
+  skimage: pre-fix threshold ~0.55, fixed and skimage both ~0.42 on
+  overlapping Gaussian clusters. — fix `2e1b2be`, doc mark `<pending>`
 
-**Next pick:** H-14 — `pd_book_tools/image_processing/cupy_processing/threshold.py`
-lines 38–43 (Cupy Otsu off-by-one in `mean2`/`weight2`): uses
-`weight2[1:]` / `mean2[1:]` instead of `[:-1]`, biasing the threshold low
-for every GPU-path Otsu binarization. First of the H-14/15/16 cluster all
-in the same file, so likely one commit covers verification of all three
-even if fixes are split. H-13 (`doctr_support.py` `Path.exists` unbound
-class method) skipped per "Highest-priority fixes" ordering — the README
+**Next pick:** H-15 — `pd_book_tools/image_processing/cupy_processing/threshold.py`
+line 33 (Cupy Otsu crashes on uniform images): `cp.histogram(...,
+range=(min_val, max_val))` raises `ValueError: max must be larger than
+min` when all pixels share a value (blank or near-blank page on GPU).
+Same file as H-14, so the regression-test infrastructure is already in
+place. H-13 (`doctr_support.py` `Path.exists` unbound class method)
+remains deferred per the "Highest-priority fixes" ordering — README
 top-10 jumps from H-12 to H-14/15/16.
 
 **Workflow per iteration** (one bug per commit, no push):
