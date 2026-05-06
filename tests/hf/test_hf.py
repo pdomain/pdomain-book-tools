@@ -229,6 +229,37 @@ def test_resolve_layout_source_none_returns_empty():
     assert resolve_layout_source("none") == (None, None, "")
 
 
+def test_resolve_layout_source_none_takes_precedence_over_checkpoint(tmp_path):
+    """``layout_model="none"`` must disable layout even when a checkpoint
+    path is also supplied. Regression lock for review item H-20: the
+    checkpoint branch must never be reached if the caller asked to disable
+    layout entirely."""
+    ckpt = tmp_path / "model.safetensors"
+    ckpt.write_bytes(b"x")
+    assert resolve_layout_source("none", layout_checkpoint=str(ckpt)) == (
+        None,
+        None,
+        "",
+    )
+    # Also covers the "string-checkpoint treated as repo" branch — neither
+    # should ever override the disable flag.
+    assert resolve_layout_source("none", layout_checkpoint="org/repo-name") == (
+        None,
+        None,
+        "",
+    )
+
+
+def test_resolve_layout_source_contour_takes_precedence_over_checkpoint(tmp_path):
+    """Same precedence guarantee for ``layout_model="contour"``."""
+    ckpt = tmp_path / "model.safetensors"
+    ckpt.write_bytes(b"x")
+    repo, rev, desc = resolve_layout_source("contour", layout_checkpoint=str(ckpt))
+    assert repo is None
+    assert rev is None
+    assert "contour" in desc
+
+
 def test_resolve_layout_source_contour():
     repo, rev, desc = resolve_layout_source("contour")
     assert repo is None
