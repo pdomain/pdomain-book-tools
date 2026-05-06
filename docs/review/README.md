@@ -213,14 +213,25 @@ now sweeps `bugs-medium.md` top-to-bottom.
   kernel — opposite of caller intent. The cupy backend already used
   `is not None`. Aligned cv2 to mirror it. — fix `9a2fc8e`, doc mark
   `<pending>`
+- M-04 `image_processing/cv2_processing/perspective_adjustment.py`
+  `auto_deskew` early-exit path (`w_ten_percent == 0` or `h_percent == 0`)
+  returned a bare `np.ndarray` while every other path — and *all* paths
+  in the cupy `auto_deskew_gpu` — returned a 3-tuple
+  `(image, top_slice, bottom_slice)`. Callers had to do
+  `isinstance(out, tuple)` runtime dispatch to switch backends (see
+  `pd-prep-for-pgdp/.../process_page.py`). Aligned the cv2 early-exit
+  to return `(img, np.empty((0, 0), dtype=img.dtype), np.empty((0, 0),
+  dtype=img.dtype))`, mirroring cupy's `cp.empty((0, 0),
+  dtype=img_cp.dtype)` placeholders. In-tree callers were tests only;
+  updated `test_zero_pct_returns_three_tuple` and simplified
+  `test_straight_block_no_skew`. — fix `e74740c`, doc mark `<pending>`
 
-**Next pick:** M-04 — `image_processing/cv2_processing/perspective_adjustment.py`
-`auto_deskew` has an inconsistent return type. The early-exit path (line
-31, when `h_percent == 0`) returns a plain `np.ndarray`, while every
-other path returns `tuple[np.ndarray, np.ndarray, np.ndarray]`. The cupy
-counterpart `auto_deskew_gpu` always returns a 3-tuple, so callers must
-do runtime `isinstance(result, tuple)` dispatch. Fix: always return a
-3-tuple from the early-exit path, using `np.empty((0, 0))` placeholders.
+**Next pick:** M-05 — `image_processing/cv2_processing/{io.py,thumbnails.py}`
+`read_image` returns `None` silently when `cv2.imread` fails (missing
+file, unsupported format, permission error), and `create_file_thumbnail`
+then crashes downstream with an `AttributeError` on `None.shape`. Fix:
+`read_image` should raise an explicit `FileNotFoundError` / `OSError`
+(or document the `None` return and have every caller guard it).
 
 **Workflow per iteration** (one bug per commit, no push):
 

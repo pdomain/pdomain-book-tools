@@ -52,7 +52,7 @@ The cupy version correctly uses `if fuzzy_px_w_override is not None`.
 
 ---
 
-## M-04 — `auto_deskew` has an inconsistent return type
+## [FIXED in e74740c] ~~M-04 — `auto_deskew` has an inconsistent return type~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py`, lines 29–32, 107–121
 
