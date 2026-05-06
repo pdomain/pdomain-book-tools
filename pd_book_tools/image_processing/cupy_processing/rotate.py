@@ -1,9 +1,18 @@
+from __future__ import annotations
+
 import logging
 import math
 
-import cupy as cp
 import numpy as np
-from cupyx.scipy.ndimage import affine_transform
+
+from ._cupy_compat import cp, require_cupy
+
+try:
+    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+        affine_transform,
+    )
+except ImportError:  # pragma: no cover - exercised only on CPU-only installs
+    affine_transform = None
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +29,7 @@ def rotate_image_gpu(
     Matches cv2_processing.rotate.rotate_image behaviour.
     Handles both 2-D (H, W) and 3-D (H, W, C) uint8 CuPy arrays.
     """
+    require_cupy()
     if angle_deg == 0.0:
         return img_cp
 
@@ -86,4 +96,5 @@ def np_uint8_rotate_image(
     cval: int = 0,
 ) -> np.ndarray:
     """Transfers img to GPU, rotates by angle_deg degrees, returns CPU uint8 array."""
+    require_cupy()
     return cp.asnumpy(rotate_image_gpu(cp.asarray(img), angle_deg, cval=cval))

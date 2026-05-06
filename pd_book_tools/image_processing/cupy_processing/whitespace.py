@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
+
+from ._cupy_compat import cp, require_cupy
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +21,7 @@ def add_whitespace_pixels_gpu(
 
     Pads img_cp with white (255) pixels. Supports 2-D and 3-D arrays.
     """
+    require_cupy()
     h, w = img_cp.shape[:2]
     new_h = h + top_px + bottom_px
     new_w = w + left_px + right_px
@@ -39,6 +43,7 @@ def add_whitespace_percentage_gpu(
     bottom_pct: float = 0,
 ) -> cp.ndarray:
     """Percentage-based wrapper around add_whitespace_pixels_gpu."""
+    require_cupy()
     h, w = img_cp.shape[:2]
     return add_whitespace_pixels_gpu(
         img_cp,
@@ -57,6 +62,7 @@ def np_uint8_add_whitespace_pixels(
     bottom_px: int,
 ) -> np.ndarray:
     """Transfers img to GPU, pads with whitespace, returns CPU uint8 array."""
+    require_cupy()
     img_cp = cp.asarray(img)
     return cp.asnumpy(
         add_whitespace_pixels_gpu(img_cp, left_px, right_px, top_px, bottom_px)

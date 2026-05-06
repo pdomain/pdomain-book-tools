@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
+from ._cupy_compat import cp, require_cupy
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +21,7 @@ def crop_to_rectangle(img: cp.ndarray, minX, maxX, minY, maxY):
     Returns:
         cp.array: Cropped image.4
     """
+    require_cupy()
     log_prefix = "crop_to_rectangle - "
 
     # Get image dimensions
@@ -68,6 +71,7 @@ def crop_edges(
     Raises:
         ValueError: If the cropping values exceed the image dimensions.
     """
+    require_cupy()
     h, w = img.shape[:2]
 
     if top + bottom >= h or left + right >= w:

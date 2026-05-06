@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import logging
 import math
 
-import cupy as cp
 import numpy as np
 
 from pd_book_tools.image_processing.types import Alignment
+
+from ._cupy_compat import cp, require_cupy
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,7 @@ def map_content_onto_scaled_canvas_gpu(
 
     img_cp: 2-D uint8 CuPy array (grayscale).
     """
+    require_cupy()
     height, width = img_cp.shape[:2]
 
     current_ratio = float(height) / float(width)
@@ -62,6 +66,7 @@ def np_uint8_map_content_onto_scaled_canvas(
     whitespace_add: float = 0.051,
 ) -> np.ndarray:
     """Transfers img to GPU, maps onto scaled canvas, returns CPU uint8 array."""
+    require_cupy()
     img_cp = cp.asarray(img)
     return cp.asnumpy(
         map_content_onto_scaled_canvas_gpu(

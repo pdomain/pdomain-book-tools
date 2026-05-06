@@ -1,8 +1,15 @@
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
-from cupyx.scipy.ndimage import convolve1d
+
+from ._cupy_compat import cp, require_cupy
+
+try:
+    from cupyx.scipy.ndimage import convolve1d  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover - exercised only on CPU-only installs
+    convolve1d = None
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +26,7 @@ def find_edges_gpu(
     Returns (minX, maxX, minY, maxY).
     img_cp must be a 2-D uint8 CuPy array, inverted (content=255, background=0).
     """
+    require_cupy()
     h, w = img_cp.shape[:2]
 
     columns = cp.sum(img_cp, axis=0).astype(cp.int64)  # shape (W,)
@@ -59,5 +67,6 @@ def np_uint8_find_edges(
     **kwargs,
 ) -> tuple[int, int, int, int]:
     """Transfers img to GPU, runs find_edges_gpu, returns result."""
+    require_cupy()
     img_cp = cp.asarray(img)
     return find_edges_gpu(img_cp, **kwargs)

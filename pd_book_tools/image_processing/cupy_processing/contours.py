@@ -1,9 +1,22 @@
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
-from cupyx.scipy.ndimage import find_objects
-from cupyx.scipy.ndimage import label as ndimage_label
+
+from ._cupy_compat import cp, require_cupy
+
+# cupyx is part of the CuPy install. Wrap the import so this module loads
+# cleanly on CPU-only installs; require_cupy() in each function gives the
+# actionable error before these names are ever dereferenced.
+try:
+    from cupyx.scipy.ndimage import find_objects  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (
+        label as ndimage_label,  # type: ignore[import-not-found]
+    )
+except ImportError:  # pragma: no cover - exercised only on CPU-only installs
+    find_objects = None
+    ndimage_label = None
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +43,7 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict:
     that is unaffected by page numbers, footnotes, or decorative rules — they
     all use characters of a similar or identical size to the body text.
     """
+    require_cupy()
     labeled, n_labels = ndimage_label(img_cp > 0)
     if n_labels == 0:
         return {
@@ -118,6 +132,7 @@ def remove_small_contours_gpu(
     img_cp: 2-D uint8 CuPy array (non-zero pixels are foreground).
     Returns a copy with isolated small components zeroed out.
     """
+    require_cupy()
     labeled, n_labels = ndimage_label(img_cp > 0)
     if n_labels == 0:
         return img_cp.copy()
@@ -190,6 +205,7 @@ def remove_small_contours_adaptive_gpu(
     img_cp: 2-D uint8 CuPy array (non-zero pixels are foreground).
     Returns a copy with isolated noise components zeroed out.
     """
+    require_cupy()
     stats = contour_size_stats_gpu(img_cp)
     if stats["count"] == 0:
         return img_cp.copy()
@@ -224,6 +240,7 @@ def remove_small_contours_adaptive_gpu(
 
 def np_uint8_remove_small_contours(img: np.ndarray, **kwargs) -> np.ndarray:
     """Transfers img to GPU, removes small/isolated contours, returns CPU uint8 array."""
+    require_cupy()
     return cp.asnumpy(remove_small_contours_gpu(cp.asarray(img), **kwargs))
 
 
@@ -233,6 +250,7 @@ def np_uint8_remove_small_contours_adaptive(
     nearby_pixel_count: int = 10,
 ) -> np.ndarray:
     """Transfers img to GPU, removes noise adaptively, returns CPU uint8 array."""
+    require_cupy()
     return cp.asnumpy(
         remove_small_contours_adaptive_gpu(
             cp.asarray(img),

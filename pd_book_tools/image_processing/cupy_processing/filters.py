@@ -1,8 +1,21 @@
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
-from cupyx.scipy.ndimage import gaussian_filter, median_filter, uniform_filter
+
+from ._cupy_compat import cp, require_cupy
+
+try:
+    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+        gaussian_filter,
+        median_filter,
+        uniform_filter,
+    )
+except ImportError:  # pragma: no cover - exercised only on CPU-only installs
+    gaussian_filter = None
+    median_filter = None
+    uniform_filter = None
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +33,7 @@ def gaussian_filter_gpu(
 
     Returns the same dtype as the input.
     """
+    require_cupy()
     if img_cp.ndim == 3:
         _sigma = (sigma, sigma, 0)
     else:
@@ -41,6 +55,7 @@ def median_filter_gpu(
 
     Returns the same dtype as the input.
     """
+    require_cupy()
     if img_cp.ndim == 3:
         _size = (size, size, 1)
     else:
@@ -61,6 +76,7 @@ def uniform_filter_gpu(
 
     Returns the same dtype as the input.
     """
+    require_cupy()
     if img_cp.ndim == 3:
         _size = (size, size, 1)
     else:
