@@ -35,6 +35,40 @@ class TestOtsuBinaryThresh:
         assert out.ndim == 2
         assert tuple(out.shape) == (10, 10)
 
+    def test_uniform_image_does_not_crash_or_misclassify(self, cupy_threshold):
+        """Regression test for H-15: uniform-valued images must not crash and
+        must produce a sensible binary output.
+
+        Originally `cp.histogram(img, bins=256, range=(min,max))` with
+        `min == max` was reported to raise `ValueError: max must be larger than
+        min`. In current cupy (14.x) the histogram call no longer raises but
+        the downstream threshold becomes meaningless: with all pixels at the
+        same value, the histogram has a single nonzero bin at index 128 over
+        an arbitrary [-0.5, 0.5]-style edge span, the between-class variance
+        is identically zero, and `argmax` falls back to index 0 — yielding a
+        threshold like `-0.498` and a misclassified all-1.0 mask for an
+        all-zero input.
+        Reference contract (skimage / cv2): a uniform image's Otsu threshold
+        is just the uniform value, and the binary output (using strict `>`)
+        is all-zeros.
+        """
+        thresh_mod, cp = cupy_threshold
+        for value in (0.0, 0.5, 1.0, 0.128):
+            img = cp.full((10, 10), value, dtype=cp.float32)
+            out = thresh_mod.otsu_binary_thresh(img)
+            assert out.dtype == cp.float32
+            assert tuple(out.shape) == (10, 10)
+            unique = set(np.unique(out.get()).tolist())
+            assert unique.issubset({0.0, 1.0}), (
+                f"value={value}: expected binary output, got {unique}"
+            )
+            # Strict `>` against a threshold of `value` produces all-zeros for
+            # a uniform image — matches skimage/cv2 semantics.
+            assert unique == {0.0}, (
+                f"value={value}: uniform image should be classified entirely "
+                f"as 0 (since no pixel exceeds the uniform value), got {unique}"
+            )
+
     def test_threshold_matches_skimage_reference(self, cupy_threshold):
         """Regression test for H-14: cupy Otsu must match the standard
         between-class-variance formulation (matching skimage.filters.threshold_otsu).
