@@ -166,7 +166,7 @@ semantically wrong and misleading.
 
 ---
 
-## M-12 — `map_content_onto_scaled_canvas` always creates a grayscale (2D) canvas
+## [FIXED in 37213f1] ~~M-12 — `map_content_onto_scaled_canvas` always creates a grayscale (2D) canvas~~
 
 **Files:**
 
