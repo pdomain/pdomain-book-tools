@@ -446,6 +446,33 @@ def test_from_points_invalid_cases():
         BoundingBox.from_points([Point(0, 0), 5])  # type: ignore[list-item]
 
 
+def test_from_points_accepts_zero_area_like_other_constructors():
+    """L-04: align `from_points` zero-area policy with peer constructors.
+
+    `from_ltrb`, `from_float`, `from_ltwh`, and `_build` all accept
+    `left == right` / `top == bottom`. `from_points` previously rejected
+    them with strict `>`, an undocumented inconsistency. Aligned to the
+    permissive policy; strictly-inverted pairs still raise.
+    """
+    # Equal x (zero width) — was rejected pre-fix
+    bb_zw = BoundingBox.from_points([Point(1, 1), Point(1, 5)])
+    assert bb_zw.width == 0
+    assert bb_zw.height == 4
+
+    # Equal y (zero height) — was rejected pre-fix
+    bb_zh = BoundingBox.from_points([Point(2, 3), Point(7, 3)])
+    assert bb_zh.height == 0
+    assert bb_zh.width == 5
+
+    # Both equal (singleton anchor) — also accepted
+    bb_pt = BoundingBox.from_points([Point(4, 4), Point(4, 4)])
+    assert bb_pt.width == 0 and bb_pt.height == 0
+
+    # Strictly inverted still raises
+    with pytest.raises(ValueError):
+        BoundingBox.from_points([Point(5, 5), Point(3, 3)])
+
+
 def test_from_float_invalid_cases():
     with pytest.raises(ValueError):
         BoundingBox.from_float([0, 1, 2])  # type: ignore[list-item]
