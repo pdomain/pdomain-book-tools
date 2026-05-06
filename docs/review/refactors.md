@@ -242,7 +242,7 @@ Update `__init__.py`, test file, and all downstream imports in `pd-ocr-cli` and
 
 ---
 
-## R-10 — `normalize_word_component` and `normalize_character_component` are identical
+## [DECLINED — already addressed in `b9ec50a`; declining further consolidation as a public-API break] R-10 — `normalize_word_component` and `normalize_character_component` are identical
 
 **File:** `pd_book_tools/ocr/label_normalization.py`, lines 99–120
 
@@ -251,6 +251,30 @@ frozenset. The only distinction is the error message string (`"word component"` 
 `"character component"`). If word and character components genuinely share the same
 allowed set, there should be one function with a `component_type: str` parameter for
 the error message.
+
+**Declined:** The structural concern the review flagged — a duplicated
+normalization implementation across the two functions — was already
+addressed by `b9ec50a` ("refactor(ocr): simplify component labels and
+remove Character bool fields", March 2026). Both public functions are
+now two-line thin wrappers around a single private `_normalize_component`
+helper that takes the component-type label as a `label_type: str`
+parameter — exactly the pattern the review recommends.
+
+The further step of merging the two public wrappers into one
+`normalize_component(component, component_type)` function would be a
+public-API break, not a behavior-preserving refactor:
+
+- `normalize_word_component` is imported by `pd_book_tools/ocr/word.py`
+  (3 call sites) and by
+  `pd-ocr-labeler/pd_ocr_labeler/views/projects/pages/word_operations.py`
+  (1 call site). The labeler is a separate repo — collapsing the API
+  would force a coordinated cross-repo update.
+- The two named entry points carry semantic intent at the call site
+  (a word's components vs. a character's components) and produce
+  distinct user-visible error messages keyed off that intent.
+
+The remaining duplication is intentional surface API, not implementation
+duplication. R-10's actual concern is resolved.
 
 ---
 
