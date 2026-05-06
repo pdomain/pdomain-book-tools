@@ -433,7 +433,7 @@ already works around this with identity checks (`r is figure`).
 
 ---
 
-## L-33 — Layout detector registry has a TOCTOU cache race under concurrent access
+## ~~L-33 — Layout detector registry has a TOCTOU cache race under concurrent access~~ [FIXED in 8ca6106]
 
 **File:** `pd_book_tools/layout/registry.py`, lines 78–83
 
