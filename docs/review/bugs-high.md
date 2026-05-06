@@ -103,7 +103,7 @@ crash with `AttributeError: 'NoneType' object has no attribute ...`.
 
 ---
 
-## H-07 — `Block.mean_ocr_confidence` crashes after any `Word.split()`
+## [FIXED in 42da1ac] ~~H-07 — `Block.mean_ocr_confidence` crashes after any `Word.split()`~~
 
 **File:** `pd_book_tools/ocr/block.py`, lines 896–913
 **Affects:** any block that has had words split
