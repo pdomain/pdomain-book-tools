@@ -109,7 +109,10 @@ class OCRProvenance:
         if value is None:
             return None
         if isinstance(value, OCRProvenance):
-            return OCRProvenance.from_dict(value.to_dict())
+            # L-16: the class is frozen (L-15 made ``models`` a tuple), so
+            # returning the input directly is safe and avoids a wasteful
+            # ``from_dict(value.to_dict())`` round-trip.
+            return value
         if isinstance(value, dict):
             return OCRProvenance.from_dict(value)
         raise TypeError("ocr_provenance must be an OCRProvenance or dict")

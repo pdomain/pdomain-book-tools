@@ -129,6 +129,20 @@ class TestOCRProvenanceCoerce:
         assert clone is not None
         assert clone == p
 
+    def test_coerce_provenance_short_circuits_to_same_instance(self):
+        """L-16: ``coerce`` must short-circuit when given an ``OCRProvenance``.
+
+        Pre-fix the function did ``OCRProvenance.from_dict(value.to_dict())``
+        which produced a wasteful equal-but-not-identical copy. The class is
+        frozen (L-15), so returning ``value`` directly is safe.
+        """
+        p = OCRProvenance(
+            engine="tesseract",
+            engine_version="5.3.0",
+            models=(OCRModelProvenance(name="eng"),),
+        )
+        assert OCRProvenance.coerce(p) is p
+
     def test_coerce_dict(self):
         p = OCRProvenance.coerce({"engine": "x", "models": []})
         assert p is not None
