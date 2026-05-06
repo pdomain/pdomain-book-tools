@@ -92,11 +92,15 @@ class TestTesseractOcrCv2Image:
         assert call_args[1]["lang"] == "eng"
         assert call_args[1]["config"] == expected_config
 
-        # Verify Document.from_tesseract was called correctly
+        # Verify Document.from_tesseract was called correctly. ``lang`` and
+        # ``tesseract_config`` are now plumbed through so the produced
+        # provenance records the language pack and config (L-18).
         mock_from_tesseract.assert_called_once_with(
             tesseract_output=mock_tesseract_dataframe,
             tesseract_string=mock_tesseract_string,
             source_path="test_path",
+            lang="eng",
+            tesseract_config=expected_config,
         )
 
     @patch("pd_book_tools.ocr.cv2_tesseract.cvtColor")
@@ -174,6 +178,8 @@ class TestTesseractOcrCv2Image:
             tesseract_output=mock_tesseract_dataframe,
             tesseract_string=mock_tesseract_string,
             source_path=None,
+            lang="eng",
+            tesseract_config="--oem 3 -c textord_noise_rej=1 --dpi 300",
         )
 
     @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
@@ -210,6 +216,8 @@ class TestTesseractOcrCv2Image:
             tesseract_output=mock_tesseract_dataframe,
             tesseract_string=mock_tesseract_string,
             source_path=None,
+            lang="eng",
+            tesseract_config="--oem 3 -c textord_noise_rej=1 --dpi 300",
         )
 
     def test_tesseract_ocr_invalid_image_dimensions(self):

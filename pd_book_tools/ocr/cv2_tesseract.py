@@ -23,6 +23,7 @@ def tesseract_ocr_cv2_image(
     image: ndarray,
     source_path: str = "",
     dpi: int = 300,
+    lang: str = "eng",
 ) -> Page:
     """Run Tesseract OCR over a cv2 image array and return a Page.
 
@@ -36,6 +37,11 @@ def tesseract_ocr_cv2_image(
             image DPI (e.g. from PIL ``Image.info["dpi"]`` or scanner metadata)
             should pass it through. Defaults to 300 to preserve historical
             behavior.
+        lang: Tesseract language pack name (e.g. ``"eng"``, ``"deu"``,
+            ``"eng+deu"``). Recorded into the Document's OCR provenance so
+            two runs with different language packs produce distinguishable
+            provenance records (L-18). Defaults to ``"eng"`` to preserve
+            historical behavior.
     """
     if image.ndim == 2:
         # If the image is already grayscale, no need to convert
@@ -79,13 +85,13 @@ def tesseract_ocr_cv2_image(
 
     dataframe = image_to_data(
         image_grayscale,
-        lang="eng",
+        lang=lang,
         config=config_str,
         output_type=pytesseract_Output.DATAFRAME,
     )
     result_string = image_to_string(
         image_grayscale,
-        lang="eng",
+        lang=lang,
         config=config_str,
         output_type=pytesseract_Output.STRING,
     )
@@ -94,6 +100,8 @@ def tesseract_ocr_cv2_image(
         tesseract_output=dataframe,
         tesseract_string=result_string,
         source_path=source_path if source_path else None,
+        lang=lang,
+        tesseract_config=config_str,
     )
     ocr_page: Page = ocr_doc.pages[0]
 
