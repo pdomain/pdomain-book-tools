@@ -185,7 +185,7 @@ The test in `test_document_coverage.py` mocks `render.return_value = ["rendered"
 
 ---
 
-## H-13 — `doctr_support.py` — `Path.exists()` called as unbound class method
+## [FIXED in ed5937b] ~~H-13 — `doctr_support.py` — `Path.exists()` called as unbound class method~~
 
 **File:** `pd_book_tools/ocr/doctr_support.py`, line 181
 **Affects:** loading a fine-tuned DocTR predictor when the path is a `str`
