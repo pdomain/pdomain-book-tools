@@ -34,6 +34,50 @@ class TestCupyColorToGray:
         )
         assert out.shape == (20, 20)
 
+    def test_rejects_2d_grayscale_input(self, cupy_color_to_gray):
+        """M-18 regression: a 2-D grayscale input must be rejected at the
+        public boundary with a clear ValueError naming the actual issue,
+        rather than a confusing `ValueError: not enough values to unpack`
+        from `height, width, _ = img.shape` deep inside the helper."""
+        mod, cp = cupy_color_to_gray
+        img = cp.full((20, 20), 0.5, dtype=cp.float32)
+        with pytest.raises(ValueError, match="2-D grayscale|3-channel|ndim"):
+            mod.cupy_colorToGray(img, radius=5, samples=2, iterations=2, batch_size=10)
+
+    def test_accepts_4channel_rgba_dropping_alpha(self, cupy_color_to_gray):
+        """M-18 regression: a 4-channel RGBA input is accepted (matching
+        cv2's COLOR_BGRA2GRAY semantics, which ignore alpha rather than
+        alpha-blending). Output must equal the result of running the
+        same call on the BGR-only slice — i.e. the alpha channel content
+        must not affect the gray output."""
+        mod, cp = cupy_color_to_gray
+        # Use a deterministic RNG so both calls operate on identical data.
+        cp.random.seed(0)
+        rgb = cp.random.uniform(0, 1, (20, 20, 3)).astype(cp.float32)
+        # Construct a 4-channel image whose alpha channel carries arbitrary
+        # values that should be ignored.
+        alpha = cp.random.uniform(0, 1, (20, 20, 1)).astype(cp.float32)
+        rgba = cp.concatenate([rgb, alpha], axis=2)
+
+        cp.random.seed(42)
+        out_rgba = mod.cupy_colorToGray(
+            rgba, radius=5, samples=2, iterations=2, batch_size=10
+        )
+        cp.random.seed(42)
+        out_rgb = mod.cupy_colorToGray(
+            rgb, radius=5, samples=2, iterations=2, batch_size=10
+        )
+        assert out_rgba.shape == (20, 20)
+        assert cp.allclose(out_rgba, out_rgb)
+
+    def test_rejects_single_channel_3d_input(self, cupy_color_to_gray):
+        """M-18 regression: a (H, W, 1) input is invalid (insufficient
+        channels) and must raise rather than silently produce garbage."""
+        mod, cp = cupy_color_to_gray
+        img = cp.full((20, 20, 1), 0.5, dtype=cp.float32)
+        with pytest.raises(ValueError, match="3 channels|channel"):
+            mod.cupy_colorToGray(img, radius=5, samples=2, iterations=2, batch_size=10)
+
 
 class TestNpUint8FloatColorToGray:
     def test_returns_uint8_grayscale(self, cupy_color_to_gray):
