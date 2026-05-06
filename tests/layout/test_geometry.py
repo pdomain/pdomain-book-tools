@@ -109,6 +109,39 @@ class TestCaptionForFigure:
         chosen = caption_for_figure(figure, [figure, text, caption])
         assert chosen is caption
 
+    def test_caption_above_ignored_by_default(self):
+        """L-06: default behaviour is below-only — caption above is missed.
+
+        Locks the back-compat contract; opt-in via above=True is tested below.
+        """
+        figure = R(100, 200, 500, 600, type_=RegionType.figure)
+        caption_above = R(100, 150, 500, 190, type_=RegionType.caption)
+        assert caption_for_figure(figure, [figure, caption_above]) is None
+
+    def test_caption_above_found_when_above_true(self):
+        """L-06: with above=True, captions just above the figure are found."""
+        figure = R(100, 200, 500, 600, type_=RegionType.figure)
+        caption_above = R(100, 150, 500, 190, type_=RegionType.caption)
+        result = caption_for_figure(figure, [figure, caption_above], above=True)
+        assert result is caption_above
+
+    def test_caption_above_too_far_when_above_true(self):
+        """L-06: max_gap_px applies symmetrically to above-search."""
+        figure = R(100, 300, 500, 600, type_=RegionType.figure)
+        caption_above = R(100, 50, 500, 100, type_=RegionType.caption)
+        # gap = 300 - 100 = 200, default max_gap_px=80
+        assert caption_for_figure(figure, [figure, caption_above], above=True) is None
+
+    def test_caption_below_preferred_over_caption_above(self):
+        """L-06: when both sides have a caption, the closer one wins."""
+        figure = R(100, 200, 500, 600, type_=RegionType.figure)
+        caption_above = R(100, 150, 500, 190, type_=RegionType.caption)  # gap 10
+        caption_below = R(100, 620, 500, 660, type_=RegionType.caption)  # gap 20
+        result = caption_for_figure(
+            figure, [figure, caption_above, caption_below], above=True
+        )
+        assert result is caption_above
+
 
 class TestReadingOrder:
     def test_top_then_left(self):
