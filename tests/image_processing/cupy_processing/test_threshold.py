@@ -35,6 +35,57 @@ class TestOtsuBinaryThresh:
         assert out.ndim == 2
         assert tuple(out.shape) == (10, 10)
 
+    def test_threshold_matches_skimage_reference(self, cupy_threshold):
+        """Regression test for H-14: cupy Otsu must match the standard
+        between-class-variance formulation (matching skimage.filters.threshold_otsu).
+
+        The original implementation used `weight2 = cumsum(hist)[-1] - cumsum(hist)`,
+        which left bin index `k+1` excluded from both classes when paired with
+        `weight2[1:]` / `mean2[1:]` in the variance expression. On non-trivial
+        bimodal images this biased the threshold high, away from skimage's
+        reference. The corrected version uses
+        `weight2 = cp.flip(cp.cumsum(cp.flip(hist)))` so `weight2[1:]` aligns
+        with the standard formulation.
+        """
+        thresh_mod, cp = cupy_threshold
+        skimage_filters = pytest.importorskip("skimage.filters")
+        threshold_otsu = skimage_filters.threshold_otsu
+
+        # Non-trivial bimodal: two overlapping Gaussian-ish clusters so the
+        # histogram has nonzero density in the valley region. Without that the
+        # off-by-one is silently in a zero-count bin.
+        rng = np.random.default_rng(42)
+        cluster_a = rng.normal(60, 15, 1000).clip(0, 255).astype(np.uint8)
+        cluster_b = rng.normal(190, 20, 1000).clip(0, 255).astype(np.uint8)
+        img_np = np.concatenate([cluster_a, cluster_b]).reshape(40, 50)
+        img_float = img_np.astype(np.float32) / 255.0
+
+        # Reference threshold from the same histogram skimage would build for
+        # this image (use hist= form so we compare the algorithm, not binning).
+        hist_np, bin_edges = np.histogram(
+            img_float, bins=256, range=(float(img_float.min()), float(img_float.max()))
+        )
+        bin_centers_np = (bin_edges[:-1] + bin_edges[1:]) / 2
+        expected = threshold_otsu(hist=(hist_np, bin_centers_np))
+
+        # Derive the cupy implementation's threshold by inspecting which side
+        # of the binary output flips. We pick the largest input value that the
+        # function maps to 0 — that is the inferred threshold (since it uses
+        # strict `>`).
+        img_cp = cp.asarray(img_float)
+        out = thresh_mod.otsu_binary_thresh(img_cp)
+        out_np = out.get() if hasattr(out, "get") else np.asarray(out)
+        below = img_float[out_np == 0.0]
+        assert below.size > 0, "Otsu produced an all-foreground mask"
+        inferred = float(below.max())
+
+        # Allow one bin-width of tolerance (256 bins over [min,max]).
+        bin_width = float((img_float.max() - img_float.min()) / 256)
+        assert abs(inferred - float(expected)) <= bin_width, (
+            f"Cupy Otsu threshold {inferred} diverges from skimage reference "
+            f"{expected} by more than one bin ({bin_width}) — H-14 regression"
+        )
+
 
 class TestBinaryThreshGpu:
     def test_pixels_above_level_become_255(self, cupy_threshold):

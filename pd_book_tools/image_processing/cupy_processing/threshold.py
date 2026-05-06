@@ -33,13 +33,21 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     hist, bin_edges = cp.histogram(img_cp_float, bins=256, range=(min_val, max_val))
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # type: ignore # Midpoints of bins
 
-    # Compute cumulative sums and means
+    # Compute cumulative sums and means.
+    #
+    # weight2 must be the suffix sum sum(hist[i:]) so that the standard
+    # between-class-variance formulation (weight1[:-1], weight2[1:]) pairs
+    # class 1 = hist[:k+1] with class 2 = hist[k+1:] without dropping any bin.
+    # An earlier version used `weight2 = weight1[-1] - weight1`, i.e. the
+    # *exclusive* suffix sum sum(hist[i+1:]); paired with `weight2[1:]` that
+    # silently excluded bin k+1 from both classes and biased the threshold
+    # high on non-trivial bimodal images (review issue H-14).
     weight1 = cp.cumsum(hist)
-    weight2 = weight1[-1] - weight1
+    weight2 = cp.flip(cp.cumsum(cp.flip(hist)))
     mean1 = cp.cumsum(hist * bin_centers) / (weight1 + 1e-7)
     mean2 = (cp.cumsum(hist[::-1] * bin_centers[::-1]) / (weight2[::-1] + 1e-7))[::-1]
 
-    # Compute between-class variance
+    # Compute between-class variance (matches skimage.filters.threshold_otsu).
     between_class_variance = weight1[:-1] * weight2[1:] * (mean1[:-1] - mean2[1:]) ** 2
 
     # Get the Otsu threshold (index with max variance)
