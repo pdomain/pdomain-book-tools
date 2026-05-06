@@ -62,8 +62,14 @@ class TestGetFinetunedTorchDoctrPredictor:
                 recognition_pt_file=tmp_path / "reco.pt",
             )
 
-    def test_missing_files_returns_none(self, monkeypatch, tmp_path):
-        """When the model files don't exist on disk, the helper should return None."""
+    def test_missing_files_raises_file_not_found(self, monkeypatch, tmp_path):
+        """Regression for M-22: missing checkpoint files must raise FileNotFoundError.
+
+        Pre-fix, the function silently returned ``None`` and callers crashed
+        later with confusing ``TypeError`` / ``AttributeError`` at first use.
+        Post-fix, the helper raises ``FileNotFoundError`` naming the offending
+        path so the failure mode is loud and immediate.
+        """
         # Provide a stub torch module so the import succeeds
         fake_torch = MagicMock()
         fake_torch.load = MagicMock()
@@ -89,21 +95,63 @@ class TestGetFinetunedTorchDoctrPredictor:
             get_finetuned_torch_doctr_predictor,
         )
 
-        result = get_finetuned_torch_doctr_predictor(
-            dectection_pt_file=tmp_path / "missing_det.pt",
-            recognition_pt_file=tmp_path / "missing_reco.pt",
+        missing_det = tmp_path / "missing_det.pt"
+        missing_reco = tmp_path / "missing_reco.pt"
+        with pytest.raises(FileNotFoundError) as exc_info:
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=missing_det,
+                recognition_pt_file=missing_reco,
+            )
+        # The error must name at least one of the offending paths so the
+        # caller can act on it without re-deriving which file was missing.
+        msg = str(exc_info.value)
+        assert "missing_det.pt" in msg or "missing_reco.pt" in msg
+
+    def test_missing_one_file_raises_file_not_found(self, monkeypatch, tmp_path):
+        """When only one of the two checkpoints is missing, still raise."""
+        # Detection file exists, recognition file does not.
+        det_path = tmp_path / "det.pt"
+        det_path.write_bytes(b"fake")
+        missing_reco = tmp_path / "missing_reco.pt"
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock()
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock()
+        fake_models.db_resnet50 = MagicMock()
+        fake_models.detection_predictor = MagicMock()
+        fake_models.ocr_predictor = MagicMock()
+        fake_models.recognition_predictor = MagicMock()
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
         )
-        # Files do not exist, so the helper falls through and returns None
-        assert result is None
 
-    def test_missing_files_with_str_paths_returns_none(self, monkeypatch, tmp_path):
-        """Regression for H-13: callers may pass `str` paths.
+        with pytest.raises(FileNotFoundError) as exc_info:
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=missing_reco,
+            )
+        assert "missing_reco.pt" in str(exc_info.value)
 
-        ``Path.exists`` is an instance method, not a classmethod — invoking it as
-        ``Path.exists(some_str)`` raises ``AttributeError: 'str' object has no
-        attribute 'stat'`` while binding the unbound descriptor. The fix uses
-        ``Path(x).exists()``. Verify the existence-check branch handles ``str``
-        without raising and returns ``None`` on the missing-file path.
+    def test_missing_files_with_str_paths_raises(self, monkeypatch, tmp_path):
+        """Regression for H-13 + M-22: ``str`` paths must hit the same branch.
+
+        H-13 fixed ``Path.exists(x)`` (which raised ``AttributeError`` on
+        ``str`` arguments) to ``Path(x).exists()``. M-22 then converts the
+        missing-files fall-through from a silent ``return None`` into an
+        explicit ``FileNotFoundError``. Both flavors of input must surface the
+        same loud failure.
         """
         fake_torch = MagicMock()
         fake_torch.load = MagicMock()
@@ -128,13 +176,12 @@ class TestGetFinetunedTorchDoctrPredictor:
             get_finetuned_torch_doctr_predictor,
         )
 
-        # str paths, not Path objects — the broken `Path.exists(x)` call would
-        # raise AttributeError here before the function could return None.
-        result = get_finetuned_torch_doctr_predictor(
-            dectection_pt_file=str(tmp_path / "missing_det.pt"),
-            recognition_pt_file=str(tmp_path / "missing_reco.pt"),
-        )
-        assert result is None
+        # str paths, not Path objects.
+        with pytest.raises(FileNotFoundError):
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=str(tmp_path / "missing_det.pt"),
+                recognition_pt_file=str(tmp_path / "missing_reco.pt"),
+            )
 
     def test_happy_path_with_existing_files(self, monkeypatch, tmp_path):
         """With pretrained files present, the helper should construct a predictor."""
