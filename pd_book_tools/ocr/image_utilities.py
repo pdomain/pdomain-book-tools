@@ -35,12 +35,18 @@ def crop_image_to_bbox(
         logger.debug("No bounding_box found for %s", label)
         return None
 
+    # Only swallow exceptions that genuinely mean "this bbox/image pair
+    # cannot produce a crop" — bad coords (ValueError), bad image type or
+    # missing .shape (AttributeError, TypeError), out-of-range slicing
+    # before clamping (IndexError). Everything else is a real bug and
+    # must propagate so the caller sees it instead of getting a silent
+    # None that masks the failure mode (L-25).
     try:
         cropped = bbox.crop_image(page_image)
         if cropped is None:
             logger.debug("Empty crop for %s", label)
         return cropped
-    except Exception as e:
+    except (ValueError, AttributeError, TypeError, IndexError) as e:
         logger.debug("Error cropping image for %s: %s", label, e)
         return None
 
