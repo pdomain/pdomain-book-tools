@@ -249,13 +249,23 @@ now sweeps `bugs-medium.md` top-to-bottom.
   tests for multi-flag splitting, quoted multi-word values, and
   no-empty-string-in-argv on the default path. — fix `3824628`,
   doc mark `<pending>`
+- M-07 `ocr/document.py` `Document.to_dict` did
+  `str(self.source_path)`, which produces the literal string `"None"`
+  when `source_path` is `None`. `Document.from_dict` then saw a truthy
+  non-empty string and produced `Path("None")` (a path literally named
+  `None` in the cwd), so a round-trip turned `source_path=None` into
+  `Path("None")` and silently corrupted downstream path checks. Fixed
+  `to_dict` to emit JSON `null` for `None`; hardened `from_dict` to
+  treat the literal string `"None"` as `None` for backward compat with
+  files written before this fix. — fix `b67786c`, doc mark `<pending>`
 
-**Next pick:** M-07 — `pd_book_tools/ocr/document.py` `Document.to_dict`
-calls `str(self.source_path)` which produces `"None"` for `None`. In
-`from_dict`, `data.get("source_path")` is truthy for that non-empty
-string, so it round-trips into `Path("None")` (a path literally named
-`None` in the cwd). Fix: serialize `None` as JSON `null` (omit the key
-or store `None`) rather than stringifying.
+**Next pick:** M-08 — `pd_book_tools/image_processing/cupy_processing/morph.py`
+`dilate` and `erode` pad with `constant_values=0`; during the erosion
+step of `morph_fill`, foreground pixels touching the image border are
+erroneously eroded to 0. `cv2.morphologyEx` defaults to
+`BORDER_REFLECT_101`, preserving border content. For book scans where
+text runs close to the gutter, this silently deletes valid content.
+Fix: use `mode='reflect'` padding in both `dilate` and `erode`.
 
 **Workflow per iteration** (one bug per commit, no push):
 
