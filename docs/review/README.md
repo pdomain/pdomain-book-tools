@@ -40,7 +40,7 @@ remembering prior turns. Update this when an iteration completes (after the
 - H-03 `ipynb_widgets.py` malformed HTML (operator-precedence) — fix `1f26286`, doc mark `e0da955`
 - H-04 `page.py` `Page.recompute_bounding_box` was reported missing but was
   actually implemented in commit `2248366` (April 2025); review was stale —
-  regression-locked via test in fix `bd4ece9`, doc mark `<pending>`
+  regression-locked via test in fix `bd4ece9`, doc mark `24b97f0`
 - H-05 `bounding_box.py` `_vertical_crop` discarded `original_is_normalized`
   and always normalized output — fix `2327d2f`, doc mark `<pending>`
 - H-06 `word.py` `crop_bottom` / `crop_top` overwrote `self.bounding_box`
