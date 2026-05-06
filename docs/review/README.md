@@ -903,13 +903,71 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   the logger is silenced; (2) sanity check the same patched counter
   increments when the logger is enabled (proves the gate is not stuck
   closed). — fix `92d86e9`, doc mark `b65ec76`
+- L-31 `layout/types.py` `LayoutRegion` silently accepted inverted
+  coordinates (`L > R` / `T > B`), making ``width`` / ``height`` go
+  negative, ``area`` return 0 (masking bad input), and
+  ``contains_point`` return wrong results for every query. Adapters
+  always emit `L<=R` / `T<=B` by construction, so a violation indicates
+  a coordinate-system mix-up upstream that should surface loudly. Added
+  ``__post_init__`` validation that raises ``ValueError`` on inverted
+  rectangles and clamps negative coordinates to 0; degenerate
+  zero-width / zero-height boxes are still accepted as well-formed.
+  Updated the existing degenerate-area test that conflated the inverted
+  case with the equal case. — fix `991759c`, doc mark `7ec4596`
+- L-32 `layout/types.py` `LayoutRegion` was unhashable because
+  ``@dataclass(eq=True)`` sets ``__hash__ = None``; ``caption_for_figure``
+  already worked around this with identity (`r is figure`) checks.
+  Switched to ``@dataclass(unsafe_hash=True)``. The fields are not
+  mutated after ``__post_init__`` so the unsafe-hash caveat does not
+  apply in practice. — fix `0426977`, doc mark `3ffcd11`
+- L-33 `layout/registry.py` `get_detector` did a lock-free
+  check-then-set on `_DETECTOR_CACHE`. Concurrent first-time callers
+  for the same key could both miss the cache and both run `_build()`,
+  which for `PPDocLayoutPlusLDetector` means a duplicate ~132 MB
+  download and duplicate VRAM allocation — enough to OOM smaller
+  GPUs. Added a module-level ``threading.Lock``; `get_detector` now
+  uses double-checked locking (lock-free read on the warm path,
+  re-check under the lock before building). `clear_detector_cache`
+  also takes the lock so it can't tear a concurrent build. Regression
+  test pins build-call count to 1 across 8 concurrent threads. —
+  fix `8ca6106`, doc mark `c4b8b0a`
+- L-34 `layout/registry.py` `_build` always constructed
+  `ContourDetector()` with defaults — every tunable
+  (`min_area_frac`, `max_area_frac`, `min_aspect`, `max_aspect`,
+  `close_kernel_px`) passed via `get_detector("contour", ...)` was
+  silently dropped. Worse, `confidence` and `checkpoint_path`
+  (meaningless for the rule-based detector) participated in the
+  cache key, so varying them by mistake created behaviorally
+  identical cache entries. Forwarded the supported tuning kwargs to
+  `ContourDetector` and included them in the cache key (sorted, for
+  determinism). For the contour key, collapsed
+  `confidence` / `checkpoint_path` to fixed values in the cache key
+  so they no longer churn the cache. Reject unknown kwargs for
+  non-contour detectors instead of swallowing them silently. Updated
+  the pre-existing `test_distinct_args_distinct_instances` (which
+  relied on the buggy confidence-keying behavior) to use `device`
+  instead. — fix `48d7214`, doc mark `b2315de`
+- L-35 `hf/download.py` `hf_download` built the sidecar filename as
+  `filename.rsplit(".", 1)[0] + ext`. ``rsplit`` correctly splits on
+  the rightmost dot for typical extensioned filenames
+  (e.g. `"v1.5/weights.pt"` → `"v1.5/weights.arch"`), so the review's
+  cited example was actually fine. The real failure mode is filenames
+  with no extension whose parent directory contains a dot — e.g.
+  `"my.dir/weights"` produced sidecar `"my.arch"`, losing both the
+  directory and the base name. Switched to
+  `PurePosixPath(filename).with_suffix(ext)`: HF Hub paths are
+  POSIX-style regardless of host OS, and ``with_suffix`` only
+  touches the file's extension, leaving the parent directory
+  intact. Regression test exercises the dot-in-directory case. —
+  fix `5973dfe`, doc mark `0c410a9`
 
-**Next pick:** L-31 — `layout/types.py` `LayoutRegion` accepts `L > R`
-or `T > B` silently. `width` returns negative; `contains_point` returns
-wrong results; `area` returns 0 (already guarded, suggesting the author
-anticipated bad coordinates). Fix: add ``__post_init__`` validation
-that raises ``ValueError`` for inverted coordinates and clamps negatives
-to 0. (`bugs-low.md` has 40 entries total — 30/40 cleared, 10 remain.)
+**Next pick:** L-36 — `image_processing/cupy_processing/deskew.py`
+contains an unreachable dead-code branch: after the guard
+`if bottom_left_column == top_left_column: return` on line 61,
+the later `if dist_b == dist_c: return ...` on lines 68–70 is
+mathematically impossible (and also a fragile floating-point `==`
+comparison). Fix: remove lines 68–70. (`bugs-low.md` has 40 entries
+total — 35/40 cleared, 5 remain.)
 
 **Workflow per iteration** (one bug per commit, no push):
 
