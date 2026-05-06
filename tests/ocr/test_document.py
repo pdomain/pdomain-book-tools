@@ -290,6 +290,70 @@ def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
     assert len(page.words) == 1
 
 
+def test_document_from_doctr_output_tolerates_missing_word_geometry():
+    """Regression test for M-16.
+
+    The DocTR adapter previously accessed ``word_data["geometry"]`` with
+    a hard key, raising ``KeyError`` on partial data, while block and
+    line geometry already used guarded ``.get("geometry")``. A word with
+    no geometry should not be silently dropped (project invariant: never
+    drop OCR-derived content) — it must be emitted as a ``Word`` with
+    ``bounding_box=None``, consistent with the existing None-bbox
+    handling at the block / line / artefact levels.
+    """
+    doctr_output = {
+        "pages": [
+            {
+                "dimensions": [1000, 800],
+                "blocks": [
+                    {
+                        "geometry": [[0.1, 0.1], [0.5, 0.5]],
+                        "lines": [
+                            {
+                                "geometry": [[0.1, 0.1], [0.5, 0.2]],
+                                "words": [
+                                    {
+                                        "value": "Hello",
+                                        "geometry": [[0.1, 0.1], [0.2, 0.2]],
+                                        "confidence": 0.95,
+                                    },
+                                    {
+                                        # No "geometry" key — partial DocTR
+                                        # output. Pre-fix: KeyError on the
+                                        # whole document construction.
+                                        "value": "world",
+                                        "confidence": 0.40,
+                                    },
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+
+    # Pre-fix this raised KeyError at word_data["geometry"].
+    doc = Document.from_doctr_output(doctr_output)
+    page = doc.pages[0]
+
+    # Both words must survive — no silent drop. Order is not asserted
+    # because None-bbox sorting is implementation-defined; the
+    # invariant tested here is the no-drop guarantee.
+    words = list(page.words)
+    by_text = {w.text: w for w in words}
+    assert set(by_text) == {"Hello", "world"}
+
+    # The geometry-bearing word keeps its bbox; the partial word has
+    # bounding_box=None (consistent with how block/line/artefact handle
+    # missing geometry).
+    assert by_text["Hello"].bounding_box is not None
+    assert by_text["world"].bounding_box is None
+
+    # Confidence still flows through for the partial word.
+    assert by_text["world"].ocr_confidence == 0.40
+
+
 def test_document_from_doctr_output_normalizes_model_provenance():
     doctr_output = {
         "metadata": {

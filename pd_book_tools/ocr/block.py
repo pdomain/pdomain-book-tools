@@ -428,11 +428,19 @@ class Block:
         if not isinstance(value, Collection):
             raise TypeError("items must be a collection (e.g., list, tuple, set)")
         for item in value:
-            if not hasattr(item, "bounding_box") or not isinstance(
-                item.bounding_box, BoundingBox
+            # M-16 / H-19: allow items whose ``bounding_box`` is ``None``.
+            # ``recompute_bounding_box`` already filters None bboxes
+            # (block.py line 329), and ``Page.__init__`` was hardened for
+            # the same reason in H-19. Partial OCR output (e.g. a DocTR
+            # word with no ``geometry`` key, or an empty child Block)
+            # must not be rejected here — that would force the adapter
+            # to silently drop content, violating the project invariant.
+            if not hasattr(item, "bounding_box") or (
+                item.bounding_box is not None
+                and not isinstance(item.bounding_box, BoundingBox)
             ):
                 raise TypeError(
-                    "Each item in items must have a bounding_box attribute of type BoundingBox"
+                    "Each item in items must have a bounding_box attribute of type BoundingBox or None"
                 )
             if not isinstance(item, (Word, Block)):
                 raise TypeError("Each item in items must be of type Word or Block")
