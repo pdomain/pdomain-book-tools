@@ -9,6 +9,9 @@ __pycache__/
 # C extensions
 *.so
 
+# hatch-vcs generates this at build time; never tracked.
+pd_book_tools/_version.py
+
 # Distribution / packaging
 .Python
 build/
