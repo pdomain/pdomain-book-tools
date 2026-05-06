@@ -1056,6 +1056,19 @@ coordinated multi-repo PRs than unilateral library changes.
   the backend-neutral `image_processing/types.py`). Marked stale-but-fixed
   rather than re-doing the work. — fix `59495ff` (M-27),
   doc mark `e482844`
+- R-07 `Point.__getattr__` Shapely passthrough removed. Cross-repo grep
+  confirmed zero call sites used Shapely-only attributes via a `Point`
+  instance — every `.area`/`.bounds`/`.union`/etc. hit was on a raw
+  ShapelyPoint or shapely geometry, never a wrapped `Point`. The three
+  former delegation tests (which asserted the leak) were replaced with
+  tests locking the absence of the leak and confirming `as_shapely()`
+  preserves Shapely access. — fix `5862af4`, doc mark `c7f3457`
+- R-09 `colorToGray.py` -> `color_to_gray.py` (PEP8 snake_case).
+  Functions renamed: `cupy_colorToGray` -> `cupy_color_to_gray`,
+  `np_uint8_float_colorToGray` -> `np_uint8_color_to_gray` (also dropped
+  the redundant `_float_` infix — public contract is uint8 in / uint8
+  out). Cross-repo grep confirmed all call sites are inside pd-book-tools,
+  so no compatibility shim was needed. — fix `f1448eb`, doc mark `18e51d7`
 
 **Deferred so far:**
 
@@ -1080,13 +1093,24 @@ coordinated multi-repo PRs than unilateral library changes.
   Overlaps with R-01 (both funnel into the same image_utilities
   landing module) and benefit is speculative since cv2 is a hard
   runtime dependency anyway. Track with R-01. Doc mark `d680137`.
+- R-08 empty `__init__.py` files / missing `utility/__init__.py`.
+  Real point that pd-book-tools has no stable public API surface, but
+  the fix is a public-API design decision (what to re-export from
+  each package), not a behavior-preserving refactor. All imports work
+  today despite `utility/` having no `__init__.py` (implicit namespace
+  package), so this isn't blocking anything. Better as a coordinated
+  API-stabilization pass tied to a version bump, with explicit
+  `__all__` lists and import-time ordering tests to avoid circular
+  imports. Doc mark `ac74152`.
 
-**Next pick:** `refactors.md` R-07 — `Point.__getattr__` delegates to
-Shapely, leaking all Shapely internals as public API. Single-file
-geometry refactor; cross-repo blast radius likely small (callers
-typically only use the documented `x` / `y` / `is_normalized`
-properties), but pre-refactor needs a grep to confirm no external
-caller relies on a leaked Shapely attribute.
+**Next pick:** `refactors.md` R-10 — `normalize_word_component` and
+`normalize_character_component` are identical (both delegate to
+`_normalize_component` with the same `ALLOWED_COMPONENTS` frozenset,
+differing only in error-message string). Single-file refactor in
+`ocr/label_normalization.py`; merge into one function with a
+`component_type: str` parameter, or keep both as thin wrappers around
+a shared core. Behavior-preserving as long as the user-visible error
+strings are preserved.
 
 Same per-iteration workflow (verify-first, regression-lock-on-stale,
 one commit per item) applies, but refactors are structural / API /
