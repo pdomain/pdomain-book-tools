@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -112,6 +112,8 @@ ci: ## Run complete CI pipeline (install [idempotent], pre-commit, test, build, 
 	@$(MAKE) --no-print-directory layout-fork-info
 	@echo "✅ CI pipeline complete!"
 
+ci-slow: ci ## Full pre-flight for releases (alias of ci today; reserved for slower checks if added later)
+
 clean: ## Clean up cache and temporary files (keeps venv and UV cache)
 	@echo "🧹 Cleaning Python cache files..."
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -141,17 +143,14 @@ clean-debug: ## Remove all timestamped debug runs from layout_regression/debug/
 	  echo "ℹ️  $$DEBUG does not exist; nothing to clean."; \
 	fi
 
-release-patch: ## Bump patch version and create a git tag (e.g. 0.3.0 → 0.3.1)
-	uv version --bump patch
-	@$(MAKE) --no-print-directory _do-release
+release-patch: ## Release: bump patch, run ci-slow, tag, push (fires GitHub Release workflow; e.g. v0.10.0 → v0.10.1)
+	@$(MAKE) --no-print-directory _do-release BUMP=patch
 
-release-minor: ## Bump minor version and create a git tag (e.g. 0.3.0 → 0.4.0)
-	uv version --bump minor
-	@$(MAKE) --no-print-directory _do-release
+release-minor: ## Release: bump minor, run ci-slow, tag, push (fires GitHub Release workflow; e.g. v0.10.0 → v0.11.0)
+	@$(MAKE) --no-print-directory _do-release BUMP=minor
 
-release-major: ## Bump major version and create a git tag (e.g. 0.3.0 → 1.0.0)
-	uv version --bump major
-	@$(MAKE) --no-print-directory _do-release
+release-major: ## Release: bump major, run ci-slow, tag, push (fires GitHub Release workflow; e.g. v0.10.0 → v1.0.0)
+	@$(MAKE) --no-print-directory _do-release BUMP=major
 
 layout-fork-info: ## Show pinned layout SHA + upstream / fork latest SHAs (warns on real file drift; never fails)
 	@uv run python scripts/check_layout_fork.py
@@ -190,9 +189,12 @@ layout-fork-pin: ## Pin a SHA into pp_doclayout.py (usage: make layout-fork-pin 
 	rm -f $(HF_LAYOUT_ADAPTER).bak; \
 	echo "📌 Pinned $(HF_LAYOUT_ADAPTER): $$OLD → $(SHA)"
 
+# scripts/do-release.sh handles repo-state guards, runs the ci-slow
+# pre-flight, computes the next three-component tag from the latest v*
+# tag, creates the annotated tag, and pushes the release branch + tag
+# (which fires .github/workflows/release.yml).
+# Pass FORCE=1 to skip the repo-state guards (pre-flight still runs).
+# Pass SKIP_PUSH=1 to create the tag locally without pushing (dry-run).
+# Pass RELEASE_BRANCH=main if/when the default branch is renamed.
 _do-release:
-	@VERSION=$$(uv version --short); \
-	git add pyproject.toml uv.lock; \
-	git commit -m "chore: release v$$VERSION"; \
-	git tag "v$$VERSION"; \
-	echo "🏷️  Tagged v$$VERSION — push with: git push && git push --tags"
+	@BUMP=$(or $(BUMP),minor) ./scripts/do-release.sh
