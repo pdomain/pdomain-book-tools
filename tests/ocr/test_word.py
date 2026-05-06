@@ -125,6 +125,28 @@ def test_word_from_dict_text_style_label_scopes_defaults_whole(word_from_dict_ca
     assert w.text_style_label_scopes == {"bold": "whole", "italics": "whole"}
 
 
+def test_word_from_dict_legacy_missing_ocr_confidence():
+    """H-09: legacy JSON without ``ocr_confidence`` must not raise ``KeyError``.
+
+    Older serialized documents (pre-confidence) omit the ``ocr_confidence`` key.
+    ``Word.from_dict`` must tolerate the missing key and default to ``None``,
+    matching ``Character.from_dict`` behavior.
+    """
+    legacy_dict = {
+        "type": "Word",
+        "text": "legacy",
+        "bounding_box": {
+            "top_left": {"x": 0, "y": 0, "is_normalized": False},
+            "bottom_right": {"x": 10, "y": 10, "is_normalized": False},
+            "is_normalized": False,
+        },
+        # NOTE: no "ocr_confidence" key
+    }
+    w = Word.from_dict(legacy_dict)
+    assert w.text == "legacy"
+    assert w.ocr_confidence is None
+
+
 def test_word_text_style_compact_and_separators(pixel_bbox):
     w = Word(
         text="style-aliases",
