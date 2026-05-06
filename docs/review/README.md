@@ -297,14 +297,36 @@ now sweeps `bugs-medium.md` top-to-bottom.
   2D-when-empty shape) and added a regression test asserting both
   branches return matching ndim/dtype. — fix `1012acd`, doc mark
   `<pending>`
+- M-11 `image_processing/cv2_processing/contours.py` was reported to
+  use `cv2.COLOR_RGB2BGR` on a 2D single-channel input where
+  `COLOR_GRAY2BGR` is the semantically correct constant. Already
+  incidentally fixed by the M-10 commit `1012acd` (the rewrite uses
+  `cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)`); regression-locked in
+  test commit `a115fbb` via a monkeypatched no-contours path that
+  asserts every output pixel has B == G == R == original gray value
+  (a contract only `COLOR_GRAY2BGR` can satisfy). — shared fix sha
+  `1012acd`, regression test `a115fbb`, doc mark `98d29d9`
+- M-12 `image_processing/cv2_processing/canvas.py`
+  `map_content_onto_scaled_canvas` always allocated the canvas as
+  `np.full((H, W), 255, dtype=np.uint8)` regardless of input ndim, so
+  a 3-channel BGR input crashed at the placement step with
+  `ValueError: could not broadcast input array from shape (H,W,3)
+  into shape (H,W)`. No docstring or assertion advertised the
+  grayscale-only contract. Fixed by selecting canvas shape from
+  `image.ndim`: 2D input -> 2D canvas; 3D input ->
+  `(H, W, channels)` canvas. The `np.full` fill value of 255
+  broadcasts to all channels so the white-background contract holds.
+  Cupy port `cupy_processing/canvas.py` has the same defect but is
+  explicitly documented as 2D-only and is out of scope for this fix.
+  — fix `37213f1`, doc mark `<pending>`
 
-**Next pick:** M-11 — `image_processing/cv2_processing/contours.py`
-`find_and_draw_contours` used `cv2.COLOR_RGB2BGR` on a single-channel
-input where `cv2.COLOR_GRAY2BGR` is the semantically correct constant.
-Already fixed as part of the M-10 commit `1012acd` (the new code path
-is `cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)`); next iteration should
-verify in source, mark stale-but-fixed-by-1012acd, and continue to
-M-12.
+**Next pick:** M-13 — `ocr/reorganize_page_utils.py`
+`reconcile_dropped_words` hardcodes a 3-level
+`outer.items -> paragraph.items -> line.words` traversal (lines 877–883),
+so words nested deeper than `BLOCK -> PARAGRAPH -> LINE` (multi-column
+or floated-flow paths) are invisible to `post_words` and trigger
+false-positive "dropped word" errors. Fix is to use `page.words`
+(recursive walk) instead of the hardcoded comprehension.
 
 **Workflow per iteration** (one bug per commit, no push):
 
