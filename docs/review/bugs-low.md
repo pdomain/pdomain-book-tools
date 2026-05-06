@@ -409,7 +409,7 @@ function's caller. For any framework-driven call the value is typically unhelpfu
 
 ---
 
-## L-31 — `LayoutRegion` has no coordinate validation
+## ~~L-31 — `LayoutRegion` has no coordinate validation~~ [FIXED in 991759c]
 
 **File:** `pd_book_tools/layout/types.py`, lines 41–57
 
