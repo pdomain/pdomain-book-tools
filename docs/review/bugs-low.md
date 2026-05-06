@@ -422,7 +422,7 @@ clamp negative coordinates to 0.
 
 ---
 
-## L-32 — `LayoutRegion` is unhashable (cannot be used in sets or dict keys)
+## ~~L-32 — `LayoutRegion` is unhashable (cannot be used in sets or dict keys)~~ [FIXED in 0426977]
 
 **File:** `pd_book_tools/layout/types.py`, lines 41–91
 
