@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import logging
 import math
 
-import cupy as cp
 import numpy as np
 
+from ._cupy_compat import cp, require_cupy
 from .edge_finding import find_edges_gpu
 from .rotate import rotate_image_gpu
 
@@ -27,6 +29,7 @@ def auto_deskew_gpu(
     Always returns a 3-tuple; top/bottom slices are empty arrays when the
     early-exit path is taken (pct=0 or degenerate image).
     """
+    require_cupy()
     img_h, img_w = img_cp.shape[:2]
 
     minX, maxX, minY, maxY = find_edges_gpu(
@@ -65,10 +68,10 @@ def auto_deskew_gpu(
     dist_b = float(maxY - minY)
     dist_c = math.sqrt((bottom_left_column - top_left_column) ** 2 + (maxY - minY) ** 2)
 
-    if dist_b == dist_c:
-        logger.debug("auto_deskew_gpu: no skew detected (dist_b == dist_c)")
-        return img_cp, top_slice, bottom_slice
-
+    # The early-return guard above (bottom_left_column == top_left_column)
+    # ensures (bottom_left_column - top_left_column)**2 > 0, so dist_c > dist_b
+    # is guaranteed at this point. No dist_b == dist_c floating-point check
+    # is needed (and a == comparison on floats would be unreliable anyway).
     angle = math.acos(dist_b / dist_c) * (180.0 / math.pi)
 
     if bottom_left_column > top_left_column:
@@ -86,6 +89,7 @@ def np_uint8_auto_deskew(
     pct: float = 0.30,
 ) -> np.ndarray:
     """Convenience wrapper. Moves to GPU, deskews, returns CPU array."""
+    require_cupy()
     img_cp = cp.asarray(img)
     result_cp, _, _ = auto_deskew_gpu(img_cp, pct)
     return cp.asnumpy(result_cp)
