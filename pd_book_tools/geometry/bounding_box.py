@@ -609,8 +609,17 @@ class BoundingBox:
         )
 
     def _vertical_crop(self, image: ndarray, keep: str) -> "BoundingBox":
-        """Shared implementation for crop_top (keep='bottom') and crop_bottom (keep='top')."""
-        roi, x1, y1, x2, y2, img_w, img_h, _ = self._extract_roi(image)
+        """Shared implementation for crop_top (keep='top') and crop_bottom (keep='bottom').
+
+        ``keep`` indicates which half of the box to retain: ``'top'`` keeps the
+        upper half (raises ``y1`` toward the content), ``'bottom'`` keeps the
+        lower half (lowers ``y2``). The returned box stays in the same
+        coordinate space as ``self`` (pixel-space input -> pixel-space output;
+        normalized input -> normalized output).
+        """
+        roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized = self._extract_roi(
+            image
+        )
         thresh, _ = self._threshold_inverted(roi)
         non_zero = findNonZero(thresh)
         if non_zero is None:
@@ -646,8 +655,9 @@ class BoundingBox:
                     continue
                 y2 = y1 + (y - 0)  # adjust y2 based on offset
                 break
-        bbox = BoundingBox.from_ltrb(x1, y1, x2, y2).normalize(img_w, img_h)
-        return bbox
+        return self._finalize_pixel_bbox(
+            x1, y1, x2, y2, img_w, img_h, original_is_normalized
+        )
 
     def crop_bottom(self, image: ndarray) -> "BoundingBox":
         return self._vertical_crop(image, keep="bottom")
