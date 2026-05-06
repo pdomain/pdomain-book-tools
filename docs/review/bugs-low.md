@@ -233,7 +233,7 @@ key entirely.
 
 ---
 
-## L-18 — Tesseract provenance does not record the OCR language/model name
+## [FIXED in c643ebd] ~~L-18 — Tesseract provenance does not record the OCR language/model name~~
 
 **File:** `pd_book_tools/ocr/document.py`, lines 469–481
 
