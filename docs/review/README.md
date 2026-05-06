@@ -238,13 +238,24 @@ now sweeps `bugs-medium.md` top-to-bottom.
   the only in-tree caller is `create_file_thumbnail` and no external
   pd-* repos call `read_image`, so no caller updates were needed. —
   fix `f0cd07b`, doc mark `<pending>`
+- M-06 `image_processing/external_tools.py` `run_gegl_c2g` appended
+  `c2gOptions` as a single subprocess argv token, so any multi-flag
+  string (e.g. `"--samples 4 --iterations 10"`) reached GEGL as one
+  giant arg and was rejected; the default empty string also passed
+  through as an empty argv entry which GEGL likewise rejects. Switched
+  to `shlex.split(c2gOptions)` with a falsy guard so the empty-default
+  case appends nothing (last token is `"c2g"`). Existing
+  `radius=5` test still passes (single shlex token); added regression
+  tests for multi-flag splitting, quoted multi-word values, and
+  no-empty-string-in-argv on the default path. — fix `3824628`,
+  doc mark `<pending>`
 
-**Next pick:** M-06 — `image_processing/external_tools.py` `run_gegl_c2g`
-passes `c2gOptions` as a single string token to the subprocess
-(`args=["gegl", src, "-o", tgt, "--", "c2g", c2gOptions]`). For any
-multi-token options string (e.g. `"--samples 4 --iterations 10"`)
-GEGL receives one giant arg and rejects it. Fix: split with
-`shlex.split(c2gOptions)` (or change the parameter to `list[str]`).
+**Next pick:** M-07 — `pd_book_tools/ocr/document.py` `Document.to_dict`
+calls `str(self.source_path)` which produces `"None"` for `None`. In
+`from_dict`, `data.get("source_path")` is truthy for that non-empty
+string, so it round-trips into `Path("None")` (a path literally named
+`None` in the cwd). Fix: serialize `None` as JSON `null` (omit the key
+or store `None`) rather than stringifying.
 
 **Workflow per iteration** (one bug per commit, no push):
 
