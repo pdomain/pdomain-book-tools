@@ -50,18 +50,25 @@ def remove_small_contours(
         compute a search area around it. If the sum of the surrounding pixels (after
         zeroing the contour area) is below a threshold, the contour is removed.
 
+    The input ``img`` is not mutated — operations are performed on an internal
+    copy, mirroring the cupy backend ``remove_small_contours_gpu`` (L-13).
+
     Returns:
-      - The modified image.
+      - The modified image (a fresh array; the input is left untouched).
       - A BGR visualization image with green rectangles indicating removal and red
         rectangles where contours were retained.
     """
-    # Create a visualization image (in BGR) from a copy of the grayscale image.
-    contour_search_img = cv2.cvtColor(img.copy(), cv2.COLOR_GRAY2BGR)
+    # Operate on a copy so the caller's array is never mutated. Mirrors the
+    # cupy backend's ``result = img_cp.copy()`` pattern (L-13). The
+    # visualization is a separately-allocated BGR image and was already
+    # non-mutating; only the grayscale `img` needed the copy.
+    work = img.copy()
+    contour_search_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
     if not contours:
-        return img, contour_search_img
+        return work, contour_search_img
 
-    img_h, img_w = img.shape[:2]
+    img_h, img_w = work.shape[:2]
     pixels_w = max(int(img_w * min_w_pct), min_w_pixels)
     pixels_h = max(int(img_h * min_h_pct), min_h_pixels)
     threshold_sum = 255 * nearby_pixel_count  # constant threshold for nearby pixels
@@ -69,7 +76,7 @@ def remove_small_contours(
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
         # Grab the region corresponding to the contour.
-        contour_region = img[y : y + h, x : x + w]
+        contour_region = work[y : y + h, x : x + w]
         contour_sum = np.sum(contour_region)
         # Skip if the contour area is already zeroed out.
         if contour_sum == 0:
@@ -77,7 +84,7 @@ def remove_small_contours(
 
         # Directly remove small contours.
         if w < small_contour_w and h < small_contour_h:
-            img[y : y + h, x : x + w] = 0
+            work[y : y + h, x : x + w] = 0
             continue
 
         # Process contours below size thresholds.
@@ -88,13 +95,13 @@ def remove_small_contours(
             minY = max(0, int(y - pixels_h * 0.5))
             maxY = min(img_h, int(y + h + pixels_h * 0.5))
 
-            search_region = img[minY:maxY, minX:maxX]
+            search_region = work[minY:maxY, minX:maxX]
             # Calculate what the sum would be if the contour were removed.
             search_sum = np.sum(search_region) - contour_sum
 
             if search_sum < threshold_sum:
                 # Remove the contour (set the region to zeros) if not enough nearby pixels.
-                img[y : y + h, x : x + w] = 0
+                work[y : y + h, x : x + w] = 0
                 cv2.rectangle(
                     contour_search_img, (minX, minY), (maxX, maxY), (0, 255, 0), 1
                 )
@@ -103,4 +110,4 @@ def remove_small_contours(
                     contour_search_img, (minX, minY), (maxX, maxY), (0, 0, 255), 1
                 )
 
-    return img, contour_search_img
+    return work, contour_search_img
