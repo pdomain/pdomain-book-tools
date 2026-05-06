@@ -972,3 +972,108 @@ def test_merge_sets_bbox_when_missing(sample_block1):
 
 # NOTE: Line 203 (TypeError in remove_line_if_exists loop) is practically unreachable due to earlier AttributeError
 # when a Word lacks 'lines' attribute; exercising it would require code modification, so it's excluded intentionally.
+
+
+# ---------------------------------------------------------------------------
+# R-05 — purge_words_from_blocks shared helper
+# ---------------------------------------------------------------------------
+
+
+class TestR05PurgeWordsFromBlocks:
+    """R-05 hoists the previously-duplicated purge helper into block.py.
+
+    Locks:
+    - the module-level ``purge_words_from_blocks`` is the single source
+      of truth (callable directly).
+    - both legacy module-private wrappers
+      (``layout_aware_reorg._purge_word_from_blocks`` and
+      ``reorganize_page_utils._purge_words_from_blocks``) are now thin
+      passthroughs to it; importing them and the shared helper, and
+      running each on the same input, must produce identical end state.
+    - the recursive empty-child cleanup behaviour is preserved
+      (parent bbox = None when all descendants drained).
+    """
+
+    @staticmethod
+    def _build_tree() -> Block:
+        # Two paragraphs, each with one line, each with two words.
+        w1 = Word("a", BoundingBox.from_ltrb(0, 0, 5, 5), 0.5)
+        w2 = Word("b", BoundingBox.from_ltrb(5, 0, 10, 5), 0.5)
+        line1 = Block(
+            [w1, w2],
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
+        para1 = Block(
+            [line1],
+            child_type=BlockChildType.BLOCKS,
+            block_category=BlockCategory.PARAGRAPH,
+        )
+        w3 = Word("c", BoundingBox.from_ltrb(0, 10, 5, 15), 0.5)
+        w4 = Word("d", BoundingBox.from_ltrb(5, 10, 10, 15), 0.5)
+        line2 = Block(
+            [w3, w4],
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
+        para2 = Block(
+            [line2],
+            child_type=BlockChildType.BLOCKS,
+            block_category=BlockCategory.PARAGRAPH,
+        )
+        return Block(
+            [para1, para2],
+            child_type=BlockChildType.BLOCKS,
+            block_category=BlockCategory.BLOCK,
+        ), [w1, w2, w3, w4]
+
+    def test_shared_helper_drops_targeted_words(self):
+        from pd_book_tools.ocr.block import purge_words_from_blocks
+
+        outer, words = self._build_tree()
+        targets = {id(words[1]), id(words[2])}
+        purge_words_from_blocks(list(outer._items), targets)
+
+        # Each paragraph now has exactly one word total via its single line.
+        line1_words = outer._items[0]._items[0]._items
+        line2_words = outer._items[1]._items[0]._items
+        assert [w.text for w in line1_words] == ["a"]
+        assert [w.text for w in line2_words] == ["d"]
+
+    def test_legacy_wrappers_match_shared_helper(self):
+        from pd_book_tools.ocr.block import purge_words_from_blocks
+        from pd_book_tools.ocr.layout_aware_reorg import _purge_word_from_blocks
+        from pd_book_tools.ocr.reorganize_page_utils import _purge_words_from_blocks
+
+        # Build three independent trees, target the same word in each.
+        trees = [self._build_tree() for _ in range(3)]
+        target_indices = [(0, id(trees[i][1][1])) for i in range(3)]
+        outer0, _ = trees[0]
+        outer1, _ = trees[1]
+        outer2, _ = trees[2]
+
+        purge_words_from_blocks(list(outer0._items), {target_indices[0][1]})
+        _purge_word_from_blocks(list(outer1._items), {target_indices[1][1]})
+        _purge_words_from_blocks(list(outer2._items), {target_indices[2][1]})
+
+        for outer in (outer0, outer1, outer2):
+            line_words = outer._items[0]._items[0]._items
+            assert [w.text for w in line_words] == ["a"]
+
+    def test_empty_descendants_clear_parent_bbox(self):
+        from pd_book_tools.ocr.block import purge_words_from_blocks
+
+        outer, words = self._build_tree()
+        # Drop ALL words in para1 — line should empty, para1 should be
+        # pruned, leaving outer with just para2.
+        targets = {id(words[0]), id(words[1])}
+        purge_words_from_blocks(list(outer._items), targets)
+        # Para2 is a single child of outer's items (line2 still has c, d
+        # but para1's empty line was pruned -> para1 is itself empty ->
+        # the recursive purge is over BUT the OUTER blocks list isn't
+        # itself filtered by the helper. The helper only filters items
+        # *inside* each block. So outer still has 2 children but
+        # children[0] is now empty.
+        empty_para = outer._items[0]
+        assert empty_para.bounding_box is None
+        assert empty_para.is_empty

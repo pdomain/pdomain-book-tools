@@ -26,7 +26,12 @@ from numpy import mean as np_mean
 from numpy import median as np_median
 from numpy import std as np_std
 
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pd_book_tools.ocr.block import (
+    Block,
+    BlockCategory,
+    BlockChildType,
+    purge_words_from_blocks,
+)
 from pd_book_tools.ocr.word import Word
 
 logger = getLogger(__name__)
@@ -173,29 +178,17 @@ def _is_weak_noise_line(
 
 
 def _purge_words_from_blocks(blocks: List[Block], targets: "set[int]") -> None:
-    """Recursively remove words by ``id()`` from a block tree.
+    """R-05: thin module-private alias around ``block.purge_words_from_blocks``.
 
-    Mirrors :func:`layout_aware_reorg._purge_word_from_blocks` but is
-    duplicated here to avoid pulling that module (which depends on
-    PageLayout types) into the geometry pipeline. After purging, empty
-    line / paragraph children are pruned and bounding boxes are recomputed.
+    Pre-R-05 this module carried its own near-identical copy of the
+    purge logic to avoid pulling :mod:`pd_book_tools.ocr.layout_aware_reorg`
+    (which depends on layout types) into the geometry pipeline. The
+    shared implementation now lives on :mod:`pd_book_tools.ocr.block`,
+    which has no layout dependency, so both call sites import from
+    there. The wrapper is preserved so the existing in-module call
+    sites read at their original level of abstraction.
     """
-    for block in blocks:
-        if block.child_type == BlockChildType.WORDS:
-            kept = [w for w in block._items if id(w) not in targets]
-            if len(kept) != len(block._items):
-                block._items = kept
-                if kept:
-                    block.recompute_bounding_box()
-                else:
-                    block.bounding_box = None
-        else:
-            _purge_words_from_blocks(list(block._items), targets)
-            block._items = [b for b in block._items if not b.is_empty]
-            if block._items:
-                block.recompute_bounding_box()
-            else:
-                block.bounding_box = None
+    purge_words_from_blocks(blocks, targets)
 
 
 def _is_gibberish_line(line: Block) -> bool:

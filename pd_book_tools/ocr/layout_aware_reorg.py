@@ -37,7 +37,12 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
 from pd_book_tools.layout.geometry import caption_for_figure
 from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pd_book_tools.ocr.block import (
+    Block,
+    BlockCategory,
+    BlockChildType,
+    purge_words_from_blocks,
+)
 from pd_book_tools.ocr.word import Word
 
 logger = getLogger(__name__)
@@ -224,25 +229,13 @@ def _word_has_tag(word: Word, region_type: RegionType) -> bool:
 
 
 def _purge_word_from_blocks(blocks: list[Block], targets: Set[int]) -> None:
-    for block in blocks:
-        if block.child_type == BlockChildType.WORDS:
-            kept = [w for w in block._items if id(w) not in targets]
-            if len(kept) != len(block._items):
-                block._items = kept
-                if kept:
-                    block.recompute_bounding_box()
-                else:
-                    block.bounding_box = None
-        else:
-            _purge_word_from_blocks(list(block._items), targets)
-            # Drop child blocks left empty by the recursive purge — their
-            # bounding boxes were cleared to None and would poison the
-            # parent's recompute.
-            block._items = [b for b in block._items if not b.is_empty]
-            if block._items:
-                block.recompute_bounding_box()
-            else:
-                block.bounding_box = None
+    """R-05: thin module-private alias around ``block.purge_words_from_blocks``.
+
+    Kept so the four in-module call sites read at the original level of
+    abstraction; the implementation lives in ``ocr.block`` so the
+    geometry pipeline can share it without depending on layout types.
+    """
+    purge_words_from_blocks(blocks, targets)
 
 
 def drop_layout_regions(
