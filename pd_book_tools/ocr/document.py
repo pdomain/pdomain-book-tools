@@ -306,11 +306,23 @@ class Document:
 
                     words = []
                     for word_data in line_data.get("words", []):
+                        # M-16: guard ``geometry`` access to mirror the
+                        # block / line / artefact branches above. DocTR
+                        # is not formally guaranteed to emit geometry on
+                        # every word in every release, and a partial
+                        # word should not raise ``KeyError`` and tear
+                        # down the whole page — emit ``bounding_box=None``
+                        # so the word still flows through (project
+                        # invariant: never silently drop OCR content).
+                        if word_data.get("geometry"):
+                            word_bounding_box = BoundingBox.from_nested_float(
+                                word_data["geometry"]
+                            )
+                        else:
+                            word_bounding_box = None
                         word = Word(
                             text=word_data.get("value", ""),
-                            bounding_box=BoundingBox.from_nested_float(
-                                word_data["geometry"]
-                            ),
+                            bounding_box=word_bounding_box,
                             ocr_confidence=word_data.get("confidence", 0.0),
                         )
                         words.append(word)
