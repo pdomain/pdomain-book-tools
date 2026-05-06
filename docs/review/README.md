@@ -409,12 +409,24 @@ now sweeps `bugs-medium.md` top-to-bottom.
   input with random alpha produces output bit-equal to running on the
   BGR-only slice — alpha is observably ignored. — fix `feb2eb8`,
   doc mark `<pending>`
+- M-19 `ocr/cv2_tesseract.py` `tesseract_ocr_cv2_image` hardcoded
+  `--dpi 300` in the Tesseract config regardless of input image
+  resolution. Tesseract uses `--dpi` to size character-classifier
+  heuristics, so 150 DPI scans were over-estimated and 600 DPI scans
+  under-estimated, degrading OCR in both directions. Added a
+  `dpi: int = 300` parameter that flows into the config via
+  `f"--dpi {int(dpi)}"`; default preserves existing behavior, callers
+  with real DPI (PIL `Image.info["dpi"]`, scanner metadata,
+  pd-prep-for-pgdp's resolution probe) can now pass it through. Three
+  regression tests cover dpi=150, dpi=600, and the dpi=300 default
+  back-compat lock. — fix `d7f341a`, doc mark `<pending>`
 
-**Next pick:** M-19 — `ocr/cv2_tesseract.py` line 33 hardcodes
-`--dpi 300` regardless of the input image's actual scan resolution.
-For 150 or 600 DPI scans, Tesseract mis-estimates character sizes and
-OCR accuracy degrades. Fix: make DPI a parameter with a default of
-`300`; consider deriving from image metadata when available.
+**Next pick:** M-20 — `ocr/cv2_tesseract.py` lines 20–27. The
+`image_grayscale` local stays `None` when an RGBA / 4-channel image
+arrives because the dispatch is `ndim == 2` or `ndim == 3 and
+shape[2] == 3` — anything else falls through and the next call passes
+`None` to pytesseract. Either add an explicit RGBA branch
+(`cvtColor(img, COLOR_BGRA2GRAY)`) or raise a clear `ValueError`.
 
 **Workflow per iteration** (one bug per commit, no push):
 
