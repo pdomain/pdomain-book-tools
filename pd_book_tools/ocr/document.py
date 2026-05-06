@@ -90,7 +90,9 @@ class Document:
         return {
             "source_lib": self.source_lib,
             "source_identifier": self.source_identifier,
-            "source_path": str(self.source_path),
+            "source_path": str(self.source_path)
+            if self.source_path is not None
+            else None,
             "pages": [page.to_dict() for page in self.pages] if self.pages else [],
         }
 
@@ -106,7 +108,7 @@ class Document:
             source_lib=data.get("source_lib", ""),
             source_identifier=data.get("source_identifier", ""),
             source_path=Path(data.get("source_path"))
-            if data.get("source_path")
+            if data.get("source_path") and data.get("source_path") != "None"
             else None,
             pages=[Page.from_dict(page) for page in data.get("pages", [])],
         )
