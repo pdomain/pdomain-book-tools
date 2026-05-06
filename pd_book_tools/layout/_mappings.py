@@ -24,7 +24,11 @@ PP_DOCLAYOUT_TO_PGDP: dict[str, str | None] = {
     # Math
     "formula": "formula",
     "formula_number": None,  # subsumed by adjacent formula
-    # Page chrome — dropped before reorg
+    # Page chrome — preserved as typed regions; whether they are
+    # subsequently dropped, kept, or annotated is a call-site decision
+    # (e.g. ``layout_aware_reorg`` / ``ProjectConfig`` filters), not a
+    # property of this mapping. ``page_number`` collapses into ``footer``
+    # because PGDP treats it as part of the bottom-margin chrome.
     "header": "header",
     "footer": "footer",
     "page_number": "footer",
