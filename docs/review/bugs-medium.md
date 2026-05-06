@@ -153,7 +153,7 @@ Add a return type annotation.
 
 ---
 
-## M-11 — `find_and_draw_contours` uses `COLOR_RGB2BGR` on a single-channel image
+## [FIXED in 1012acd] ~~M-11 — `find_and_draw_contours` uses `COLOR_RGB2BGR` on a single-channel image~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/contours.py`, line 14
 
