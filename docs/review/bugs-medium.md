@@ -111,7 +111,7 @@ parameter to `list[str]`.
 
 ---
 
-## M-08 — Cupy `morph.py` — zero-padding on erosion silently removes edge-touching content
+## [FIXED in a9741d4] ~~M-08 — Cupy `morph.py` — zero-padding on erosion silently removes edge-touching content~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/morph.py`, lines 17–25, 31–41
 
