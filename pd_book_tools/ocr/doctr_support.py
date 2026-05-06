@@ -178,7 +178,7 @@ def get_finetuned_torch_doctr_predictor(
         return factory(**kwargs)
 
     # check if file exists
-    if Path.exists(dectection_pt_file) and Path.exists(recognition_pt_file):
+    if Path(dectection_pt_file).exists() and Path(recognition_pt_file).exists():
         logger.info("Loading pre-trained OCR models...")
         # Select compute device: CUDA > MPS (Apple Silicon) > CPU
         if torch_cuda_is_available():
