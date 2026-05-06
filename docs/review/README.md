@@ -840,12 +840,76 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   RuntimeError propagation, KeyboardInterrupt (BaseException sanity),
   the happy path, and the pre-try None guards. — fix `b40c892`, doc mark
   `<pending>`
+- L-26 `pgdp/pgdp_results.py` `PGDPExport.from_json` placed the
+  ``str -> Path`` conversion of ``path_prefix`` inside the
+  ``for png_file, page_text in pages.items():`` loop. With an empty
+  pages dict the loop body never executed, so a ``str`` argument flowed
+  to ``path_prefix.stem`` on the return line and raised
+  ``AttributeError``. The existing
+  ``test_pgdp_export_from_json_empty_object`` masked the bug because it
+  passed a ``tmp_path`` (already a Path); the matching str-prefix test
+  used a non-empty pages dict. Hoisted the conversion above the loop;
+  added regression test for the empty + str combo. — fix `7c3b83e`,
+  doc mark `b86154e`
+- L-27 `image_processing/{cv2,cupy}_processing/contours.py` cv2
+  ``remove_small_contours`` has an unconditional
+  ``small_contour_w``/``small_contour_h`` (default 10x10) fast path that
+  removes very small contours WITHOUT a neighborhood check; cupy
+  ``remove_small_contours_gpu`` does NOT — so a nearly-isolated 9x9 dot
+  with enough nearby pixels is silently removed by cv2 but kept by
+  cupy on identical input. Per the review's primary recommendation,
+  documented the divergence in BOTH backends' docstrings, including
+  the escape hatch: callers can pass ``small_contour_w=0,
+  small_contour_h=0`` to cv2 to disable the fast path entirely
+  (``w < 0 and h < 0`` is always False for valid bounding rects) and
+  mirror cupy's neighborhood-only behavior. Behavioral test pins both
+  default-removed and disabled-fast-path-kept outcomes; property test
+  pins the L-27 docstring breadcrumb. — fix `8063bef`, doc mark
+  `fa186e3`
+- L-28 `utility/timing.py` `func_log_excution_time` emitted the
+  call-site line ("Function X called from Y with args") via
+  ``logging.log(...)`` (root logger) while the surrounding start/end
+  timing lines used the injected ``logger`` parameter. Any caller that
+  configured a per-module logger (level, handlers, propagation) had
+  this single record silently bypass that configuration. Switched to
+  ``logger.log(...)``; regression test asserts the captured record's
+  ``record.name`` matches the injected logger. — fix `c38f058`, doc mark
+  `2c5777f`
+- L-29 `utility/timing.py` `func_log_excution_time` formatted the entire
+  ``args`` tuple and ``kwargs`` dict into the call-site log message at
+  every invocation. For OCR pipelines that means megabytes of repr per
+  call (a 3000x4000 NumPy uint8 image is enough to flood the log) and
+  risks inadvertently logging sensitive values. Replaced the raw repr
+  with a count + per-arg type-name summary so caller can correlate
+  calls (function name, caller frame, arity, arg types) without any
+  payload reaching the log. Regression test passes a unique sentinel
+  positionally and via kwargs, asserts it is absent from every captured
+  record; positive checks lock the count + type summary IS emitted. —
+  fix `b7103c1`, doc mark `ccf43d5`
+- L-30 `utility/timing.py` `func_log_excution_time` called
+  ``inspect.stack()`` on every decorated invocation. ``inspect.stack``
+  walks the entire Python call stack — hundreds of microseconds per
+  call on a typical OCR pipeline frame depth — and the cost was paid
+  even when the resulting log record was suppressed by the logger's
+  level filter. Wrapped the entire pre-call instrumentation block (caller
+  lookup + arg-summary + start log) and the post-call timing log in
+  ``if logger.isEnabledFor(logLevel):``. ``time.perf_counter()`` calls
+  on either side of the wrapped function are kept unconditional so
+  wall-clock measurement remains correct if a future code path needs
+  the timing values without logging. More precise than the review's
+  ``logLevel <= logging.DEBUG`` suggestion: it respects the *injected*
+  logger's actual configured level. Two regression tests: (1) patch
+  ``inspect.stack`` and assert counter stays at 0 across 5 calls when
+  the logger is silenced; (2) sanity check the same patched counter
+  increments when the logger is enabled (proves the gate is not stuck
+  closed). — fix `92d86e9`, doc mark `b65ec76`
 
-**Next pick:** L-26 — `pgdp/pgdp_results.py` `PGDPExport.from_json`
-crashes with `AttributeError: 'str' object has no attribute 'stem'` on
-empty pages dict because `path_prefix = Path(path_prefix)` is converted
-inside the `for` loop over `pages` and never executes when `pages` is
-empty. Fix: move the conversion above the loop.
+**Next pick:** L-31 — `layout/types.py` `LayoutRegion` accepts `L > R`
+or `T > B` silently. `width` returns negative; `contains_point` returns
+wrong results; `area` returns 0 (already guarded, suggesting the author
+anticipated bad coordinates). Fix: add ``__post_init__`` validation
+that raises ``ValueError`` for inverted coordinates and clamps negatives
+to 0. (`bugs-low.md` has 40 entries total — 30/40 cleared, 10 remain.)
 
 **Workflow per iteration** (one bug per commit, no push):
 
