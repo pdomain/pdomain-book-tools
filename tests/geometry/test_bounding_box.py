@@ -651,6 +651,56 @@ def test_vertical_crop_branch_coverage():
     assert cb.maxY < 1
 
 
+def test_vertical_crop_preserves_pixel_coordinate_space():
+    """Regression for H-05: crop_top/crop_bottom must not flip pixel-space boxes
+    into normalized space. Previously _vertical_crop unconditionally called
+    .normalize() on the result, returning a normalized box for pixel input.
+    """
+    import numpy as np
+
+    # 40x80 image with content near top and near bottom.
+    img = np.full((40, 80), 255, dtype=np.uint8)
+    img[5:15, 10:70] = 0  # top content
+    img[25:35, 10:70] = 0  # bottom content
+
+    pixel_bbox = BoundingBox.from_ltrb(0, 0, 80, 40, is_normalized=False)
+    assert pixel_bbox.is_normalized is False
+
+    top_cropped = pixel_bbox.crop_top(img)
+    bottom_cropped = pixel_bbox.crop_bottom(img)
+
+    # Result must remain in pixel space when input was in pixel space.
+    assert top_cropped.is_normalized is False
+    assert bottom_cropped.is_normalized is False
+
+    # Coordinates should still be in pixel range, not [0, 1].
+    assert top_cropped.maxX > 1.0
+    assert top_cropped.maxY > 1.0
+    assert bottom_cropped.maxX > 1.0
+    assert bottom_cropped.maxY > 1.0
+
+
+def test_vertical_crop_preserves_normalized_coordinate_space():
+    """Regression for H-05: normalized input must still produce normalized output."""
+    import numpy as np
+
+    img = np.full((40, 80), 255, dtype=np.uint8)
+    img[5:15, 10:70] = 0
+    img[25:35, 10:70] = 0
+
+    norm_bbox = BoundingBox.from_ltrb(0.0, 0.0, 1.0, 1.0)
+    assert norm_bbox.is_normalized is True
+
+    top_cropped = norm_bbox.crop_top(img)
+    bottom_cropped = norm_bbox.crop_bottom(img)
+
+    assert top_cropped.is_normalized is True
+    assert bottom_cropped.is_normalized is True
+    # Normalized values within [0, 1].
+    assert 0.0 <= top_cropped.maxY <= 1.0
+    assert 0.0 <= bottom_cropped.maxY <= 1.0
+
+
 # ============================================================================
 # crop_image tests
 # ============================================================================
