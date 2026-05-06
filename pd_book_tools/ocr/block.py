@@ -1122,7 +1122,12 @@ class Block:
                 "Refining bounding boxes for %s words in block", len(self._items)
             )
             for item in self._items:
-                item.refine_bounding_box(image, padding_px=padding_px)
+                # R-04: prefer the consolidated ``refine_bbox`` (boolean
+                # return + crop_bottom fallback). The legacy
+                # ``refine_bounding_box`` shim still works for any
+                # external callers but inside the library we use the
+                # surviving contract directly.
+                item.refine_bbox(image, padding_px=padding_px)
         else:
             logger.debug(
                 "Refining bounding boxes for %s blocks in block", len(self._items)
