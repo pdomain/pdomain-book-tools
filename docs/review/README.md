@@ -283,13 +283,28 @@ now sweeps `bugs-medium.md` top-to-bottom.
   `grey_erosion` for any future non-trivial structuring element.
   Locked with a cv2-parity test on a non-trivial 32x48 random pattern
   with a 5x5 all-ones kernel. — fix `423cea2`, doc mark `<pending>`
+- M-10 `image_processing/cv2_processing/contours.py`
+  `find_and_draw_contours` returned the 2D grayscale input when no
+  contours were found and a 3-channel BGR overlay otherwise, forcing
+  callers to runtime-dispatch on shape with no type annotation warning.
+  The same function also used `cv2.COLOR_RGB2BGR` on a 2D single-channel
+  input — OpenCV silently broadcasts to 3 channels but the conversion
+  code is `COLOR_GRAY2BGR`. Fixed by always promoting via
+  `cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)` before the optional
+  rectangle-drawing step (which incidentally subsumes M-11). Added
+  return-type annotation and docstring; updated the existing
+  `test_no_contours_returns_original` (which had locked in the buggy
+  2D-when-empty shape) and added a regression test asserting both
+  branches return matching ndim/dtype. — fix `1012acd`, doc mark
+  `<pending>`
 
-**Next pick:** M-10 — `image_processing/cv2_processing/contours.py`
-`find_and_draw_contours` returns `(original_grayscale_img, [])` (a 2D
-array) when no contours are found and `(new_bgr_img_with_drawings,
-contours)` (a 3-channel array) otherwise. Callers must runtime-dispatch
-on shape; no return type annotation warns of it. Fix: always convert
-to 3-channel before returning, add a return type annotation.
+**Next pick:** M-11 — `image_processing/cv2_processing/contours.py`
+`find_and_draw_contours` used `cv2.COLOR_RGB2BGR` on a single-channel
+input where `cv2.COLOR_GRAY2BGR` is the semantically correct constant.
+Already fixed as part of the M-10 commit `1012acd` (the new code path
+is `cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)`); next iteration should
+verify in source, mark stale-but-fixed-by-1012acd, and continue to
+M-12.
 
 **Workflow per iteration** (one bug per commit, no push):
 
