@@ -224,7 +224,7 @@ renaming submodules) is a breaking change for all downstream packages.
 
 ---
 
-## R-09 — `colorToGray.py` is the only camelCase module in the package
+## [FIXED in f1448eb] ~~R-09 — `colorToGray.py` is the only camelCase module in the package~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/colorToGray.py`
 
