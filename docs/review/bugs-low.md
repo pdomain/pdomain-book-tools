@@ -180,7 +180,7 @@ the docstring.
 
 ---
 
-## L-14 — `Page.is_content_normalized` checks only the first word's coordinate flag
+## [FIXED in cc846bb] ~~L-14 — `Page.is_content_normalized` checks only the first word's coordinate flag~~
 
 **File:** `pd_book_tools/ocr/page.py`, lines 582–588
 
