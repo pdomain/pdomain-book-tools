@@ -336,7 +336,7 @@ realistic failure mode that surfaces as an unhelpful stack trace.
 
 ---
 
-## M-24 — `doctr_support.py` — pretrained weights are downloaded and then immediately overwritten
+## [FIXED in 67f9d2d] ~~M-24 — `doctr_support.py` — pretrained weights are downloaded and then immediately overwritten~~
 
 **File:** `pd_book_tools/ocr/doctr_support.py`, line 199
 

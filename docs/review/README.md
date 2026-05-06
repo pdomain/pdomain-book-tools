@@ -476,17 +476,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   preserved on `__cause__` so the underlying torch traceback remains
   available. Two regression tests cover the detection and recognition
   paths. — fix `5773daf`, doc mark `<pending>`
+- M-24 `ocr/doctr_support.py` `get_finetuned_torch_doctr_predictor`
+  built both detection and recognition models via `_build_arch(...,
+  pretrained=True)` (literal True for det; via the public
+  `pretrained` / `pretrained_backbone` kwargs that default to True for
+  reco). The very next call in each branch is
+  `model.load_state_dict(...)`, which overwrites every weight the
+  constructor populated. Net effect: every finetuned-checkpoint load
+  silently downloaded the doctr-hosted pretrained weights (and, for
+  reco, the backbone weights) just to discard them — pure network
+  waste plus an unwanted internet dependency at the call site, which
+  matters for offline / air-gapped runs. Hardcoded `pretrained=False`
+  (and `pretrained_backbone=False` on the reco builder) at both
+  construction sites; the public function-level `pretrained` /
+  `pretrained_backbone` kwargs are preserved for back-compat and
+  still flow to the predictor wrappers below. — fix `67f9d2d`, doc
+  mark `<pending>`
 
-**Next pick:** M-24 — `ocr/doctr_support.py`.
-`_build_arch(det_arch_name, pretrained=True)` (originally line 199;
-now further down post M-22 / M-23) downloads pretrained weights from
-the internet and the very next statement,
-`det_model.load_state_dict(det_params)`, overwrites all of them. The
-download is pure waste (and an unwanted network dependency at this
-call site). Fix candidate: pass `pretrained=False` where the
-constructed model's weights are immediately overwritten by
-`load_state_dict`. Verify the recognition arch construction (which
-also takes `pretrained_backbone`) before changing it.
+**Next pick:** M-25 — `ocr/ground_truth_matching.py`.
+`_build_current_work_gt_line_from_prev` returns `""` on a space
+boundary (per bugs-medium.md M-25 entry, lines 351-364). Verify
+the symptom is real before writing the fix.
 
 **Workflow per iteration** (one bug per commit, no push):
 
