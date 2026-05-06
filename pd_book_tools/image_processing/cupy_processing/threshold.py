@@ -9,13 +9,20 @@ logger = logging.getLogger(__name__)
 
 def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     """
-    Performs Otsu's thresholding on a CuPy GPU array without converting to uint8.
+    Performs Otsu's thresholding on a CuPy GPU array.
+
+    The return contract matches the cv2 backend's
+    `otsu_binary_thresh` (which wraps `cv2.threshold(..., THRESH_BINARY +
+    THRESH_OTSU)`): a `cp.uint8` array with values in `{0, 255}`. This makes
+    the cupy and cv2 implementations drop-in interchangeable for downstream
+    consumers like `invert_image` that assume the uint8 0/255 convention
+    (review issue H-16).
 
     Args:
         img_cp_float (cp.ndarray): Input image (CuPy array). Supports float32 and uint8.
 
     Returns:
-        cp.ndarray: Thresholded binary image (same dtype as input).
+        cp.ndarray: Thresholded binary image, dtype `cp.uint8`, values in `{0, 255}`.
     """
     # Convert to grayscale if it's a color image
     if img_cp_float.ndim == 3 and img_cp_float.shape[2] == 3:
@@ -41,7 +48,7 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     # treat the uniform value itself as the threshold so the strict-`>`
     # binarization produces an all-zero mask without crashing (review H-15).
     if min_val == max_val:
-        return cp.zeros_like(img_cp_float, dtype=cp.float32)
+        return cp.zeros_like(img_cp_float, dtype=cp.uint8)
 
     hist, bin_edges = cp.histogram(img_cp_float, bins=256, range=(min_val, max_val))
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # type: ignore # Midpoints of bins
@@ -66,12 +73,14 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     # Get the Otsu threshold (index with max variance)
     otsu_threshold = bin_centers[:-1][cp.argmax(between_class_variance)]
 
-    # Apply binary thresholding
-    binary_img_cp_float = cp.where(img_cp_float > otsu_threshold, 1.0, 0.0).astype(
-        cp.float32
-    )  # Keep float32
+    # Apply binary thresholding. Return uint8 0/255 to match the cv2 backend's
+    # `otsu_binary_thresh` contract so downstream code can switch backends
+    # without dtype/range surprises (review issue H-16).
+    binary_img_cp_uint8 = cp.where(img_cp_float > otsu_threshold, 255, 0).astype(
+        cp.uint8
+    )
 
-    return binary_img_cp_float
+    return binary_img_cp_uint8
 
 
 def binary_thresh_gpu(img_cp: cp.ndarray, level: int = 127) -> cp.ndarray:
@@ -100,10 +109,7 @@ def np_uint8_float_binary_thresh(
 
     cupy_result = otsu_binary_thresh(img_cp_float=src)
 
-    np_result: np.ndarray = cupy_result.get()  # Move result back to CPU
-
-    uint8_image: np.ndarray = (
-        (np_result * 255).clip(0, 255).astype(np.uint8)
-    )  # Ensure proper range
+    # `otsu_binary_thresh` already returns uint8 0/255 (H-16); just move to CPU.
+    uint8_image: np.ndarray = cupy_result.get()
 
     return uint8_image
