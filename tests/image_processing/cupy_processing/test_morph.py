@@ -64,6 +64,45 @@ class TestCupyMorph:
             "border-touching foreground"
         )
 
+    def test_dilate_erode_match_cv2_after_kernel_multiply_drop(self, cupy_morph):
+        """M-09 parity: dropping the redundant `* kernel` factor (the kernel
+        is always all-ones in the only call site, `morph_fill`) must not
+        change `dilate` / `erode` output. Lock cupy output to cv2 reference
+        for an all-ones kernel on a non-trivial pattern, so any future
+        change that breaks parity (e.g. accidentally reintroducing a
+        non-identity multiply) trips this test.
+        """
+        import cv2
+        import numpy as np
+
+        morph_mod, cp = cupy_morph
+        rng = np.random.default_rng(42)
+        img_np = rng.integers(0, 2, size=(32, 48), dtype=np.uint8)
+        # Use an odd kernel size so cupy and cv2 agree on output shape;
+        # the M-09 invariant under test is "dropping the all-ones multiply
+        # leaves output bit-identical", which is independent of kernel
+        # parity.
+        kernel_np = np.ones((5, 5), dtype=np.uint8)
+
+        cv2_dilated = cv2.dilate(img_np, kernel_np, borderType=cv2.BORDER_REFLECT_101)
+        cv2_eroded = cv2.erode(img_np, kernel_np, borderType=cv2.BORDER_REFLECT_101)
+
+        cp_dilated = cp.asnumpy(
+            morph_mod.dilate(cp.asarray(img_np), cp.asarray(kernel_np))
+        )
+        cp_eroded = cp.asnumpy(
+            morph_mod.erode(cp.asarray(img_np), cp.asarray(kernel_np))
+        )
+
+        assert np.array_equal(cp_dilated, cv2_dilated), (
+            "cupy dilate must match cv2 dilate for an all-ones kernel "
+            "(M-09: dropping `* kernel` is a no-op)"
+        )
+        assert np.array_equal(cp_eroded, cv2_eroded), (
+            "cupy erode must match cv2 erode for an all-ones kernel "
+            "(M-09: dropping `* kernel` is a no-op)"
+        )
+
     def test_morph_fill_matches_cv2_on_border_blob(self, cupy_morph):
         """M-08 parity: morph_fill on a foreground blob touching the top edge
         should agree between cupy and cv2 backends."""

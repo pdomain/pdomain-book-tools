@@ -23,8 +23,17 @@ def dilate(img: cp.ndarray, kernel: cp.ndarray):
     # Create sliding windows over the image
     windows = sliding_window_view(img_padded, (kh, kw))
 
-    # Apply max operation over the windows
-    return cp.max(windows * kernel, axis=(-2, -1))
+    # Apply max operation over the windows.
+    # NOTE: the only call site (`morph_fill`) builds `kernel` as
+    # `cp.ones(...)`, so multiplying `windows * kernel` is a no-op that
+    # nonetheless materializes a full `(H, W, kh, kw)` intermediate
+    # (~432 MB for a 3000x4000 page with a 6x6 kernel) before reducing.
+    # Reducing directly over `windows` cuts peak GPU memory dramatically
+    # without changing output. See M-09 in docs/review/bugs-medium.md.
+    # If a non-trivial (non-rectangular) structuring element is ever
+    # needed, use `cupyx.scipy.ndimage.grey_dilation` rather than
+    # reintroducing a multiplied intermediate.
+    return cp.max(windows, axis=(-2, -1))
 
 
 def erode(img: cp.ndarray, kernel: cp.ndarray):
@@ -42,8 +51,11 @@ def erode(img: cp.ndarray, kernel: cp.ndarray):
     # Create sliding windows over the image
     windows = sliding_window_view(img_padded, (kh, kw))
 
-    # Apply min operation over the windows
-    return cp.min(windows * kernel, axis=(-2, -1))
+    # Apply min operation over the windows.
+    # Same M-09 optimization as in `dilate`: the only call site builds an
+    # all-ones kernel, so multiplying is a no-op that materializes a
+    # large intermediate. Reduce over `windows` directly.
+    return cp.min(windows, axis=(-2, -1))
 
 
 def morph_fill(img: cp.ndarray, shape=(6, 6)):
