@@ -18,12 +18,12 @@ class TestOtsuBinaryThresh:
         img[:10, :] = 0.1
         img[10:, :] = 0.9
         out = thresh_mod.otsu_binary_thresh(img)
-        # Output is binary float (0.0 or 1.0)
-        assert out.dtype == cp.float32
+        # Output is binary uint8 (0 or 255), matching cv2 backend contract (H-16).
+        assert out.dtype == cp.uint8
         assert tuple(out.shape) == (20, 20)
-        # Values should be split 0/1
+        # Values should be split 0/255
         flattened = out.get().ravel()
-        assert set(np.unique(flattened).tolist()).issubset({0.0, 1.0})
+        assert set(np.unique(flattened).tolist()).issubset({0, 255})
 
     def test_color_image_handled(self, cupy_threshold):
         thresh_mod, cp = cupy_threshold
@@ -56,18 +56,52 @@ class TestOtsuBinaryThresh:
         for value in (0.0, 0.5, 1.0, 0.128):
             img = cp.full((10, 10), value, dtype=cp.float32)
             out = thresh_mod.otsu_binary_thresh(img)
-            assert out.dtype == cp.float32
+            assert out.dtype == cp.uint8  # H-16: match cv2 backend contract
             assert tuple(out.shape) == (10, 10)
             unique = set(np.unique(out.get()).tolist())
-            assert unique.issubset({0.0, 1.0}), (
+            assert unique.issubset({0, 255}), (
                 f"value={value}: expected binary output, got {unique}"
             )
             # Strict `>` against a threshold of `value` produces all-zeros for
             # a uniform image — matches skimage/cv2 semantics.
-            assert unique == {0.0}, (
+            assert unique == {0}, (
                 f"value={value}: uniform image should be classified entirely "
                 f"as 0 (since no pixel exceeds the uniform value), got {unique}"
             )
+
+    def test_returns_uint8_0_255_matching_cv2_contract(self, cupy_threshold):
+        """Regression test for H-16: cupy `otsu_binary_thresh` must return a
+        uint8 array with values in {0, 255}, matching the cv2 backend's
+        contract (`cv2.threshold(..., THRESH_BINARY+THRESH_OTSU)` returns
+        uint8 0/255).
+
+        The original cupy version returned float32 0.0/1.0, so pipeline code
+        that switched backends silently received a different dtype and value
+        range, breaking downstream consumers (e.g. `invert_image`) that assume
+        uint8 0/255.
+        """
+        thresh_mod, cp = cupy_threshold
+        img = cp.zeros((20, 20), dtype=cp.float32)
+        img[:10, :] = 0.1
+        img[10:, :] = 0.9
+        out = thresh_mod.otsu_binary_thresh(img)
+        assert out.dtype == cp.uint8, (
+            f"H-16: expected uint8 to match cv2 backend, got {out.dtype}"
+        )
+        unique = set(np.unique(out.get()).tolist())
+        assert unique.issubset({0, 255}), (
+            f"H-16: expected values in {{0, 255}} to match cv2 backend, got {unique}"
+        )
+        # Both classes must be represented for this bimodal input.
+        assert unique == {0, 255}
+
+    def test_uniform_image_returns_uint8(self, cupy_threshold):
+        """H-16 + H-15 combined: the uniform-image early-return must also
+        emit uint8, not float32, so callers see a single consistent dtype."""
+        thresh_mod, cp = cupy_threshold
+        img = cp.full((10, 10), 0.5, dtype=cp.float32)
+        out = thresh_mod.otsu_binary_thresh(img)
+        assert out.dtype == cp.uint8
 
     def test_threshold_matches_skimage_reference(self, cupy_threshold):
         """Regression test for H-14: cupy Otsu must match the standard
