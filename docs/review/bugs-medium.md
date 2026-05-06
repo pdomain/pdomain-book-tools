@@ -81,7 +81,7 @@ passes this `None` directly back to the caller. `create_file_thumbnail` then pas
 
 ---
 
-## M-06 — `run_gegl_c2g` passes c2gOptions as a single string argument instead of splitting it
+## [FIXED in 3824628] ~~M-06 — `run_gegl_c2g` passes c2gOptions as a single string argument instead of splitting it~~
 
 **File:** `pd_book_tools/image_processing/external_tools.py`, lines 29–36
 
