@@ -108,6 +108,57 @@ def test_page_from_dict_legacy_without_ocr_provenance():
     assert page.ocr_provenance is None
 
 
+def test_page_init_filters_none_bbox_items(sample_block4):
+    """H-19 regression: Page.__init__ must filter items with bounding_box=None
+    before passing to BoundingBox.union (which raises AttributeError on None).
+
+    Construct a Page where one item has bounding_box=None (e.g. an empty
+    block whose recompute_bounding_box left it None) and one has a real
+    box. Pre-fix: AttributeError from BoundingBox.union on the None entry.
+    Post-fix: Page constructs cleanly and bounding_box reflects only the
+    non-None items.
+    """
+    empty_block = Block(
+        items=[],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    assert empty_block.bounding_box is None
+
+    page = Page(
+        width=100,
+        height=200,
+        page_index=1,
+        items=[empty_block, sample_block4],
+    )
+
+    # Page bbox must come from the non-None entry only
+    assert page.bounding_box is not None
+    assert page.bounding_box == sample_block4.bounding_box
+
+
+def test_page_init_all_none_bboxes_yields_none():
+    """H-19 regression: when every item has bounding_box=None, Page.__init__
+    should leave bounding_box as None (matching Page.recompute_bounding_box)
+    rather than crashing inside BoundingBox.union.
+    """
+    empty_a = Block(
+        items=[], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    empty_b = Block(
+        items=[], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+
+    page = Page(
+        width=100,
+        height=200,
+        page_index=1,
+        items=[empty_a, empty_b],
+    )
+
+    assert page.bounding_box is None
+
+
 def test_page_copy_preserves_ocr_provenance_without_shared_mutation():
     page = Page(
         width=100,

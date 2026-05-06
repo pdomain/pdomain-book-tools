@@ -112,9 +112,14 @@ class Page:
         if bounding_box:
             self.bounding_box = bounding_box
         elif self.items:
-            self.bounding_box = BoundingBox.union(
-                [item.bounding_box for item in self.items]
-            )
+            # Mirror Page.recompute_bounding_box: filter out items whose
+            # bounding_box is None before unioning. BoundingBox.union does
+            # not tolerate None entries (it accesses .is_normalized on the
+            # first element). An empty child block can legitimately have
+            # bounding_box=None, so without this guard constructing a Page
+            # whose items list contains such a block raises AttributeError.
+            bboxes = [item.bounding_box for item in self.items if item.bounding_box]
+            self.bounding_box = BoundingBox.union(bboxes) if bboxes else None
         self.page_labels = page_labels
 
         if cv2_numpy_page_image is not None:
