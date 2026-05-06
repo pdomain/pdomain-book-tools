@@ -65,7 +65,7 @@ Callers must do runtime type dispatch with `isinstance(result, tuple)`.
 
 ---
 
-## M-05 — `read_image` returns `None` silently; `create_file_thumbnail` crashes on missing file
+## [FIXED in f0cd07b] ~~M-05 — `read_image` returns `None` silently; `create_file_thumbnail` crashes on missing file~~
 
 **Files:**
 
