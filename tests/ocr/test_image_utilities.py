@@ -65,13 +65,34 @@ class TestCropImageToBbox:
         # Half of 10x10 -> 5x5
         assert cropped.shape == (5, 5)
 
-    def test_swallows_exception_returns_none(self):
-        """If bbox.crop_image raises, the helper should return None."""
+    def test_unexpected_exception_propagates(self):
+        """L-25: an unexpected exception (e.g. RuntimeError) from
+        bbox.crop_image must propagate so genuine bugs surface, rather
+        than being silently swallowed and returned as None."""
+        import pytest
+
         img = np.zeros((5, 5, 3), dtype=np.uint8)
 
         class FakeBbox:
             def crop_image(self, image):
                 raise RuntimeError("boom")
+
+        class Holder:
+            bounding_box = FakeBbox()
+
+        with pytest.raises(RuntimeError, match="boom"):
+            crop_image_to_bbox(Holder(), img)
+
+    def test_expected_exception_swallowed_returns_none(self):
+        """L-25: expected coordinate / image-shape failures
+        (ValueError / AttributeError / TypeError / IndexError) keep the
+        legacy 'return None' contract so callers iterating many bboxes
+        don't have to wrap each call."""
+        img = np.zeros((5, 5, 3), dtype=np.uint8)
+
+        class FakeBbox:
+            def crop_image(self, image):
+                raise ValueError("bad coords")
 
         class Holder:
             bounding_box = FakeBbox()
