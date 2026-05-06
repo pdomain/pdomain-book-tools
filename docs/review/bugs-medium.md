@@ -310,7 +310,7 @@ option forces Tesseract to emit noise-detection debug messages to stderr on ever
 
 ---
 
-## M-22 — `doctr_support.py` — silent `None` return when model checkpoint files are absent
+## [FIXED in 0a8b68e] ~~M-22 — `doctr_support.py` — silent `None` return when model checkpoint files are absent~~
 
 **File:** `pd_book_tools/ocr/doctr_support.py`, lines 138, 256
 
