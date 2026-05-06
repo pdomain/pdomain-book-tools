@@ -182,7 +182,7 @@ There is no validation, assertion, or documentation of the grayscale-only constr
 
 ---
 
-## M-13 — `reconcile_dropped_words` hardcodes a 3-level block traversal
+## [FIXED in c548b2b] ~~M-13 — `reconcile_dropped_words` hardcodes a 3-level block traversal~~
 
 **File:** `pd_book_tools/ocr/reorganize_page_utils.py`, lines 877–883
 

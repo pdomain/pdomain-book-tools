@@ -306,6 +306,24 @@ now sweeps `bugs-medium.md` top-to-bottom.
   asserts every output pixel has B == G == R == original gray value
   (a contract only `COLOR_GRAY2BGR` can satisfy). — shared fix sha
   `1012acd`, regression test `a115fbb`, doc mark `98d29d9`
+- M-13 `ocr/reorganize_page_utils.py` `reconcile_dropped_words`
+  computed `post_words` with a hardcoded 3-level comprehension
+  `outer.items -> paragraph.items -> line.words` plus a
+  `hasattr(line, "words")` fallback. Any tree shape that wasn't
+  exactly `BLOCK -> PARAGRAPH -> LINE -> WORDS` bottomed out at a
+  `Word` in the place `line` was expected; `hasattr(Word, "words")`
+  is False, so the comprehension yielded an empty list and every
+  word was reported as dropped — false-positive in strict mode,
+  noisy "recovered" block on the non-strict path. Fixed by
+  iterating `final_blocks` and extending `post_words` from each
+  block's recursive `Block.words` (terminates at leaf WORDS
+  child_type, handles arbitrary nesting). `page.words` itself
+  isn't usable here because `final_blocks` hasn't been assigned to
+  `page.items` yet at the call site. Safety net preserved with a
+  paired test (`test_genuine_drop_still_raises_in_strict_mode`)
+  that builds the same shape but deliberately omits a word — locks
+  the contract that real drops still raise. — fix `c548b2b`,
+  doc mark `<pending>`
 - M-12 `image_processing/cv2_processing/canvas.py`
   `map_content_onto_scaled_canvas` always allocated the canvas as
   `np.full((H, W), 255, dtype=np.uint8)` regardless of input ndim, so
@@ -320,13 +338,15 @@ now sweeps `bugs-medium.md` top-to-bottom.
   explicitly documented as 2D-only and is out of scope for this fix.
   — fix `37213f1`, doc mark `<pending>`
 
-**Next pick:** M-13 — `ocr/reorganize_page_utils.py`
-`reconcile_dropped_words` hardcodes a 3-level
-`outer.items -> paragraph.items -> line.words` traversal (lines 877–883),
-so words nested deeper than `BLOCK -> PARAGRAPH -> LINE` (multi-column
-or floated-flow paths) are invisible to `post_words` and trigger
-false-positive "dropped word" errors. Fix is to use `page.words`
-(recursive walk) instead of the hardcoded comprehension.
+**Next pick:** M-14 — `ocr/document.py` DocTR and Tesseract adapters
+produce different nesting depths (DocTR:
+`Page -> Block(PARAGRAPH) -> Block(LINE) -> Word`; Tesseract:
+`Page -> Block(BLOCK) -> Block(PARAGRAPH) -> Block(LINE) -> Word`).
+Consumers iterating `page.items[0]` assuming a `BLOCK`-category item
+fail on DocTR output and there's no documented canonical depth. Fix
+options: document the difference with consumer-side guards, or have
+the DocTR adapter wrap PARAGRAPH blocks in an outer BLOCK to match
+Tesseract depth.
 
 **Workflow per iteration** (one bug per commit, no push):
 
