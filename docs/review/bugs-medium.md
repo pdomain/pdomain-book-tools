@@ -423,7 +423,7 @@ normalized list contains any non-`regular` style, remove `'regular'`.
 
 ---
 
-## M-30 — `rescale_image_gpu` uses bilinear interpolation for downscaling; cv2 uses `INTER_AREA`
+## [FIXED in 856e776] ~~M-30 — `rescale_image_gpu` uses bilinear interpolation for downscaling; cv2 uses `INTER_AREA`~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/rescale.py`, line 41
 
