@@ -201,7 +201,18 @@ def get_finetuned_torch_doctr_predictor(
         det_params
     )
     det_model = _build_arch(det_arch_name, pretrained=True).to(device)
-    det_model.load_state_dict(det_params)
+    # Wrap load_state_dict so a checkpoint/architecture mismatch surfaces a
+    # message naming the offending file and detected arch instead of a bare
+    # torch ``RuntimeError`` / ``KeyError`` from deep inside the framework
+    # (M-23). Architecture detection is heuristic, so this is a realistic
+    # failure mode worth identifying clearly.
+    try:
+        det_model.load_state_dict(det_params)
+    except (RuntimeError, KeyError) as e:
+        raise RuntimeError(
+            f"Failed to load DocTR detection checkpoint {det_path} into "
+            f"architecture {det_arch_name!r}: {e}"
+        ) from e
 
     if not vocab:
         vocab = _read_vocab_sidecar(recognition_pt_file) or "".join(
@@ -231,7 +242,13 @@ def get_finetuned_torch_doctr_predictor(
         # Some archs (e.g. parseq) do not accept ``pretrained_backbone``.
         reco_kwargs.pop("pretrained_backbone", None)
         reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
-    reco_model.load_state_dict(reco_params)
+    try:
+        reco_model.load_state_dict(reco_params)
+    except (RuntimeError, KeyError) as e:
+        raise RuntimeError(
+            f"Failed to load DocTR recognition checkpoint {reco_path} into "
+            f"architecture {reco_arch_name!r}: {e}"
+        ) from e
 
     full_predictor = ocr_predictor(
         det_arch=det_model,

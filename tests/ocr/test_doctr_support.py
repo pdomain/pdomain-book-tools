@@ -277,6 +277,130 @@ class TestGetFinetunedTorchDoctrPredictor:
         kwargs = fake_models.crnn_vgg16_bn.call_args.kwargs
         assert kwargs["vocab"] == "custom_vocab"
 
+    def test_det_load_state_dict_failure_names_checkpoint_and_arch(
+        self, monkeypatch, tmp_path
+    ):
+        """Regression for M-23: a detection-model load_state_dict failure must
+        re-raise with the offending checkpoint path and detected architecture
+        name in the message.
+
+        Pre-fix, a torch ``RuntimeError("size mismatch ...")`` propagated as-is
+        from deep inside torch with no indication of which file or which arch
+        caused it. Post-fix, the helper wraps the call and re-raises with both
+        identifiers, preserving the original via ``raise ... from e``.
+        """
+        det_path = tmp_path / "bad_det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_det_model.load_state_dict = MagicMock(
+            side_effect=RuntimeError("size mismatch for some.weight: ...")
+        )
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+            )
+
+        msg = str(exc_info.value)
+        # Checkpoint path must be named so the user knows which file is wrong.
+        assert "bad_det.pt" in msg
+        # Detected arch name must be named so the user can correct or override.
+        # ``db_resnet50`` is the default detection arch for an empty state_dict.
+        assert "db_resnet50" in msg
+        # Original exception preserved via ``raise ... from e``.
+        assert isinstance(exc_info.value.__cause__, RuntimeError)
+        assert "size mismatch" in str(exc_info.value.__cause__)
+
+    def test_reco_load_state_dict_failure_names_checkpoint_and_arch(
+        self, monkeypatch, tmp_path
+    ):
+        """Regression for M-23: same contract for the recognition model.
+
+        A ``KeyError`` (missing key) raised by torch deep inside
+        ``reco_model.load_state_dict`` must be wrapped to name the recognition
+        checkpoint path and the detected reco arch.
+        """
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "bad_reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc", "currency": "$"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+        fake_reco_model.load_state_dict = MagicMock(
+            side_effect=KeyError("missing.key.in.state_dict")
+        )
+
+        fake_models = MagicMock()
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
+
+        with pytest.raises(RuntimeError) as exc_info:
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+            )
+
+        msg = str(exc_info.value)
+        assert "bad_reco.pt" in msg
+        # Default recognition arch for an empty state_dict is crnn_vgg16_bn.
+        assert "crnn_vgg16_bn" in msg
+        # Original cause preserved.
+        assert isinstance(exc_info.value.__cause__, KeyError)
+
     def test_happy_path_with_cuda_available(self, monkeypatch, tmp_path):
         """When CUDA is available, the helper should use the cuda device strings."""
         det_path = tmp_path / "det.pt"
