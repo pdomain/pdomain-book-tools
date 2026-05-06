@@ -45,3 +45,12 @@ class TestCreateFileThumbnail:
         target = pathlib.Path(tmp_path / "thumb.bmp")
         with pytest.raises(ValueError, match="suffix"):
             create_file_thumbnail(src, target)
+
+    def test_missing_source_raises_file_not_found(self, tmp_path):
+        # M-05: a missing source previously surfaced as
+        # ``AttributeError: 'NoneType' object has no attribute 'shape'``
+        # from ``rescale_image``. It must now name the offending path.
+        src = pathlib.Path(tmp_path / "does_not_exist.jpg")
+        target = pathlib.Path(tmp_path / "thumb.jpg")
+        with pytest.raises(FileNotFoundError, match=str(src.resolve())):
+            create_file_thumbnail(src, target)
