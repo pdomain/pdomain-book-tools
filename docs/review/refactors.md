@@ -181,7 +181,7 @@ Any import of the cupy backend pulls in cv2, breaking GPU-only deployments.
 
 ---
 
-## R-07 — `Point.__getattr__` delegates to Shapely, leaking all Shapely internals as public API
+## [FIXED in 5862af4] ~~R-07 — `Point.__getattr__` delegates to Shapely, leaking all Shapely internals as public API~~
 
 **File:** `pd_book_tools/geometry/point.py`, lines 96–97
 
