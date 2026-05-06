@@ -45,13 +45,16 @@ remembering prior turns. Update this when an iteration completes (after the
   and always normalized output — fix `2327d2f`, doc mark `<pending>`
 - H-06 `word.py` `crop_bottom` / `crop_top` overwrote `self.bounding_box`
   with `None` on the blank-ROI warning path — fix `645c825`, doc mark `<pending>`
+- H-07 `block.py` `Block.mean_ocr_confidence` raised `TypeError` because
+  `ocr_confidence_scores()` can contain `None` after any `Word.split()` —
+  fix `42da1ac`, doc mark `<pending>`
 
-**Next pick:** H-07 — `block.py` `Block.mean_ocr_confidence` (lines 896–913)
-calls `sum(scores) / len(scores)` on the output of `ocr_confidence_scores()`,
-which can contain `None` after any `Word.split()` (split sets
-`ocr_confidence=None` on both halves). `sum()` on a list with `None` raises
-`TypeError`. Fix: filter `None` from `scores` before averaging, and decide a
-sensible return when no scores remain.
+**Next pick:** H-08 — `block.py` `Block.from_dict` (line 982) calls
+`BoundingBox.from_dict(data["bounding_box"])` unconditionally. `to_dict`
+serializes a `None` bounding box as JSON `null`, so deserializing such a
+document raises `TypeError` from `BoundingBox.from_dict(None)`. Fix:
+`BoundingBox.from_dict(data["bounding_box"]) if data.get("bounding_box") else None`.
+Same pattern likely needs checking in `Page.from_dict`.
 
 **Workflow per iteration** (one bug per commit, no push):
 
