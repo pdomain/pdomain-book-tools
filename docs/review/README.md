@@ -41,15 +41,15 @@ remembering prior turns. Update this when an iteration completes (after the
 - H-04 `page.py` `Page.recompute_bounding_box` was reported missing but was
   actually implemented in commit `2248366` (April 2025); review was stale —
   regression-locked via test in fix `bd4ece9`, doc mark `<pending>`
+- H-05 `bounding_box.py` `_vertical_crop` discarded `original_is_normalized`
+  and always normalized output — fix `2327d2f`, doc mark `<pending>`
 
-**Next pick:** H-05 — `bounding_box.py` `_vertical_crop` (line ~649) discards
-`original_is_normalized` from `_extract_roi` and unconditionally calls
-`.normalize(img_w, img_h)`, flipping pixel-space boxes into normalized space.
-`word.py` `crop_bottom` / `crop_top` (lines 1080–1108) then store the
-corrupted box back. Fix: thread `original_is_normalized` through and use
-`_finalize_pixel_bbox` (as `refine` does) instead of the unconditional
-`.normalize()`. Also fix the swapped `keep='top'`/`keep='bottom'` mapping in
-the docstring at ~line 612.
+**Next pick:** H-06 — `word.py` `crop_bottom` / `crop_top` (lines 1080–1108)
+assign `self.bounding_box = cropped_bbox` even when `cropped_bbox` is `None`
+(blank ROI path in `BoundingBox._extract_roi`). All subsequent attribute
+access on the word's bounding box raises `AttributeError`. Fix: only assign
+when the result is not `None`; the existing warning log already covers the
+diagnostic.
 
 **Workflow per iteration** (one bug per commit, no push):
 
