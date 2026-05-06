@@ -103,7 +103,7 @@ and a `UserWarning` for multi-column input.
 
 ---
 
-## L-08 — `visualize.py` — `cv2.imwrite` return value is not checked
+## [FIXED in af9b8ce] ~~L-08 — `visualize.py` — `cv2.imwrite` return value is not checked~~
 
 **File:** `pd_book_tools/layout/visualize.py`, lines 84–85
 
