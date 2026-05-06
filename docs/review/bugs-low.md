@@ -167,7 +167,7 @@ PGDP-aware tools to apply list formatting to bibliography entries.
 
 ---
 
-## L-13 — `remove_small_contours` mutates the input image in-place without documentation
+## [FIXED in 0966c40] ~~L-13 — `remove_small_contours` mutates the input image in-place without documentation~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/contours.py`, lines 61–69
 
