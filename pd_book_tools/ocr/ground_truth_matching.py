@@ -1035,7 +1035,12 @@ def _build_current_work_gt_line_from_prev(
     """
     if prev_char_count != 0:
         if previous_ground_truth_text[-prev_char_count] == " ":
-            return ""
+            # Boundary char is a space: skip prepending from the previous line
+            # and fall back to the unmodified ground_truth_text. Returning ""
+            # here (the original behaviour) inserted a zero-score empty variant
+            # into the candidates list — the scoring filtered it out, but the
+            # intent was to skip, not to materialize a dead variant. M-25.
+            return ground_truth_text
         logger.debug(
             "Add Prev | %s | %s",
             previous_ground_truth_text[-prev_char_count],
