@@ -133,7 +133,7 @@ and have `BoundingBox` expose only coordinate geometry.
 
 ---
 
-## R-04 — `refine_bounding_box` and `refine_bbox` on `Word` should be consolidated
+## [FIXED in 31d09a9] ~~R-04 — `refine_bounding_box` and `refine_bbox` on `Word` should be consolidated~~
 
 **File:** `pd_book_tools/ocr/word.py`, lines 681–689 (`refine_bounding_box`), lines 768+ (`refine_bbox`)
 
