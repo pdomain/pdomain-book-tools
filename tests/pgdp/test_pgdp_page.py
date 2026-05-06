@@ -184,6 +184,17 @@ def test_pgdp_export_from_json_empty_object(tmp_path):
     assert export.pages == []
 
 
+def test_pgdp_export_from_json_empty_object_str_path_prefix(tmp_path):
+    """L-26 regression: str path_prefix + empty pages dict crashed on
+    ``path_prefix.stem`` because the in-loop ``isinstance(..., str)``
+    conversion never ran when ``pages`` was empty. Conversion is now
+    hoisted above the loop so the ``.stem`` access succeeds.
+    """
+    export = PGDPExport.from_json("{}", str(tmp_path))
+    assert export.project_id == tmp_path.stem
+    assert export.pages == []
+
+
 def test_pgdp_export_from_json_path_prefix_str_multiple(tmp_path):
     # Use string path_prefix to exercise str->Path conversion inside loop
     json_str = '{"a.png": "A text", "b.png": "B text"}'
