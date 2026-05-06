@@ -367,12 +367,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   keep, render, or strip them, matching how "footnote" /
   "illustration" / "page header" already work. — fix `4819bd0`,
   doc mark `<pending>`
+- M-16 `ocr/document.py` DocTR adapter accessed `word_data["geometry"]`
+  with a hard key while block, line, and (post-M-15) artefact geometry
+  already used guarded `.get("geometry")`. A DocTR word with no
+  geometry key raised `KeyError` and tore down the whole page
+  construction instead of letting the partial word flow through. Fixed
+  to mirror the surrounding guarded pattern: emit the word with
+  `bounding_box=None` when geometry is absent (project invariant: never
+  silently drop OCR-derived content). One frame up, `Block.items`
+  setter rejected items whose `bounding_box` was `None`, even though
+  the Block itself, `Page.__init__` (post-H-19), and
+  `Block.recompute_bounding_box` already treat `None` bboxes as
+  legitimate; aligned the setter so partial OCR words and empty child
+  blocks are admitted, otherwise the document.py fix alone would raise
+  `TypeError` one frame later. — fix `f27c766`, doc mark `<pending>`
 
-**Next pick:** M-16 — `ocr/document.py` DocTR adapter accesses word
-geometry by hard key (`word_data["geometry"]`), raising `KeyError`
-on partial data, while block and line geometry use guarded
-`.get("geometry")`. Fix: use `word_data.get("geometry")` with a
-guard, consistent with the surrounding pattern.
+**Next pick:** M-17 — `image_processing/cupy_processing/colorToGray.py`
+`np_uint8_float_colorToGray` does `img.astype(np.float32) / 255.0`
+unconditionally; if `img` is already `float32` in `[0, 1]` (a normal
+intermediate format), the divide collapses values to `[0, 0.004]` and
+silently produces near-black output. Fix: branch on `img.dtype` so
+already-float input skips the division.
 
 **Workflow per iteration** (one bug per commit, no push):
 

@@ -229,7 +229,7 @@ elements detected by DocTR) are silently discarded with no logging.
 
 ---
 
-## M-16 — DocTR word geometry is accessed by hard key, raising `KeyError` on partial data
+## [FIXED in f27c766] ~~M-16 — DocTR word geometry is accessed by hard key, raising `KeyError` on partial data~~
 
 **File:** `pd_book_tools/ocr/document.py`, line 304
 
