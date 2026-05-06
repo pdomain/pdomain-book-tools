@@ -650,6 +650,68 @@ def test_crop_top_bottom_no_text_returns_copy():
     assert bbox.crop_bottom(img).to_ltrb() == bbox.to_ltrb()
 
 
+def test_refine_no_text_returns_distinct_copy_preserving_state():
+    """R-11 lock: the early-return copy idiom must yield a distinct
+    BoundingBox instance with the same coordinates and the same
+    ``is_normalized`` state as ``self``. Used to verify that switching
+    away from ``BoundingBox.from_dict(self.to_dict())`` toward
+    ``dataclasses.replace(self)`` (or ``__copy__``) preserves observable
+    behavior.
+    """
+    import numpy as np
+
+    img = np.full((50, 100), 255, dtype=np.uint8)
+
+    norm_bbox = BoundingBox.from_ltrb(0.2, 0.2, 0.6, 0.8)
+    refined = norm_bbox.refine(img)
+    assert refined is not norm_bbox  # new instance
+    assert refined.to_ltrb() == pytest.approx(norm_bbox.to_ltrb())
+    assert refined.is_normalized is True
+    assert norm_bbox.is_normalized is True  # original unchanged
+
+    pix_bbox = BoundingBox.from_ltrb(10, 5, 60, 40)
+    refined_pix = pix_bbox.refine(img)
+    assert refined_pix is not pix_bbox
+    assert refined_pix.to_ltrb() == pix_bbox.to_ltrb()
+    assert refined_pix.is_normalized is False
+
+
+def test_refine_expand_beyond_original_returns_distinct_copy():
+    """R-11 lock: expand_beyond_original early-return path."""
+    import numpy as np
+
+    img = np.full((50, 100), 255, dtype=np.uint8)
+    bbox = BoundingBox.from_ltrb(10, 5, 60, 40)
+    refined = bbox.refine(img, expand_beyond_original=True)
+    assert refined is not bbox
+    assert refined.to_ltrb() == bbox.to_ltrb()
+    assert refined.is_normalized is False
+
+
+def test_vertical_crop_no_text_returns_distinct_copy_preserving_state():
+    """R-11 lock: ``_vertical_crop`` early-return paths must yield a
+    distinct copy with matching ``is_normalized``."""
+    import numpy as np
+
+    img = np.full((40, 80), 255, dtype=np.uint8)
+
+    pix_bbox = BoundingBox.from_ltrb(5, 5, 30, 30)
+    cropped_top = pix_bbox.crop_top(img)
+    cropped_bot = pix_bbox.crop_bottom(img)
+    assert cropped_top is not pix_bbox
+    assert cropped_bot is not pix_bbox
+    assert cropped_top.to_ltrb() == pix_bbox.to_ltrb()
+    assert cropped_bot.to_ltrb() == pix_bbox.to_ltrb()
+    assert cropped_top.is_normalized is False
+    assert cropped_bot.is_normalized is False
+
+    norm_bbox = BoundingBox.from_ltrb(0.0, 0.0, 1.0, 1.0)
+    cropped_norm = norm_bbox.crop_top(img)
+    assert cropped_norm is not norm_bbox
+    assert cropped_norm.to_ltrb() == pytest.approx(norm_bbox.to_ltrb())
+    assert cropped_norm.is_normalized is True
+
+
 def test_iou():
     a = BoundingBox.from_ltrb(0, 0, 10, 10)
     b = BoundingBox.from_ltrb(5, 5, 15, 15)

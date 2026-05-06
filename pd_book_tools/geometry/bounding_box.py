@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from logging import getLogger
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -594,13 +594,13 @@ class BoundingBox:
                 y2,
             )
             if connected_bbox is None:
-                return BoundingBox.from_dict(self.to_dict())
+                return replace(self)
             x_min, y_min, x_max, y_max = connected_bbox
         else:
             thresh, _ = self._threshold_inverted(roi)
             tight = self._tight_bbox_from_thresh(thresh)
             if tight is None:
-                return BoundingBox.from_dict(self.to_dict())
+                return replace(self)
             x, y, w, h = tight
             x_min = x1 + x
             y_min = y1 + y
@@ -641,7 +641,7 @@ class BoundingBox:
         thresh, _ = self._threshold_inverted(roi)
         non_zero = findNonZero(thresh)
         if non_zero is None:
-            return BoundingBox.from_dict(self.to_dict())
+            return replace(self)
         coords = non_zero.reshape(-1, 2)
         roi_h, _ = thresh.shape
         center_y = roi_h // 2
@@ -649,7 +649,7 @@ class BoundingBox:
             # discard below center
             coords = coords[coords[:, 1] <= center_y]
             if coords.size == 0:
-                return BoundingBox.from_dict(self.to_dict())
+                return replace(self)
             for y in range(center_y - 1, -1, -1):
                 current = set(coords[coords[:, 1] == y][:, 0])
                 prev = set(coords[coords[:, 1] == y + 1][:, 0])
@@ -662,7 +662,7 @@ class BoundingBox:
         else:  # keep == bottom
             coords = coords[coords[:, 1] >= center_y]
             if coords.size == 0:
-                return BoundingBox.from_dict(self.to_dict())
+                return replace(self)
             roi_h = thresh.shape[0]
             for y in range(center_y + 1, roi_h):
                 current = set(coords[coords[:, 1] == y][:, 0])
