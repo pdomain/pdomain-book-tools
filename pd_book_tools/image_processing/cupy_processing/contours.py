@@ -105,6 +105,16 @@ def remove_small_contours_gpu(
     For book-page pipelines where adaptive threshold selection is preferred,
     see remove_small_contours_adaptive_gpu.
 
+    Backend divergence (L-27)
+    -------------------------
+    The cv2 backend ``remove_small_contours`` has an unconditional
+    ``small_contour_w``/``small_contour_h`` (default 10x10) fast path that
+    removes very small contours WITHOUT a neighborhood check; this backend
+    does not. A 9x9 dot with enough nearby pixels is therefore kept here
+    but dropped by cv2 with default parameters. To force the cv2 backend
+    to match this backend's neighborhood-only behavior, pass
+    ``small_contour_w=0, small_contour_h=0`` to it.
+
     img_cp: 2-D uint8 CuPy array (non-zero pixels are foreground).
     Returns a copy with isolated small components zeroed out.
     """
