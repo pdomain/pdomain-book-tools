@@ -14,9 +14,11 @@ def dilate(img: cp.ndarray, kernel: cp.ndarray):
     pad_h, pad_w = kh // 2, kw // 2
 
     # Pad the image
-    img_padded = cp.pad(
-        img, ((pad_h, pad_h), (pad_w, pad_w)), mode="constant", constant_values=0
-    )
+    # Use 'reflect' padding to mirror cv2's default BORDER_REFLECT_101
+    # (numpy/cupy 'reflect' excludes the edge pixel: dcb|abcd|cba). Constant-0
+    # padding silently eroded foreground pixels touching the image border —
+    # see M-08 in docs/review/bugs-medium.md.
+    img_padded = cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect")
 
     # Create sliding windows over the image
     windows = sliding_window_view(img_padded, (kh, kw))
@@ -31,9 +33,11 @@ def erode(img: cp.ndarray, kernel: cp.ndarray):
     pad_h, pad_w = kh // 2, kw // 2
 
     # Pad the image
-    img_padded = cp.pad(
-        img, ((pad_h, pad_h), (pad_w, pad_w)), mode="constant", constant_values=0
-    )
+    # Use 'reflect' padding to mirror cv2's default BORDER_REFLECT_101
+    # (numpy/cupy 'reflect' excludes the edge pixel: dcb|abcd|cba). Constant-0
+    # padding silently eroded foreground pixels touching the image border —
+    # see M-08 in docs/review/bugs-medium.md.
+    img_padded = cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect")
 
     # Create sliding windows over the image
     windows = sliding_window_view(img_padded, (kh, kw))
