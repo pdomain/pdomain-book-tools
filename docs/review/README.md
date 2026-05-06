@@ -517,9 +517,23 @@ now sweeps `bugs-medium.md` top-to-bottom.
   `tests/ocr/test_character_groups.py` asserting the exact ordered
   values so future edits can't regress to set-based dedup. — fix
   `e5c03ac`, doc mark `<pending>`
+- M-27 `image_processing/cupy_processing/canvas.py` imported
+  `Alignment` from `cv2_processing.canvas` at module load, coupling the
+  cupy backend to the cv2 backend and breaking GPU-only deployments
+  where cv2 is not importable. Created
+  `pd_book_tools/image_processing/types.py` as the canonical home for
+  backend-neutral types and moved `Alignment` there; both backends now
+  import directly from `types`. `cv2_processing.canvas` re-exports
+  `Alignment` for backward compatibility, so existing callers
+  (including the package's own `cv2_processing/__init__.py`
+  re-export) keep working unchanged. Pure structural change.
+  Regression test asserts canonical location, identity-equality of
+  the cv2 re-export, and the import-graph invariant that loading
+  `cupy_processing.canvas` does NOT pull in `cv2_processing.canvas`.
+  — fix `59495ff`, doc mark `<pending>`
 
-**Next pick:** M-27 — `image_processing/cupy_processing/canvas.py`.
-Hard dependency on `cv2_processing.canvas` for the `Alignment` enum.
+**Next pick:** M-28 — `ocr/block.py` `Block.merge` silently drops
+unmatched ground-truth words from one side.
 
 **Workflow per iteration** (one bug per commit, no push):
 

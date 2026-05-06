@@ -376,7 +376,7 @@ changing the set of characters.
 
 ---
 
-## M-27 — `canvas.py` (cupy) has a hard dependency on `cv2_processing.canvas` for the `Alignment` enum
+## [FIXED in 59495ff] ~~M-27 — `canvas.py` (cupy) has a hard dependency on `cv2_processing.canvas` for the `Alignment` enum~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/canvas.py`, line 7
 
