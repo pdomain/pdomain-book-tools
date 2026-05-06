@@ -235,10 +235,11 @@ def update_line_match_difflib_lines_equal(
                 f"Word mismatch: {word.text} vs {ground_truth_line[word_idx]}"
             )
 
-        if word_idx >= len(ground_truth_line):
-            raise ValueError(
-                f"Word index {word_idx} out of range for ground truth line: {ground_truth_line}"
-            )
+        # L-20: removed unreachable
+        # ``if word_idx >= len(ground_truth_line): raise ValueError(...)``.
+        # The length-equality check at line ~223 already raises before the
+        # loop, so ``word_idx`` (from ``enumerate(line.words)``) can never
+        # exceed ``len(ground_truth_line) - 1`` here.
 
         word.ground_truth_text = ground_truth_line[word_idx]
         word.ground_truth_match_keys = {
