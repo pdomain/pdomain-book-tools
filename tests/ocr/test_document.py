@@ -395,7 +395,7 @@ def test_document_from_tesseract(sample_tesseract_output):
     assert doc.pages[0].height == 200
     assert doc.pages[0].ocr_provenance is not None
     assert doc.pages[0].ocr_provenance.engine == "tesseract"
-    assert doc.pages[0].ocr_provenance.models == []
+    assert doc.pages[0].ocr_provenance.models == ()  # L-15: tuple, not list
     assert isinstance(doc.pages[0].ocr_provenance.engine_version, str)
 
 

@@ -35,8 +35,18 @@ class OCRModelProvenance:
 class OCRProvenance:
     engine: str = UNKNOWN_METADATA_VALUE
     engine_version: str | None = None
-    models: list[OCRModelProvenance] = field(default_factory=list)
+    # Stored as a tuple so the frozen=True immutability promise is real:
+    # ``provenance.models.append(...)`` would have succeeded silently on a
+    # list, defeating the dataclass's frozen contract. ``__post_init__``
+    # coerces any incoming list/iterable to a tuple. (L-15)
+    models: tuple[OCRModelProvenance, ...] = field(default_factory=tuple)
     config_fingerprint: str | None = None
+
+    def __post_init__(self) -> None:
+        # Tolerate callers (and legacy code) constructing with a list.
+        # ``object.__setattr__`` is required because the dataclass is frozen.
+        if not isinstance(self.models, tuple):
+            object.__setattr__(self, "models", tuple(self.models))
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {

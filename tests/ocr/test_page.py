@@ -177,9 +177,24 @@ def test_page_copy_preserves_ocr_provenance_without_shared_mutation():
     assert copied.ocr_provenance == page.ocr_provenance
     assert copied.ocr_provenance is not page.ocr_provenance
 
-    copied.ocr_provenance.models.append(OCRModelProvenance(name="reco"))
+    # L-15: ``OCRProvenance.models`` is now a tuple so the frozen dataclass's
+    # immutability promise is real (an in-place ``.append`` on a list field
+    # would have silently leaked across copies). To exercise the no-shared-
+    # mutation contract, construct a *new* OCRProvenance with an extended
+    # tuple and assign it to the copy via ``object.__setattr__`` (the field
+    # is frozen). The original's ``.models`` must be unchanged.
+    new_models = copied.ocr_provenance.models + (OCRModelProvenance(name="reco"),)
+    object.__setattr__(
+        copied,
+        "ocr_provenance",
+        OCRProvenance(
+            engine=copied.ocr_provenance.engine,
+            models=new_models,
+            engine_version=copied.ocr_provenance.engine_version,
+        ),
+    )
 
-    assert page.ocr_provenance.models == [OCRModelProvenance(name="det")]
+    assert page.ocr_provenance.models == (OCRModelProvenance(name="det"),)
 
 
 # ============================================================================

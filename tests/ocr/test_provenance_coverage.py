@@ -77,11 +77,46 @@ class TestOCRProvenance:
 
     def test_from_dict_models_not_list(self):
         p = OCRProvenance.from_dict({"engine": "x", "models": "not a list"})
-        assert p.models == []
+        # L-15: ``models`` is a tuple for real frozen-dataclass immutability.
+        assert p.models == ()
 
     def test_from_dict_engine_default(self):
         p = OCRProvenance.from_dict({})
         assert p.engine == UNKNOWN_METADATA_VALUE
+
+
+class TestOCRProvenanceImmutability:
+    """L-15: ``models`` is a tuple so the ``frozen=True`` promise is real.
+
+    A list field on a frozen dataclass blocked attribute reassignment but
+    not in-place mutation — ``provenance.models.append(...)`` succeeded
+    silently. Switching to ``tuple`` enforces actual immutability.
+    """
+
+    def test_models_is_tuple_not_list(self):
+        p = OCRProvenance(engine="x", models=[OCRModelProvenance(name="m1")])
+        assert isinstance(p.models, tuple)
+
+    def test_models_default_is_tuple(self):
+        p = OCRProvenance(engine="x")
+        assert isinstance(p.models, tuple)
+        assert p.models == ()
+
+    def test_models_cannot_be_appended_to(self):
+        p = OCRProvenance(engine="x")
+        with pytest.raises(AttributeError):
+            p.models.append(OCRModelProvenance(name="rogue"))  # type: ignore[attr-defined]
+
+    def test_list_input_is_coerced_via_post_init(self):
+        # Back-compat: callers passing a list still work; it's converted.
+        p = OCRProvenance(
+            engine="x",
+            models=[OCRModelProvenance(name="m1"), OCRModelProvenance(name="m2")],
+        )
+        assert p.models == (
+            OCRModelProvenance(name="m1"),
+            OCRModelProvenance(name="m2"),
+        )
 
 
 class TestOCRProvenanceCoerce:
