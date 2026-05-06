@@ -473,7 +473,7 @@ directory component), `rsplit(".", 1)` splits on the directory's dot, producing
 
 ---
 
-## L-36 — `deskew.py` — unreachable dead code after `bottom_left_column == top_left_column` check
+## ~~L-36 — `deskew.py` — unreachable dead code after `bottom_left_column == top_left_column` check~~ [FIXED in cd0138d]
 
 **File:** `pd_book_tools/image_processing/cupy_processing/deskew.py`, lines 68–70
 
@@ -488,7 +488,7 @@ if dist_b == dist_c:
 
 ---
 
-## L-37 — `bounding_box.py` — `(y - 0)` is a dead no-op expression
+## ~~L-37 — `bounding_box.py` — `(y - 0)` is a dead no-op expression~~ [FIXED in 8ca2024]
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, line 647
 
@@ -499,7 +499,7 @@ that was reduced to a no-op but never cleaned up.
 
 ---
 
-## L-38 — `Word.split` passes `text_style_label_scopes` by reference (aliasing risk)
+## ~~L-38 — `Word.split` passes `text_style_label_scopes` by reference (aliasing risk)~~ [STALE — regression-locked in 98c0674]
 
 **File:** `pd_book_tools/ocr/word.py`, lines 739–764
 
@@ -512,7 +512,7 @@ state with the parent.
 
 ---
 
-## L-39 — `pyproject.toml` — `isort` listed as a runtime dependency
+## ~~L-39 — `pyproject.toml` — `isort` listed as a runtime dependency~~ [FIXED in 5f2400f]
 
 **File:** `pd_book_tools/pyproject.toml`, line 22
 
@@ -522,7 +522,7 @@ state with the parent.
 
 ---
 
-## L-40 — `pyproject.toml` — `cupy-cuda12x` is a mandatory runtime dependency
+## ~~L-40 — `pyproject.toml` — `cupy-cuda12x` is a mandatory runtime dependency~~ [FIXED in 5f2400f, regression-locked in 33fec7a]
 
 **File:** `pd_book_tools/pyproject.toml`, line 18
 
