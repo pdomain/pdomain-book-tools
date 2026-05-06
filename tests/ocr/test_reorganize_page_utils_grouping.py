@@ -301,7 +301,12 @@ def test_reorganize_page_expected_text_outputs(
         )
 
     page = _load_fixture_page(case_name)
-    page.reorganize_page()
+    # Opt into the legacy word-dropping paths (heuristic figure-noise +
+    # layout-region drops) — the committed text baselines were generated
+    # against that behaviour, so this test's "intent" is to lock in the
+    # post-drop output even though the new default preserves all words.
+    # See ``Page.reorganize_page`` docstring for ``drop_layout_words``.
+    page.reorganize_page(drop_layout_words=True)
     current_text = (page.text or "").rstrip() + "\n"
 
     baseline_path = TEXT_BASELINE_DIR / f"{case_name}.reorganize.txt"

@@ -202,6 +202,112 @@ class TestReorganizeAcceptsLayoutKwarg:
         assert "world" in page.text
 
 
+class TestReorganizeDropLayoutWordsFlag:
+    """Regression: footnote / header / footer / abandoned words must
+    NEVER be silently dropped by ``Page.reorganize_page``, regardless
+    of the experimental ``drop_layout_words`` flag. Pre-fix, a real
+    page (``225.png`` from ``projectID66c62fca99a93``) lost its
+    footnotes entirely because ``reorganize_page`` called
+    ``drop_layout_regions`` unconditionally when a layout was supplied.
+
+    With the corrected policy:
+      * Default mode (``drop_layout_words=False``) — no layout-region
+        drops, no figure-noise drops. Every OCR word survives.
+      * Experimental mode (``drop_layout_words=True``) — only
+        figure-internal heuristic noise is dropped (Step B2). Footnote /
+        header / footer / abandoned words still survive.
+
+    This class exercises both modes through the full
+    ``Page.reorganize_page`` entry point with a synthetic page.
+    """
+
+    def _page_with_body_and_footnote(self):
+        # Body paragraph in the upper two-thirds, footnote paragraph
+        # near the bottom — wide enough x-extents that geometric heuristics
+        # treat the body line as real content.
+        body_words = [
+            _word("body", 100, 500, 200, 530),
+            _word("text", 210, 500, 350, 530),
+        ]
+        footnote_words = [
+            _word("FN", 100, 1300, 150, 1330),
+            _word("note", 160, 1300, 280, 1330),
+        ]
+        return _make_page(
+            [
+                _paragraph_block([_line_block(body_words)]),
+                _paragraph_block([_line_block(footnote_words)]),
+            ]
+        )
+
+    def _layout_with_footnote_band(self):
+        # High-confidence footnote region covering the footnote band, plus
+        # a body text region so the body line keeps its layout:text tag.
+        return PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.text,
+                    L=0,
+                    R=PAGE_W,
+                    T=400,
+                    B=600,
+                    confidence=0.95,
+                ),
+                LayoutRegion(
+                    type=RegionType.footnote,
+                    L=0,
+                    R=PAGE_W,
+                    T=1250,
+                    B=1400,
+                    confidence=0.95,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+    def test_default_preserves_footnote_words(self):
+        page = self._page_with_body_and_footnote()
+        layout = self._layout_with_footnote_band()
+        page.reorganize_page(layout=layout)
+        # Footnote words must survive into the post-reorganize output —
+        # this is the whole point of the policy.
+        remaining_text = {w.text for w in page.words}
+        assert "FN" in remaining_text
+        assert "note" in remaining_text
+        # Body words obviously also survive.
+        assert {"body", "text"}.issubset(remaining_text)
+
+    def test_opt_in_still_preserves_footnote_words(self):
+        # Even with ``drop_layout_words=True`` (the experimental
+        # opt-in), footnote / header / footer / abandoned regions are
+        # NEVER dropped — that flag now only governs figure-internal
+        # heuristic noise removal.
+        page = self._page_with_body_and_footnote()
+        layout = self._layout_with_footnote_band()
+        page.reorganize_page(layout=layout, drop_layout_words=True)
+        remaining_text = {w.text for w in page.words}
+        assert "FN" in remaining_text
+        assert "note" in remaining_text
+        assert {"body", "text"}.issubset(remaining_text)
+
+    def test_footnote_words_keep_layout_tag(self):
+        # Per-word ``layout:footnote`` tags are stamped by
+        # ``tag_words_with_layout`` and survive the rest of the
+        # pipeline, so consumers can still dispatch on the per-word
+        # tag (or the bubbled block role, where Step E doesn't
+        # relabel the band) instead of relying on word deletion.
+        page = self._page_with_body_and_footnote()
+        layout = self._layout_with_footnote_band()
+        page.reorganize_page(layout=layout)
+        for word in page.words:
+            if word.text in {"FN", "note"}:
+                assert "layout:footnote" in word.word_labels
+            elif word.text in {"body", "text"}:
+                assert "layout:text" in word.word_labels
+
+
 class TestAssociateCaptions:
     def test_caption_attached_to_figure(self):
         # Body paragraph

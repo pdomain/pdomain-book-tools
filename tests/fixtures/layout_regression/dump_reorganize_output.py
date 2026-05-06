@@ -50,7 +50,12 @@ def dump_case(case_name: str) -> str:
         raise SystemExit(f"failed to load fixture image: {png_path}")
     page.cv2_numpy_page_image = image
     page.refine_bounding_boxes()
-    page.reorganize_page()
+    # Opt into the legacy word-dropping paths so freshly-dumped baselines
+    # match the regression test's expectation (it also passes
+    # ``drop_layout_words=True``). The new default preserves all words; if
+    # you want a baseline with footnotes/figure-noise included, drop the
+    # kwarg.
+    page.reorganize_page(drop_layout_words=True)
     return (page.text or "").rstrip() + "\n"
 
 
