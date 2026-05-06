@@ -1,8 +1,11 @@
 # Configure logging
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
+
+from ._cupy_compat import cp, require_cupy
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,7 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     Returns:
         cp.ndarray: Thresholded binary image, dtype `cp.uint8`, values in `{0, 255}`.
     """
+    require_cupy()
     # Convert to grayscale if it's a color image
     if img_cp_float.ndim == 3 and img_cp_float.shape[2] == 3:
         img_cp_float = (
@@ -93,19 +97,22 @@ def binary_thresh_gpu(img_cp: cp.ndarray, level: int = 127) -> cp.ndarray:
     img_cp: 2-D uint8 CuPy array.
     Returns uint8 CuPy array.
     """
+    require_cupy()
     return (img_cp > level).astype(cp.uint8) * 255
 
 
 def np_uint8_binary_thresh(img: np.ndarray, level: int = 127) -> np.ndarray:
     """Transfers img to GPU, applies fixed-level threshold, returns CPU uint8 array."""
+    require_cupy()
     return cp.asnumpy(binary_thresh_gpu(cp.asarray(img), level))
 
 
 def np_uint8_float_binary_thresh(
     img: np.ndarray,
 ):
+    require_cupy()
     img_float = img.astype(np.float32) / 255.0
-    src: cp.ndarray = cp.asarray(img_float)
+    src = cp.asarray(img_float)
 
     cupy_result = otsu_binary_thresh(img_cp_float=src)
 

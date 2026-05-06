@@ -1,8 +1,19 @@
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
-from cupyx.scipy.ndimage import uniform_filter, zoom
+
+from ._cupy_compat import cp, require_cupy
+
+try:
+    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+        uniform_filter,
+        zoom,
+    )
+except ImportError:  # pragma: no cover - exercised only on CPU-only installs
+    uniform_filter = None
+    zoom = None
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +34,7 @@ def rescale_image_gpu(
 
     img_cp: 2-D (grayscale) or 3-D (colour) uint8 CuPy array.
     """
+    require_cupy()
     height, width = img_cp.shape[:2]
 
     short_side = width if height > width else height
@@ -72,5 +84,6 @@ def np_uint8_rescale_image(
     target_short_side: int = 1000,
 ) -> np.ndarray:
     """Transfers img to GPU, rescales, returns CPU uint8 array."""
+    require_cupy()
     img_cp = cp.asarray(img)
     return cp.asnumpy(rescale_image_gpu(img_cp, aspect_ratio, target_short_side))

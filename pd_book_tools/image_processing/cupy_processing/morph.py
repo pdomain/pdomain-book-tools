@@ -1,15 +1,25 @@
 # Configure logging
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
-from cupy.lib.stride_tricks import sliding_window_view
+
+from ._cupy_compat import cp, require_cupy
+
+try:
+    from cupy.lib.stride_tricks import (  # type: ignore[import-not-found]
+        sliding_window_view,
+    )
+except ImportError:  # pragma: no cover - exercised only on CPU-only installs
+    sliding_window_view = None
 
 logger = logging.getLogger(__name__)
 
 
 def dilate(img: cp.ndarray, kernel: cp.ndarray):
     """Performs dilation using a fully vectorized approach on a cupy image array."""
+    require_cupy()
     kh, kw = kernel.shape
     pad_h, pad_w = kh // 2, kw // 2
 
@@ -38,6 +48,7 @@ def dilate(img: cp.ndarray, kernel: cp.ndarray):
 
 def erode(img: cp.ndarray, kernel: cp.ndarray):
     """Performs erosion using a fully vectorized approach on a cupy image array."""
+    require_cupy()
     kh, kw = kernel.shape
     pad_h, pad_w = kh // 2, kw // 2
 
@@ -62,6 +73,7 @@ def morph_fill(img: cp.ndarray, shape=(6, 6)):
     """
     Apply closing followed by opening morphology using fully vectorized operations.
     """
+    require_cupy()
     kernel = cp.ones(shape, dtype=cp.uint8)
 
     # Morphological closing (dilate then erode)
@@ -77,4 +89,5 @@ def morph_fill(img: cp.ndarray, shape=(6, 6)):
 
 def np_uint8_morph_fill(img: np.ndarray, shape=(6, 6)) -> np.ndarray:
     """Transfers img to GPU, applies morph_fill, returns CPU uint8 array."""
+    require_cupy()
     return cp.asnumpy(morph_fill(cp.asarray(img), shape=shape))

@@ -12,12 +12,36 @@ Python tools for working with public domain book scans.
 2. **Install Tesseract OCR** (optional, for OCR functionality):
    <https://tesseract-ocr.github.io/tessdoc/Installation.html>
 
-3. **Install Nvidia CUDA toolkit** (optional but highly recommended, for GPU functions):
+3. **Install Nvidia CUDA toolkit** (optional, for the GPU extra):
    <https://developer.nvidia.com/cuda-toolkit>
 
-   Note, if you are using a containerized dev env, you also need Nvidia
+   Required only when installing with the `[gpu]` extra (see below).
+   If you are using a containerized dev env, you also need Nvidia
    container tools.
    <https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html>
+
+### CPU-only vs GPU installs
+
+The default install is CPU-only and works on Linux (CPU), macOS, and CI:
+
+```bash
+pip install pd-book-tools
+```
+
+For the optional CuPy/CUDA-12 acceleration (Linux + NVIDIA GPU only),
+install with the `gpu` extra:
+
+```bash
+pip install 'pd-book-tools[gpu]'
+```
+
+This pulls in `cupy-cuda12x` and `opencv-cuda`, which require a
+CUDA 12 toolkit and a compatible NVIDIA driver. The CPU pipeline
+(`pd_book_tools.image_processing.cv2_processing.*`) remains the
+fallback when the extra is not installed; calling any
+`pd_book_tools.image_processing.cupy_processing.*` function without
+the extra raises a clear `ImportError` pointing back at the install
+command above.
 
 ### Quick Setup
 
