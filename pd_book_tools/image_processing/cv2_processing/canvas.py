@@ -51,8 +51,16 @@ def map_content_onto_scaled_canvas(
 
     logger.debug("new_height={} new_width={}".format(new_height, new_width))
 
-    # Create a blank white canvas
-    canvas: np.ndarray = np.full((new_height, new_width), 255, dtype=np.uint8)
+    # Create a blank white canvas matching the input's channel layout.
+    # 2D (grayscale) input -> 2D canvas; 3-channel input -> 3-channel
+    # canvas. Without this, a 3-channel input crashes the placement step
+    # at ``canvas[...] = image`` with a broadcast error and silently
+    # implies a grayscale-only contract that nothing documents (M-12).
+    if image.ndim == 3:
+        canvas_shape: tuple[int, ...] = (new_height, new_width, image.shape[2])
+    else:
+        canvas_shape = (new_height, new_width)
+    canvas: np.ndarray = np.full(canvas_shape, 255, dtype=np.uint8)
     canvas_height, canvas_width = canvas.shape[:2]
     logger.debug("canvas_height={} canvas_width={}".format(canvas_height, canvas_width))
 
