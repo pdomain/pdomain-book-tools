@@ -352,14 +352,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   asserts both adapters produce the same `(BLOCK, PARAGRAPH, LINE)`
   category path from `page.items[0]`. — fix `78af86d`, doc mark
   `<pending>`
+- M-15 `ocr/document.py` DocTR adapter iterated only
+  `block_data["lines"]` and silently discarded
+  `block_data["artefacts"]` (stamps, barcodes, QR codes, figures,
+  unclassified non-text regions). Violated the project invariant that
+  OCR-derived content is never silently dropped. Fixed by adding
+  `"artefact"` to `Block.ALLOWED_BLOCK_ROLE_LABELS` and emitting each
+  artefact as a sibling top-level `Block` on the page
+  (`block_category=BLOCK`, `child_type=WORDS`, `items=[]`,
+  `block_role_labels=["artefact"]`). DocTR's per-artefact `type` and
+  `confidence` are preserved in `additional_block_attributes` so the
+  classification is not lost; `page.words` is unchanged because
+  artefacts are geometry-only. Consumers filter on the role label to
+  keep, render, or strip them, matching how "footnote" /
+  "illustration" / "page header" already work. — fix `4819bd0`,
+  doc mark `<pending>`
 
-**Next pick:** M-15 — `ocr/document.py` DocTR adapter silently drops
-all artefacts. DocTR's block export contains both `"lines"` and
-`"artefacts"` keys; the adapter iterates only `block_data.get("lines",
-[])` and discards artefacts (stamps, figures, non-text elements) with
-no logging. Fix: iterate `block_data.get("artefacts", [])` and either
-skip with `logger.debug` or convert to `RegionType`-tagged placeholder
-blocks.
+**Next pick:** M-16 — `ocr/document.py` DocTR adapter accesses word
+geometry by hard key (`word_data["geometry"]`), raising `KeyError`
+on partial data, while block and line geometry use guarded
+`.get("geometry")`. Fix: use `word_data.get("geometry")` with a
+guard, consistent with the surrounding pattern.
 
 **Workflow per iteration** (one bug per commit, no push):
 

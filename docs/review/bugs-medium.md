@@ -216,7 +216,7 @@ adapter wrap `PARAGRAPH` blocks in an outer `BLOCK` to match Tesseract depth.
 
 ---
 
-## M-15 — DocTR adapter silently drops all artefacts
+## [FIXED in 4819bd0] ~~M-15 — DocTR adapter silently drops all artefacts~~
 
 **File:** `pd_book_tools/ocr/document.py`, line 291
 
