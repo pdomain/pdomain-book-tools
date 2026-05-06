@@ -98,7 +98,7 @@ parameter to `list[str]`.
 
 ---
 
-## M-07 — `Document.source_path` serializes `None` as the string `"None"`
+## [FIXED in b67786c] ~~M-07 — `Document.source_path` serializes `None` as the string `"None"`~~
 
 **File:** `pd_book_tools/ocr/document.py`, lines 108–110
 
