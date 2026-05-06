@@ -212,10 +212,12 @@ class TestReorganizeDropLayoutWordsFlag:
 
     With the corrected policy:
       * Default mode (``drop_layout_words=False``) — no layout-region
-        drops, no figure-noise drops. Every OCR word survives.
-      * Experimental mode (``drop_layout_words=True``) — only
-        figure-internal heuristic noise is dropped (Step B2). Footnote /
-        header / footer / abandoned words still survive.
+        drops, no Step Layout-2b drops, no Step B2 drops. Every OCR
+        word survives.
+      * Experimental mode (``drop_layout_words=True``) — Step Layout-2b
+        (figure-internal only words) and Step B2 (geometric figure
+        noise) both fire. Footnote / header / footer / abandoned words
+        still survive.
 
     This class exercises both modes through the full
     ``Page.reorganize_page`` entry point with a synthetic page.
@@ -282,8 +284,10 @@ class TestReorganizeDropLayoutWordsFlag:
     def test_opt_in_still_preserves_footnote_words(self):
         # Even with ``drop_layout_words=True`` (the experimental
         # opt-in), footnote / header / footer / abandoned regions are
-        # NEVER dropped — that flag now only governs figure-internal
-        # heuristic noise removal.
+        # NEVER dropped — that flag now governs only the two
+        # figure-internal word-deletion paths (Step Layout-2b and the
+        # geometric Step B2 sweep), neither of which fires on a
+        # footnote-band line.
         page = self._page_with_body_and_footnote()
         layout = self._layout_with_footnote_band()
         page.reorganize_page(layout=layout, drop_layout_words=True)
