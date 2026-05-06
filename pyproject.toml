@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pd-book-tools"
-version = "0.10.0"
+version = "0.11.0"
 description = "Python tools for working with public domain book scans"
 authors = [
     { name = "CT", email = "concavetrillion@gmail.com" }
@@ -15,15 +15,12 @@ readme = "README.md"
 license = { text = "Unlicense" }
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "cupy-cuda12x>=13.4.1",
     "huggingface_hub>=0.23",
     "ipython>=8.34",
     "ipywidgets>=8.1",
-    "isort>=6.0",
     "matplotlib>=3.10.1",
     "numpy (>=2.2,<3)",
     "opencv-contrib-python>=4.12.0.88",
-    "opencv-cuda>=0.0.2",
     "pandas>=2.2.3",
     "pytesseract (>=0.3.13,<0.4.0)",
     "python-doctr",
@@ -36,8 +33,17 @@ dependencies = [
     "transformers>=4.45",
 ]
 
+[project.optional-dependencies]
+# CUDA-12-only GPU acceleration. Opt-in to avoid breaking CPU-only installs
+# (CI, macOS, CPU-only Linux). Install with: pip install 'pd-book-tools[gpu]'
+gpu = [
+    "cupy-cuda12x>=13.4.1",
+    "opencv-cuda>=0.0.2",
+]
+
 [dependency-groups]
 dev = [
+    "isort>=6.0",
     "pre-commit (>=4.2.0,<5.0.0)",
     "pylint>=3.3.7",
     "pytest-cov>=6.2.1",
