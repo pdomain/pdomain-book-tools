@@ -5,8 +5,11 @@ class MatchType(Enum):
     WORD_EXACTLY_EQUAL = "word-exactly-equal"
     "Word is exactly equal to GT word"
 
-    WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION = "word-nearly-equal-due-to-punctuation"
-    "TODO: For use if/when I implement punctuation matching (quotes, primes, dashes) between OCR and GT in the future"
+    # TODO: re-introduce WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION when
+    # punctuation-aware matching (quotes, primes, dashes) is implemented
+    # between OCR and GT. Removed because nothing in the matching pipeline
+    # ever assigned it and the prior placeholder string after the member
+    # was an orphaned expression, not a docstring.
 
     # Line-level match types
     LINE_EQUAL = "difflib-line-equal"
