@@ -770,13 +770,82 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   absent from the function source; happy-path behavioral lock
   added so the removal can't silently break ground-truth
   assignment. — fix `e415bd0`, doc mark `be5cfa7`
+- L-21 `ocr/ground_truth_matching_helpers/match_type.py`
+  `WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION` was a placeholder enum member
+  with zero consumers in pd_book_tools, the test suite, or any sibling
+  pd-* repo (verified via grep). The orphaned `"TODO: ..."` string
+  following it was an expression statement, not a docstring. Conservative
+  removal with a TODO comment marking re-introduction when
+  punctuation-aware matching (quotes, primes, dashes) between OCR and GT
+  is actually implemented and assigns the member. Property-check test
+  pins the absence of the dead member. — fix `f8c8b6c`, doc mark
+  `<pending>`
+- L-22 `ocr/ground_truth_matching_helpers/match_type.py`
+  `LINE_REPLACE_WORD_EQUAL` was likewise defined but never assigned —
+  zero consumers across all pd-* repos. The bug-doc fix description
+  ("assign in op.word_tag == equal branch when inside a replace
+  operation") was confused; the matching pipeline has no nested replace
+  context — equal and replace are sibling SequenceMatcher opcodes. The
+  realistic semantic would be: inside
+  `update_line_with_ground_truth_replace_words`, when an OCR word's
+  fuzz_score against its assigned GT word == 100, tag it
+  `LINE_REPLACE_WORD_EQUAL` instead of `LINE_REPLACE_WORD_REPLACE`.
+  Conservative removal with TODO comment for re-introduction when that
+  distinction is actually wired up. Test pins the full minimal MatchType
+  surface. — fix `c57f0d5`, doc mark `<pending>`
+- L-23 `ocr/block.py` + `ocr/page.py` claim was that both `.items`
+  getters re-sort on every read. PARTLY STALE: `Block.items`
+  (block.py:316-318) is a bare `self._items.copy()` — no sort on read;
+  the reviewer cited lines 309-312 which are sort-key lambdas inside
+  `_sort_items`, not the getter. `Page.items` (page.py:236-240) DOES
+  re-sort on every read — real bug. A correct dirty-flag fix touches
+  every `Page._items` mutation site (`add_item`, `remove_item`,
+  `items.setter`, `remove_empty_items`, `_remove_empty_items_safely`,
+  plus raw `container._items = ...` assignments at page.py:846 and 889).
+  Missing
+  any one site means stale sort order under non-trivial layout work —
+  high correctness risk for a perf-only fix. DEFERRED to focused
+  refactor. Two regression tests: pin Block.items does NOT sort on read
+  (catches future re-introduction of the perf cliff); pin Page.items
+  DOES today, with a docstring telling the future fix author exactly
+  which mutation sites must set the dirty flag. — test/lock `7a959eb`,
+  doc mark `<pending>`
+- L-24 `ocr/block.py` + `ocr/page.py` six call sites of
+  `copy_ocr_to_ground_truth` / `copy_ground_truth_to_ocr` /
+  `clear_ground_truth` used `any([word.foo() for word in self.words])`.
+  The list comprehension already eagerly evaluates every call (the
+  side-effect mutation is the actual point), but `any()` reads as
+  short-circuit-intended — a future maintainer "optimizing" the list
+  into a generator would silently skip every word after the first
+  truthy result. Refactored all six to explicit
+  `results = [word.foo() ...]; return any(results)` form with
+  rationale-bearing docstrings. Six regression tests (one per site)
+  patch the underlying Word.foo to return True on every call and assert
+  call_count == 2 (proves no short-circuit); seventh test asserts the
+  all-False case still returns False. — fix `bc85919`, doc mark
+  `<pending>`
+- L-25 `ocr/image_utilities.py` `crop_image_to_bbox` swallowed bare
+  `Exception` and returned `None`, masking real bugs (geometry
+  invariant violations, upstream image-handling RuntimeErrors) under
+  the same return path used for legitimate "no bbox / no image"
+  conditions. The DEBUG-level log was effectively silent in production.
+  Narrowed catch to `(ValueError, AttributeError, TypeError,
+  IndexError)` — the four types that genuinely mean "this bbox/image
+  pair cannot produce a crop". Anything else now propagates. Updated
+  pre-existing `test_swallows_exception_returns_none` (which had locked
+  in the buggy bare-Exception contract by raising RuntimeError) to
+  `test_unexpected_exception_propagates`; added sibling
+  `test_expected_exception_swallowed_returns_none`. Added a five-test
+  regression suite covering each expected exception type via parametrize,
+  RuntimeError propagation, KeyboardInterrupt (BaseException sanity),
+  the happy path, and the pre-try None guards. — fix `b40c892`, doc mark
+  `<pending>`
 
-**Next pick:** L-21 — `ocr/ground_truth_matching_helpers/match_type.py`
-defines `WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION` (line 8) but it is never
-assigned to any word in `ground_truth_matching.py`. The `"TODO: ..."`
-string following it is an orphaned expression (not a docstring) so the
-intent is not even captured. Either implement the assignment in the
-matching pipeline or remove the enum member.
+**Next pick:** L-26 — `pgdp/pgdp_results.py` `PGDPExport.from_json`
+crashes with `AttributeError: 'str' object has no attribute 'stem'` on
+empty pages dict because `path_prefix = Path(path_prefix)` is converted
+inside the `for` loop over `pages` and never executes when `pages` is
+empty. Fix: move the conversion above the loop.
 
 **Workflow per iteration** (one bug per commit, no push):
 
