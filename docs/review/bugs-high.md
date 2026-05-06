@@ -34,7 +34,7 @@ consumes bracket sequences meant for another, replacing them with the wrong char
 
 ---
 
-## H-03 — `get_html_styled_span` always produces malformed HTML
+## ~~H-03 — `get_html_styled_span` always produces malformed HTML~~ [FIXED in 1f26286]
 
 **File:** `pd_book_tools/utility/ipynb_widgets.py`, line 14
 **Affects:** all labeled-word HTML previews in the labeler
