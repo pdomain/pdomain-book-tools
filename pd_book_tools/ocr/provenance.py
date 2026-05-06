@@ -53,9 +53,14 @@ class OCRProvenance:
             "engine": self.engine,
             "models": [model.to_dict() for model in self.models],
         }
-        if self.engine_version:
+        # L-17: serialize ``None`` and explicit ``""`` distinctly. The
+        # truthy guard ``if self.engine_version`` previously omitted ``""``
+        # from the dict, and ``from_dict``'s ``is not None`` check then
+        # defaulted the missing key back to ``None`` — silently flipping
+        # an explicit empty value to "unknown" on every round-trip.
+        if self.engine_version is not None:
             result["engine_version"] = self.engine_version
-        if self.config_fingerprint:
+        if self.config_fingerprint is not None:
             result["config_fingerprint"] = self.config_fingerprint
         return result
 
