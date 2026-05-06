@@ -202,7 +202,7 @@ strict mode).
 
 ---
 
-## M-14 — DocTR and Tesseract adapters produce different nesting depths
+## [FIXED in 78af86d] ~~M-14 — DocTR and Tesseract adapters produce different nesting depths~~
 
 **File:** `pd_book_tools/ocr/document.py`, lines 310–325 vs 594–616
 

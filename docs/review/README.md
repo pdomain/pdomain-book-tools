@@ -338,15 +338,28 @@ now sweeps `bugs-medium.md` top-to-bottom.
   explicitly documented as 2D-only and is out of scope for this fix.
   — fix `37213f1`, doc mark `<pending>`
 
-**Next pick:** M-14 — `ocr/document.py` DocTR and Tesseract adapters
-produce different nesting depths (DocTR:
-`Page -> Block(PARAGRAPH) -> Block(LINE) -> Word`; Tesseract:
-`Page -> Block(BLOCK) -> Block(PARAGRAPH) -> Block(LINE) -> Word`).
-Consumers iterating `page.items[0]` assuming a `BLOCK`-category item
-fail on DocTR output and there's no documented canonical depth. Fix
-options: document the difference with consumer-side guards, or have
-the DocTR adapter wrap PARAGRAPH blocks in an outer BLOCK to match
-Tesseract depth.
+- M-14 `ocr/document.py` DocTR adapter produced
+  `Page -> Block(PARAGRAPH) -> Block(LINE) -> Word` (3 levels) while
+  Tesseract produced `Page -> Block(BLOCK) -> Block(PARAGRAPH) ->
+  Block(LINE) -> Word` (4 levels). Consumers iterating `page.items[0]`
+  expecting a `BLOCK`-category item silently broke on DocTR output.
+  DocTR's underlying data model is `pages -> blocks -> lines -> words`
+  (no paragraph layer) so the adapter had been labelling DocTR's
+  per-block grouping as PARAGRAPH and skipping the BLOCK level. Fixed
+  by wrapping each DocTR block in a synthetic outer BLOCK whose single
+  child is a PARAGRAPH carrying the same bbox (one paragraph per
+  block); leaf words and word-count are unchanged. Regression test
+  asserts both adapters produce the same `(BLOCK, PARAGRAPH, LINE)`
+  category path from `page.items[0]`. — fix `78af86d`, doc mark
+  `<pending>`
+
+**Next pick:** M-15 — `ocr/document.py` DocTR adapter silently drops
+all artefacts. DocTR's block export contains both `"lines"` and
+`"artefacts"` keys; the adapter iterates only `block_data.get("lines",
+[])` and discards artefacts (stamps, figures, non-text elements) with
+no logging. Fix: iterate `block_data.get("artefacts", [])` and either
+skip with `logger.debug` or convert to `RegionType`-tagged placeholder
+blocks.
 
 **Workflow per iteration** (one bug per commit, no push):
 
