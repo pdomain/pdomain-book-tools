@@ -41,6 +41,9 @@ def _compute_envelopes(
     return min_val, max_val, img[y_range, :, :3]
 
 
+_RGBA_NOTICE_LOGGED = False
+
+
 def cupy_colorToGray(
     img: cp.array,  # type: ignore
     radius=300,
@@ -49,6 +52,41 @@ def cupy_colorToGray(
     enhance_shadows=False,
     batch_size=100,
 ) -> cp.array:  # type: ignore
+    # Validate input shape at the public boundary so callers see a clear
+    # error here instead of a confusing `ValueError: not enough values to
+    # unpack` deep inside `_compute_envelopes`. Also catch silent alpha
+    # drop on 4-channel input by handling it explicitly with a one-time
+    # log notice (mirrors cv2.cvtColor(..., COLOR_BGRA2GRAY) policy of
+    # ignoring alpha rather than alpha-blending). (M-18)
+    if img.ndim != 3:
+        raise ValueError(
+            "cupy_colorToGray expected a 3-channel BGR/RGB image with "
+            f"shape (H, W, C); got ndim={img.ndim} shape={tuple(img.shape)}. "
+            "2-D grayscale input is not supported — pass a 3-channel image."
+        )
+    channels = img.shape[2]
+    if channels < 3:
+        raise ValueError(
+            "cupy_colorToGray expected at least 3 channels (BGR/RGB); "
+            f"got shape={tuple(img.shape)} with {channels} channel(s)."
+        )
+    if channels > 4:
+        raise ValueError(
+            "cupy_colorToGray expected 3-channel BGR/RGB or 4-channel "
+            f"BGRA/RGBA input; got shape={tuple(img.shape)} with "
+            f"{channels} channels."
+        )
+    if channels == 4:
+        global _RGBA_NOTICE_LOGGED
+        if not _RGBA_NOTICE_LOGGED:
+            logger.info(
+                "cupy_colorToGray received 4-channel input; dropping alpha "
+                "channel (matches cv2 COLOR_BGRA2GRAY semantics). This "
+                "notice is logged once per process."
+            )
+            _RGBA_NOTICE_LOGGED = True
+        img = img[..., :3]
+
     height, width, _ = img.shape
 
     dst = cp.zeros((height, width), dtype=cp.float32)
