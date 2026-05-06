@@ -116,7 +116,7 @@ crash with `AttributeError: 'NoneType' object has no attribute ...`.
 
 ---
 
-## H-08 — `Block.from_dict` (and `Page.from_dict`) call `BoundingBox.from_dict(None)`
+## [FIXED in 3163feb] ~~H-08 — `Block.from_dict` (and `Page.from_dict`) call `BoundingBox.from_dict(None)`~~
 
 **File:** `pd_book_tools/ocr/block.py`, line 982
 **Affects:** deserializing any JSON document where a block has a null bounding box
