@@ -44,3 +44,33 @@ class TestNpUint8FloatColorToGray:
         )
         assert out.dtype == np.uint8
         assert out.shape == (20, 20)
+
+    def test_rejects_float32_input(self):
+        """M-17 regression: float32 [0, 1] input must not silently be divided
+        by 255 (which would collapse it to [0, 0.004] and produce a near-black
+        result). The function's name documents a uint8 contract; non-uint8
+        input must raise rather than silently mis-handle."""
+        # Lazy import: this test does not need cupy/CUDA — the dtype check
+        # runs before any cp.asarray call. Skip only if numpy is missing.
+        from pd_book_tools.image_processing.cupy_processing import (
+            colorToGray as mod,
+        )
+
+        img = np.full((20, 20, 3), 0.5, dtype=np.float32)
+        with pytest.raises(TypeError, match="uint8"):
+            mod.np_uint8_float_colorToGray(
+                img, radius=5, samples=2, iterations=2, batch_size=10
+            )
+
+    def test_rejects_float64_input(self):
+        """M-17 regression: float64 input is also rejected (same silent-collapse
+        risk as float32)."""
+        from pd_book_tools.image_processing.cupy_processing import (
+            colorToGray as mod,
+        )
+
+        img = np.full((20, 20, 3), 0.5, dtype=np.float64)
+        with pytest.raises(TypeError, match="uint8"):
+            mod.np_uint8_float_colorToGray(
+                img, radius=5, samples=2, iterations=2, batch_size=10
+            )

@@ -84,6 +84,18 @@ def np_uint8_float_colorToGray(
     enhance_shadows=False,
     batch_size=100,
 ):
+    # The function name documents the contract: input must be uint8 in [0, 255].
+    # Accepting float input here would silently divide already-normalized [0, 1]
+    # data by 255 and collapse it to [0, 0.004] — a near-black output with no
+    # warning. Reject any other dtype explicitly so callers see the contract
+    # violation instead of a silent black image. (M-17)
+    if img.dtype != np.uint8:
+        raise TypeError(
+            "np_uint8_float_colorToGray requires a uint8 image in [0, 255]; "
+            f"got dtype={img.dtype}. If your input is already float in [0, 1], "
+            "call cupy_colorToGray directly with a cupy array instead."
+        )
+
     img_float = img.astype(np.float32) / 255.0
 
     # Move source image to GPU
