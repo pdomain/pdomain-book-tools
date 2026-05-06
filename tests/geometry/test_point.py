@@ -284,19 +284,31 @@ def test_manual_is_normalized_override_after_setting(point_factory):
         p.is_normalized = True
 
 
-def test_dunder_getattr_delegation_has_area(point_factory):
+def test_no_shapely_attribute_leak_area(point_factory):
+    """``Point`` no longer delegates arbitrary attribute access to Shapely.
+
+    Historically ``__getattr__`` forwarded everything to the wrapped
+    ``ShapelyPoint``, leaking ``area``, ``bounds``, ``buffer``, etc. into
+    ``Point``'s public API. The supported surface is now the explicit
+    ``@property`` / method members on the class; raw Shapely access goes
+    through ``as_shapely()``.
+    """
     p = point_factory(1, 2)
-    assert hasattr(p, "area")
+    assert not hasattr(p, "area")
 
 
-def test_dunder_getattr_delegation_area_value(point_factory):
+def test_no_shapely_attribute_leak_bounds(point_factory):
     p = point_factory(1, 2)
-    assert p.area == 0.0
+    with pytest.raises(AttributeError):
+        _ = p.bounds
 
 
-def test_dunder_getattr_delegation_bounds(point_factory):
+def test_as_shapely_still_exposes_shapely_api(point_factory):
+    """``as_shapely()`` is the supported escape hatch for Shapely-only APIs."""
     p = point_factory(1, 2)
-    assert p.bounds == (1.0, 2.0, 1.0, 2.0)
+    sp = p.as_shapely()
+    assert sp.area == 0.0
+    assert sp.bounds == (1.0, 2.0, 1.0, 2.0)
 
 
 def test_comparison_gt_non_point_typeerror(point_factory):
