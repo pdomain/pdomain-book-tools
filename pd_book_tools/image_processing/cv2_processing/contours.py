@@ -7,16 +7,27 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 
-def find_and_draw_contours(img: np.ndarray):
+def find_and_draw_contours(img: np.ndarray) -> tuple[np.ndarray, tuple]:
+    """Find external contours in a grayscale image and draw bounding rectangles.
+
+    Always returns a 3-channel BGR visualization image regardless of whether
+    any contours are found, so callers do not need to runtime-dispatch on
+    output shape. When no contours are found, the input is converted to BGR
+    and returned unmodified (no rectangles drawn).
+    """
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Always promote to 3-channel BGR so the return type is consistent.
+    if img.ndim == 2:
+        out = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    else:
+        out = img.copy()
     # TODO: Optimize the rectangle drawing by using Numpy
     if contours:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         for c in contours:
             x, y, w, h = cv2.boundingRect(c)
-            cv2.rectangle(img, (x, y), (x + w, y + h), (125, 255, 0), 4)
+            cv2.rectangle(out, (x, y), (x + w, y + h), (125, 255, 0), 4)
 
-    return img, contours
+    return out, contours
 
 
 def remove_small_contours(
