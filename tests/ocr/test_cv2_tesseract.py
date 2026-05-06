@@ -81,9 +81,7 @@ class TestTesseractOcrCv2Image:
         assert result == mock_page
 
         # Verify Tesseract was called with correct parameters
-        expected_config = (
-            "--oem 3 -c textord_noise_rej=1 -c textord_noise_debug=1 --dpi 300"
-        )
+        expected_config = "--oem 3 -c textord_noise_rej=1 --dpi 300"
         mock_image_to_data.assert_called_once()
         call_args = mock_image_to_data.call_args
         assert call_args[1]["lang"] == "eng"
@@ -229,13 +227,45 @@ class TestTesseractOcrCv2Image:
         expected_config_parts = [
             "--oem 3",
             "-c textord_noise_rej=1",
-            "-c textord_noise_debug=1",
             "--dpi 300",
         ]
 
         # This is more of a documentation test to ensure config stays consistent
         # We'd need to refactor the function to make this more testable
-        assert len(expected_config_parts) == 4
+        assert len(expected_config_parts) == 3
+
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    def test_tesseract_config_no_textord_noise_debug(
+        self,
+        mock_from_tesseract,
+        mock_image_to_string,
+        mock_image_to_data,
+        sample_grayscale_image,
+        mock_tesseract_dataframe,
+        mock_tesseract_string,
+    ):
+        """M-21 regression: the default Tesseract config must NOT include
+        ``-c textord_noise_debug=1``. That flag forces Tesseract to emit
+        noise-detection debug messages to the caller's stderr on every OCR
+        call; library code must not pollute caller stderr by default.
+        """
+        mock_image_to_data.return_value = mock_tesseract_dataframe
+        mock_image_to_string.return_value = mock_tesseract_string
+
+        mock_page = Mock(spec=Page)
+        mock_doc = Mock(spec=Document)
+        mock_doc.pages = [mock_page]
+        mock_from_tesseract.return_value = mock_doc
+
+        tesseract_ocr_cv2_image(sample_grayscale_image, "test_path")
+
+        for mock_call in (mock_image_to_data, mock_image_to_string):
+            cfg = mock_call.call_args[1]["config"]
+            assert "textord_noise_debug" not in cfg, (
+                f"textord_noise_debug must not be in default config; got: {cfg!r}"
+            )
 
     @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
     @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
