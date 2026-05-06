@@ -19,7 +19,7 @@ corrupt the detected skew angle. The cupy counterpart correctly uses
 
 ---
 
-## M-02 — Edge detection threshold multiplier `* 256` should be `* 255`
+## [FIXED in 143fdf0] ~~M-02 — Edge detection threshold multiplier `* 256` should be `* 255`~~
 
 **Files:**
 

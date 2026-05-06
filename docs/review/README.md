@@ -192,16 +192,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   pre-fix the band picks up the noise and rotates ~27°, post-fix the
   band excludes it and the image is returned unchanged. — fix
   `533c23e`, doc mark `<pending>`
+- M-02 `image_processing/{cv2,cupy}_processing/edge_finding.py`
+  edge-detection threshold multiplier was `pixel_count_columns * 256`
+  / `pixel_count_rows * 256` in both backends. A column of N
+  fully-bright (uint8 255) pixels sums to `N * 255 < N * 256`, so the
+  threshold required one extra pixel beyond the stated parameter; with
+  `pixel_count_columns=1` (used by `auto_deskew`) it demanded 2 pixels
+  and missed single-pixel content edges. Fixed both backends in one
+  commit (same conceptual change). Regression tests added for both
+  backends. The M-01 regression test fixture had been sized against the
+  buggy `*256` threshold (255-valued noise pixel just below it); updated
+  to value 254 so it remains sub-threshold under the corrected
+  multiplier and continues to exercise its original code path. — fix
+  `143fdf0`, doc mark `<pending>`
 
-**Next pick:** M-02 — Edge detection threshold multiplier `* 256`
-should be `* 255` in both `pd_book_tools/image_processing/cv2_processing/edge_finding.py`
-and `pd_book_tools/image_processing/cupy_processing/edge_finding.py`
-(lines 27–28 in each). A column of N fully-bright pixels sums to
-`N * 255`, strictly less than `N * 256`, so the effective detection
-threshold requires one extra pixel beyond the stated
-`pixel_count_columns` parameter. With `pixel_count_columns=1` (used
-in auto-deskew) the threshold demands 2 pixels, missing single-pixel
-content edges. Both backends share the bug consistently.
+**Next pick:** M-03 — `image_processing/cv2_processing/edge_finding.py`
+`fuzzy_px_w = fuzzy_px_w_override if fuzzy_px_w_override else
+int(w * fuzzy_pct)` (lines 37–38) treats an explicit
+`fuzzy_px_w_override=0` (meaning "no fuzzy window") as falsy and falls
+back to `int(w * fuzzy_pct)`, ignoring the caller's explicit zero. The
+cupy backend already uses `is not None`. Fix: change both checks in the
+cv2 backend to `if fuzzy_px_w_override is not None`.
 
 **Workflow per iteration** (one bug per commit, no push):
 
