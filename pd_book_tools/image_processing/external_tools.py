@@ -1,4 +1,5 @@
 import pathlib
+import shlex
 import subprocess
 
 
@@ -21,16 +22,18 @@ def run_gegl_c2g(
     target_image_file: pathlib.Path,
     c2gOptions: str = "",
 ):
+    args = [
+        "gegl",
+        source_image_file.absolute().as_posix(),
+        "-o",
+        target_image_file.absolute().as_posix(),
+        "--",
+        "c2g",
+    ]
+    if c2gOptions:
+        args.extend(shlex.split(c2gOptions))
     subprocess.run(
-        args=[
-            "gegl",
-            source_image_file.absolute().as_posix(),
-            "-o",
-            target_image_file.absolute().as_posix(),
-            "--",
-            "c2g",
-            c2gOptions,
-        ],
+        args=args,
         shell=False,
         check=True,
     )
