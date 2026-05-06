@@ -660,6 +660,27 @@ def test_block_from_dict_defaults(sample_block1):
     assert rt.child_type == BlockChildType.WORDS
 
 
+def test_block_from_dict_roundtrip_with_null_bounding_box():
+    """Regression test for H-08.
+
+    ``Block.to_dict`` serializes a ``None`` bounding box as JSON ``null``.
+    ``Block.from_dict`` must accept that and reconstruct the block with
+    ``bounding_box is None`` rather than calling ``BoundingBox.from_dict(None)``
+    and raising ``TypeError``.
+    """
+    empty = Block(
+        [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
+    )
+    data = empty.to_dict()
+    assert data["bounding_box"] is None  # precondition for the regression
+
+    rt = Block.from_dict(data)
+    assert rt.bounding_box is None
+    assert rt.child_type == BlockChildType.WORDS
+    assert rt.block_category == BlockCategory.LINE
+    assert rt.items == []
+
+
 def test_refine_bounding_boxes_empty():
     empty = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
