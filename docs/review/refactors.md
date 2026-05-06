@@ -6,7 +6,27 @@ to use correctly. Organized roughly by impact.
 
 ---
 
-## R-01 — Image operations belong in `image_utilities.py`, not on `Word`, `Block`, and `Page`
+## [DEFERRED] R-01 — Image operations belong in `image_utilities.py`, not on `Word`, `Block`, and `Page`
+
+**Deferred:** This is a real coupling — `Word` / `Block` import `cv2` and
+`numpy` at module top to support `refine_bounding_box`, `refine_bbox`,
+`split_into_characters_from_whitespace`, `estimate_baseline_from_image`,
+`crop_bottom`, `crop_top`, etc. — but the proposed fix breaks public API
+across multiple downstream repos. The labeler in particular calls
+`word.refine_bbox(...)`, `word.crop_bottom(...)`,
+`page.refine_bounding_boxes(...)` directly (see
+`pd-ocr-labeler/pd_ocr_labeler/operations/ocr/bbox_operations.py:241`,
+`pd-ocr-labeler/pd_ocr_labeler/operations/ocr/page_operations.py:738+`)
+and has tests that monkey-patch these as instance methods
+(`tests/pd_ocr_labeler/operations/ocr/test_bbox_operations.py` —
+`word.crop_bottom = lambda img: ...` ~12 sites,
+`test_page_operations.py:649,664,679` — `mock_page.refine_bounding_boxes`).
+Converting these to free functions also loses the natural `(self, image)`
+binding for in-place mutation (`self.bounding_box = ...`), which is how
+all six methods currently work. Scope: ~6 methods × 2 classes (Word,
+Block) + Page facade + ~15+ downstream call sites + monkey-patch test
+idioms. Needs a dedicated cross-repo coordination iteration with the
+user; not a unilateral library-only change.
 
 **Files:**
 
@@ -27,7 +47,35 @@ about `BoundingBox`.
 
 ---
 
-## R-02 — `Page` uses `@dataclass` but also defines a custom `__init__` — pick one
+## [DEFERRED] R-02 — `Page` uses `@dataclass` but also defines a custom `__init__` — pick one
+
+**Deferred:** The pattern is real (custom `__init__` shadows the
+generated one and silently relies on class-level annotation defaults to
+make `_cv2_numpy_page_image_*` accessible — verified 2026-05 that this
+works in practice rather than raising `AttributeError` as the review
+claimed; review is partly stale on the symptom). However, the cleanest
+behavior-preserving fix has hidden complexity:
+
+1. Removing `@dataclass` loses the auto-generated `__eq__` / `__repr__`.
+   The current `__eq__` is already broken — it includes 9 `ndarray`
+   fields whose `__eq__` raises "ambiguous truth value" — but no test
+   compares Pages so the breakage is dormant. Touching this risks
+   surfacing latent bugs.
+2. The custom `__init__` sets ~10 instance attributes
+   (`image_path`, `name`, `source`, `ocr_failed`, `provenance_*`,
+   `rotation_applied`, `diagnostic_*`) that are NOT declared as fields —
+   any "convert fully to dataclass" path needs to add these as fields
+   first, which is itself a behavior change (they'd appear in `__repr__`
+   / `dataclasses.fields`).
+3. `field(default_factory=list, init=False)` on `_items` interacts with
+   the custom `__init__` in a way that does work (verified) but is
+   fragile.
+
+This is best done as a single thoughtful PR with a regression test
+pinning current observable behavior (constructor args, attribute access
+post-init, `to_dict` round-trip) BEFORE any structural change. Scope:
+single file but ~150 lines of `__init__` and ~20 instance attributes
+needing decisions about field-vs-not. Defer to a focused iteration.
 
 **File:** `pd_book_tools/ocr/page.py`, lines 57–200
 
@@ -45,7 +93,32 @@ never initialized by the generated `__init__` (which never runs). Image cache fi
 
 ---
 
-## R-03 — `BoundingBox` mixes geometry with image-processing (imports cv2 directly)
+## [DEFERRED] R-03 — `BoundingBox` mixes geometry with image-processing (imports cv2 directly)
+
+**Deferred:** The principle is real — `bounding_box.py` imports `cv2`
+and contains `_extract_roi`, `_threshold_inverted`,
+`_tight_bbox_from_thresh`, `_connected_content_bbox_from_image_thresh`,
+`_finalize_pixel_bbox`, `_vertical_crop`, `refine`, `crop_top`,
+`crop_bottom` — none of which belong on a geometric value type. But the
+refactor has the same blast radius as R-01:
+
+1. **Public API change.** Callers do
+   `self.bounding_box.refine(image, padding_px=...)`,
+   `self.bounding_box.crop_top(image)`, `self.bounding_box.crop_bottom(image)`
+   (Word, Block facades, plus downstream tests in pd-ocr-labeler that mock
+   `mock_word.bounding_box.refine = MagicMock(...)` —
+   `test_page_operations.py:760, 776`).
+2. **Overlaps with R-01.** Both refactors funnel into the same
+   "image_utilities" landing module. Doing them as one coordinated
+   change is cheaper than two sequential PRs each forcing downstream
+   pinning.
+3. **Cost/benefit weak.** cv2 is a hard runtime dependency of
+   pd-book-tools (not optional); no consumer currently needs cv2-free
+   geometry. The "cleaner module boundary" benefit is real but
+   speculative until a consumer actually wants it.
+
+Defer with R-01 to a dedicated cross-repo geometry/cv2 separation
+iteration. Track them together when planning.
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 475–650
 

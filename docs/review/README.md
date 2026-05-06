@@ -1030,7 +1030,40 @@ deferred, L-38 fully stale), 1 (L-23) with a deferred refactor
 component noted in the entry body. Combined with bugs-high (21/21)
 and bugs-medium (30/30), the full ~91-bug review is cleared.
 
-**Next pick:** `refactors.md` R-01 — refactor sweep is the next phase.
+**Refactor sweep begun.** First iteration (R-01..R-03) all deferred —
+all three are real, but each is a cross-repo API change with
+significant blast radius (pd-ocr-labeler call sites, mock idioms in
+labeler tests, downstream tests in pd-ocr-cli). Better tackled as
+coordinated multi-repo PRs than unilateral library changes.
+
+**Deferred so far:**
+
+- R-01 image-ops on `Word` / `Block` / `Page` belong in
+  `image_utilities.py`. Real coupling, but moving 6+ methods to free
+  functions breaks `word.refine_bbox(...)`, `word.crop_bottom(...)`,
+  `page.refine_bounding_boxes(...)` API across the labeler (12+ call
+  sites including monkey-patch test idioms). Needs cross-repo
+  coordination. Doc mark `<pending>`.
+- R-02 `Page` `@dataclass` + custom `__init__` redundancy. Pattern is
+  real (review's `AttributeError` claim is partly stale — class-level
+  defaults make the cache fields work in practice). The clean fix
+  needs decisions about `__eq__`/`__repr__` semantics (the current
+  dataclass `__eq__` is already broken on the 9 ndarray cache fields
+  but no test exercises it) and explicit field declarations for ~10
+  instance attributes set only in custom `__init__`. Best as a
+  dedicated PR with a behavior-pinning regression test. Doc mark
+  `<pending>`.
+- R-03 `BoundingBox` mixes geometry with cv2-using image ops. Same
+  blast radius as R-01 — `bbox.refine(image)` / `bbox.crop_top(image)`
+  / `bbox.crop_bottom(image)` callers in Word + labeler test mocks.
+  Overlaps with R-01 (both funnel into the same image_utilities
+  landing module) and benefit is speculative since cv2 is a hard
+  runtime dependency anyway. Track with R-01. Doc mark `<pending>`.
+
+**Next pick:** `refactors.md` R-04 — `refine_bounding_box` and
+`refine_bbox` consolidation on `Word`. Single-file refactor, no
+cross-repo signature change since both methods stay on `Word`.
+
 Same per-iteration workflow (verify-first, regression-lock-on-stale,
 one commit per item) applies, but refactors are structural / API /
 design improvements rather than bug fixes — expect each to need more
