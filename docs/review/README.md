@@ -69,15 +69,28 @@ remembering prior turns. Update this when an iteration completes (after the
   matching `skimage.filters.threshold_otsu`). Verified live with cupy and
   skimage: pre-fix threshold ~0.55, fixed and skimage both ~0.42 on
   overlapping Gaussian clusters. — fix `2e1b2be`, doc mark `<pending>`
+- H-15 `image_processing/cupy_processing/threshold.py` `otsu_binary_thresh`
+  on uniform-valued images. The reviewed crash (`ValueError: max must be
+  larger than min` from `cp.histogram(..., range=(min, max))`) no longer
+  reproduces on cupy 14.x — the histogram call now silently produces a
+  bogus single-bin distribution over an arbitrary [-0.5, 0.5]-style edge
+  span, so `cp.argmax` of an all-zero between-class variance returns 0
+  and the function emits a meaningless threshold (~`-0.498`) and an
+  all-1.0 mask for an all-zero input. Added an early return when
+  `min_val == max_val` that emits an all-zero binary mask, matching
+  skimage/cv2 semantics (uniform image's Otsu threshold is the uniform
+  value itself; strict-`>` binarization is therefore all-zero). Review
+  was partly stale on the symptom but the underlying defect (no uniform
+  guard) was real. — fix `92d7c32`, doc mark `<pending>`
 
-**Next pick:** H-15 — `pd_book_tools/image_processing/cupy_processing/threshold.py`
-line 33 (Cupy Otsu crashes on uniform images): `cp.histogram(...,
-range=(min_val, max_val))` raises `ValueError: max must be larger than
-min` when all pixels share a value (blank or near-blank page on GPU).
-Same file as H-14, so the regression-test infrastructure is already in
-place. H-13 (`doctr_support.py` `Path.exists` unbound class method)
-remains deferred per the "Highest-priority fixes" ordering — README
-top-10 jumps from H-12 to H-14/15/16.
+**Next pick:** H-16 — `pd_book_tools/image_processing/cupy_processing/threshold.py`
+lines 49–52 (Cupy `otsu_binary_thresh` returns `float32` 0.0/1.0 while
+the cv2 version returns `uint8` 0/255 — pipelines switching backends
+get a silently incompatible dtype/range). Last of the threshold.py
+cluster, same file as H-14/H-15 so the regression-test infrastructure
+is already in place. H-13 (`doctr_support.py` `Path.exists` unbound
+class method) remains deferred per the "Highest-priority fixes"
+ordering — README top-10 jumps from H-12 to H-14/15/16.
 
 **Workflow per iteration** (one bug per commit, no push):
 

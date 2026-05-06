@@ -215,7 +215,7 @@ for most images.
 
 ---
 
-## H-15 — Cupy Otsu crashes on uniform images
+## [FIXED in 92d7c32] ~~H-15 — Cupy Otsu crashes on uniform images~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/threshold.py`, line 33
 **Affects:** any blank or near-blank page processed on GPU
