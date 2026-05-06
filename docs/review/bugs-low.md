@@ -246,7 +246,7 @@ different language packs produce identical provenance records.
 
 ---
 
-## L-19 — `DocTR` word confidence defaults to `0.0` instead of `None` when absent
+## [FIXED in c5fcf71] ~~L-19 — `DocTR` word confidence defaults to `0.0` instead of `None` when absent~~
 
 **File:** `pd_book_tools/ocr/document.py`, line 306
 
