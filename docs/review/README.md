@@ -105,6 +105,14 @@ remembering prior turns. Update this when an iteration completes (after the
   that maps `conf <= 0` (and NaN / non-numeric / None) to `None`, leaving
   `safe_float` (used for box geometry where 0.0 is the right default)
   untouched. — fix `4c946b2`, doc mark `<pending>`
+- H-11 `ocr/document.py` `from_tesseract` did `Word(text=str(word_row.text))`
+  for every word row. When Tesseract emits a rejected/empty row the pandas
+  `text` cell is `NaN`, and `str(float('nan'))` is the literal string
+  `'nan'`, producing a ghost Word that propagated as real OCR output into
+  ground-truth matching and final text. Added `Document._tesseract_text`
+  mapping `NaN` / `None` to the empty string and used it at the word
+  ingest site. Row geometry is preserved as an empty-text Word — we do
+  not silently drop OCR rows. — fix `779bd59`, doc mark `<pending>`
 
 **Top-10 H-XX list complete.** With H-16 fixed, every entry from the
 "Highest-priority fixes" section above is now resolved (H-13 was
@@ -113,18 +121,18 @@ top-10 item — it gets picked up in the sequential sweep below). The
 /loop now sweeps the remaining `bugs-high.md` entries top-to-bottom —
 pick the first unstruck H-XX from the file in document order.
 
-**Next pick:** H-11 — `pd_book_tools/ocr/document.py` line 588. When
-Tesseract emits a rejected/empty row, the `text` cell is a pandas `NaN`
-which `str(NaN)` renders as the literal string `'nan'`. The current
-ingest does `Word(text=str(word_row.text), ...)`, so a ghost word with
-literal text `'nan'` propagates as real OCR output into ground-truth
-matching and final text. Fix: detect `pd.isna(word_row.text)` (or the
-empty/whitespace case after coercion) and skip the word — note H-10
-just fixed the `conf == -1` half of this same row, so most ghost rows
-now have `ocr_confidence is None` already, but the text still needs to
-be sanitized before the Word is created. Regression test: build a
-Tesseract row with `text == NaN` (or pandas-coerced equivalent) and
-assert the resulting page contains no `'nan'` word.
+**Next pick:** H-13 — `pd_book_tools/ocr/doctr_support.py` line 181.
+`Path.exists(dectection_pt_file)` is invoked as if `Path.exists` were
+a static/classmethod, but it is an instance method — when the caller
+passes a plain `str` for `dectection_pt_file`, Python 3.13 raises
+`AttributeError: 'str' object has no attribute 'stat'` while resolving
+`Path.exists` against a non-Path argument. Fix: `Path(dectection_pt_file).exists()`.
+Regression test: call the affected loader (or a thin wrapper around the
+existence check, depending on what's testable without DocTR weights on
+disk) with a `str` path and assert it does not raise `AttributeError`
+on the missing-file branch. Verify the bug still reproduces in current
+source first — the review is from May 2026 and prior iterations
+(H-04, H-08) found stale entries already fixed in earlier commits.
 
 **Workflow per iteration** (one bug per commit, no push):
 
