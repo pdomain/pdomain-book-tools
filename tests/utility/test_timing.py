@@ -88,6 +88,36 @@ class TestFuncLogExecutionTime:
         with pytest.raises(RuntimeError, match="boom"):
             raises()
 
+    def test_call_site_log_uses_injected_logger(self, caplog):
+        """L-28 regression: the "Function X called from Y" line must be
+        emitted on the *injected* logger, not the root ``logging`` module.
+
+        Pre-fix the line was routed through ``logging.log(...)`` (root
+        logger) so any caller-side per-module logger configuration was
+        bypassed for this specific record. Asserts the record's
+        ``name`` matches the injected logger and that the message is
+        observable when only that logger is captured.
+        """
+        injected_name = "test_call_site_log_uses_injected_logger.injected"
+        injected = logging.getLogger(injected_name)
+        injected.setLevel(logging.DEBUG)
+
+        @func_log_excution_time(injected)
+        def noop():
+            return None
+
+        with caplog.at_level(logging.DEBUG, logger=injected_name):
+            noop()
+
+        called_records = [r for r in caplog.records if "called from" in r.getMessage()]
+        assert called_records, "expected the 'called from' log line to be captured"
+        # Every captured 'called from' record must be on the injected logger.
+        for r in called_records:
+            assert r.name == injected_name, (
+                f"L-28: 'called from' record was emitted on {r.name!r}, "
+                f"expected the injected logger {injected_name!r}"
+            )
+
     def test_measures_execution_time(self, caplog):
         """The end log message should include a 6-decimal seconds value."""
         logger = logging.getLogger("test_measures_execution_time")
