@@ -608,7 +608,15 @@ def try_matching_combined_words(
             )
 
             include_starting_quote = (
-                len(ocr_combination_tuple) > 1
+                # H-21: gate on current span length (combination_end -
+                # combination_start), NOT len(ocr_combination_tuple) which
+                # is the total number of word-pair combinations across the
+                # whole line. The original `len(...) > 1` check was always
+                # False for 2-word lines (one combination) and always True
+                # for 3+-word lines, regardless of the current span — so
+                # the flag fired on the wrong condition and never on
+                # two-word spans where stray quote marks most often land.
+                (combination_end - combination_start) > 1
                 and any(
                     char in CharacterGroups.QUOTES_AND_PRIMES.value
                     for char in ground_truth_tuple[gt_word_nbr][0]
@@ -627,7 +635,9 @@ def try_matching_combined_words(
             )
 
             include_ending_quote = (
-                len(ocr_combination_tuple) > 1
+                # H-21: see include_starting_quote — same fix, gate on
+                # current span length not total combination count.
+                (combination_end - combination_start) > 1
                 and any(
                     char in CharacterGroups.QUOTES_AND_PRIMES.value
                     for char in ground_truth_tuple[gt_word_nbr][-1]
