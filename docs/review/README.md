@@ -531,9 +531,22 @@ now sweeps `bugs-medium.md` top-to-bottom.
   the cv2 re-export, and the import-graph invariant that loading
   `cupy_processing.canvas` does NOT pull in `cv2_processing.canvas`.
   — fix `59495ff`, doc mark `<pending>`
+- M-28 `ocr/block.py` `Block.merge` guarded the extend of
+  `unmatched_ground_truth_words` with `self.unmatched and other.unmatched`
+  (logical AND), so when `self` had no unmatched words but
+  `block_to_merge` did, the incoming unmatched words were silently dropped
+  — a violation of the project-wide no-silent-drop invariant for
+  OCR-derived / ground-truth content. Fixed to guard only on
+  `block_to_merge.unmatched_ground_truth_words` (self's list is
+  always-initialized to `[]`, no None-check needed). Pre-existing
+  `test_merge_blocks` populated both sides so it didn't exercise the
+  buggy branch — no existing tests required updates. Two regression tests
+  cover the empty-self and empty-other cases. — fix `cc0dc03`, doc mark
+  `<pending>`
 
-**Next pick:** M-28 — `ocr/block.py` `Block.merge` silently drops
-unmatched ground-truth words from one side.
+**Next pick:** M-29 — `ocr/label_normalization.py`
+`normalize_text_style_labels` doesn't strip `'regular'` when other style
+labels are present.
 
 **Workflow per iteration** (one bug per commit, no push):
 
