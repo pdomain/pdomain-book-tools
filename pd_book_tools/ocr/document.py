@@ -242,11 +242,17 @@ class Document:
         source_identifier: str = "",
     ) -> "Document":
         """Create Document from docTR result object"""
-        doctr_text = doctr_result.render()
+        # NOTE (H-12): ``doctr_result.render()`` returns a single ``str`` for
+        # the whole document. ``from_doctr_output`` indexes ``original_text``
+        # with ``original_text[page_idx]`` to get per-page text — and since
+        # ``str`` is a ``Sequence[str]`` in Python, passing the whole-document
+        # string would silently yield a single character per page. Split into
+        # one rendered string per page instead.
         doctr_output: Dict = doctr_result.export()
+        per_page_text: list[str] = [page.render() for page in doctr_result.pages]
         return cls.from_doctr_output(
             doctr_output=doctr_output,
-            original_text=doctr_text,
+            original_text=per_page_text,
             source_path=source_path,
             source_identifier=source_identifier,
         )

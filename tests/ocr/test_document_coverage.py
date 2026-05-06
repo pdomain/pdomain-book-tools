@@ -402,6 +402,40 @@ class TestFromDoctrOutputEdgeCases:
         assert doc.pages[0].original_ocr_tool_text == "hello"
 
 
+class TestFromDoctrResultRendersPerPage:
+    """Regression: H-12. ``doctr_result.render()`` returns a single ``str``.
+    ``from_doctr_result`` must split it per-page (one render() per page) before
+    handing it to ``from_doctr_output``; otherwise ``original_text[page_idx]``
+    yields a single character (since ``str`` is a ``Sequence[str]``)."""
+
+    def test_multipage_render_yields_per_page_text_not_characters(self):
+        # Realistic DocTR API: doctr_result.render() returns one str for the
+        # whole document; each page object exposes its own .render() returning
+        # that page's text.
+        doctr_result = MagicMock()
+        # Whole-document render (what the buggy path used as original_text):
+        doctr_result.render.return_value = "Hello\n\nWorld"
+        # Per-page render objects:
+        page0 = MagicMock()
+        page0.render.return_value = "Hello"
+        page1 = MagicMock()
+        page1.render.return_value = "World"
+        doctr_result.pages = [page0, page1]
+        doctr_result.export.return_value = {
+            "metadata": {},
+            "pages": [
+                {"dimensions": [10, 10], "blocks": []},
+                {"dimensions": [10, 10], "blocks": []},
+            ],
+        }
+
+        doc = Document.from_doctr_result(doctr_result)
+        assert len(doc.pages) == 2
+        # Bug symptom: page 0 would have original_ocr_tool_text == "H".
+        assert doc.pages[0].original_ocr_tool_text == "Hello"
+        assert doc.pages[1].original_ocr_tool_text == "World"
+
+
 class TestFromTesseractMissingPandas:
     def test_missing_pandas_raises_import_error(self, monkeypatch):
         monkeypatch.setitem(sys.modules, "pandas", None)
