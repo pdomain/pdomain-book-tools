@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,16 @@ def hf_download(
         except ImportError:
             _HFNotFound = Exception  # type: ignore[assignment,misc]
         for ext in sidecars:
-            sidecar = filename.rsplit(".", 1)[0] + ext
+            # Use PurePosixPath because HF Hub filenames are POSIX-style
+            # repo paths regardless of host OS. The previous
+            # ``filename.rsplit(".", 1)[0] + ext`` split on the rightmost
+            # dot in the entire path, which is wrong when the filename
+            # has no extension but a parent directory contains a dot
+            # (e.g. ``"my.dir/weights"`` → ``"my.arch"`` instead of
+            # ``"my.dir/weights.arch"``). PurePosixPath.with_suffix
+            # correctly replaces (or attaches) only the file's extension.
+            p = PurePosixPath(filename)
+            sidecar = str(p.with_suffix(ext))
             try:
                 with suppress_hf_unauth_warning():
                     hf_hub_download(
