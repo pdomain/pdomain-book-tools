@@ -1,4 +1,6 @@
-from cv2 import COLOR_BGR2GRAY, cvtColor
+import logging
+
+from cv2 import COLOR_BGR2GRAY, COLOR_BGRA2GRAY, cvtColor
 from numpy import ndarray
 
 from pd_book_tools.ocr.document import Document
@@ -11,6 +13,10 @@ except ImportError:
     raise ImportError(
         "pytesseract is not installed. Please install extra dependency [tesseract]"
     )
+
+logger = logging.getLogger(__name__)
+
+_RGBA_NOTICE_LOGGED = False
 
 
 def tesseract_ocr_cv2_image(
@@ -31,14 +37,32 @@ def tesseract_ocr_cv2_image(
             should pass it through. Defaults to 300 to preserve historical
             behavior.
     """
-    image_grayscale = None
-
     if image.ndim == 2:
         # If the image is already grayscale, no need to convert
         image_grayscale = image
     elif image.ndim == 3 and image.shape[2] == 3:
         # If the image is in color, convert it to grayscale
         image_grayscale = cvtColor(image, COLOR_BGR2GRAY)
+    elif image.ndim == 3 and image.shape[2] == 4:
+        # 4-channel BGRA / RGBA input: drop alpha (matches the
+        # cv2 COLOR_BGRA2GRAY policy of ignoring the alpha channel
+        # rather than alpha-blending). Mirrors the M-18 cupy
+        # `cupy_colorToGray` fix so both backends behave identically.
+        global _RGBA_NOTICE_LOGGED
+        if not _RGBA_NOTICE_LOGGED:
+            logger.info(
+                "tesseract_ocr_cv2_image received 4-channel input; dropping "
+                "alpha channel (matches cv2 COLOR_BGRA2GRAY semantics). "
+                "This notice is logged once per process."
+            )
+            _RGBA_NOTICE_LOGGED = True
+        image_grayscale = cvtColor(image, COLOR_BGRA2GRAY)
+    else:
+        raise ValueError(
+            "tesseract_ocr_cv2_image expected a 2D grayscale, 3-channel "
+            "BGR, or 4-channel BGRA image; got shape="
+            f"{tuple(image.shape)} (ndim={image.ndim})."
+        )
 
     config = [
         "--oem 3",  # Use LSTM OCR engine
