@@ -139,7 +139,7 @@ a no-op.
 
 ---
 
-## M-10 — `find_and_draw_contours` returns inconsistent array types (2D vs 3D ndarray)
+## [FIXED in 1012acd] ~~M-10 — `find_and_draw_contours` returns inconsistent array types (2D vs 3D ndarray)~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/contours.py`, lines 14–19
 
