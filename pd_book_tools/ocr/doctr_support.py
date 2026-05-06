@@ -200,7 +200,12 @@ def get_finetuned_torch_doctr_predictor(
     det_arch_name = _read_arch_sidecar(dectection_pt_file) or _detect_detection_arch(
         det_params
     )
-    det_model = _build_arch(det_arch_name, pretrained=True).to(device)
+    # Construct the architecture with ``pretrained=False`` — the very next call
+    # is ``load_state_dict(det_params)``, which fully overwrites any weights the
+    # constructor would have populated. Passing ``pretrained=True`` here would
+    # download the doctr-hosted pretrained weights from the internet just to
+    # immediately discard them (M-24).
+    det_model = _build_arch(det_arch_name, pretrained=False).to(device)
     # Wrap load_state_dict so a checkpoint/architecture mismatch surfaces a
     # message naming the offending file and detected arch instead of a bare
     # torch ``RuntimeError`` / ``KeyError`` from deep inside the framework
@@ -231,9 +236,16 @@ def get_finetuned_torch_doctr_predictor(
     reco_arch_name = _read_arch_sidecar(
         recognition_pt_file
     ) or _detect_recognition_arch(reco_params)
+    # Same reasoning as the detection model above: the immediately-following
+    # ``reco_model.load_state_dict(reco_params)`` overwrites all weights, so
+    # downloading pretrained weights (or pretrained backbone weights) at
+    # construction time is pure network waste (M-24). The public ``pretrained``
+    # / ``pretrained_backbone`` kwargs on this function remain for backward
+    # compatibility and are still threaded through to the predictor wrappers
+    # below.
     reco_kwargs = dict(
-        pretrained=pretrained,
-        pretrained_backbone=pretrained_backbone,
+        pretrained=False,
+        pretrained_backbone=False,
         vocab=vocab,
     )
     try:
