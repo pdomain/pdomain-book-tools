@@ -74,3 +74,39 @@ class TestMapContentOntoScaledCanvas:
         )
         assert out.shape[0] >= img.shape[0]
         assert out.shape[1] >= img.shape[1]
+
+    def test_three_channel_input_preserves_channels(self):
+        """Regression for M-12: 3-channel input must produce a 3-channel canvas.
+
+        Pre-fix the canvas was always allocated as 2D (H, W) regardless of
+        the input's ndim, so assigning a 3-channel image raised
+        ValueError: could not broadcast input array from shape (H,W,3)
+        into shape (H,W). Post-fix the canvas matches the input ndim and
+        channel count, and a non-trivial color is preserved at the
+        placement location with white (255,255,255) padding elsewhere.
+        """
+        # 100x60 BGR image with a distinct colored interior pixel.
+        h, w = 100, 60
+        img = np.full((h, w, 3), 255, dtype=np.uint8)
+        img[50, 30] = (10, 20, 200)  # BGR-ish: mostly red
+
+        out = map_content_onto_scaled_canvas(img, force_align=Alignment.CENTER)
+
+        # Canvas must preserve channel count.
+        assert out.ndim == 3
+        assert out.shape[2] == 3
+        assert out.dtype == np.uint8
+        # Canvas must be at least as big as the source image.
+        assert out.shape[0] >= h
+        assert out.shape[1] >= w
+
+        # The colored pixel must appear somewhere on the canvas with
+        # all three channels intact (i.e. not collapsed to grayscale).
+        red_pixel_mask = (
+            (out[..., 0] == 10) & (out[..., 1] == 20) & (out[..., 2] == 200)
+        )
+        assert red_pixel_mask.any()
+
+        # Padding should be white in all three channels (no info loss).
+        assert (out[0, 0] == (255, 255, 255)).all()
+        assert (out[-1, -1] == (255, 255, 255)).all()
