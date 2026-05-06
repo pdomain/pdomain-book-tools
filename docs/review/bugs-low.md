@@ -385,7 +385,7 @@ logger configuration the caller set up.
 
 ---
 
-## L-29 — `timing.py` — decorator logs full raw `args` and `kwargs` on every call
+## ~~L-29 — `timing.py` — decorator logs full raw `args` and `kwargs` on every call~~ [FIXED in b7103c1]
 
 **File:** `pd_book_tools/utility/timing.py`, line 16
 
