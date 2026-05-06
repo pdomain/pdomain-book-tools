@@ -1069,6 +1069,26 @@ coordinated multi-repo PRs than unilateral library changes.
   the redundant `_float_` infix — public contract is uint8 in / uint8
   out). Cross-repo grep confirmed all call sites are inside pd-book-tools,
   so no compatibility shim was needed. — fix `f1448eb`, doc mark `18e51d7`
+- R-11 `BoundingBox` early-return copy idiom replaced
+  `BoundingBox.from_dict(self.to_dict())` (5 sites in `refine` and
+  `_vertical_crop`) with `dataclasses.replace(self)`. Equivalent
+  zero-allocation copy; `Point` is effectively immutable so shared
+  Point references between original and copy are observably
+  indistinguishable from the dict-roundtripped fresh Points. Added
+  three regression-lock tests verifying the early-return paths produce
+  a *distinct* BoundingBox with matching coordinates and matching
+  `is_normalized` state (the pre-existing equality-only assertions
+  were too loose to catch a `return self` regression). — fix
+  `90caa36`, doc mark `560ae7b`
+- R-12 `BoundingBox.contains_point` switched from
+  `as_shapely().covers(ShapelyPoint(...))` to inline AABB compare
+  (`minX <= x <= maxX and minY <= y <= maxY`). Two Shapely allocations
+  per call eliminated. `covers` is a closed predicate and inclusive
+  `<=` matches that semantics; locked with corner / edge-midpoint /
+  outside-axis regression tests in both pixel and normalized
+  coordinate space (the pre-existing single-line test was too coarse
+  to catch a strict-`<` regression). — fix `39bcf86`, doc mark
+  `d9bc777`
 
 **Deferred so far:**
 
@@ -1103,14 +1123,28 @@ coordinated multi-repo PRs than unilateral library changes.
   `__all__` lists and import-time ordering tests to avoid circular
   imports. Doc mark `ac74152`.
 
-**Next pick:** `refactors.md` R-10 — `normalize_word_component` and
-`normalize_character_component` are identical (both delegate to
-`_normalize_component` with the same `ALLOWED_COMPONENTS` frozenset,
-differing only in error-message string). Single-file refactor in
-`ocr/label_normalization.py`; merge into one function with a
-`component_type: str` parameter, or keep both as thin wrappers around
-a shared core. Behavior-preserving as long as the user-visible error
-strings are preserved.
+**Declined so far:**
+
+- R-10 `normalize_word_component` / `normalize_character_component`
+  duplication. The structural fix the review recommended — extract a
+  shared `_normalize_component` helper parameterized by component-type
+  label — was already applied in `b9ec50a` (March 2026); both public
+  functions are now two-line wrappers around that private helper.
+  Going further by collapsing the two public wrappers into one
+  parameterized function would be a public-API break (cross-repo:
+  pd-ocr-labeler imports `normalize_word_component`), not a
+  behavior-preserving refactor. The two named entry points carry
+  semantic intent at the call site and produce distinct user-visible
+  error messages. — doc mark `9f654e2`
+
+**Next pick:** `refactors.md` R-13 — `lrtb` and `lrwh` properties on
+`BoundingBox` are misnamed and redundant duplicates of `to_ltrb()` and
+`to_ltwh()`. Direction is to deprecate `lrtb`/`lrwh` in favor of the
+correctly-named methods. Cross-repo grep needed before deprecation —
+both names may be used by downstream pd-* consumers. Likely a
+behavior-preserving deprecation-shim refactor: keep the old names with
+a `DeprecationWarning` redirecting to the canonical ones, plan removal
+in a later version bump.
 
 Same per-iteration workflow (verify-first, regression-lock-on-stale,
 one commit per item) applies, but refactors are structural / API /
