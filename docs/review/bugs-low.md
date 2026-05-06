@@ -357,7 +357,7 @@ coordinates). Let other exceptions propagate.
 
 ---
 
-## L-27 — `contours.py` (cv2) — `remove_small_contours` has an unconditional hard cutoff absent in cupy
+## ~~L-27 — `contours.py` (cv2) — `remove_small_contours` has an unconditional hard cutoff absent in cupy~~ [FIXED in 8063bef]
 
 **File:** `pd_book_tools/image_processing/cv2_processing/contours.py`, lines 67–69
 
