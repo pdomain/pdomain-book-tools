@@ -1135,3 +1135,54 @@ class Block:
             for item in self._items:
                 item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
+
+
+# ---------------------------------------------------------------------------
+# Shared block-tree mutation helpers (module-level so call sites don't need
+# to instantiate a Block to use them).
+# ---------------------------------------------------------------------------
+
+
+def purge_words_from_blocks(blocks: list["Block"], targets: set[int]) -> None:
+    """Recursively remove words from a block tree by Python ``id()``.
+
+    Used by the layout-aware reorganisation pipeline (drop pass) and by
+    :mod:`pd_book_tools.ocr.reorganize_page_utils` (geometry pipeline).
+    Both modules previously carried near-identical private copies
+    (``layout_aware_reorg._purge_word_from_blocks`` and
+    ``reorganize_page_utils._purge_words_from_blocks``); the geometry
+    pipeline copy existed to avoid pulling :mod:`pd_book_tools.layout`
+    types into that module. Hoisting the shared logic up to ``block.py``
+    (which has no layout dependency) lets both call sites import it
+    here without breaking the layered import discipline (R-05).
+
+    For each block:
+    - If ``child_type == BlockChildType.WORDS``: drop any word whose
+      ``id()`` is in ``targets``; recompute the block bbox if any was
+      removed (or set ``bounding_box=None`` if no words remain).
+    - Otherwise (block-of-blocks): recurse, then prune child blocks
+      that became empty (their bboxes are ``None`` and would poison
+      the parent's union recompute), then recompute or null this
+      block's bbox.
+
+    Mutates ``blocks`` in place; returns ``None``.
+    """
+    for block in blocks:
+        if block.child_type == BlockChildType.WORDS:
+            kept = [w for w in block._items if id(w) not in targets]
+            if len(kept) != len(block._items):
+                block._items = kept
+                if kept:
+                    block.recompute_bounding_box()
+                else:
+                    block.bounding_box = None
+        else:
+            purge_words_from_blocks(list(block._items), targets)
+            # Drop child blocks left empty by the recursive purge — their
+            # bounding boxes were cleared to None and would poison the
+            # parent's recompute.
+            block._items = [b for b in block._items if not b.is_empty]
+            if block._items:
+                block.recompute_bounding_box()
+            else:
+                block.bounding_box = None
