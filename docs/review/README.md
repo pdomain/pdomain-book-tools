@@ -666,14 +666,70 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   test asserts the literal word "cyan" does not appear in any
   comment ahead of the "L-10" historical breadcrumb on the "text"
   entry. — fix `67281c9`, doc mark `17ea79c`
+- L-11 `layout/_mappings.py` "Page chrome — dropped before reorg"
+  comment was false: the mapping preserves header/footer/page_number/
+  footnote as typed regions (`RegionType.header` / `footer` /
+  `footnote`); drop decisions belong to the call site
+  (`layout_aware_reorg`, `ProjectConfig` filters), not to this
+  mapping. Comment-only fix; new `tests/layout/test_mappings.py`
+  asserts (a) the four labels still map to non-None RegionType
+  values and (b) the misleading comment text no longer appears in
+  the source. — fix `f114a3a`, doc mark `6e9f56b`
+- L-12 `layout/_mappings.py` PP-DocLayout `reference` (a single
+  bibliography citation item) was mapped to `RegionType.list`,
+  causing PGDP-aware consumers to apply bullet/numbered list
+  formatting to citations. `list_of_references` (the wrapping
+  container) correctly stays as `list`; only the leaf changes.
+  Until a dedicated `RegionType.reference` is introduced, `text`
+  is the most accurate generic destination — citations are flowable
+  prose, not list items. — fix `1d1c245`, doc mark `39954b1`
+- L-13 `image_processing/cv2_processing/contours.py`
+  `remove_small_contours` wrote `img[y:y+h, x:x+w] = 0` directly
+  into the caller's NumPy array while the cupy backend
+  `remove_small_contours_gpu` operates on `img_cp.copy()`. Callers
+  that did not defensively pre-copy saw their original silently
+  modified, and the two backends were behaviorally inconsistent on
+  identical input. Fixed by copying the input once at function
+  entry and performing all zero-out writes against the copy.
+  Existing tests passed `img.copy()` defensively so none broke;
+  added `test_does_not_mutate_input_image` which passes the bare
+  `img` (no defensive copy) and asserts byte-equality with a
+  pre-call snapshot. — fix `0966c40`, doc mark `1977806`
+- L-14 `ocr/page.py` `Page.is_content_normalized` returned the
+  `is_normalized` flag of the first word it encountered with a
+  non-None bbox. A page in mixed-coord state (partial editing op,
+  bad merge, out-of-band bbox swap) silently returned whichever
+  convention came first, and downstream `add_word_to_page` /
+  layout-aware reorg picked the wrong arithmetic branch. Now
+  iterates every word and asserts they all agree; mismatch raises
+  `ValueError` naming the bug. Empty / all-None still returns
+  False. The Page constructor's bbox-union path already rejects
+  mixed-coord construction, so the new mixed-state can only
+  appear via post-construction mutation; regression test simulates
+  exactly that. — fix `cc846bb`, doc mark `83c4370`
+- L-15 `ocr/provenance.py` `OCRProvenance.models` was a
+  `list[OCRModelProvenance]` inside a `@dataclass(frozen=True)` —
+  `provenance.models.append(...)` succeeded silently, defeating
+  the frozen contract; a copied-then-mutated provenance shared
+  state with the original. Switched the field type to
+  `tuple[OCRModelProvenance, ...]` (default `()`) and added
+  `__post_init__` that coerces any incoming list to a tuple via
+  `object.__setattr__` so the public constructor still accepts
+  list inputs for back-compat. Three regression tests lock the
+  contract (isinstance, default type, `.append` raises
+  AttributeError, list-input coercion); the existing
+  `test_page_copy_preserves_ocr_provenance_without_shared_mutation`
+  was rewritten to assign a fresh tuple-bearing OCRProvenance via
+  `object.__setattr__` instead of mutating in-place. Sibling pd-*
+  repos grepped — no external `.models`-as-list consumers. —
+  fix `0442d63`, doc mark `7999c1e`
 
-**Next pick:** L-11 — `layout/_mappings.py` comment "Page chrome —
-dropped before reorg" is false. The comment claims header/footer/
-footnote are dropped, but the mapping preserves them as typed regions
-(`RegionType.header`, `RegionType.footer`, `RegionType.footnote`).
-Whether they're dropped later depends on the call site, not on this
-mapping. Rewrite the comment to accurately describe what the mapping
-does.
+**Next pick:** L-16 — `ocr/provenance.py` `OCRProvenance.coerce`
+performs an unnecessary dict round-trip (`from_dict(value.to_dict())`)
+when the input is already an `OCRProvenance`. Since the class is
+frozen, returning `value` directly is safe. Add an
+`if isinstance(value, OCRProvenance): return value` short-circuit
+before the round-trip.
 
 **Workflow per iteration** (one bug per commit, no push):
 
