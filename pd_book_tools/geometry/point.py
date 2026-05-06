@@ -93,8 +93,15 @@ class Point:
             "Point is immutable; use factory methods instead of mutating is_normalized"
         )
 
-    def __getattr__(self, item):
-        return getattr(self._geom, item)
+    # Note: ``Point`` deliberately does NOT delegate arbitrary attribute access
+    # to the underlying Shapely geometry. Earlier versions defined
+    # ``__getattr__ = lambda self, item: getattr(self._geom, item)``, which
+    # silently exposed every Shapely attribute (``area``, ``bounds``,
+    # ``buffer``, deprecated/internal members, etc.) as part of ``Point``'s
+    # public API. That made every Shapely version-bump a potential breaking
+    # change. The supported public surface is the explicit ``@property`` /
+    # method members defined on this class; for raw Shapely access use
+    # ``as_shapely()``.
 
     def __repr__(self) -> str:  # pragma: no cover - trivial representation
         return f"Point(x={self.x}, y={self.y}, normalized={self.is_normalized})"
