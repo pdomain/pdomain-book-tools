@@ -1,18 +1,20 @@
 import logging
 import math
-from enum import Enum
 
 import numpy as np
+
+# Re-export `Alignment` from the backend-neutral types module so existing
+# callers (`from pd_book_tools.image_processing.cv2_processing.canvas
+# import Alignment`) keep working. The canonical location is
+# `pd_book_tools.image_processing.types`; the cupy backend imports from
+# there directly so it does not pull cv2_processing in. (M-27)
+from pd_book_tools.image_processing.types import Alignment
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 
-class Alignment(Enum):
-    TOP = "top"
-    CENTER = "center"
-    BOTTOM = "bottom"
-    DEFAULT = "default"
+__all__ = ["Alignment", "map_content_onto_scaled_canvas"]
 
 
 def map_content_onto_scaled_canvas(
