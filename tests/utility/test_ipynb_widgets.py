@@ -29,6 +29,25 @@ class TestGetHtmlStyledSpan:
         widget = get_html_styled_span()
         assert isinstance(widget, ipywidgets.HTML)
 
+    def test_nonempty_item_well_formed_html(self):
+        widget = get_html_styled_span(item="hello", css_style="style='color:red'")
+        assert widget.value.startswith("<span")
+        assert widget.value.endswith("</span>")
+        assert "hello" in widget.value
+        assert "style='color:red'" in widget.value
+
+    def test_empty_item_well_formed_html(self):
+        widget = get_html_styled_span(item="", css_style="style='color:red'")
+        assert widget.value.startswith("<span")
+        assert widget.value.endswith("</span>")
+        # No stray closing tag without an opener
+        assert widget.value.count("<span") == widget.value.count("</span>")
+
+    def test_default_args_well_formed_html(self):
+        widget = get_html_styled_span()
+        assert widget.value.startswith("<span")
+        assert widget.value.endswith("</span>")
+
 
 class TestGetFormattedTextHtmlSpan:
     def test_returns_html_widget_with_text(self):
