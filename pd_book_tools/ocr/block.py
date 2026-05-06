@@ -609,16 +609,37 @@ class Block:
         }
 
     def copy_ocr_to_ground_truth(self) -> bool:
-        """Copy OCR text to ground truth for all words in this block."""
-        return any([word.copy_ocr_to_ground_truth() for word in self.words])
+        """Copy OCR text to ground truth for all words in this block.
+
+        Every word is processed (no short-circuit); ``any`` is then taken
+        over the resulting list to report whether at least one word was
+        actually mutated. The list comprehension is materialized
+        explicitly so the eager-evaluation intent is obvious to readers
+        (vs ``any([list comp])`` which suggests short-circuit even though
+        list construction precludes it).
+        """
+        results = [word.copy_ocr_to_ground_truth() for word in self.words]
+        return any(results)
 
     def copy_ground_truth_to_ocr(self) -> bool:
-        """Copy ground truth text to OCR text for all words in this block."""
-        return any([word.copy_ground_truth_to_ocr() for word in self.words])
+        """Copy ground truth text to OCR text for all words in this block.
+
+        Every word is processed; ``any`` reports whether at least one was
+        mutated. See :meth:`copy_ocr_to_ground_truth` for the rationale
+        of the explicit-list-then-``any`` form.
+        """
+        results = [word.copy_ground_truth_to_ocr() for word in self.words]
+        return any(results)
 
     def clear_ground_truth(self) -> bool:
-        """Clear ground truth text from all words in this block."""
-        return any([word.clear_ground_truth() for word in self.words])
+        """Clear ground truth text from all words in this block.
+
+        Every word is processed; ``any`` reports whether at least one was
+        mutated. See :meth:`copy_ocr_to_ground_truth` for the rationale
+        of the explicit-list-then-``any`` form.
+        """
+        results = [word.clear_ground_truth() for word in self.words]
+        return any(results)
 
     @property
     def word_list(self) -> list[str]:
