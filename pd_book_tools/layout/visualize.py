@@ -45,7 +45,11 @@ def draw_layout_overlay(
 
     The source image is dimmed so coloured rectangles + labels stand out.
     Returns the destination path on success, ``None`` if the source image
-    could not be read (so callers can skip silently).
+    could not be read (so callers can skip silently). Raises ``OSError`` if
+    the destination write fails (cv2.imwrite returns False on disk-full /
+    bad permissions / unsupported extension); the prior contract returned
+    the path even on write failure, so a caller's ``is not None`` check
+    misled them into believing the file was written (L-08).
     """
     import cv2  # imported lazily — visualization is optional
 
@@ -82,7 +86,11 @@ def draw_layout_overlay(
         )
 
     dest_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(dest_path), overlay)
+    if not cv2.imwrite(str(dest_path), overlay):
+        raise OSError(
+            f"cv2.imwrite failed to write layout overlay to {dest_path!s} "
+            "(disk full, bad permissions, or unsupported image extension)"
+        )
     return dest_path
 
 
