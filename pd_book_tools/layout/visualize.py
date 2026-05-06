@@ -61,23 +61,29 @@ def draw_layout_overlay(
         return None
     overlay = cv2.addWeighted(img, 0.55, 255 * (img * 0 + 1), 0.45, 0)
 
+    image_width = overlay.shape[1]
     for r in layout.regions:
         color = _COLORS_BGR.get(r.type.value, (128, 128, 128))
         cv2.rectangle(overlay, (r.L, r.T), (r.R, r.B), color, thickness=3)
         label = f"{r.type.value} {r.confidence:.2f}"
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
         ly0 = max(r.T - 6, th + 4)
+        # L-09: clamp label x-start so label doesn't run off the right edge
+        # for sidenote / page-number regions hugging the right margin. Floor
+        # at 0 so an over-wide label on a narrow image still anchors at the
+        # left edge rather than going negative.
+        lx = max(0, min(r.L, image_width - tw - 6))
         cv2.rectangle(
             overlay,
-            (r.L, ly0 - th - 4),
-            (r.L + tw + 6, ly0 + 2),
+            (lx, ly0 - th - 4),
+            (lx + tw + 6, ly0 + 2),
             color,
             thickness=-1,
         )
         cv2.putText(
             overlay,
             label,
-            (r.L + 3, ly0 - 2),
+            (lx + 3, ly0 - 2),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
             (0, 0, 0),
