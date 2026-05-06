@@ -122,13 +122,24 @@ class BoundingBox:
 
     @property
     def has_usable_coordinates(self) -> bool:
-        """Return True when all four corners are finite numbers suitable for rendering."""
-        try:
-            return all(
-                c is not None for c in (self.minX, self.minY, self.maxX, self.maxY)
-            )
-        except Exception:
-            return False
+        """Return True when all four corners are finite numbers suitable for rendering.
+
+        "Finite" means not ``None``, not ``NaN``, not ``+inf`` / ``-inf``. A
+        validly constructed :class:`BoundingBox` cannot have ``None`` corners
+        (Shapely-backed ``Point`` coordinates are always real), but it can
+        receive ``NaN`` / ``inf`` from upstream Shapely operations whose result
+        geometry is empty (e.g. ``buffer()`` collapsing a thin box). Rendering
+        code uses this guard to skip drawing rather than crash.
+
+        Genuine attribute / arithmetic errors are deliberately *not* swallowed
+        here — if ``minX`` etc. raise, that is a real bug and should surface.
+        """
+        import math
+
+        return all(
+            c is not None and math.isfinite(c)
+            for c in (self.minX, self.minY, self.maxX, self.maxY)
+        )
 
     @staticmethod
     def _split_at_x(
