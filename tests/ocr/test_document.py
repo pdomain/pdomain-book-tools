@@ -80,6 +80,40 @@ def test_document_from_dict():
     assert len(doc.pages) == 1
 
 
+def test_document_source_path_none_round_trips_as_none():
+    """Regression test for M-07.
+
+    `Document.to_dict` previously did `str(self.source_path)`, which yields
+    the literal string ``"None"`` when ``source_path`` is ``None``. The
+    matching ``from_dict`` then saw a truthy non-empty string and produced
+    ``Path("None")`` (a path literally named ``None`` in the cwd), breaking
+    the round-trip. Serialize ``None`` as JSON ``null`` instead.
+    """
+    doc = Document(source_lib="test_lib", source_path=None, pages=[])
+    doc_dict = doc.to_dict()
+    # Must not be the literal string "None" — that's the bug.
+    assert doc_dict["source_path"] != "None"
+    assert doc_dict["source_path"] is None
+
+    restored = Document.from_dict(doc_dict)
+    assert restored.source_path is None
+    # And specifically not a path literally named "None".
+    assert restored.source_path != Path("None")
+
+
+def test_document_from_dict_tolerates_legacy_none_string():
+    """Backward-compat: legacy JSON files written before M-07 contain the
+    literal string ``"None"`` for missing source paths. ``from_dict`` should
+    treat that as ``None`` rather than ``Path("None")``."""
+    doc_dict = {
+        "source_lib": "test_lib",
+        "source_path": "None",
+        "pages": [],
+    }
+    doc = Document.from_dict(doc_dict)
+    assert doc.source_path is None
+
+
 def test_document_to_json_file(tmp_path):
     doc = Document(source_lib="test_lib", source_path=Path("test_path"), pages=[])
     page = Page(page_index=0, width=800, height=1000, items=[])
