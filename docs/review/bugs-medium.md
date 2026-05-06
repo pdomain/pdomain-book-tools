@@ -408,7 +408,7 @@ and the incoming unmatched words are silently dropped.
 
 ---
 
-## M-29 — `normalize_text_style_labels` doesn't strip `'regular'` when other labels are present
+## [FIXED in caaaee2] ~~M-29 — `normalize_text_style_labels` doesn't strip `'regular'` when other labels are present~~
 
 **File:** `pd_book_tools/ocr/label_normalization.py`, lines 53–57
 
