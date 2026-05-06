@@ -893,8 +893,13 @@ class Block:
         )
         self.recompute_bounding_box()
 
-    def ocr_confidence_scores(self) -> list[float]:
-        """Get a list of the OCR confidence scores of all nested words."""
+    def ocr_confidence_scores(self) -> list[float | None]:
+        """Get a list of the OCR confidence scores of all nested words.
+
+        Entries may be ``None`` for words produced by ``Word.split()``, which
+        sets ``ocr_confidence=None`` on both halves. Callers that aggregate
+        these (e.g. ``mean_ocr_confidence``) must filter ``None`` first.
+        """
         if not self._items:
             return []
         if self.child_type == BlockChildType.WORDS:
@@ -907,8 +912,13 @@ class Block:
             )
 
     def mean_ocr_confidence(self) -> float:
-        """Get the mean of the OCR confidence score of all items"""
-        scores = self.ocr_confidence_scores()
+        """Get the mean of the OCR confidence score of all items.
+
+        Words produced by ``Word.split()`` have ``ocr_confidence=None``, so
+        ``ocr_confidence_scores()`` may return a list containing ``None``.
+        Filter those out before averaging; if no scored words remain, return 0.0.
+        """
+        scores = [s for s in self.ocr_confidence_scores() if s is not None]
         if not scores:
             return 0.0
         return sum(scores) / len(scores)

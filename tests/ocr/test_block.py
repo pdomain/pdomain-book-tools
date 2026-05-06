@@ -572,6 +572,36 @@ def test_ocr_confidence_scores_and_mean_nested(sample_two_paragraph_block1):
     assert empty.mean_ocr_confidence() == 0.0
 
 
+def test_mean_ocr_confidence_after_word_split():
+    """Regression for H-07: Word.split() sets ocr_confidence=None on both halves,
+    so ocr_confidence_scores() can return a list containing None. mean_ocr_confidence
+    must skip None entries instead of raising TypeError from sum()."""
+    w1 = Word("hello", BoundingBox.from_ltrb(0, 0, 50, 10), ocr_confidence=0.9)
+    w2 = Word("world", BoundingBox.from_ltrb(50, 0, 100, 10), ocr_confidence=0.8)
+    block = Block(
+        items=[w1, w2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    # Split the first word; both halves get ocr_confidence=None
+    left, right = w1.split(bbox_split_offset=25.0, character_split_index=2)
+    block._items = [left, right, w2]
+
+    # Should not raise TypeError
+    mean = block.mean_ocr_confidence()
+    # Two None scores skipped; remaining is just w2 (0.8)
+    assert mean == pytest.approx(0.8)
+
+    # All-None case should return 0.0 rather than crash or NaN
+    left2, right2 = w2.split(bbox_split_offset=25.0, character_split_index=2)
+    block_all_none = Block(
+        items=[left, right, left2, right2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    assert block_all_none.mean_ocr_confidence() == 0.0
+
+
 def test_block_scale_normalized():
     # Build a normalized block
     w1 = Word("a", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2), 0.5)
