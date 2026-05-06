@@ -347,6 +347,42 @@ class Document:
                 )
                 blocks.append(block)
 
+                # M-15: DocTR's block export carries both ``"lines"`` (text)
+                # and ``"artefacts"`` (non-text regions: stamps, barcodes,
+                # QR codes, figures, unclassified blobs). The adapter
+                # previously iterated only ``"lines"``, silently discarding
+                # every artefact. pd-book-tools' invariant is to never
+                # silently drop OCR-derived content, so preserve each
+                # artefact as a sibling top-level Block on the page,
+                # role-labelled ``"artefact"`` and carrying DocTR's
+                # ``type`` / ``confidence`` in additional_block_attributes.
+                # ``items`` is empty (artefacts are non-text), so
+                # ``page.words`` is unaffected; consumers can filter on the
+                # role label to keep, render, or strip them.
+                for artefact_data in block_data.get("artefacts", []):
+                    if artefact_data.get("geometry"):
+                        artefact_bounding_box = BoundingBox.from_nested_float(
+                            artefact_data["geometry"]
+                        )
+                    else:
+                        artefact_bounding_box = None
+                    artefact_attrs: dict = {}
+                    if "type" in artefact_data:
+                        artefact_attrs["artefact_type"] = artefact_data["type"]
+                    if "confidence" in artefact_data:
+                        artefact_attrs["artefact_confidence"] = artefact_data[
+                            "confidence"
+                        ]
+                    artefact_block = Block(
+                        items=[],
+                        bounding_box=artefact_bounding_box,
+                        block_category=BlockCategory.BLOCK,
+                        child_type=BlockChildType.WORDS,
+                        block_role_labels=["artefact"],
+                        additional_block_attributes=artefact_attrs or None,
+                    )
+                    blocks.append(artefact_block)
+
             original_ocr_tool_text = None
             if original_text is not None and page_idx < len(original_text):
                 original_ocr_tool_text = original_text[page_idx]
