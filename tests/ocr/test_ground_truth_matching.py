@@ -347,6 +347,73 @@ class TestGroundTruthMatching:
                 f"Expected GT text 'hello', got '{combined_word.ground_truth_text}'"
             )
 
+    def test_try_matching_combined_words_two_word_ending_quote_promotes_match(self):
+        """Regression test for H-21.
+
+        With a two-word OCR span there is exactly ONE combination, so
+        the pre-fix gate ``len(ocr_combination_tuple) > 1`` always
+        evaluated False and ``include_ending_quote`` could never fire
+        on two-word lines, even when:
+
+        - the GT word ends in a quote/prime,
+        - the trailing OCR token is short (<= 2 chars), and
+        - the trailing OCR token visually floats above its predecessor
+          (smaller maxY = higher on the page) — the geometric signature
+          of a stray quote mark misread as its own word.
+
+        The flag must be driven by the *current span* length, not the
+        total number of word-pair combinations across the whole line.
+        After the fix the gate becomes
+        ``(combination_end - combination_start) > 1`` (always true for
+        these combinations, span >= 2), so ``include_ending_quote`` can
+        flip True when its other conditions are met. That promotes a
+        sub-threshold fuzz match into a kept combination — without it,
+        the trailing quote is silently dropped from the merged word.
+
+        Scenario tuned so that:
+
+        - combined fuzz ratio (57) beats both individual ratios
+          (33 and 40) so the combination is not skipped at the
+          per-word-better gate, and
+        - combined ratio fails ALL three length-band thresholds
+          (``len>5 and >=80``, ``len>3 and >=60``, ``len<3 and >=50``),
+          leaving ``include_ending_quote`` as the only path through the
+          downstream filter.
+        """
+
+        def create_test_word(text, x, y, width, height):
+            top_left = Point(x=x, y=y)
+            bottom_right = Point(x=x + width, y=y + height)
+            bbox = BoundingBox(top_left=top_left, bottom_right=bottom_right)
+            return Word(text=text, bounding_box=bbox, ocr_confidence=0.9)
+
+        # OCR row: word 0 sits on the baseline (maxY=20), word 1 is the
+        # stray apostrophe-shaped glyph floating above (maxY=15 < 20).
+        ocr_words = [
+            create_test_word("zzzz", x=0, y=10, width=32, height=10),
+            create_test_word("yy", x=40, y=5, width=12, height=10),
+        ]
+        ocr_tuple = ("zzzz", "yy")
+        # GT word ends with an apostrophe; OCR rendered the apostrophe
+        # as the second token "yy" above the baseline.
+        gt_tuple = ("abczzyy'",)
+
+        result = try_matching_combined_words(ocr_words, ocr_tuple, gt_tuple)
+
+        # Pre-fix: result is empty (combined ratio 57 below all
+        # length-band thresholds; include_ending_quote stuck at False
+        # because len(ocr_combination_tuple) == 1).
+        # Post-fix: include_ending_quote=True (span 2 > 1) keeps it.
+        assert len(result) == 1, (
+            "Two-word ending-quote span should be combined once H-21 is fixed"
+        )
+        combination_start, combination_end, gt_word_nbr, combined_word = result[0]
+        assert combination_start == 0
+        assert combination_end == 2
+        assert gt_word_nbr == 0
+        assert combined_word.text == "zzzzyy"
+        assert combined_word.ground_truth_text == "abczzyy'"
+
 
 class TestCharacterGroups:
     """Test the CharacterGroups enum functionality."""
