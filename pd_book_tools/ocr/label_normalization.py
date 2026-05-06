@@ -53,8 +53,16 @@ def normalize_text_style_label(label: str) -> str:
 def normalize_text_style_labels(labels: Optional[list[str]]) -> list[str]:
     if not labels:
         return ["regular"]
-    normalized = [normalize_text_style_label(label) for label in labels]
-    return list(dict.fromkeys(normalized))
+    normalized = list(
+        dict.fromkeys(normalize_text_style_label(label) for label in labels)
+    )
+    # Strip the redundant 'regular' sentinel when any concrete style label is
+    # also present. This mirrors Word.update_style_attributes (word.py ~252-257)
+    # so that all entry points (Word(__init__), to_dict/from_dict round-trips,
+    # update_style_attributes) agree on the canonical representation.
+    if "regular" in normalized and len(normalized) > 1:
+        normalized = [label for label in normalized if label != "regular"]
+    return normalized
 
 
 def normalize_text_style_label_scope(scope: Optional[str]) -> str:
@@ -78,6 +86,10 @@ def normalize_text_style_label_scopes(
     if not normalized_labels:
         normalized_labels = ["regular"]
     normalized_labels = list(dict.fromkeys(normalized_labels))
+    # Mirror normalize_text_style_labels: strip the 'regular' sentinel when any
+    # concrete style is present, so scopes stays in lockstep with labels.
+    if "regular" in normalized_labels and len(normalized_labels) > 1:
+        normalized_labels = [label for label in normalized_labels if label != "regular"]
     normalized_scopes = {label: "whole" for label in normalized_labels}
 
     if not scopes:
@@ -86,6 +98,11 @@ def normalize_text_style_label_scopes(
     for label, scope in scopes.items():
         normalized_label = normalize_text_style_label(label)
         if normalized_label not in normalized_scopes:
+            # Silently drop a 'regular' scope entry that was made redundant by
+            # the M-29 strip (legacy payloads can carry both 'regular' and a
+            # concrete style; the concrete one wins).
+            if normalized_label == "regular":
+                continue
             allowed_labels = ", ".join(sorted(normalized_scopes.keys()))
             raise ValueError(
                 f"Unknown style label '{label}' in text_style_label_scopes. "
