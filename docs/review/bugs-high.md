@@ -284,17 +284,16 @@ into `union`, which then tries to call `.is_normalized` on `None` and raises `At
 
 ---
 
-## H-20 — `resolve_layout_source` ignores `layout_model="none"` when `layout_checkpoint` is also set
+## [STALE — verified in ca08728] ~~H-20 — `resolve_layout_source` ignores `layout_model="none"` when `layout_checkpoint` is also set~~
 
-**File:** `pd_book_tools/hf/models.py`, lines 86–90
-**Affects:** callers who pass both `layout_model="none"` and a checkpoint path
-
-The checkpoint branch returns early without ever checking `layout_model`. Passing
-`layout_model="none"` to disable layout is silently bypassed if a checkpoint path is
-also provided.
-
-**Fix:** evaluate the `"none"` / `"contour"` early-return checks before the checkpoint branch,
-or document the precedence explicitly.
+**Status:** stale. The `"none"` and `"contour"` short-circuits at
+`pd_book_tools/hf/models.py` lines 81–84 already run BEFORE the
+checkpoint branch at lines 86–90, so passing `layout_model="none"` does
+disable layout regardless of `layout_checkpoint`. The review cited only
+the checkpoint branch's line range and missed the precedence above it.
+Regression-locked with two tests in `tests/hf/test_hf.py`:
+`test_resolve_layout_source_none_takes_precedence_over_checkpoint` and
+`test_resolve_layout_source_contour_takes_precedence_over_checkpoint`.
 
 ---
 

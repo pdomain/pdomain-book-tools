@@ -156,20 +156,29 @@ remembering prior turns. Update this when an iteration completes (after the
   (blocks 1 and 3, par 5 inside block 3, line 2 inside that paragraph)
   loses the second word pre-fix and recovers it after. — fix `b5bf0b3`,
   doc mark `<pending>`
+- H-20 `hf/models.py` `resolve_layout_source` was reported to ignore
+  `layout_model="none"` when a checkpoint path was also supplied — the
+  review cited the checkpoint branch (lines 86–90) only. Verified stale:
+  the `"none"` / `"contour"` short-circuits at lines 81–84 already run
+  BEFORE the checkpoint branch, so the disable flag wins regardless of
+  `layout_checkpoint`. Regression-locked the precedence with two tests
+  so a future refactor can't reorder the branches. — test/lock
+  `ca08728`, doc mark `<pending>`
 
 **Top-10 H-XX list complete.** Every entry from the "Highest-priority
 fixes" section above is now resolved. The /loop now sweeps the remaining
 `bugs-high.md` entries top-to-bottom — pick the first unstruck H-XX from
 the file in document order.
 
-**Next pick:** H-20 — `hf/models.py` `resolve_layout_source` ignores
-`layout_model="none"` when `layout_checkpoint` is also set (review
-cited lines 86–90). The checkpoint branch returns early without ever
-checking `layout_model`, so passing `layout_model="none"` to disable
-layout is silently bypassed if a checkpoint path is also provided.
-Verify the current early-return order in `resolve_layout_source`
-before fixing — if the `"none"` / `"contour"` short-circuits already
-run before the checkpoint branch, mark the entry stale.
+**Next pick:** H-21 — `ocr/ground_truth_matching.py`
+`include_starting_quote` / `include_ending_quote` test
+`len(ocr_combination_tuple)` (the total number of word-pair
+combinations, always large) instead of whether the current span covers
+more than one word. Both conditions are therefore always `True` for any
+non-trivial input, causing spurious quote inclusion. Fix is to use
+`(ocr_word_end - ocr_word_start) > 1` from `combination_start_end`.
+H-21 is the last unstruck entry in `bugs-high.md` — clearing it
+finishes the high-severity sweep.
 
 **Workflow per iteration** (one bug per commit, no push):
 
