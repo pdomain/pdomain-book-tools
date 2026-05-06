@@ -397,7 +397,7 @@ arrays or image data, and may inadvertently log sensitive values.
 
 ---
 
-## L-30 — `timing.py` — `inspect.stack()[1]` is called on every decorated function invocation
+## ~~L-30 — `timing.py` — `inspect.stack()[1]` is called on every decorated function invocation~~ [FIXED in 92d86e9]
 
 **File:** `pd_book_tools/utility/timing.py`, line 13
 
