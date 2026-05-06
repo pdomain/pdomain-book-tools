@@ -11,7 +11,7 @@ from pd_book_tools.ocr.image_utilities import (
 
 
 def get_html_styled_span(item: str = "", css_style: str = "") -> HTML:
-    return HTML(f"<span {css_style}>" + item if item else "" + "</span>")
+    return HTML(f"<span {css_style}>{item}</span>")
 
 
 def get_formatted_text_html_span(
