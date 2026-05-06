@@ -65,6 +65,12 @@ class Block:
             "section",
             "list",
             "formula",
+            # Non-text regions detected by the OCR engine (DocTR's `artefacts`:
+            # stamps, barcodes, QR codes, figures, unclassified blobs). Carries
+            # geometry only — `Block.words` is empty. Preserves the page's
+            # full inventory of detected regions instead of silently
+            # discarding non-text ones.
+            "artefact",
         }
     )
 

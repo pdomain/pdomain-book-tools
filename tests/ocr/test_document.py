@@ -192,6 +192,104 @@ def test_document_from_doctr_output_matches_tesseract_nesting_depth(
     assert [w.text for w in doctr_words] == ["Hello"]
 
 
+def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
+    """Regression test for M-15.
+
+    DocTR's block export carries both ``"lines"`` (text) and ``"artefacts"``
+    (non-text regions: stamps, barcodes, QR codes, figures). The adapter
+    previously iterated only ``"lines"``, silently discarding artefacts.
+
+    pd-book-tools' invariant is that OCR-derived content is never silently
+    dropped — even non-text regions must be preserved with a role label so
+    consumers can choose to keep, render, or strip them.
+
+    Strategy: each artefact becomes a top-level ``Block`` on the page,
+    ``block_category=BLOCK``, ``child_type=WORDS``, ``items=[]``,
+    ``block_role_labels=["artefact"]``. DocTR's per-artefact ``type`` and
+    ``confidence`` are preserved in ``additional_block_attributes`` so the
+    artefact's classification (e.g. ``"barcode"``) is not lost.
+    """
+    from pd_book_tools.ocr.block import BlockCategory, BlockChildType
+
+    doctr_output = {
+        "metadata": {},
+        "pages": [
+            {
+                "dimensions": [1000, 800],
+                "blocks": [
+                    {
+                        "geometry": [[0.1, 0.1], [0.5, 0.5]],
+                        "lines": [
+                            {
+                                "geometry": [[0.1, 0.1], [0.5, 0.2]],
+                                "words": [
+                                    {
+                                        "value": "Hello",
+                                        "geometry": [[0.1, 0.1], [0.2, 0.2]],
+                                        "confidence": 0.95,
+                                    }
+                                ],
+                            }
+                        ],
+                        "artefacts": [
+                            {
+                                "geometry": [[0.6, 0.6], [0.9, 0.9]],
+                                "type": "barcode",
+                                "confidence": 0.88,
+                            },
+                            {
+                                "geometry": [[0.05, 0.7], [0.15, 0.8]],
+                                "type": "qr_code",
+                                "confidence": 0.42,
+                            },
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+
+    doc = Document.from_doctr_output(doctr_output)
+    page = doc.pages[0]
+
+    # The text Word must still flow through unchanged.
+    assert [w.text for w in page.words] == ["Hello"]
+
+    # Both artefacts must be preserved as top-level Blocks on the page,
+    # tagged with the "artefact" role label so consumers can filter them.
+    artefact_blocks = [
+        item for item in page.items if "artefact" in item.block_role_labels
+    ]
+    assert len(artefact_blocks) == 2, (
+        f"Expected 2 artefact blocks; got {len(artefact_blocks)}. "
+        f"Pre-fix bug: artefacts were silently dropped."
+    )
+
+    # Match the canonical Block shape so they don't break consumers walking
+    # page.items: BLOCK category, WORDS child type, empty items list.
+    for art in artefact_blocks:
+        assert art.block_category == BlockCategory.BLOCK
+        assert art.child_type == BlockChildType.WORDS
+        assert list(art.items) == []
+        assert art.bounding_box is not None
+
+    # DocTR's classification (type) and confidence must be preserved so the
+    # artefact's identity is not lost.
+    types = sorted(
+        a.additional_block_attributes.get("artefact_type") for a in artefact_blocks
+    )
+    assert types == ["barcode", "qr_code"]
+    confidences = sorted(
+        a.additional_block_attributes.get("artefact_confidence")
+        for a in artefact_blocks
+    )
+    assert confidences == [0.42, 0.88]
+
+    # Artefact blocks contribute zero words to ``page.words`` — they are
+    # geometry-only placeholders, not OCR text.
+    assert len(page.words) == 1
+
+
 def test_document_from_doctr_output_normalizes_model_provenance():
     doctr_output = {
         "metadata": {
