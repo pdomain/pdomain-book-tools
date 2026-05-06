@@ -465,6 +465,30 @@ def test_merge_blocks(sample_block1, sample_block2):
     assert len(b1.unmatched_ground_truth_words) == 2
 
 
+def test_merge_preserves_unmatched_when_self_empty(sample_block1, sample_block2):
+    """Regression for M-28: when ``self`` has no unmatched ground-truth words
+    but ``block_to_merge`` does, the incoming unmatched words must be
+    preserved (not silently dropped). Previously the extend was guarded by
+    ``self.unmatched and other.unmatched`` so this case dropped them."""
+    b1 = Block.from_dict(sample_block1.to_dict())
+    b2 = Block.from_dict(sample_block2.to_dict())
+    # self deliberately has none; other has two
+    b1.unmatched_ground_truth_words = []
+    b2.unmatched_ground_truth_words = [(0, "alpha"), (1, "beta")]
+    b1.merge(b2)
+    assert b1.unmatched_ground_truth_words == [(0, "alpha"), (1, "beta")]
+
+
+def test_merge_preserves_unmatched_when_other_empty(sample_block1, sample_block2):
+    """Symmetric case: self has unmatched, other has none — self's must remain."""
+    b1 = Block.from_dict(sample_block1.to_dict())
+    b2 = Block.from_dict(sample_block2.to_dict())
+    b1.unmatched_ground_truth_words = [(0, "alpha")]
+    b2.unmatched_ground_truth_words = []
+    b1.merge(b2)
+    assert b1.unmatched_ground_truth_words == [(0, "alpha")]
+
+
 def test_merge_blocks_mismatches(sample_block1, sample_paragraph_block1):
     with pytest.raises(ValueError):
         sample_paragraph_block1.merge(sample_block1)  # child_type mismatch

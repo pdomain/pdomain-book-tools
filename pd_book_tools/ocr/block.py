@@ -875,10 +875,13 @@ class Block:
             raise ValueError("Cannot merge blocks with different block categories")
         self._items.extend(block_to_merge.items)
         self._sort_items()
-        if (
-            self.unmatched_ground_truth_words
-            and block_to_merge.unmatched_ground_truth_words
-        ):
+        # Preserve all unmatched ground-truth words from both sides. Previously
+        # the extend was guarded by ``self.unmatched and other.unmatched`` so
+        # any time ``self`` had no unmatched words, ``other``'s unmatched words
+        # were silently dropped — a violation of the project-wide invariant
+        # that OCR-derived / ground-truth content is never silently dropped
+        # (review M-28).
+        if block_to_merge.unmatched_ground_truth_words:
             self.unmatched_ground_truth_words.extend(
                 block_to_merge.unmatched_ground_truth_words
             )
