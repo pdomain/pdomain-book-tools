@@ -1049,6 +1049,55 @@ class TestIsContentNormalizedBranches:
         result = page.is_content_normalized
         assert result is False
 
+    def test_raises_on_mixed_normalized_and_pixel_words(self):
+        """L-14: a page with both normalized and pixel-space word bboxes
+        is a logic error upstream — surface it loudly instead of silently
+        returning whichever convention the first word happens to use.
+
+        The Page constructor itself rejects mixed-coord bboxes via the
+        union path; the mix appears here only when a later editing
+        operation swaps a word's bbox out of band (the realistic scenario
+        the review describes). We simulate that by building a homogeneous
+        page and then post-construction mutating one word's bounding box
+        to the opposite coordinate convention.
+        """
+        import pytest
+
+        # Build a homogeneous pixel-space page (constructor accepts this).
+        pixel_word = _make_word("a", x=10, y=10)
+        other_pixel_word = _make_word("b", x=80, y=10)
+        line = Block(
+            items=[pixel_word, other_pixel_word],
+            block_category=BlockCategory.LINE,
+            child_type=BlockChildType.WORDS,
+        )
+        para = _make_paragraph([line])
+        page = Page(width=1000, height=1000, page_index=0, items=[para])
+
+        # Out-of-band swap: a partial editing op replaced one word's bbox
+        # with normalized coords without re-normalizing siblings. The
+        # property must surface this rather than silently picking one.
+        other_pixel_word.bounding_box = BoundingBox.from_ltrb(
+            0.1, 0.1, 0.2, 0.12, is_normalized=True
+        )
+        with pytest.raises(ValueError, match="mix of normalized and pixel"):
+            page.is_content_normalized
+
+    def test_homogeneous_normalized_returns_true(self):
+        """L-14: when every word agrees on normalized=True, return True
+        (regardless of which one we encountered first).
+        """
+        w1 = _make_word_normalized("a", x=0.1)
+        w2 = _make_word_normalized("b", x=0.2)
+        line = Block(
+            items=[w1, w2],
+            block_category=BlockCategory.LINE,
+            child_type=BlockChildType.WORDS,
+        )
+        para = _make_paragraph([line])
+        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        assert page.is_content_normalized is True
+
     def test_returns_false_for_word_with_none_bbox(self):
         """is_content_normalized: word with None bbox covers 503->502 branch."""
         # Create word with valid bbox, then clear it after structure is set
