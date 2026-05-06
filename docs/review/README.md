@@ -258,14 +258,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   `to_dict` to emit JSON `null` for `None`; hardened `from_dict` to
   treat the literal string `"None"` as `None` for backward compat with
   files written before this fix. — fix `b67786c`, doc mark `<pending>`
+- M-08 `image_processing/cupy_processing/morph.py` `dilate` / `erode`
+  padded with `mode='constant', constant_values=0`. The erosion step
+  of `morph_fill` therefore zeroed foreground pixels touching the
+  image border because the zero-padded min-window saw a 0. cv2's
+  `morphologyEx` defaults to `BORDER_REFLECT_101`, so the two backends
+  silently disagreed on book scans whose text runs into the gutter.
+  Switched both helpers to `mode='reflect'` (numpy/cupy semantics
+  `dcb|abcd|cba` matches `BORDER_REFLECT_101`; `'symmetric'` would be
+  plain `BORDER_REFLECT` and is wrong here). Regression locked with a
+  cross-backend equality test on `erode` and on `morph_fill`. — fix
+  `a9741d4`, doc mark `<pending>`
 
-**Next pick:** M-08 — `pd_book_tools/image_processing/cupy_processing/morph.py`
-`dilate` and `erode` pad with `constant_values=0`; during the erosion
-step of `morph_fill`, foreground pixels touching the image border are
-erroneously eroded to 0. `cv2.morphologyEx` defaults to
-`BORDER_REFLECT_101`, preserving border content. For book scans where
-text runs close to the gutter, this silently deletes valid content.
-Fix: use `mode='reflect'` padding in both `dilate` and `erode`.
+**Next pick:** M-09 — `pd_book_tools/image_processing/cupy_processing/morph.py`
+`cp.max(windows * kernel, axis=(-2,-1))` (and the matching `cp.min` in
+`erode`) allocates an `(H, W, kh, kw)` intermediate before reducing.
+For a 3000×4000 page with a 6×6 kernel this is ~432 MB per op; the
+four ops in `morph_fill` peak around 1.7 GB GPU memory. `kernel` is
+always all-ones, so the multiplication is a no-op. Fix: drop the
+`* kernel` factor (use `cp.max(windows, axis=(-2,-1))` /
+`cp.min(windows, axis=(-2,-1))`); for non-trivial kernels prefer
+`cupyx.scipy.ndimage.grey_dilation` / `grey_erosion`.
 
 **Workflow per iteration** (one bug per commit, no push):
 
