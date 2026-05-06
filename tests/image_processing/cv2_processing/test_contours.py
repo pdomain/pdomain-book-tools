@@ -103,6 +103,33 @@ class TestFindAndDrawContours:
 
 
 class TestRemoveSmallContours:
+    def test_does_not_mutate_input_image(self):
+        """L-13: ``remove_small_contours`` must not mutate the caller's array.
+
+        The cupy backend (``remove_small_contours_gpu``) operates on
+        ``img_cp.copy()``; the cv2 backend was historically writing
+        ``img[y:y+h, x:x+w] = 0`` directly into the input. Aligning the
+        two backends so callers don't have to remember which one mutates.
+        """
+        from cv2 import (
+            CHAIN_APPROX_SIMPLE,
+            RETR_EXTERNAL,
+            findContours,
+        )
+
+        img = _binary_image_with_blobs()
+        # Snapshot of the *exact* bytes the caller is passing in.
+        original = img.copy()
+        contours, _ = findContours(img, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+
+        cleaned, _ = remove_small_contours(img, contours)
+
+        # The returned image must reflect the cleaning (tiny blob gone)...
+        assert (cleaned[5:9, 5:9] == 0).all()
+        # ...but the caller's input must be byte-identical to what they
+        # passed in (no in-place mutation).
+        np.testing.assert_array_equal(img, original)
+
     def test_no_contours_returns_image_unchanged(self):
         img = np.zeros((50, 50), dtype=np.uint8)
         out_img, vis = remove_small_contours(img.copy(), [])
