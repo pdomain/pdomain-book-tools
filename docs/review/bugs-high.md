@@ -67,7 +67,7 @@ raises `AttributeError: 'Page' object has no attribute 'recompute_bounding_box'`
 
 ---
 
-## H-05 — `_vertical_crop` always normalizes output, flipping coordinate system for pixel-space boxes
+## [FIXED in 2327d2f] ~~H-05 — `_vertical_crop` always normalizes output, flipping coordinate system for pixel-space boxes~~
 
 **Files:**
 
