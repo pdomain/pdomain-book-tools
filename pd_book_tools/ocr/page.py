@@ -155,6 +155,50 @@ class Page:
             )
         self.rotation_applied: int = rotation_applied
 
+        # Diagnostic snapshots populated by ``reorganize_page`` when
+        # ``capture_diagnostics`` is enabled (default). Each holds a deep
+        # copy of the page captured at a specific stage of the pipeline,
+        # exposed for CLI / debugging consumption. They are NOT used by
+        # any production logic, NOT persisted by ``to_dict`` / ``copy``,
+        # and remain ``None`` for any page that has not been reorganized.
+        # See ``Page.reorganize_page`` for the capture points and the
+        # ``docs/architecture/reorganize_pipeline.md`` notes.
+        #
+        # ``diagnostic_pure_ocr`` is captured at the very top of
+        # ``reorganize_page`` — before layout tagging, before any noise
+        # removal, before any reorg step. It reflects the OCR engine's
+        # literal output as it entered the pipeline.
+        #
+        # ``diagnostic_post_noise_removal`` is captured immediately
+        # before reorg-proper begins — after Step Layout-2b
+        # (``drop_figure_internal_words``) and after Step B2
+        # (``drop_heuristic_figure_noise``) have had their chance to
+        # run. It mirrors the internal ``pre_reorg_words`` snapshot
+        # used by ``reconcile_dropped_words`` (same capture point), but
+        # is preserved as a full ``Page`` clone so the same text /
+        # JSON exporters that work on the live page can be invoked on
+        # it.
+        self.diagnostic_pure_ocr: Optional["Page"] = None
+        self.diagnostic_post_noise_removal: Optional["Page"] = None
+
+        # Words deleted by the noise-removal steps (Step Layout-2b and
+        # Step B2) between the two diagnostic snapshots. Each entry is a
+        # deep-copied ``Word`` instance, captured from the live page at
+        # the moment of removal, so the bbox / text / confidence reflect
+        # what the OCR engine produced (not anything refined or merged
+        # later in the reorg). Empty list when no words were dropped or
+        # when ``reorganize_page`` has not been called.
+        #
+        # The CLI surfaces these as a "likely noise" warning whenever
+        # the count is > 0, since the user's "never silently drop words"
+        # invariant requires visibility into every drop — even ones that
+        # are intentional (figure-internal noise).
+        #
+        # NOT persisted by ``to_dict`` / ``copy`` and reset on each
+        # ``reorganize_page`` call.
+        self.diagnostic_noise_dropped_words: List[Word] = []
+        self.diagnostic_noise_dropped_count: int = 0
+
     @property
     def index(self) -> int:
         """Compatibility alias for ``page_index``."""
@@ -2612,6 +2656,8 @@ class Page:
         layout: Optional["PageLayout"] = None,
         *,
         drop_figure_internal_text: bool = True,
+        drop_layout_words: bool = False,
+        capture_diagnostics: bool = True,
     ):
         """Top-level reorganize pipeline — thin orchestration shim.
 
@@ -2635,11 +2681,104 @@ class Page:
         reference. Pass ``False`` to keep every OCR token — useful when
         the consumer needs the raw OCR (e.g. training data prep where a
         glyph inside a figure is still a labelled glyph).
+
+        ``drop_layout_words`` is an experimental opt-in that enables
+        figure-internal heuristic noise removal at Step B2 (in
+        conjunction with ``drop_figure_internal_text``).
+        Footnote / header / footer / abandoned regions are NEVER
+        dropped, regardless of this flag — only their per-word
+        ``layout:*`` tags and (where mapped) the bubbled
+        ``block_role_labels`` from
+        :func:`bubble_block_roles_from_layout` are added so downstream
+        consumers can dispatch on them. The flag's narrowed power means
+        the only word-deletion behaviour it now controls is the
+        geometric figure-noise sweep, which is the one category where
+        OCR garbage from inside an illustration (engraving textures,
+        halftone speckle, map-interior fragments) is genuinely worth
+        excising for body-text-only consumers. ``drop_figure_internal_text``
+        keeps its independent meaning for the layout-aware
+        figure-internal word drop at Step Layout-2b. With the default
+        (``drop_layout_words=False``), the only OCR words removed by
+        the pipeline are those filtered by Step Layout-2b (when
+        ``drop_figure_internal_text=True``); the
+        ``validate_word_preservation`` invariant otherwise holds
+        end-to-end (every pre-pipeline OCR word is present in the
+        post-pipeline output), and ``pre_reorg_words`` is captured
+        *after* Step Layout-2b by design.
+
+        Diagnostic snapshots
+        --------------------
+        When ``capture_diagnostics`` is true (default), two deep-copy
+        snapshots of ``self`` are stashed for CLI / debugging
+        consumption:
+
+        * ``self.diagnostic_pure_ocr`` — captured at the very top of
+          this method, before any layout tagging or noise removal.
+          Reflects the literal OCR engine output as it entered the
+          pipeline. No ``layout:*`` word labels, no figure-noise drops.
+
+        * ``self.diagnostic_post_noise_removal`` — captured at the
+          same point as the internal ``pre_reorg_words`` list used by
+          :func:`reorganize_page_utils.reconcile_dropped_words`. That
+          point is *after* Step Layout-2b
+          (:func:`layout_aware_reorg.drop_figure_internal_words`) and
+          Step B2 (:func:`reorganize_page_utils.drop_heuristic_figure_noise`)
+          have had their chance to run, but *before* any reorg-proper
+          step (line merging, header/footer extraction, row blocks,
+          paragraphizing). Reading-order metadata has not been
+          stamped yet.
+
+        Each snapshot is a full ``Page`` clone (via
+        :meth:`Page.copy`) so the existing exporters (``snapshot.text``,
+        ``snapshot.to_dict()``, ``snapshot.lines``, ``snapshot.words``,
+        ...) work on it identically to the live page. Snapshots are
+        diagnostic-only: they are NOT used by any production logic
+        and are NOT persisted by ``to_dict`` / ``copy``. Pass
+        ``capture_diagnostics=False`` to skip the deep-copy work in
+        latency-sensitive paths.
+
+        In addition to the two ``Page`` snapshots, two scalar
+        diagnostics are *always* populated (regardless of
+        ``capture_diagnostics``) since they're cheap and the CLI uses
+        them as the trigger for its "likely noise" warning:
+
+        * ``self.diagnostic_noise_dropped_words`` — list of deep-copied
+          ``Word`` objects that were removed by Step Layout-2b
+          (figure-internal words) and / or Step B2 (heuristic figure
+          noise). Each entry preserves the OCR engine's text + bbox
+          + confidence + word_labels, so the CLI can format an
+          informative warning. Empty list when no noise removal fired.
+
+        * ``self.diagnostic_noise_dropped_count`` — convenience int
+          equal to ``len(self.diagnostic_noise_dropped_words)``. The
+          CLI emits a stderr warning whenever this is > 0, regardless
+          of whether export-pre-reorg-JSON was requested.
         """
         logger.debug("Reorganizing Page")
 
+        # Reset the diagnostic noise-drop accumulators so a second
+        # reorganize call doesn't accumulate dropped words from a
+        # previous pass.
+        self.diagnostic_noise_dropped_words = []
+        self.diagnostic_noise_dropped_count = 0
+
+        # Snapshot 1 of 2: pure OCR — the page as the OCR engine produced
+        # it, before *any* mutation by this pipeline. Captured up front
+        # so even an exception later in the pipeline doesn't deny callers
+        # access to the unmodified input. Cheap enough at typical page
+        # sizes that we always capture by default; ``capture_diagnostics``
+        # is the explicit opt-out.
+        if capture_diagnostics:
+            self.diagnostic_pure_ocr = self.copy()
+
+        # Capture references to the live ``Word`` objects right at the
+        # top, before Step Layout-2b can drop any of them. Tracked by
+        # ``id()`` so the noise-drop diff is robust to ``refine_bounding_boxes``
+        # tightening bbox coordinates between the two snapshots — the
+        # underlying ``Word`` instance flows through unchanged.
+        live_pre_noise_words = list(self.words)
+
         if layout is not None:
-            from pd_book_tools.layout.types import RegionType
             from pd_book_tools.ocr import layout_aware_reorg
 
             # Folded into the pipeline as Step Layout-1a: tag every word with
@@ -2654,18 +2793,20 @@ class Page:
             # region; this catches what the model misses.
             layout_aware_reorg.detect_geometric_sidenotes(self)
 
-            # Step Layout-2a: drop high-confidence header / footer / footnote
-            # / abandoned regions before the geometric pipeline runs.
-            layout_aware_reorg.drop_layout_regions(
-                self,
-                layout,
-                drop_types={
-                    RegionType.header,
-                    RegionType.footer,
-                    RegionType.footnote,
-                    RegionType.abandoned,
-                },
-            )
+            # Step Layout-2a (formerly: drop high-confidence header /
+            # footer / footnote / abandoned regions before the geometric
+            # pipeline runs). Removed from the default pipeline: those
+            # regions are real content (footnote text, page numbers,
+            # marginalia tagged ``abandoned``) and must survive the
+            # reorg. The per-word ``layout:<type>`` tags are still
+            # attached by ``tag_words_with_layout`` above, and (where
+            # mapped) ``bubble_block_roles_from_layout`` emits the
+            # corresponding ``block_role_labels`` later in the pipeline,
+            # so downstream consumers can still dispatch on
+            # header / footer / footnote without us silently deleting
+            # words. ``drop_layout_regions`` itself is unchanged and
+            # still importable for callers that want to opt in
+            # explicitly with their own ``drop_types`` set.
 
             # Step Layout-2b: drop OCR lines that are entirely figure-internal
             # noise — only when *every* word in the line is purely tagged
@@ -2686,15 +2827,19 @@ class Page:
         for block in self.items:
             reorganize_page_utils.reorganize_lines(block)
 
-        # Step B2 — heuristic figure-noise drop. Pure-geometry fallback to
-        # the layout-aware drop above; runs whether or not a layout was
-        # supplied so unmodelled figure interiors (or noise the model
-        # missed) still get filtered. Sequenced AFTER reorganize_lines so
-        # OCR fragments destined to be merged into longer lines aren't
-        # mistaken for solo weak noise. Snapshotting pre_reorg_words AFTER
-        # this step makes its drops intentional rather than something
-        # strict-mode reconciliation flags.
-        if drop_figure_internal_text:
+        # Step B2 — heuristic figure-noise drop. Pure-geometry fallback for
+        # unmodelled figure interiors (or noise the model missed); runs
+        # whether or not a layout was supplied. Sequenced AFTER
+        # reorganize_lines so OCR fragments destined to be merged into
+        # longer lines aren't mistaken for solo weak noise. Snapshotting
+        # pre_reorg_words AFTER this step makes its drops intentional
+        # rather than something strict-mode reconciliation flags.
+        # Gated on BOTH ``drop_figure_internal_text`` (legacy knob) AND
+        # the experimental ``drop_layout_words`` opt-in — figure-internal
+        # heuristic noise is the only word-deletion path the experimental
+        # flag still controls. Under the default the pipeline does not
+        # silently delete OCR words from this geometric fallback.
+        if drop_figure_internal_text and drop_layout_words:
             reorganize_page_utils.drop_heuristic_figure_noise(self)
 
         # Snapshot the pre-pipeline word set so the post-pipeline reconciler
@@ -2703,6 +2848,45 @@ class Page:
         # filter so the snapshot reflects what the rest of the pipeline is
         # supposed to preserve through Step D onwards.
         pre_reorg_words = list(self.words)
+
+        # Snapshot 2 of 2: post-noise-removal — same capture point as the
+        # internal ``pre_reorg_words`` reference list above. Step Layout-2b
+        # (``drop_figure_internal_words``) and Step B2
+        # (``drop_heuristic_figure_noise``) have already had their chance
+        # to run; the rest of the reorg (line merging, header/footer
+        # extraction, row blocks, paragraphizing) has not. Captured as a
+        # full ``Page`` clone (not a list of word references) so
+        # downstream rendering / serialization sees the post-noise state
+        # frozen — the live ``self.words`` are about to be re-stitched
+        # into the reorganized block tree, which would otherwise mutate
+        # any held references.
+        if capture_diagnostics:
+            self.diagnostic_post_noise_removal = self.copy()
+
+        # Compute the noise-drop diff between the pure-OCR word set
+        # (captured as ``live_pre_noise_words`` references at the top of
+        # this method) and the post-noise word set (the live page right
+        # now, before reorg-proper begins). The diff is by ``id()``
+        # identity, which is robust to ``refine_bounding_boxes`` having
+        # tightened bbox coordinates between the two snapshots — the
+        # underlying ``Word`` instances are mutated in place by refine
+        # rather than replaced, so a dropped word is unambiguously a word
+        # whose ``id`` is no longer reachable from the live page.
+        #
+        # Each surviving dropped word is serialized via
+        # ``Word.to_dict``/``Word.from_dict`` so the captured instance is
+        # decoupled from the live tree (which is about to be rewritten by
+        # reorg-proper). The text + bbox surface there reflects the OCR
+        # engine's output as it entered the noise step — exactly the
+        # information the CLI needs to format the "likely noise" warning.
+        post_noise_word_ids = {id(w) for w in self.words}
+        dropped_live_words = [
+            w for w in live_pre_noise_words if id(w) not in post_noise_word_ids
+        ]
+        self.diagnostic_noise_dropped_words = [
+            Word.from_dict(w.to_dict()) for w in dropped_live_words
+        ]
+        self.diagnostic_noise_dropped_count = len(self.diagnostic_noise_dropped_words)
 
         # Step D — split mixed-content (caption + body) OCR lines.
         reorganize_page_utils.run_step_d_split_mixed_content(self, debug_sections)
