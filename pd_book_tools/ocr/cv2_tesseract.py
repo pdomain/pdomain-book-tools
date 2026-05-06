@@ -67,7 +67,12 @@ def tesseract_ocr_cv2_image(
     config = [
         "--oem 3",  # Use LSTM OCR engine
         "-c textord_noise_rej=1",
-        "-c textord_noise_debug=1",
+        # `-c textord_noise_debug=1` was previously hardcoded here, which
+        # forced Tesseract to emit noise-detection debug messages to the
+        # caller's stderr on every OCR call. Library code should not
+        # pollute the caller's stderr; removed (M-21). If a future caller
+        # legitimately needs the noise-detection trace, expose it as an
+        # opt-in `extra_config` parameter at that time (YAGNI for now).
         f"--dpi {int(dpi)}",
     ]
     config_str = " ".join(config)
