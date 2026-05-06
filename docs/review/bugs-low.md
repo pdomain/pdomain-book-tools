@@ -89,7 +89,7 @@ book styles) are never found.
 
 ---
 
-## L-07 — `region_reading_order` sorts by `(T, L)` — wrong for two-column layouts
+## [FIXED in bc8105c] ~~L-07 — `region_reading_order` sorts by `(T, L)` — wrong for two-column layouts~~
 
 **File:** `pd_book_tools/layout/geometry.py`, lines 99–107
 
