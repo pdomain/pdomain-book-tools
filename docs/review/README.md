@@ -543,10 +543,37 @@ now sweeps `bugs-medium.md` top-to-bottom.
   buggy branch — no existing tests required updates. Two regression tests
   cover the empty-self and empty-other cases. — fix `cc0dc03`, doc mark
   `<pending>`
+- M-29 `ocr/label_normalization.py` `normalize_text_style_labels(['regular',
+  'italics'])` returned `['regular', 'italics']`. The strip-redundant-`'regular'`
+  logic only existed inside `Word.update_style_attributes` (word.py
+  ~252-257), so a `Word` constructed directly with
+  `text_style_labels=['regular', 'italics']` stored the inconsistent state
+  and that survived `to_dict`/`from_dict` round-trips. Mirrored the strip
+  into `normalize_text_style_labels` and the parallel
+  `normalize_text_style_label_scopes` so all entry points (constructor,
+  helper, `update_style_attributes`, deserialization) produce the same
+  canonical form; legacy payloads carrying a `'regular'` scope alongside a
+  concrete style are tolerated by silently dropping the orphan scope. —
+  fix `caaaee2`, doc mark `4611126`
+- M-30 `image_processing/cupy_processing/rescale.py` `rescale_image_gpu`
+  used `cupyx.scipy.ndimage.zoom(order=1)` (bare bilinear) regardless of
+  zoom factor. cv2's reference `rescale_image` uses `INTER_AREA`, which
+  performs pixel-area averaging and is alias-free; bare bilinear aliases
+  hard on high-frequency content (book-scan edges, hairline rules) and
+  visibly degrades OCR accuracy on the typical 600 -> 150 / 200 DPI
+  reductions. Verified on an alternating-columns 800x800 source: 4x
+  downscale produced std ~74 (full 0/255 alternation) versus cv2's std 0.
+  Added a `uniform_filter` (box average) pre-pass sized via
+  `ceil(1/zoom)` on each spatial axis when that axis is shrinking,
+  applied only to spatial dims (channel axis filter size = 1). Upscale
+  paths are unaffected. — fix `856e776`, doc mark `e8aa71a`
 
-**Next pick:** M-29 — `ocr/label_normalization.py`
-`normalize_text_style_labels` doesn't strip `'regular'` when other style
-labels are present.
+**bugs-medium.md fully cleared.** All 30 medium-severity bugs have been
+processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
+
+**Next pick:** L-01 — `geometry/bounding_box.py` `has_usable_coordinates`
+check is effectively always `True`; should validate
+`math.isfinite(c)` and surface real errors instead of swallowing them.
 
 **Workflow per iteration** (one bug per commit, no push):
 
