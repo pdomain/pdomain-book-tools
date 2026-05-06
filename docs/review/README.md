@@ -123,20 +123,33 @@ remembering prior turns. Update this when an iteration completes (after the
   added a regression test exercising the missing-files branch with `str`
   paths. — fix `ed5937b`, doc mark `<pending>`
 
+- H-17 `pyproject.toml` declared both `opencv-python` and
+  `opencv-contrib-python`. They install to the same `cv2` namespace so
+  pip resolves them independently and whichever wheel unpacks last wins,
+  making runtime behavior nondeterministic (esp. contrib-only modules
+  like xfeatures2d / SIFT). Audited every `cv2` import in
+  `pd_book_tools/`: all use functions present in base OpenCV, so contrib
+  alone covers everything. Dropped `opencv-python` and added
+  `tests/test_packaging.py` with regression assertions over
+  `pyproject.toml` (also guards against full+headless mixing).
+  Lockfile refresh deferred to the user. — fix `364bcd2`,
+  doc mark `<pending>`
+
 **Top-10 H-XX list complete.** Every entry from the "Highest-priority
 fixes" section above is now resolved. The /loop now sweeps the remaining
 `bugs-high.md` entries top-to-bottom — pick the first unstruck H-XX from
 the file in document order.
 
-**Next pick:** H-17 — `pyproject.toml` declares both `opencv-python` and
-`opencv-contrib-python`. Per the review, having both packages installed
-means whichever loads last wins, and runtime behavior depends on import
-order across the wider environment (notably affects xfeatures2d, SIFT,
-and other contrib-only modules). Fix is to drop `opencv-python` and keep
-only `opencv-contrib-python` (which is a strict superset). Verify the
-problem still applies — check current `pyproject.toml` for both pins —
-and audit downstream pd-* repos lightly for any direct import that
-would behave differently under the contrib-only build.
+**Next pick:** H-18 — `ocr/document.py` Tesseract hierarchy uses
+`block_idx + 1` instead of the actual `block_num` from the Tesseract
+DataFrame (lines 526, 548, 569 per the review). When Tesseract emits
+non-contiguous block numbers (skipped indices, OCR rejects), using the
+positional `block_idx + 1` desynchronizes the reconstructed
+block/paragraph/line hierarchy from Tesseract's own numbering, leading
+to mis-grouped words. Verify by grepping `document.py` for `block_idx +
+1` / `par_idx + 1` / `line_idx + 1` and the surrounding TSV column
+access; if the production code already uses `block_num`/`par_num`/
+`line_num` from the DataFrame, mark the entry stale.
 
 **Workflow per iteration** (one bug per commit, no push):
 
