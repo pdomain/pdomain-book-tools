@@ -80,14 +80,21 @@ def caption_for_figure(
     regions: Iterable[LayoutRegion],
     max_gap_px: int = 80,
     min_horizontal_overlap: float = 0.3,
+    above: bool = False,
 ) -> Optional[LayoutRegion]:
-    """Return the caption/text region directly below ``figure``, if any.
+    """Return the caption/text region directly below (or above) ``figure``, if any.
 
     Heuristic per the plan's "Caption association distance" question — choose
     the closest region of type :attr:`RegionType.caption` (preferred) or
     :attr:`RegionType.text` (fallback) whose top edge is within ``max_gap_px``
     of the figure's bottom and whose horizontal overlap with the figure is at
     least ``min_horizontal_overlap`` of the smaller width.
+
+    When ``above=True``, also consider regions immediately above the figure
+    (`gap = figure.T - r.B`). Some Victorian and 18th-century book styles
+    place captions, plate numbers, or headings above the figure rather than
+    below; the default below-only behaviour is preserved for back-compat
+    (L-06).
     """
     best: Optional[LayoutRegion] = None
     best_gap = max_gap_px + 1
@@ -97,8 +104,16 @@ def caption_for_figure(
             continue
         if r.type not in (RegionType.caption, RegionType.text):
             continue
-        gap = r.T - figure.B
-        if gap < 0 or gap > max_gap_px:
+        gap_below = r.T - figure.B
+        gap_above = figure.T - r.B if above else -1
+        # Pick the smaller non-negative gap (i.e. whichever side the region
+        # is on). If both somehow non-negative (overlapping figure), prefer
+        # below for back-compat.
+        candidates = [g for g in (gap_below, gap_above) if g >= 0]
+        if not candidates:
+            continue
+        gap = min(candidates)
+        if gap > max_gap_px:
             continue
         if horizontal_overlap_ratio(figure, r) < min_horizontal_overlap:
             continue
