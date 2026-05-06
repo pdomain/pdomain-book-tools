@@ -324,10 +324,25 @@ class Document:
 
                     lines.append(line)
 
-                block = Block(
+                # M-14: DocTR's data model is `pages -> blocks -> lines ->
+                # words` (no paragraph layer). Tesseract produces
+                # `Page -> BLOCK -> PARAGRAPH -> LINE -> Word`. To give
+                # consumers a single canonical nesting depth across
+                # adapters, wrap DocTR's per-block grouping as
+                # `Block(BLOCK) -> Block(PARAGRAPH) -> Block(LINE) -> Word`.
+                # The synthetic PARAGRAPH carries the same geometry as its
+                # parent BLOCK because DocTR provides only one grouping
+                # level — there is exactly one paragraph per block.
+                paragraph = Block(
                     items=lines,
                     bounding_box=block_bounding_box,
                     block_category=BlockCategory.PARAGRAPH,
+                    child_type=BlockChildType.BLOCKS,
+                )
+                block = Block(
+                    items=[paragraph],
+                    bounding_box=block_bounding_box,
+                    block_category=BlockCategory.BLOCK,
                     child_type=BlockChildType.BLOCKS,
                 )
                 blocks.append(block)
