@@ -93,14 +93,49 @@ class TestRegistry:
         assert a is b
 
     def test_distinct_args_distinct_instances(self):
-        a = get_detector("contour", confidence=0.5)
-        b = get_detector("contour", confidence=0.7)
+        # ``device`` is a real cache-key participant for any detector — the
+        # underlying instance binds itself to a specific device. (We use the
+        # contour detector here because it has no model load; it ignores
+        # ``device`` itself, but the registry still keys on it.)
+        a = get_detector("contour", device="cpu")
+        b = get_detector("contour", device="cuda")
         assert a is not b
 
     def test_inference_ms_filled_by_wrapper(self):
         det = get_detector("contour")
         layout = det.detect(_page_with_filled_rect())
         assert layout.inference_ms >= 0
+
+    def test_contour_kwargs_forwarded(self):
+        # L-34: ContourDetector tunables (min_area_frac, etc.) were
+        # silently dropped by _build, leaving callers stuck with the
+        # defaults regardless of what they passed.
+        det = get_detector("contour", min_area_frac=0.123, close_kernel_px=15)
+        # Unwrap the _TimingDetector to inspect the inner detector.
+        inner = det._inner
+        assert inner.min_area_frac == 0.123
+        assert inner.close_kernel_px == 15
+
+    def test_contour_distinct_kwargs_distinct_instances(self):
+        # Different tunings must memoise as distinct instances.
+        a = get_detector("contour", min_area_frac=0.001)
+        b = get_detector("contour", min_area_frac=0.5)
+        assert a is not b
+        # Same tuning hits the cache.
+        c = get_detector("contour", min_area_frac=0.001)
+        assert a is c
+
+    def test_contour_confidence_irrelevant_to_cache_key(self):
+        # confidence/checkpoint_path are meaningless for the rule-based
+        # contour detector; varying them must not churn the cache.
+        a = get_detector("contour", confidence=0.5)
+        b = get_detector("contour", confidence=0.9)
+        assert a is b
+
+    def test_unknown_kwargs_for_model_detector_rejected(self):
+        # Don't silently swallow typos for non-contour detectors.
+        with pytest.raises(TypeError, match="extra keyword arguments"):
+            get_detector("none", min_area_frac=0.01)
 
     def test_concurrent_get_detector_builds_once(self, monkeypatch):
         # L-33: under concurrent first-time access, two threads could both
