@@ -257,7 +257,7 @@ causes resolver conflicts or silent shadowing depending on pip/uv version.
 
 ---
 
-## H-18 — Tesseract hierarchy uses `block_idx + 1` instead of the actual `block_num`
+## [FIXED in b5bf0b3] ~~H-18 — Tesseract hierarchy uses `block_idx + 1` instead of the actual `block_num`~~
 
 **File:** `pd_book_tools/ocr/document.py`, lines 526, 548, 569
 **Affects:** any Tesseract result where block numbers are non-contiguous

@@ -134,22 +134,36 @@ remembering prior turns. Update this when an iteration completes (after the
   `pyproject.toml` (also guards against full+headless mixing).
   Lockfile refresh deferred to the user. — fix `364bcd2`,
   doc mark `<pending>`
+- H-18 `ocr/document.py` `Document.from_tesseract` iterated block /
+  paragraph / line rows with ``enumerate`` and filtered child rows
+  against ``block_idx + 1`` / ``paragraph_idx + 1`` / ``line_idx + 1``.
+  Tesseract's hierarchy fields are NOT guaranteed contiguous — when
+  Tesseract skips numbers (empty/dropped intermediate regions), the
+  positional filter looks for parents that don't exist, so entire
+  branches of the OCR hierarchy silently disappear and survivors get
+  mis-grouped. Switched filters to use the actual ``block_row.block_num``
+  / ``paragraph_row.par_num`` / ``line_row.line_num`` from each
+  DataFrame row. Regression test with non-contiguous numbering
+  (blocks 1 and 3, par 5 inside block 3, line 2 inside that paragraph)
+  loses the second word pre-fix and recovers it after. — fix `b5bf0b3`,
+  doc mark `<pending>`
 
 **Top-10 H-XX list complete.** Every entry from the "Highest-priority
 fixes" section above is now resolved. The /loop now sweeps the remaining
 `bugs-high.md` entries top-to-bottom — pick the first unstruck H-XX from
 the file in document order.
 
-**Next pick:** H-18 — `ocr/document.py` Tesseract hierarchy uses
-`block_idx + 1` instead of the actual `block_num` from the Tesseract
-DataFrame (lines 526, 548, 569 per the review). When Tesseract emits
-non-contiguous block numbers (skipped indices, OCR rejects), using the
-positional `block_idx + 1` desynchronizes the reconstructed
-block/paragraph/line hierarchy from Tesseract's own numbering, leading
-to mis-grouped words. Verify by grepping `document.py` for `block_idx +
-1` / `par_idx + 1` / `line_idx + 1` and the surrounding TSV column
-access; if the production code already uses `block_num`/`par_num`/
-`line_num` from the DataFrame, mark the entry stale.
+**Next pick:** H-19 — `ocr/page.py` `Page.__init__` calls
+`BoundingBox.union([item.bounding_box for item in self.items])` without
+filtering out `None` bboxes. `Block.recompute_bounding_box` already
+filters; `Page.__init__` does not. Constructing any `Page` whose
+``items`` list contains a block with ``bounding_box=None`` raises
+``AttributeError`` from inside ``BoundingBox.union`` when it tries to
+read ``.is_normalized`` on ``None``. Verify by reading current
+`Page.__init__` (review cited lines 115–117) — confirm the union call
+exists and lacks the ``if b.bounding_box is not None`` guard, and that
+``BoundingBox.union`` does not itself tolerate ``None``. If
+`Page.__init__` already filters, mark the entry stale.
 
 **Workflow per iteration** (one bug per commit, no push):
 
