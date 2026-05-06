@@ -259,7 +259,7 @@ code handle the `None` case.
 
 ---
 
-## L-20 — `update_line_match_difflib_lines_equal` contains dead unreachable guard code
+## [FIXED in e415bd0] ~~L-20 — `update_line_match_difflib_lines_equal` contains dead unreachable guard code~~
 
 **File:** `pd_book_tools/ocr/ground_truth_matching.py`, lines 238–241
 
