@@ -135,8 +135,6 @@ def get_finetuned_torch_doctr_predictor(
     pretrained: bool = True,
     pretrained_backbone: bool = True,
 ):
-    full_predictor = None
-
     try:
         import torch as _torch
         from torch import load as torch_load
@@ -177,80 +175,84 @@ def get_finetuned_torch_doctr_predictor(
             )
         return factory(**kwargs)
 
-    # check if file exists
-    if Path(dectection_pt_file).exists() and Path(recognition_pt_file).exists():
-        logger.info("Loading pre-trained OCR models...")
-        # Select compute device: CUDA > MPS (Apple Silicon) > CPU
-        if torch_cuda_is_available():
-            device, device_nbr = "cuda", "cuda:0"
-        elif (
-            getattr(_torch.backends, "mps", None) and _torch.backends.mps.is_available()
-        ):
-            device, device_nbr = "mps", "mps"
-        else:
-            device, device_nbr = "cpu", "cpu"
-        logger.info("Using device: %s", device)
+    # check if file exists — raise loudly on absence so callers don't get a
+    # silent ``None`` and crash later with a confusing AttributeError on first
+    # use of the predictor (M-22).
+    det_path = Path(dectection_pt_file)
+    reco_path = Path(recognition_pt_file)
+    if not det_path.exists():
+        raise FileNotFoundError(f"DocTR detection checkpoint not found: {det_path}")
+    if not reco_path.exists():
+        raise FileNotFoundError(f"DocTR recognition checkpoint not found: {reco_path}")
 
-        # ---- Detection model -------------------------------------------------
-        det_params = torch_load(dectection_pt_file, map_location=device_nbr)
-        det_arch_name = _read_arch_sidecar(
-            dectection_pt_file
-        ) or _detect_detection_arch(det_params)
-        det_model = _build_arch(det_arch_name, pretrained=True).to(device)
-        det_model.load_state_dict(det_params)
+    logger.info("Loading pre-trained OCR models...")
+    # Select compute device: CUDA > MPS (Apple Silicon) > CPU
+    if torch_cuda_is_available():
+        device, device_nbr = "cuda", "cuda:0"
+    elif getattr(_torch.backends, "mps", None) and _torch.backends.mps.is_available():
+        device, device_nbr = "mps", "mps"
+    else:
+        device, device_nbr = "cpu", "cpu"
+    logger.info("Using device: %s", device)
 
-        if not vocab:
-            vocab = _read_vocab_sidecar(recognition_pt_file) or "".join(
-                sorted(
-                    dict.fromkeys(
-                        "".join(
-                            VOCABS[name]
-                            for name in DEFAULT_VOCAB_LIBRARY
-                            if name in VOCABS
-                        )
-                        + DEFAULT_VOCAB_EXTRA_CHARS
+    # ---- Detection model -------------------------------------------------
+    det_params = torch_load(dectection_pt_file, map_location=device_nbr)
+    det_arch_name = _read_arch_sidecar(dectection_pt_file) or _detect_detection_arch(
+        det_params
+    )
+    det_model = _build_arch(det_arch_name, pretrained=True).to(device)
+    det_model.load_state_dict(det_params)
+
+    if not vocab:
+        vocab = _read_vocab_sidecar(recognition_pt_file) or "".join(
+            sorted(
+                dict.fromkeys(
+                    "".join(
+                        VOCABS[name] for name in DEFAULT_VOCAB_LIBRARY if name in VOCABS
                     )
+                    + DEFAULT_VOCAB_EXTRA_CHARS
                 )
             )
-
-        # ---- Recognition model ----------------------------------------------
-        reco_params = torch_load(recognition_pt_file, map_location=device_nbr)
-        reco_arch_name = _read_arch_sidecar(
-            recognition_pt_file
-        ) or _detect_recognition_arch(reco_params)
-        reco_kwargs = dict(
-            pretrained=pretrained,
-            pretrained_backbone=pretrained_backbone,
-            vocab=vocab,
-        )
-        try:
-            reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
-        except TypeError:
-            # Some archs (e.g. parseq) do not accept ``pretrained_backbone``.
-            reco_kwargs.pop("pretrained_backbone", None)
-            reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
-        reco_model.load_state_dict(reco_params)
-
-        full_predictor = ocr_predictor(
-            det_arch=det_model,
-            reco_arch=reco_model,
-            pretrained=pretrained,
-            assume_straight_pages=True,
-            disable_crop_orientation=True,
         )
 
-        det_predictor = detection_predictor(
-            arch=det_model,
-            pretrained=pretrained,
-            assume_straight_pages=True,
-        )
+    # ---- Recognition model ----------------------------------------------
+    reco_params = torch_load(recognition_pt_file, map_location=device_nbr)
+    reco_arch_name = _read_arch_sidecar(
+        recognition_pt_file
+    ) or _detect_recognition_arch(reco_params)
+    reco_kwargs = dict(
+        pretrained=pretrained,
+        pretrained_backbone=pretrained_backbone,
+        vocab=vocab,
+    )
+    try:
+        reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
+    except TypeError:
+        # Some archs (e.g. parseq) do not accept ``pretrained_backbone``.
+        reco_kwargs.pop("pretrained_backbone", None)
+        reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
+    reco_model.load_state_dict(reco_params)
 
-        reco_predictor = recognition_predictor(
-            arch=reco_model,
-            pretrained=pretrained,
-        )
+    full_predictor = ocr_predictor(
+        det_arch=det_model,
+        reco_arch=reco_model,
+        pretrained=pretrained,
+        assume_straight_pages=True,
+        disable_crop_orientation=True,
+    )
 
-        full_predictor.det_predictor = det_predictor
-        full_predictor.reco_predictor = reco_predictor
+    det_predictor = detection_predictor(
+        arch=det_model,
+        pretrained=pretrained,
+        assume_straight_pages=True,
+    )
 
-        return full_predictor
+    reco_predictor = recognition_predictor(
+        arch=reco_model,
+        pretrained=pretrained,
+    )
+
+    full_predictor.det_predictor = det_predictor
+    full_predictor.reco_predictor = reco_predictor
+
+    return full_predictor
