@@ -36,6 +36,43 @@ def test_draw_layout_overlay_missing_source_returns_none(tmp_path):
     assert draw_layout_overlay(src, _layout_one_text_region(), dest) is None
 
 
+def test_label_x_clamped_to_image_width(tmp_path, monkeypatch):
+    """L-09: a region near the right edge previously had its label rectangle
+    and text painted off-image. Now the label x-start is clamped so the
+    label fits inside the image."""
+    import cv2
+
+    src = tmp_path / "src.png"
+    dest = tmp_path / "out.png"
+    _write_dummy_png(src)
+
+    # Region whose L is at the very right edge of the 600-wide image.
+    region = LayoutRegion(
+        type=RegionType.text, L=590, T=100, R=599, B=130, confidence=0.9
+    )
+    layout = PageLayout(image_width=600, image_height=400, regions=[region])
+
+    captured: list[tuple[int, int]] = []
+    real_rectangle = cv2.rectangle
+
+    def spy_rectangle(img, pt1, pt2, color, thickness=1, *args, **kwargs):
+        # We only care about the filled label rectangle (thickness=-1).
+        if thickness == -1:
+            captured.append((pt1[0], pt2[0]))
+        return real_rectangle(img, pt1, pt2, color, thickness, *args, **kwargs)
+
+    monkeypatch.setattr(cv2, "rectangle", spy_rectangle)
+
+    draw_layout_overlay(src, layout, dest)
+
+    assert captured, "expected at least one label rectangle to be drawn"
+    for lx_start, lx_end in captured:
+        assert lx_start >= 0
+        assert lx_end <= 600, (
+            f"label rectangle right edge {lx_end} exceeds image width 600"
+        )
+
+
 def test_draw_layout_overlay_raises_oserror_on_write_failure(tmp_path, monkeypatch):
     """L-08: cv2.imwrite returning False used to be silently ignored — the
     function returned `dest_path` so callers' `is not None` check claimed
