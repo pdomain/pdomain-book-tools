@@ -16,7 +16,21 @@ except ImportError:
 def tesseract_ocr_cv2_image(
     image: ndarray,
     source_path: str = "",
+    dpi: int = 300,
 ) -> Page:
+    """Run Tesseract OCR over a cv2 image array and return a Page.
+
+    Args:
+        image: 2D grayscale or 3D BGR cv2/numpy image array.
+        source_path: Optional source path to record on the produced Document.
+        dpi: Scan resolution in dots-per-inch passed to Tesseract via
+            ``--dpi``. Tesseract uses this to size its character-classifier
+            heuristics; on 150 / 600 DPI scans the default of 300 mis-estimates
+            character sizes and degrades OCR. Callers that know the actual
+            image DPI (e.g. from PIL ``Image.info["dpi"]`` or scanner metadata)
+            should pass it through. Defaults to 300 to preserve historical
+            behavior.
+    """
     image_grayscale = None
 
     if image.ndim == 2:
@@ -30,7 +44,7 @@ def tesseract_ocr_cv2_image(
         "--oem 3",  # Use LSTM OCR engine
         "-c textord_noise_rej=1",
         "-c textord_noise_debug=1",
-        "--dpi 300",
+        f"--dpi {int(dpi)}",
     ]
     config_str = " ".join(config)
 

@@ -237,6 +237,92 @@ class TestTesseractOcrCv2Image:
         # We'd need to refactor the function to make this more testable
         assert len(expected_config_parts) == 4
 
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    def test_tesseract_dpi_parameter_overrides_default(
+        self,
+        mock_from_tesseract,
+        mock_image_to_string,
+        mock_image_to_data,
+        sample_grayscale_image,
+        mock_tesseract_dataframe,
+        mock_tesseract_string,
+    ):
+        """M-19 regression: dpi=150 must reach Tesseract as ``--dpi 150``,
+        not the hardcoded ``--dpi 300`` default."""
+        mock_image_to_data.return_value = mock_tesseract_dataframe
+        mock_image_to_string.return_value = mock_tesseract_string
+
+        mock_page = Mock(spec=Page)
+        mock_doc = Mock(spec=Document)
+        mock_doc.pages = [mock_page]
+        mock_from_tesseract.return_value = mock_doc
+
+        tesseract_ocr_cv2_image(sample_grayscale_image, "test_path", dpi=150)
+
+        for mock_call in (mock_image_to_data, mock_image_to_string):
+            cfg = mock_call.call_args[1]["config"]
+            assert "--dpi 150" in cfg
+            assert "--dpi 300" not in cfg
+
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    def test_tesseract_dpi_default_preserves_300(
+        self,
+        mock_from_tesseract,
+        mock_image_to_string,
+        mock_image_to_data,
+        sample_grayscale_image,
+        mock_tesseract_dataframe,
+        mock_tesseract_string,
+    ):
+        """M-19 regression: omitting dpi keeps the historical 300 default,
+        so existing callers do not silently change behavior."""
+        mock_image_to_data.return_value = mock_tesseract_dataframe
+        mock_image_to_string.return_value = mock_tesseract_string
+
+        mock_page = Mock(spec=Page)
+        mock_doc = Mock(spec=Document)
+        mock_doc.pages = [mock_page]
+        mock_from_tesseract.return_value = mock_doc
+
+        tesseract_ocr_cv2_image(sample_grayscale_image, "test_path")
+
+        for mock_call in (mock_image_to_data, mock_image_to_string):
+            cfg = mock_call.call_args[1]["config"]
+            assert "--dpi 300" in cfg
+
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    def test_tesseract_dpi_600(
+        self,
+        mock_from_tesseract,
+        mock_image_to_string,
+        mock_image_to_data,
+        sample_grayscale_image,
+        mock_tesseract_dataframe,
+        mock_tesseract_string,
+    ):
+        """M-19 regression: high-resolution scans (e.g. 600 DPI) flow
+        through the parameter unmodified."""
+        mock_image_to_data.return_value = mock_tesseract_dataframe
+        mock_image_to_string.return_value = mock_tesseract_string
+
+        mock_page = Mock(spec=Page)
+        mock_doc = Mock(spec=Document)
+        mock_doc.pages = [mock_page]
+        mock_from_tesseract.return_value = mock_doc
+
+        tesseract_ocr_cv2_image(sample_grayscale_image, "test_path", dpi=600)
+
+        for mock_call in (mock_image_to_data, mock_image_to_string):
+            cfg = mock_call.call_args[1]["config"]
+            assert "--dpi 600" in cfg
+            assert "--dpi 300" not in cfg
+
 
 class TestImportError:
     """Test import error handling."""
