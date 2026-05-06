@@ -30,7 +30,12 @@ def auto_deskew(img, pct=0.30):
 
     if w_ten_percent == 0 or h_percent == 0:
         logger.debug("Not Deskewing, width/height pct is 0")
-        return img
+        # Always return a 3-tuple to mirror cupy's auto_deskew_gpu contract
+        # (image, top_slice, bottom_slice). Empty placeholders match cupy's
+        # cp.empty((0, 0), dtype=img_cp.dtype) on the same early-exit path,
+        # so callers do not need isinstance(out, tuple) backend dispatch.
+        empty = np.empty((0, 0), dtype=img.dtype)
+        return img, empty, empty
 
     # Find Top Left first Column pixel, starting at top row and going down by 10%
     X1 = 0

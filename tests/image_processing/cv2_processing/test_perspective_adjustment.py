@@ -22,25 +22,43 @@ class TestAutoDeskew:
         assert isinstance(top_of_img, np.ndarray)
         assert isinstance(bottom_of_img, np.ndarray)
 
-    def test_zero_pct_returns_image_only(self):
+    def test_zero_pct_returns_three_tuple(self):
+        """Regression test for M-04.
+
+        The early-exit path (``h_percent == 0`` or ``w_ten_percent == 0``)
+        previously returned a bare ``np.ndarray``, while every other path
+        in ``auto_deskew`` and *all* paths in the cupy ``auto_deskew_gpu``
+        return a 3-tuple ``(image, top_slice, bottom_slice)``. Callers
+        therefore had to do ``isinstance(out, tuple)`` runtime dispatch
+        to switch backends. Unify the early-exit return to a 3-tuple
+        with empty-array placeholders, mirroring ``auto_deskew_gpu``'s
+        ``cp.empty((0, 0), dtype=img_cp.dtype)`` contract.
+        """
         img = np.zeros((100, 100), dtype=np.uint8)
-        # pct=0 -> h_percent==0 -> early return of original image only
+        # pct=0 -> h_percent==0 -> early-exit branch
         out = auto_deskew(img, pct=0.0)
-        assert isinstance(out, np.ndarray)
-        np.testing.assert_array_equal(out, img)
+        assert isinstance(out, tuple)
+        assert len(out) == 3
+        new_img, top_of_img, bottom_of_img = out
+        np.testing.assert_array_equal(new_img, img)
+        # Mirror cupy: empty placeholders with the input dtype.
+        assert isinstance(top_of_img, np.ndarray)
+        assert isinstance(bottom_of_img, np.ndarray)
+        assert top_of_img.shape == (0, 0)
+        assert bottom_of_img.shape == (0, 0)
+        assert top_of_img.dtype == img.dtype
+        assert bottom_of_img.dtype == img.dtype
 
     def test_straight_block_no_skew(self):
         img = np.zeros((200, 200), dtype=np.uint8)
         img[40:160, 40:160] = 255
         result = auto_deskew(img)
-        # Should return a 3-tuple when content is found
-        if isinstance(result, tuple):
-            new_img, top_of_img, bottom_of_img = result
-            assert isinstance(new_img, np.ndarray)
-            assert isinstance(top_of_img, np.ndarray)
-            assert isinstance(bottom_of_img, np.ndarray)
-        else:
-            assert isinstance(result, np.ndarray)
+        # Always returns a 3-tuple post-M-04.
+        assert isinstance(result, tuple)
+        new_img, top_of_img, bottom_of_img = result
+        assert isinstance(new_img, np.ndarray)
+        assert isinstance(top_of_img, np.ndarray)
+        assert isinstance(bottom_of_img, np.ndarray)
 
     def test_skewed_block_clockwise(self):
         # Image where bottom-left starts further right than top-left
