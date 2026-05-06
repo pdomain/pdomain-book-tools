@@ -193,7 +193,7 @@ coordinate state indicates a logic error upstream).
 
 ---
 
-## L-15 — `OCRProvenance.models` is a mutable `list` inside a `frozen=True` dataclass
+## [FIXED in 0442d63] ~~L-15 — `OCRProvenance.models` is a mutable `list` inside a `frozen=True` dataclass~~
 
 **File:** `pd_book_tools/ocr/provenance.py`, lines 38–39
 
