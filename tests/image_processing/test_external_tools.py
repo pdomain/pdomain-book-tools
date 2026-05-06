@@ -68,5 +68,38 @@ class TestRunGeglC2g:
         target = pathlib.Path(tmp_path / "b.png")
         run_gegl_c2g(source, target)
         args = mock_run.call_args.kwargs["args"]
-        # last arg is the c2gOptions, default ""
-        assert args[-1] == ""
+        # Empty c2gOptions must NOT add an empty-string arg (GEGL would reject it).
+        # The argv ends after the "c2g" token.
+        assert args[-1] == "c2g"
+        assert "" not in args
+
+    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    def test_multi_flag_options_are_shlex_split(self, mock_run, tmp_path):
+        """M-06: multi-token c2gOptions must be split into separate argv entries."""
+        source = tmp_path / "in.png"
+        target = tmp_path / "out.png"
+        source.touch()
+
+        run_gegl_c2g(source, target, c2gOptions="--samples 4 --iterations 10")
+
+        args = mock_run.call_args.kwargs["args"]
+        # The c2g token must be followed by the split flag tokens, not a single
+        # concatenated string.
+        c2g_idx = args.index("c2g")
+        tail = args[c2g_idx + 1 :]
+        assert tail == ["--samples", "4", "--iterations", "10"]
+        assert "--samples 4 --iterations 10" not in args
+
+    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    def test_quoted_options_preserve_spaces(self, mock_run, tmp_path):
+        """shlex.split must respect quoted multi-word values."""
+        source = tmp_path / "in.png"
+        target = tmp_path / "out.png"
+        source.touch()
+
+        run_gegl_c2g(source, target, c2gOptions='--label "two words" --n 3')
+
+        args = mock_run.call_args.kwargs["args"]
+        c2g_idx = args.index("c2g")
+        tail = args[c2g_idx + 1 :]
+        assert tail == ["--label", "two words", "--n", "3"]
