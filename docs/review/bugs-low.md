@@ -461,7 +461,7 @@ caching for `'contour'`.
 
 ---
 
-## L-35 — `hf_download` sidecar filename construction fails for paths with dots in directory name
+## ~~L-35 — `hf_download` sidecar filename construction fails for paths with dots in directory name~~ [FIXED in 5973dfe]
 
 **File:** `pd_book_tools/hf/download.py`, line 97
 
