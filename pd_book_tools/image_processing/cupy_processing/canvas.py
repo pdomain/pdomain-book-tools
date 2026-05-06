@@ -4,7 +4,7 @@ import math
 import cupy as cp
 import numpy as np
 
-from pd_book_tools.image_processing.cv2_processing.canvas import Alignment
+from pd_book_tools.image_processing.types import Alignment
 
 logger = logging.getLogger(__name__)
 
