@@ -36,7 +36,7 @@ share this bug consistently.
 
 ---
 
-## M-03 — Edge detection fuzzy-window override of `0` is silently ignored
+## [FIXED in 9a2fc8e] ~~M-03 — Edge detection fuzzy-window override of `0` is silently ignored~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/edge_finding.py`, lines 37–38
 

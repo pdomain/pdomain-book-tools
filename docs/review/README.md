@@ -205,14 +205,22 @@ now sweeps `bugs-medium.md` top-to-bottom.
   to value 254 so it remains sub-threshold under the corrected
   multiplier and continues to exercise its original code path. — fix
   `143fdf0`, doc mark `<pending>`
+- M-03 `image_processing/cv2_processing/edge_finding.py` `find_edges`
+  used `if fuzzy_px_w_override:` / `if fuzzy_px_h_override:` so an
+  explicit `fuzzy_px_w_override=0` (the documented "no fuzzy window"
+  sentinel) was silently treated as falsy and replaced with
+  `int(w * fuzzy_pct)`, smearing content across a wide convolution
+  kernel — opposite of caller intent. The cupy backend already used
+  `is not None`. Aligned cv2 to mirror it. — fix `9a2fc8e`, doc mark
+  `<pending>`
 
-**Next pick:** M-03 — `image_processing/cv2_processing/edge_finding.py`
-`fuzzy_px_w = fuzzy_px_w_override if fuzzy_px_w_override else
-int(w * fuzzy_pct)` (lines 37–38) treats an explicit
-`fuzzy_px_w_override=0` (meaning "no fuzzy window") as falsy and falls
-back to `int(w * fuzzy_pct)`, ignoring the caller's explicit zero. The
-cupy backend already uses `is not None`. Fix: change both checks in the
-cv2 backend to `if fuzzy_px_w_override is not None`.
+**Next pick:** M-04 — `image_processing/cv2_processing/perspective_adjustment.py`
+`auto_deskew` has an inconsistent return type. The early-exit path (line
+31, when `h_percent == 0`) returns a plain `np.ndarray`, while every
+other path returns `tuple[np.ndarray, np.ndarray, np.ndarray]`. The cupy
+counterpart `auto_deskew_gpu` always returns a 3-tuple, so callers must
+do runtime `isinstance(result, tuple)` dispatch. Fix: always return a
+3-tuple from the early-exit path, using `np.empty((0, 0))` placeholders.
 
 **Workflow per iteration** (one bug per commit, no push):
 
