@@ -323,7 +323,7 @@ a confusing `TypeError` or `AttributeError` at the first use.
 
 ---
 
-## M-23 — `doctr_support.py` — `load_state_dict` calls are unguarded
+## [FIXED in 5773daf] ~~M-23 — `doctr_support.py` — `load_state_dict` calls are unguarded~~
 
 **File:** `pd_book_tools/ocr/doctr_support.py`, lines 200, 232
 
