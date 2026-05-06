@@ -780,8 +780,13 @@ def test_normalized_out_of_range_raises():
         BoundingBox.from_ltrb(0.1, 0.1, 2.0, 0.9, is_normalized=True)
 
 
-def test_has_usable_coordinates_returns_false_on_exception():
-    """Lines 130-131: Exception in has_usable_coordinates returns False."""
+def test_has_usable_coordinates_propagates_real_errors():
+    """L-01: has_usable_coordinates must not swallow genuine attribute errors.
+
+    Pre-fix the bare ``except Exception: return False`` masked real bugs by
+    pretending the box was unrenderable. Post-fix: a real underlying error
+    (e.g. corrupted ``minX``) propagates so the bug is visible.
+    """
     from unittest.mock import PropertyMock, patch
 
     from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -790,7 +795,31 @@ def test_has_usable_coordinates_returns_false_on_exception():
     with patch.object(
         type(bb), "minX", new_callable=PropertyMock, side_effect=RuntimeError("fail")
     ):
-        assert bb.has_usable_coordinates is False
+        with pytest.raises(RuntimeError, match="fail"):
+            bb.has_usable_coordinates
+
+
+def test_has_usable_coordinates_rejects_nan_and_inf():
+    """L-01: docstring promises 'finite numbers'; NaN/inf must return False."""
+    import math
+    from unittest.mock import PropertyMock, patch
+
+    from pd_book_tools.geometry.bounding_box import BoundingBox
+
+    bb = BoundingBox.from_ltrb(0, 0, 10, 10)
+    assert bb.has_usable_coordinates is True
+
+    # Patch each coordinate one at a time with NaN / inf and re-check.
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        for coord in ("minX", "minY", "maxX", "maxY"):
+            with patch.object(
+                type(bb), coord, new_callable=PropertyMock, return_value=bad
+            ):
+                assert bb.has_usable_coordinates is False, (
+                    f"expected False for {coord}={bad}"
+                )
+        # Sanity: reset once per bad value.
+        assert math.isfinite(bb.minX)
 
 
 def test_from_points_with_dict_input():
