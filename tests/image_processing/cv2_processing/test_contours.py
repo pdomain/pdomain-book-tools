@@ -58,6 +58,49 @@ class TestFindAndDrawContours:
         assert out_empty.shape[2] == out_blob.shape[2] == 3
         assert out_empty.dtype == out_blob.dtype
 
+    def test_gray2bgr_conversion_semantics(self, monkeypatch):
+        """Regression for M-11: gray->BGR conversion must use COLOR_GRAY2BGR.
+
+        COLOR_GRAY2BGR replicates the single grayscale channel into all
+        three BGR channels, so for any pixel the B/G/R values must be
+        equal to the original grayscale value. The previous implementation
+        used COLOR_RGB2BGR (semantically wrong on a 2D input). M-11 was
+        already incidentally fixed by the M-10 commit 1012acd; this test
+        locks the GRAY2BGR contract so a future refactor cannot
+        regress to RGB2BGR or any other semantically-incorrect constant.
+
+        Patches cv2.findContours to return no contours so the function
+        skips the rectangle-drawing step and we can assert that every
+        output pixel has B == G == R == original_gray_value across the
+        entire image, including non-zero intensities.
+        """
+        from pd_book_tools.image_processing.cv2_processing import contours as mod
+
+        # Distinct non-zero grayscale intensities so the channel-equality
+        # check is non-trivial (an all-zero image trivially satisfies it).
+        img = np.zeros((10, 10), dtype=np.uint8)
+        img[0, 0] = 17
+        img[1, 2] = 128
+        img[5, 5] = 200
+        img[9, 9] = 255
+
+        # Force the no-contours path so cv2.rectangle does not overdraw.
+        monkeypatch.setattr(mod.cv2, "findContours", lambda *a, **k: ([], None))
+
+        out, contours = find_and_draw_contours(img.copy())
+        assert len(contours) == 0
+        assert out.ndim == 3
+        assert out.shape == (10, 10, 3)
+        assert out.dtype == np.uint8
+
+        # COLOR_GRAY2BGR contract: every pixel's three channels are
+        # equal to each other and equal to the grayscale source value.
+        # COLOR_RGB2BGR on a 2D input cannot guarantee this — it would
+        # either crash or interpret the data with wrong channel semantics.
+        assert (out[..., 0] == out[..., 1]).all()
+        assert (out[..., 1] == out[..., 2]).all()
+        np.testing.assert_array_equal(out[..., 0], img)
+
 
 class TestRemoveSmallContours:
     def test_no_contours_returns_image_unchanged(self):
