@@ -127,6 +127,44 @@ def test_document_to_json_file(tmp_path):
     assert len(data["pages"]) == 1
 
 
+def test_document_from_doctr_word_missing_confidence_is_none():
+    """L-19: a DocTR word with no ``confidence`` key must surface as
+    ``ocr_confidence=None`` (\"unknown\"), not ``0.0`` (\"near certainty
+    of error\"). Pre-fix the adapter did
+    ``word_data.get(\"confidence\", 0.0)``, conflating the two semantics
+    so confidence-based filters and quality reports were silently
+    polluted with phantom 0.0-score words.
+    """
+    doctr_output = {
+        "pages": [
+            {
+                "dimensions": [1000, 800],
+                "blocks": [
+                    {
+                        "geometry": [[0.1, 0.1], [0.5, 0.5]],
+                        "lines": [
+                            {
+                                "geometry": [[0.1, 0.1], [0.5, 0.2]],
+                                "words": [
+                                    {
+                                        "value": "Hello",
+                                        "geometry": [[0.1, 0.1], [0.2, 0.2]],
+                                        # No "confidence" key — must read None.
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+    doc = Document.from_doctr_output(doctr_output)
+    word = doc.pages[0].items[0].items[0].items[0].items[0]
+    assert word.text == "Hello"
+    assert word.ocr_confidence is None
+
+
 def test_document_from_doctr_output(sample_doctr_output):
     doc = Document.from_doctr_output(sample_doctr_output, source_path="test_path")
     assert doc.source_lib == "doctr"
