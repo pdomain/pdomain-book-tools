@@ -127,7 +127,7 @@ regions near the right margin.
 
 ---
 
-## L-10 — `visualize.py` — color comment for `"text"` is wrong
+## [FIXED in 67281c9] ~~L-10 — `visualize.py` — color comment for `"text"` is wrong~~
 
 **File:** `pd_book_tools/layout/visualize.py`, line 23
 
