@@ -48,13 +48,21 @@ remembering prior turns. Update this when an iteration completes (after the
 - H-07 `block.py` `Block.mean_ocr_confidence` raised `TypeError` because
   `ocr_confidence_scores()` can contain `None` after any `Word.split()` —
   fix `42da1ac`, doc mark `<pending>`
+- H-08 `block.py` `Block.from_dict` called `BoundingBox.from_dict(None)`
+  when deserializing a block whose `bounding_box` was serialized as JSON
+  `null` — fix `3163feb`, doc mark `<pending>`. Note: `Page.from_dict`
+  already had the equivalent guard, so the review's parenthetical claim
+  about `Page.from_dict` was partly stale.
 
-**Next pick:** H-08 — `block.py` `Block.from_dict` (line 982) calls
-`BoundingBox.from_dict(data["bounding_box"])` unconditionally. `to_dict`
-serializes a `None` bounding box as JSON `null`, so deserializing such a
-document raises `TypeError` from `BoundingBox.from_dict(None)`. Fix:
-`BoundingBox.from_dict(data["bounding_box"]) if data.get("bounding_box") else None`.
-Same pattern likely needs checking in `Page.from_dict`.
+**Next pick:** H-12 — `pd_book_tools/ocr/document.py` line 245
+(`from_doctr_result`) passes `doctr_result.render()` (a single `str`) as
+`original_text` to `from_doctr_output`, which then indexes it with
+`original_text[page_idx]`. Because `str` is a `Sequence[str]`, page 0 of
+a document rendering `"Hello World"` gets `original_ocr_tool_text = 'H'`.
+Fix: pass `[page.render() for page in doctr_result.pages]`. The existing
+test mocks `render.return_value = ["rendered"]` (a list), masking the
+bug. H-09/10/11 are not in the README's top-10 list, so we skip ahead
+per the "Highest-priority fixes" ordering.
 
 **Workflow per iteration** (one bug per commit, no push):
 
