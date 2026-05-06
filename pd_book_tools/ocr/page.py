@@ -555,16 +555,33 @@ class Page:
         return all(item.ground_truth_exact_match for item in self.items)
 
     def copy_ocr_to_ground_truth(self) -> bool:
-        """Copy OCR text to ground truth for all words on this page."""
-        return any([word.copy_ocr_to_ground_truth() for word in self.words])
+        """Copy OCR text to ground truth for all words on this page.
+
+        Every word is processed (no short-circuit); ``any`` is then taken
+        over the resulting list to report whether at least one word was
+        actually mutated. List materialized explicitly so the
+        eager-evaluation intent is obvious to readers.
+        """
+        results = [word.copy_ocr_to_ground_truth() for word in self.words]
+        return any(results)
 
     def copy_ground_truth_to_ocr(self) -> bool:
-        """Copy ground truth text to OCR text for all words on this page."""
-        return any([word.copy_ground_truth_to_ocr() for word in self.words])
+        """Copy ground truth text to OCR text for all words on this page.
+
+        Every word is processed; ``any`` reports whether at least one was
+        mutated. See :meth:`copy_ocr_to_ground_truth` for the rationale.
+        """
+        results = [word.copy_ground_truth_to_ocr() for word in self.words]
+        return any(results)
 
     def clear_ground_truth(self) -> bool:
-        """Clear ground truth text from all words on this page."""
-        return any([word.clear_ground_truth() for word in self.words])
+        """Clear ground truth text from all words on this page.
+
+        Every word is processed; ``any`` reports whether at least one was
+        mutated. See :meth:`copy_ocr_to_ground_truth` for the rationale.
+        """
+        results = [word.clear_ground_truth() for word in self.words]
+        return any(results)
 
     @property
     def words(self) -> List[Word]:
