@@ -30,6 +30,31 @@ class TestIoU:
         # intersection 5x5=25; union = 100+100-25 = 175
         assert iou(a, b) == pytest.approx(25 / 175)
 
+    def test_identical_zero_area_returns_zero_by_convention(self):
+        """L-05: two identical zero-area regions return 0.0, not 1.0.
+
+        Mathematically IoU of identical sets is 1.0 even with zero measure,
+        but this module treats IoU as a "meaningful spatial overlap" signal.
+        Two coincident point/line regions carry no coverage to overlap on,
+        so the convention is 0.0. Documented in the function docstring.
+        Locking this so a future "fix" doesn't accidentally flip the
+        contract and break dedupe passes that rely on it.
+        """
+        # Two coincident zero-width vertical line regions
+        z = R(10, 5, 10, 25)
+        assert z.area == 0
+        assert iou(z, z) == 0.0
+
+        # Two coincident point regions
+        p = R(7, 7, 7, 7)
+        assert p.area == 0
+        assert iou(p, p) == 0.0
+
+        # And the docstring claim about mismatched zero-area inputs:
+        # disjoint zero-area regions also return 0.0
+        z2 = R(50, 50, 50, 70)
+        assert iou(z, z2) == 0.0
+
 
 class TestContains:
     def test_inside(self):
