@@ -344,7 +344,7 @@ coordinates). Let other exceptions propagate.
 
 ---
 
-## L-26 — `PGDPExport.from_json` crashes with `AttributeError` on empty pages dict
+## ~~L-26 — `PGDPExport.from_json` crashes with `AttributeError` on empty pages dict~~ [FIXED in 7c3b83e]
 
 **File:** `pd_book_tools/pgdp/pgdp_results.py`, lines 281–289
 
