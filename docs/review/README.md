@@ -95,6 +95,16 @@ remembering prior turns. Update this when an iteration completes (after the
   before `ocr_confidence` was added. `Character.from_dict` already used
   `.get()`; aligned `Word.from_dict` to the same tolerant pattern so
   missing key defaults to `None`. — fix `a0170a4`, doc mark `<pending>`
+- H-10 `ocr/document.py` `from_tesseract` passed Tesseract's `conf == -1`
+  rejected-word sentinel through `safe_float`, which stored it as a real
+  `-1.0`. The negative value then passed `rotation.py`'s
+  `word.ocr_confidence is not None` guard, dragging `_mean_confidence`
+  below the 0.6 rotation threshold and triggering spurious 90/180/270
+  probes on clean pages; it also corrupted `Block.mean_ocr_confidence`
+  and confidence-based filters. Added `Document._tesseract_confidence`
+  that maps `conf <= 0` (and NaN / non-numeric / None) to `None`, leaving
+  `safe_float` (used for box geometry where 0.0 is the right default)
+  untouched. — fix `4c946b2`, doc mark `<pending>`
 
 **Top-10 H-XX list complete.** With H-16 fixed, every entry from the
 "Highest-priority fixes" section above is now resolved (H-13 was
@@ -103,17 +113,18 @@ top-10 item — it gets picked up in the sequential sweep below). The
 /loop now sweeps the remaining `bugs-high.md` entries top-to-bottom —
 pick the first unstruck H-XX from the file in document order.
 
-**Next pick:** H-10 — `pd_book_tools/ocr/document.py` line 590. Tesseract
-returns `conf == -1` for rejected/empty words, but `safe_float(-1)` stores
-`-1.0` rather than `None`. The negative confidence then passes the
-`word.ocr_confidence is not None` guard in `rotation.py`'s mean-confidence
-calculation, dragging means below the `0.6` threshold and triggering
-spurious rotation probes on otherwise-clean pages; it also corrupts
-`Block.mean_ocr_confidence` and any downstream confidence filtering. Fix:
-treat `conf <= 0` (specifically the Tesseract `-1` sentinel) as
-"no confidence" and store `None`. Add a regression test that builds a
-Tesseract row with `conf == -1` and asserts the resulting `Word.ocr_confidence`
-is `None` (and that the rotation/mean code paths skip it as expected).
+**Next pick:** H-11 — `pd_book_tools/ocr/document.py` line 588. When
+Tesseract emits a rejected/empty row, the `text` cell is a pandas `NaN`
+which `str(NaN)` renders as the literal string `'nan'`. The current
+ingest does `Word(text=str(word_row.text), ...)`, so a ghost word with
+literal text `'nan'` propagates as real OCR output into ground-truth
+matching and final text. Fix: detect `pd.isna(word_row.text)` (or the
+empty/whitespace case after coercion) and skip the word — note H-10
+just fixed the `conf == -1` half of this same row, so most ghost rows
+now have `ocr_confidence is None` already, but the text still needs to
+be sanitized before the Word is created. Regression test: build a
+Tesseract row with `text == NaN` (or pandas-coerced equivalent) and
+assert the resulting page contains no `'nan'` word.
 
 **Workflow per iteration** (one bug per commit, no push):
 
