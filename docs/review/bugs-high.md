@@ -232,7 +232,7 @@ if min_val == max_val:
 
 ---
 
-## H-16 — Cupy `otsu_binary_thresh` returns `float32` 0.0/1.0; cv2 version returns `uint8` 0/255
+## [FIXED in 53ed3f5] ~~H-16 — Cupy `otsu_binary_thresh` returns `float32` 0.0/1.0; cv2 version returns `uint8` 0/255~~
 
 **File:** `pd_book_tools/image_processing/cupy_processing/threshold.py`, lines 49–52
 **Affects:** any pipeline code that switches between backends
