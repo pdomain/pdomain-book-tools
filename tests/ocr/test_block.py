@@ -745,13 +745,15 @@ def test_refine_bounding_boxes_nested(monkeypatch):
 
 
 def test_refine_bounding_boxes_not_implemented():
-    # Insert a stub object lacking refine_bounding_box into a WORDS block post-construction.
+    # Insert a stub object lacking refine_bbox into a WORDS block post-construction.
     # Since the items setter/add_item enforce Word types, this can only happen via
     # direct _items manipulation. The resulting AttributeError is expected.
+    # (Pre-R-04 this test asserted the missing method was ``refine_bounding_box``;
+    # R-04 consolidates Block's WORDS path to call ``refine_bbox`` instead.)
     class Stub:
         def __init__(self, bbox):
             self.bounding_box = bbox
-            # no refine_bounding_box method
+            # no refine_bbox method
 
     w = Word("a", BoundingBox.from_ltrb(0, 0, 5, 5), 0.5)
     line = Block(

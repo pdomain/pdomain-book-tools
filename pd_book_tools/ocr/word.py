@@ -447,41 +447,48 @@ class Word:
             bbox.is_normalized,
         )
 
-    def refine_bbox(self, page_image: ndarray | None) -> bool:
+    def refine_bbox(self, page_image: ndarray | None, padding_px: int = 1) -> bool:
         """Refine this word's bounding box using the page image.
 
-        Tries BoundingBox.refine first, falls back to crop_bottom.
-        Returns True if refinement succeeded.
+        Tries ``BoundingBox.refine`` first, falls back to ``crop_bottom``.
+        Returns ``True`` if refinement succeeded (either via the primary
+        refine path or the crop_bottom fallback), ``False`` otherwise.
+
+        ``padding_px`` is forwarded to ``BoundingBox.refine``. The default
+        of 1 preserves the contract of pre-R-04 callers; callers that
+        previously used ``Word.refine_bounding_box(image, padding_px=...)``
+        flow through unchanged via the back-compat shim of the same name.
         """
         bbox = self.bounding_box
         if bbox is None:
             return False
 
-        if page_image is not None:
-            try:
-                refined_bbox = bbox.refine(
-                    page_image,
-                    padding_px=1,
-                    expand_beyond_original=False,
-                )
-                if refined_bbox is not None:
-                    self.bounding_box = refined_bbox
-                    return True
-            except Exception:
-                logger.debug(
-                    "Bounding-box refine failed during word refine; falling back",
-                    exc_info=True,
-                )
+        if page_image is None:
+            return False
 
-        if page_image is not None:
-            try:
-                self.crop_bottom(page_image)
+        try:
+            refined_bbox = bbox.refine(
+                page_image,
+                padding_px=padding_px,
+                expand_beyond_original=False,
+            )
+            if refined_bbox is not None:
+                self.bounding_box = refined_bbox
                 return True
-            except Exception:
-                logger.debug(
-                    "crop_bottom failed during word refine",
-                    exc_info=True,
-                )
+        except Exception:
+            logger.debug(
+                "Bounding-box refine failed during word refine; falling back",
+                exc_info=True,
+            )
+
+        try:
+            self.crop_bottom(page_image)
+            return True
+        except Exception:
+            logger.debug(
+                "crop_bottom failed during word refine",
+                exc_info=True,
+            )
 
         return False
 
@@ -679,14 +686,22 @@ class Word:
         )
 
     def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0):
+        """Refine the bounding box of the word based on the image content.
+
+        Back-compat shim: delegates to :meth:`refine_bbox` (which adds a
+        ``crop_bottom`` fallback when ``BoundingBox.refine`` cannot
+        produce a tighter rectangle). Returns ``None`` to preserve the
+        pre-R-04 caller contract; callers who need success/failure
+        information should use :meth:`refine_bbox` directly.
+        """
         if image is None:
             logger.warning("Image is None, skipping bounding box refinement")
-            return
+            return None
         logger.debug(
             f"Refining bounding box for word '{self.text}' with padding {padding_px} pixels"
         )
-        """Refine the bounding box of the word based on the image content"""
-        self.bounding_box = self.bounding_box.refine(image, padding_px=padding_px)
+        self.refine_bbox(image, padding_px=padding_px)
+        return None
 
     def split(self, bbox_split_offset: float, character_split_index: int):
         """Split a word into two words at the given indices"""

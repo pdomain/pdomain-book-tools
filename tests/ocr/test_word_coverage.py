@@ -271,6 +271,105 @@ class TestRefineBbox:
         assert pixel_word.refine_bbox(img) is False
 
 
+class TestR04ConsolidatedRefine:
+    """R-04: ``refine_bounding_box`` is now a thin shim over ``refine_bbox``.
+
+    Locks the consolidated contract:
+    - ``refine_bbox`` accepts a ``padding_px`` parameter (default 1) and
+      forwards it to ``BoundingBox.refine``.
+    - ``refine_bbox`` falls back to ``crop_bottom`` when the primary
+      refine raises and returns ``True`` for the fallback path.
+    - ``refine_bounding_box`` is the back-compat shim: returns ``None``,
+      delegates to ``refine_bbox`` so the crop_bottom fallback applies
+      to its callers too.
+    """
+
+    def test_refine_bbox_forwards_padding_px(self, pixel_word, monkeypatch):
+        seen = {}
+
+        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+            seen["padding_px"] = padding_px
+            seen["expand_beyond_original"] = expand_beyond_original
+            return BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
+
+        monkeypatch.setattr(BoundingBox, "refine", fake_refine)
+        img = np.zeros((50, 50), dtype=np.uint8)
+        pixel_word.refine_bbox(img, padding_px=4)
+        assert seen["padding_px"] == 4
+        assert seen["expand_beyond_original"] is False
+
+    def test_refine_bbox_default_padding_is_one(self, pixel_word, monkeypatch):
+        # Default preserves pre-R-04 ``refine_bbox`` hardcoded padding_px=1
+        seen = {}
+
+        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+            seen["padding_px"] = padding_px
+            return BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
+
+        monkeypatch.setattr(BoundingBox, "refine", fake_refine)
+        img = np.zeros((50, 50), dtype=np.uint8)
+        pixel_word.refine_bbox(img)
+        assert seen["padding_px"] == 1
+
+    def test_refine_bounding_box_shim_delegates_to_refine_bbox(
+        self, pixel_word, monkeypatch
+    ):
+        called = {"refine_bbox": 0, "padding_px": None}
+
+        original_refine_bbox = Word.refine_bbox
+
+        def spy_refine_bbox(self, image, padding_px=1):
+            called["refine_bbox"] += 1
+            called["padding_px"] = padding_px
+            return original_refine_bbox(self, image, padding_px=padding_px)
+
+        monkeypatch.setattr(Word, "refine_bbox", spy_refine_bbox)
+        # Make BoundingBox.refine succeed so we exercise the happy path
+        new_bbox = BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
+
+        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+            return new_bbox
+
+        monkeypatch.setattr(BoundingBox, "refine", fake_refine)
+
+        img = np.zeros((50, 50), dtype=np.uint8)
+        result = pixel_word.refine_bounding_box(img, padding_px=3)
+        assert result is None  # back-compat: shim still returns None
+        assert called["refine_bbox"] == 1
+        assert called["padding_px"] == 3
+        assert pixel_word.bounding_box is new_bbox
+
+    def test_refine_bounding_box_shim_inherits_crop_bottom_fallback(
+        self, pixel_word, monkeypatch
+    ):
+        # Pre-R-04, refine_bounding_box had NO crop_bottom fallback. The
+        # consolidation routes it through refine_bbox so the shim now
+        # benefits from the fallback. Lock that.
+        def raising_refine(self, *a, **kw):
+            raise RuntimeError("primary refine failed")
+
+        monkeypatch.setattr(BoundingBox, "refine", raising_refine)
+        called = {"crop_bottom": 0}
+
+        def fake_crop_bottom(img):
+            called["crop_bottom"] += 1
+
+        pixel_word.crop_bottom = fake_crop_bottom
+        img = np.zeros((50, 50), dtype=np.uint8)
+        result = pixel_word.refine_bounding_box(img)
+        assert result is None
+        assert called["crop_bottom"] == 1
+
+    def test_refine_bounding_box_shim_none_image_warns_and_returns_none(
+        self, pixel_word
+    ):
+        # The original warn-and-skip-on-None contract is preserved.
+        before = pixel_word.bounding_box.to_ltrb()
+        result = pixel_word.refine_bounding_box(None)
+        assert result is None
+        assert pixel_word.bounding_box.to_ltrb() == before
+
+
 class TestExpandBbox:
     def test_expand_bbox_no_bbox(self, pixel_word):
         pixel_word.bounding_box = None
@@ -397,7 +496,9 @@ class TestRefineBoundingBox:
     def test_refine_bounding_box_with_image(self, pixel_word, monkeypatch):
         new_bbox = BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
 
-        def fake_refine(self, image, padding_px=0):
+        # R-04: refine_bounding_box now delegates through refine_bbox,
+        # which forwards expand_beyond_original to BoundingBox.refine.
+        def fake_refine(self, image, padding_px=0, expand_beyond_original=False):
             return new_bbox
 
         monkeypatch.setattr(BoundingBox, "refine", fake_refine)
