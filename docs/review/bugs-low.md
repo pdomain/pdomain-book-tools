@@ -50,7 +50,7 @@ geometry with `bounds == (nan, nan, nan, nan)`. The subsequent
 
 ---
 
-## L-04 — `from_points` rejects zero-width/height boxes; other constructors accept them
+## [FIXED in 1a817d6] ~~L-04 — `from_points` rejects zero-width/height boxes; other constructors accept them~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 233–239
 
