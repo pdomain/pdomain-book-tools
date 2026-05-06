@@ -183,13 +183,25 @@ remembering prior turns. Update this when an iteration completes (after the
 processed (fixes plus stale-but-regression-locked entries). The /loop
 now sweeps `bugs-medium.md` top-to-bottom.
 
-**Next pick:** M-01 — `image_processing/cv2_processing/perspective_adjustment.py`
-lines 36–42. The column-sum used to detect skew starts at hardcoded
-`Y1 = 0` (image top) instead of `minY` (the detected content top edge),
-so stray noise pixels above the text block corrupt the detected skew
-angle. The cupy counterpart correctly uses
-`img_cp[minY : minY + h_percent, ...]`. Fix is to set `Y1 = minY`
-at line 36.
+- M-01 `image_processing/cv2_processing/perspective_adjustment.py`
+  `auto_deskew` top-strip column-sum band started at hardcoded
+  `Y1 = 0` instead of `minY`, so stray noise pixels above the text
+  block biased the detected skew angle. cupy backend already correct.
+  Fixed `Y1 = minY` to mirror cupy. Regression test constructs an
+  un-skewed block plus a single sub-threshold noise pixel above it;
+  pre-fix the band picks up the noise and rotates ~27°, post-fix the
+  band excludes it and the image is returned unchanged. — fix
+  `533c23e`, doc mark `<pending>`
+
+**Next pick:** M-02 — Edge detection threshold multiplier `* 256`
+should be `* 255` in both `pd_book_tools/image_processing/cv2_processing/edge_finding.py`
+and `pd_book_tools/image_processing/cupy_processing/edge_finding.py`
+(lines 27–28 in each). A column of N fully-bright pixels sums to
+`N * 255`, strictly less than `N * 256`, so the effective detection
+threshold requires one extra pixel beyond the stated
+`pixel_count_columns` parameter. With `pixel_count_columns=1` (used
+in auto-deskew) the threshold demands 2 pixels, missing single-pixel
+content edges. Both backends share the bug consistently.
 
 **Workflow per iteration** (one bug per commit, no push):
 
