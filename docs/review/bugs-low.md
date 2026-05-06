@@ -446,7 +446,7 @@ allocation, potentially causing OOM.
 
 ---
 
-## L-34 — `ContourDetector` parameters are ignored by `get_detector`
+## ~~L-34 — `ContourDetector` parameters are ignored by `get_detector`~~ [FIXED in 48d7214]
 
 **File:** `pd_book_tools/layout/registry.py`, lines 42–62
 
