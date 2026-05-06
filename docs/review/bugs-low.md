@@ -21,7 +21,7 @@ try/except so real errors surface.
 
 ---
 
-## L-02 — `clamp_to_image` can produce a zero-width or zero-height box without warning
+## [FIXED in 36939fa] ~~L-02 — `clamp_to_image` can produce a zero-width or zero-height box without warning~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 658–677
 
