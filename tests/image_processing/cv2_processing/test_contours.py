@@ -32,13 +32,31 @@ class TestFindAndDrawContours:
         assert out_img.ndim == 3
         assert out_img.shape[2] == 3
 
-    def test_no_contours_returns_original(self):
-        # An all-zero image has no contours
+    def test_no_contours_returns_bgr(self):
+        # An all-zero image has no contours.
+        # Output must still be a 3-channel BGR image so callers don't have
+        # to runtime-dispatch on shape (regression for M-10).
         img = np.zeros((50, 50), dtype=np.uint8)
         out_img, contours = find_and_draw_contours(img.copy())
         assert len(contours) == 0
-        # Image should be returned as-is (still grayscale)
-        assert out_img.shape == img.shape
+        assert out_img.ndim == 3
+        assert out_img.shape == (50, 50, 3)
+        assert out_img.dtype == img.dtype
+
+    def test_return_ndim_consistent_with_and_without_contours(self):
+        """Regression for M-10: ndim/dtype must match across both branches."""
+        empty = np.zeros((50, 50), dtype=np.uint8)
+        out_empty, c_empty = find_and_draw_contours(empty.copy())
+        assert len(c_empty) == 0
+
+        with_blob = _binary_image_with_blobs()
+        out_blob, c_blob = find_and_draw_contours(with_blob.copy())
+        assert len(c_blob) >= 1
+
+        # Same ndim, same channel count, same dtype regardless of branch.
+        assert out_empty.ndim == out_blob.ndim == 3
+        assert out_empty.shape[2] == out_blob.shape[2] == 3
+        assert out_empty.dtype == out_blob.dtype
 
 
 class TestRemoveSmallContours:
