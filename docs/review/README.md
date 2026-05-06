@@ -432,12 +432,27 @@ now sweeps `bugs-medium.md` top-to-bottom.
   pd-prep-for-pgdp's resolution probe) can now pass it through. Three
   regression tests cover dpi=150, dpi=600, and the dpi=300 default
   back-compat lock. — fix `d7f341a`, doc mark `<pending>`
+- M-21 `ocr/cv2_tesseract.py` `tesseract_ocr_cv2_image` hardcoded
+  `-c textord_noise_debug=1` into the Tesseract config, forcing
+  Tesseract to emit noise-detection debug messages to the caller's
+  stderr on every OCR call. Library code must not pollute caller
+  stderr by default. Removed the flag entirely (kept the companion
+  `-c textord_noise_rej=1`, which is a behavioral switch, not a debug
+  toggle). Updated the two pre-existing tests that had locked in the
+  buggy default config string / parts list, and added
+  `test_tesseract_config_no_textord_noise_debug` as the regression.
+  YAGNI on an `extra_config` parameter — add when a real caller needs
+  it. — fix `1c961eb`, doc mark `<pending>`
 
-**Next pick:** M-21 — `ocr/cv2_tesseract.py`. The Tesseract config
-string includes `-c textord_noise_debug=1`, which forces Tesseract to
-emit noise-detection debug messages to the caller's stderr on every
-OCR call. Library code should not pollute the caller's stderr; remove
-the flag (or gate it behind an explicit debug parameter).
+**Next pick:** M-22 — `ocr/doctr_support.py`.
+`get_finetuned_torch_doctr_predictor` initializes
+`full_predictor = None` and only assigns it when both checkpoint files
+exist; when either file is missing, the function returns `None` with
+no warning or exception, and callers crash later with a confusing
+`TypeError` / `AttributeError` at first use. Fix is to raise
+`FileNotFoundError` (or at minimum `logger.warning`) before returning
+`None`. (Note: H-13 already touched this same function for the
+`Path.exists` mis-call; check current state before writing the test.)
 
 **Workflow per iteration** (one bug per commit, no push):
 
