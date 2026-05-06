@@ -990,7 +990,11 @@ class Block:
 
         return cls(
             items=items,
-            bounding_box=BoundingBox.from_dict(data["bounding_box"]),
+            bounding_box=(
+                BoundingBox.from_dict(data["bounding_box"])
+                if data.get("bounding_box")
+                else None
+            ),
             child_type=child_type,
             block_category=BlockCategory(data["block_category"])
             if data.get("block_category")
