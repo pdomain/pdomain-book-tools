@@ -1089,51 +1089,60 @@ def test_crop_top_missing_bbox_error():
 @pytest.fixture
 def crop_bottom_warn_case(caplog):
     """Force crop_bottom internal call to return None to exercise warning path."""
-    w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
 
-    class DummyBBox:
+    class StubBBox:
+        """Stub bbox whose crop_bottom returns None (blank-ROI path)."""
+
         def crop_bottom(self, image):  # type: ignore[no-untyped-def]
             return None
 
-    w.bounding_box = DummyBBox()  # type: ignore[assignment]
+    w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
+    stub = StubBBox()
+    w.bounding_box = stub  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_bottom(np.zeros((4, 4), dtype=np.uint8))
-    return w, caplog.records
+    return w, stub, caplog.records
 
 
 def test_crop_bottom_warns_logged(crop_bottom_warn_case):
-    _, records = crop_bottom_warn_case
+    _, _, records = crop_bottom_warn_case
     assert any("Cropped bounding box is None" in r.message for r in records)
 
 
-def test_crop_bottom_warns_sets_none(crop_bottom_warn_case):
-    w, _ = crop_bottom_warn_case
-    assert w.bounding_box is None
+def test_crop_bottom_none_preserves_bbox(crop_bottom_warn_case):
+    """Regression for H-06: when the crop returns None, leave bounding_box intact
+    (do NOT silently overwrite it with None)."""
+    w, original, _ = crop_bottom_warn_case
+    assert w.bounding_box is original
+    assert w.bounding_box is not None
 
 
 @pytest.fixture
 def crop_top_warn_case(caplog):
     """Force crop_top internal call to return None to exercise warning path."""
-    w = Word(text="y", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
 
-    class DummyBBox:
+    class StubBBox:
         def crop_top(self, image):  # type: ignore[no-untyped-def]
             return None
 
-    w.bounding_box = DummyBBox()  # type: ignore[assignment]
+    w = Word(text="y", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
+    stub = StubBBox()
+    w.bounding_box = stub  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_top(np.zeros((4, 4), dtype=np.uint8))
-    return w, caplog.records
+    return w, stub, caplog.records
 
 
 def test_crop_top_warns_logged(crop_top_warn_case):
-    _, records = crop_top_warn_case
+    _, _, records = crop_top_warn_case
     assert any("Cropped bounding box is None" in r.message for r in records)
 
 
-def test_crop_top_warns_sets_none(crop_top_warn_case):
-    w, _ = crop_top_warn_case
-    assert w.bounding_box is None
+def test_crop_top_none_preserves_bbox(crop_top_warn_case):
+    """Regression for H-06: see test_crop_bottom_none_preserves_bbox."""
+    w, original, _ = crop_top_warn_case
+    assert w.bounding_box is original
+    assert w.bounding_box is not None
 
 
 ###############################################################################

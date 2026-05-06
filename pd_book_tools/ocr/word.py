@@ -1089,7 +1089,10 @@ class Word:
 
         cropped_bbox = self.bounding_box.crop_bottom(img_ndarray)
         if cropped_bbox is None:
-            logger.warning("Cropped bounding box is None, cannot crop bottom")
+            logger.warning(
+                "Cropped bounding box is None, cannot crop bottom; preserving existing bounding_box"
+            )
+            return
         self.bounding_box = cropped_bbox
 
     def crop_top(self, img_ndarray):
@@ -1104,5 +1107,8 @@ class Word:
 
         cropped_bbox = self.bounding_box.crop_top(img_ndarray)
         if cropped_bbox is None:
-            logger.warning("Cropped bounding box is None, cannot crop top")
+            logger.warning(
+                "Cropped bounding box is None, cannot crop top; preserving existing bounding_box"
+            )
+            return
         self.bounding_box = cropped_bbox
