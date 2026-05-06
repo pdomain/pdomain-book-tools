@@ -142,6 +142,56 @@ def test_document_from_doctr_output(sample_doctr_output):
     )
 
 
+def test_document_from_doctr_output_matches_tesseract_nesting_depth(
+    sample_doctr_output, sample_tesseract_output
+):
+    """Regression test for M-14.
+
+    The DocTR adapter previously produced ``Page -> Block(PARAGRAPH) ->
+    Block(LINE) -> Word`` (3 levels) while the Tesseract adapter produced
+    ``Page -> Block(BLOCK) -> Block(PARAGRAPH) -> Block(LINE) -> Word``
+    (4 levels). Consumers iterating ``page.items[0]`` and expecting a
+    ``BLOCK``-category item silently failed on DocTR output.
+
+    Both adapters must produce the same canonical depth and category
+    sequence so consumers can iterate uniformly.
+    """
+    from pd_book_tools.ocr.block import BlockCategory
+
+    doctr_doc = Document.from_doctr_output(sample_doctr_output)
+    tess_doc = Document.from_tesseract(sample_tesseract_output)
+
+    def category_path(page):
+        # Walk leftmost child until a non-Block (Word) is reached, collecting
+        # block categories. Returns a tuple like
+        # (BLOCK, PARAGRAPH, LINE).
+        path = []
+        node = page.items[0]
+        while hasattr(node, "block_category") and node.block_category is not None:
+            path.append(node.block_category)
+            if not node.items:
+                break
+            node = node.items[0]
+        return tuple(path)
+
+    doctr_path = category_path(doctr_doc.pages[0])
+    tess_path = category_path(tess_doc.pages[0])
+
+    expected = (BlockCategory.BLOCK, BlockCategory.PARAGRAPH, BlockCategory.LINE)
+    assert tess_path == expected, (
+        f"Tesseract baseline changed unexpectedly: {tess_path}"
+    )
+    assert doctr_path == expected, (
+        f"DocTR adapter must match Tesseract depth/categories. "
+        f"Got {doctr_path}, expected {expected}."
+    )
+
+    # And the leaf words must still be reachable; the wrap should not lose
+    # any OCR words (memory rule: never silently drop OCR words).
+    doctr_words = list(doctr_doc.pages[0].words)
+    assert [w.text for w in doctr_words] == ["Hello"]
+
+
 def test_document_from_doctr_output_normalizes_model_provenance():
     doctr_output = {
         "metadata": {
