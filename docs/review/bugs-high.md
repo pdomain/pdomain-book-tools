@@ -5,7 +5,7 @@ silently produce wrong output. Fix these before any new feature work.
 
 ---
 
-## H-01 — PNG images have swapped red/blue channels
+## [FIXED in 702d402] ~~H-01 — PNG images have swapped red/blue channels~~
 
 **File:** `pd_book_tools/image_processing/cv2_processing/encoding.py`, lines 8–9
 **Affects:** all `data:image/png;base64` previews in the labeler UI
