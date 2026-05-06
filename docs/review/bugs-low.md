@@ -76,7 +76,7 @@ behavior is intentional rather than accidental.
 
 ---
 
-## L-06 — `caption_for_figure` searches only below a figure, never above
+## [FIXED in ec24ae6] ~~L-06 — `caption_for_figure` searches only below a figure, never above~~
 
 **File:** `pd_book_tools/layout/geometry.py`, lines 80–81
 
