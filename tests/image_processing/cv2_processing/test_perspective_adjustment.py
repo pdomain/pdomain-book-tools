@@ -77,14 +77,21 @@ class TestAutoDeskew:
             * 200x200 zero image
             * Un-skewed solid text block at rows [80, 160), cols [60, 160).
               Vertical left edge at column 60 -> truth: zero skew.
-            * A single 255 noise pixel high above the block at (row 10,
-              col 20). Sub-threshold for ``find_edges`` (single pixel sums
-              to 255 < pixel_count_rows*256), so ``minY`` still resolves
-              to the block's top edge ~80, and the bug is purely in the
-              top-strip column scan that follows.
+            * A single near-bright noise pixel high above the block at
+              (row 10, col 20) with value 254. Sub-threshold for
+              ``find_edges`` (single pixel sums to 254 < pixel_count_rows*255
+              with the M-02 fix), so ``minY`` still resolves to the block's
+              top edge ~80, and the bug under test is purely in the
+              top-strip column scan that follows. Note: post-M-02 the
+              find_edges threshold is exactly N*255, so a value-255 noise
+              pixel would cross the threshold and shift ``minY`` to row 10;
+              we use 254 to keep the noise sub-threshold while still being
+              visible to the column-sum band scan that ``Y1=0`` would
+              include.
 
         Pre-fix (Y1=0): the band img[0:minY+h_percent, :] includes the
-        noise at column 20, so ``top_left_column`` becomes 20 while
+        noise at column 20 (any non-zero pixel in the band makes
+        ``columns[20] > 0``), so ``top_left_column`` becomes 20 while
         ``bottom_left_column`` is 60 -> auto_deskew rotates by ~27°.
 
         Post-fix (Y1=minY): noise is excluded from the band, so
@@ -95,8 +102,10 @@ class TestAutoDeskew:
         img = np.zeros((200, 200), dtype=np.uint8)
         # Un-skewed text block: vertical left edge at column 60.
         img[80:160, 60:160] = 255
-        # Single high-up noise pixel, column 20.
-        img[10, 20] = 255
+        # Single high-up noise pixel, column 20. Value 254 keeps it
+        # sub-threshold for find_edges (pixel_count_rows=1 -> threshold 255
+        # post-M-02) so minY still snaps to the block top.
+        img[10, 20] = 254
 
         result = auto_deskew(img)
         assert isinstance(result, tuple)

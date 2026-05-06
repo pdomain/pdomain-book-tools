@@ -24,8 +24,8 @@ def find_edges(
     columns = np.sum(img, axis=0)
     rows = np.sum(img, axis=1)
 
-    pixel_value_col_min = pixel_count_columns * 256
-    pixel_value_row_min = pixel_count_rows * 256
+    pixel_value_col_min = pixel_count_columns * 255
+    pixel_value_row_min = pixel_count_rows * 255
 
     logger.debug(
         f"{log_prefix}pixel_value_col_min={pixel_value_col_min}, pixel_value_row_min={pixel_value_row_min}"

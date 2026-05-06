@@ -49,6 +49,37 @@ class TestFindEdgesGpu:
         )
         assert all(isinstance(v, int) for v in result)
 
+    def test_threshold_uses_255_not_256(self, cupy_module):
+        """Regression for M-02: threshold multiplier must be `* 255`, not `* 256`.
+
+        A column with exactly `pixel_count_columns` fully-bright (255) pixels
+        sums to `N * 255`. With the pre-fix `* 256` multiplier the column fell
+        strictly below threshold and was missed; post-fix `* 255` it is
+        detected.
+        """
+        cp = cupy_module
+        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+            find_edges_gpu,
+        )
+
+        img = cp.zeros((200, 200), dtype=cp.uint8)
+        img[10, 100] = 255
+        img[11, 100] = 255
+        img[100, 10] = 255
+        img[100, 11] = 255
+        minX, maxX, minY, maxY = find_edges_gpu(
+            img,
+            fuzzy_pct=0,
+            pixel_count_columns=2,
+            pixel_count_rows=2,
+            fuzzy_px_w_override=0,
+            fuzzy_px_h_override=0,
+        )
+        assert minX == 100, f"expected minX=100 (column detected), got {minX}"
+        assert maxX == 100, f"expected maxX=100 (column detected), got {maxX}"
+        assert minY == 100, f"expected minY=100 (row detected), got {minY}"
+        assert maxY == 100, f"expected maxY=100 (row detected), got {maxY}"
+
     def test_fuzzy_px_override_zero(self, cupy_module):
         """fuzzy_px_w_override=0 should be respected (not treated as falsy)."""
         cp = cupy_module

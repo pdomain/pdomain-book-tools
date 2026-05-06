@@ -24,8 +24,8 @@ def find_edges_gpu(
     columns = cp.sum(img_cp, axis=0).astype(cp.int64)  # shape (W,)
     rows = cp.sum(img_cp, axis=1).astype(cp.int64)  # shape (H,)
 
-    pixel_value_col_min = pixel_count_columns * 256
-    pixel_value_row_min = pixel_count_rows * 256
+    pixel_value_col_min = pixel_count_columns * 255
+    pixel_value_row_min = pixel_count_rows * 255
 
     fuzzy_px_w = (
         fuzzy_px_w_override if fuzzy_px_w_override is not None else int(w * fuzzy_pct)
