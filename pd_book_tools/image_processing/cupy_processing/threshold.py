@@ -30,6 +30,19 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
 
     # Compute histogram (auto-detect range)
     min_val, max_val = img_cp_float.min(), img_cp_float.max()
+
+    # Degenerate case: a uniform-valued image has no meaningful Otsu split.
+    # Older cupy versions raised `ValueError: max must be larger than min` from
+    # `cp.histogram(..., range=(min, max))` here; current cupy silently
+    # produces a bogus histogram (single nonzero bin at index 128 over an
+    # arbitrary edge span), which downstream collapses to `argmax` of an
+    # all-zero between-class variance returning 0 — yielding a meaningless
+    # threshold and a misclassified output. Match skimage/cv2 semantics:
+    # treat the uniform value itself as the threshold so the strict-`>`
+    # binarization produces an all-zero mask without crashing (review H-15).
+    if min_val == max_val:
+        return cp.zeros_like(img_cp_float, dtype=cp.float32)
+
     hist, bin_edges = cp.histogram(img_cp_float, bins=256, range=(min_val, max_val))
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # type: ignore # Midpoints of bins
 
