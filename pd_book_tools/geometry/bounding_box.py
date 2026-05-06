@@ -671,7 +671,7 @@ class BoundingBox:
                     continue
                 if current & prev:
                     continue
-                y2 = y1 + (y - 0)  # adjust y2 based on offset
+                y2 = y1 + y  # adjust y2 based on offset
                 break
         return self._finalize_pixel_bbox(
             x1, y1, x2, y2, img_w, img_h, original_is_normalized
