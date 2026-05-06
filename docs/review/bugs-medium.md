@@ -299,7 +299,7 @@ unsupported shapes.
 
 ---
 
-## M-21 — `cv2_tesseract.py` — `textord_noise_debug=1` pollutes caller's stderr
+## [FIXED in 1c961eb] ~~M-21 — `cv2_tesseract.py` — `textord_noise_debug=1` pollutes caller's stderr~~
 
 **File:** `pd_book_tools/ocr/cv2_tesseract.py`, line 32
 
