@@ -263,7 +263,11 @@ def test_post_noise_snapshot_drops_figure_internal_words():
         image_height=PAGE_H,
         detector="test",
     )
-    page.reorganize_page(layout=layout, drop_figure_internal_text=True)
+    page.reorganize_page(
+        layout=layout,
+        drop_figure_internal_text=True,
+        drop_layout_words=True,
+    )
 
     pure = page.diagnostic_pure_ocr
     post = page.diagnostic_post_noise_removal
@@ -446,7 +450,8 @@ def test_noise_drop_diagnostics_zero_when_no_noise_step_fires():
 
 
 def test_noise_drop_diagnostics_populated_when_layout_2b_fires():
-    """When Step Layout-2b drops figure-internal words, the noise-drop
+    """When Step Layout-2b drops figure-internal words (only fires under
+    the experimental ``drop_layout_words=True`` opt-in), the noise-drop
     diagnostics should list every dropped word with original text +
     bbox preserved."""
     fig_words = [
@@ -487,7 +492,11 @@ def test_noise_drop_diagnostics_populated_when_layout_2b_fires():
         image_height=PAGE_H,
         detector="test",
     )
-    page.reorganize_page(layout=layout, drop_figure_internal_text=True)
+    page.reorganize_page(
+        layout=layout,
+        drop_figure_internal_text=True,
+        drop_layout_words=True,
+    )
 
     # All three figure-internal words should have been dropped.
     assert page.diagnostic_noise_dropped_count == 3
@@ -501,9 +510,67 @@ def test_noise_drop_diagnostics_populated_when_layout_2b_fires():
         assert word.bounding_box is not None
 
 
+def test_noise_drop_zero_with_drop_layout_words_false_on_figure_page():
+    """Default reorganize (``drop_layout_words=False``) must not drop
+    any words even on a figure-bearing page where Step Layout-2b *would*
+    fire under the opt-in. The hard rule is: the default pipeline never
+    silently deletes OCR words — every OCR token survives, with its
+    ``layout:figure`` tag attached for downstream consumers to filter
+    on if they wish."""
+    fig_words = [
+        _word("BALI", 100, 200, 140, 230),
+        _word("KANE", 160, 200, 200, 230),
+        _word("WU", 220, 200, 260, 230),
+    ]
+    body_words = [
+        _word("body", 100, 1000, 200, 1030),
+        _word("text", 210, 1000, 350, 1030),
+    ]
+    page = _make_page(
+        [
+            _paragraph_block([_line_block(fig_words)]),
+            _paragraph_block([_line_block(body_words)]),
+        ]
+    )
+    layout = PageLayout(
+        regions=[
+            LayoutRegion(
+                type=RegionType.figure,
+                L=50,
+                R=400,
+                T=150,
+                B=300,
+                confidence=0.95,
+            ),
+            LayoutRegion(
+                type=RegionType.text,
+                L=50,
+                R=400,
+                T=950,
+                B=1100,
+                confidence=0.95,
+            ),
+        ],
+        image_width=PAGE_W,
+        image_height=PAGE_H,
+        detector="test",
+    )
+    # Default: drop_layout_words=False. Step Layout-2b is gated, Step B2
+    # is gated. No OCR words should be dropped.
+    page.reorganize_page(layout=layout)
+
+    assert page.diagnostic_noise_dropped_count == 0
+    assert page.diagnostic_noise_dropped_words == []
+
+    # Every OCR word still on the page.
+    live_texts = {w.text for w in page.words}
+    assert live_texts == {"BALI", "KANE", "WU", "body", "text"}
+
+
 def test_noise_drop_diagnostics_count_matches_pure_minus_post():
     """Sanity check: the dropped-count must equal the difference between
-    pure-OCR snapshot word count and post-noise snapshot word count."""
+    pure-OCR snapshot word count and post-noise snapshot word count.
+    Layout-2b is gated on ``drop_layout_words=True`` so we opt in here."""
     fig_words = [
         _word("BALI", 100, 200, 140, 230),
         _word("KANE", 160, 200, 200, 230),
@@ -541,7 +608,11 @@ def test_noise_drop_diagnostics_count_matches_pure_minus_post():
         image_height=PAGE_H,
         detector="test",
     )
-    page.reorganize_page(layout=layout, drop_figure_internal_text=True)
+    page.reorganize_page(
+        layout=layout,
+        drop_figure_internal_text=True,
+        drop_layout_words=True,
+    )
 
     pure_n = len(page.diagnostic_pure_ocr.words)
     post_n = len(page.diagnostic_post_noise_removal.words)
@@ -586,7 +657,11 @@ def test_noise_drop_diagnostics_independent_of_live_page():
         image_height=PAGE_H,
         detector="test",
     )
-    page.reorganize_page(layout=layout, drop_figure_internal_text=True)
+    page.reorganize_page(
+        layout=layout,
+        drop_figure_internal_text=True,
+        drop_layout_words=True,
+    )
     assert page.diagnostic_noise_dropped_count == 1
     captured = page.diagnostic_noise_dropped_words[0]
 
@@ -636,7 +711,11 @@ def test_noise_drop_diagnostics_reset_on_subsequent_reorganize():
         image_height=PAGE_H,
         detector="test",
     )
-    page.reorganize_page(layout=layout, drop_figure_internal_text=True)
+    page.reorganize_page(
+        layout=layout,
+        drop_figure_internal_text=True,
+        drop_layout_words=True,
+    )
     assert page.diagnostic_noise_dropped_count == 1
 
     # Second call: this time pass no layout so no noise removal fires.
@@ -688,6 +767,7 @@ def test_noise_drop_diagnostics_populated_with_capture_diagnostics_false():
     page.reorganize_page(
         layout=layout,
         drop_figure_internal_text=True,
+        drop_layout_words=True,
         capture_diagnostics=False,
     )
     # Page snapshots skipped.

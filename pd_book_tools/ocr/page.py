@@ -2682,29 +2682,40 @@ class Page:
         the consumer needs the raw OCR (e.g. training data prep where a
         glyph inside a figure is still a labelled glyph).
 
-        ``drop_layout_words`` is an experimental opt-in that enables
-        figure-internal heuristic noise removal at Step B2 (in
-        conjunction with ``drop_figure_internal_text``).
-        Footnote / header / footer / abandoned regions are NEVER
+        ``drop_layout_words`` is an experimental opt-in that gates
+        **all** word-deletion paths in the pipeline. Two passes are
+        controlled by it:
+
+        * Step Layout-2b
+          (:func:`layout_aware_reorg.drop_figure_internal_words`) —
+          drops OCR lines whose words are all purely tagged
+          ``layout:figure`` (no overlapping ``layout:text``).
+        * Step B2
+          (:func:`reorganize_page_utils.drop_heuristic_figure_noise`) —
+          geometric figure-noise sweep that runs whether or not a
+          ``layout`` was supplied. Additionally requires
+          ``drop_figure_internal_text=True`` (the legacy knob) to
+          actually fire.
+
+        With the default (``drop_layout_words=False``), **no** OCR
+        words are removed by the pipeline — neither figure-internal-only
+        words (Step Layout-2b) nor figure heuristic noise (Step B2).
+        ``validate_word_preservation`` then holds end-to-end: every
+        pre-pipeline OCR word is present in the post-pipeline output.
+        Footnote / header / footer / abandoned regions are also NEVER
         dropped, regardless of this flag — only their per-word
         ``layout:*`` tags and (where mapped) the bubbled
         ``block_role_labels`` from
         :func:`bubble_block_roles_from_layout` are added so downstream
-        consumers can dispatch on them. The flag's narrowed power means
-        the only word-deletion behaviour it now controls is the
-        geometric figure-noise sweep, which is the one category where
-        OCR garbage from inside an illustration (engraving textures,
-        halftone speckle, map-interior fragments) is genuinely worth
-        excising for body-text-only consumers. ``drop_figure_internal_text``
-        keeps its independent meaning for the layout-aware
-        figure-internal word drop at Step Layout-2b. With the default
-        (``drop_layout_words=False``), the only OCR words removed by
-        the pipeline are those filtered by Step Layout-2b (when
-        ``drop_figure_internal_text=True``); the
-        ``validate_word_preservation`` invariant otherwise holds
-        end-to-end (every pre-pipeline OCR word is present in the
-        post-pipeline output), and ``pre_reorg_words`` is captured
-        *after* Step Layout-2b by design.
+        consumers can dispatch on them. ``pre_reorg_words`` is still
+        captured *after* the (now-gated) Step Layout-2b / Step B2
+        capture point by design, so the post-reorg reconciler sees an
+        unchanged frame of reference.
+
+        ``drop_figure_internal_text`` keeps its independent meaning as
+        a sub-gate on the Step B2 heuristic sweep — it has effect only
+        when ``drop_layout_words=True`` (Step Layout-2b is unaffected
+        by it).
 
         Diagnostic snapshots
         --------------------
@@ -2814,7 +2825,18 @@ class Page:
             # wraps around a figure is preserved because PP-DocLayout emits
             # a separate text region for the wrap zone, so wrap words also
             # carry ``layout:text``.
-            layout_aware_reorg.drop_figure_internal_words(self, layout)
+            #
+            # Gated behind the experimental ``drop_layout_words`` opt-in.
+            # Under the default (``drop_layout_words=False``) the pipeline
+            # never silently deletes OCR words: even a line whose words
+            # are all tagged ``layout:figure`` is preserved. The per-word
+            # ``layout:figure`` tags remain attached by
+            # ``tag_words_with_layout`` above, so downstream consumers
+            # that *want* to filter figure-internal words can still
+            # dispatch on the tags without the library having decided
+            # for them.
+            if drop_layout_words:
+                layout_aware_reorg.drop_figure_internal_words(self, layout)
 
         # Step A — image-based bounding box tightening.
         if self._cv2_numpy_page_image is not None:
