@@ -155,7 +155,7 @@ call site, not on this mapping.
 
 ---
 
-## L-12 — `_mappings.py` — `"reference"` mapped to `"list"` is semantically wrong
+## [FIXED in 1d1c245] ~~L-12 — `_mappings.py` — `"reference"` mapped to `"list"` is semantically wrong~~
 
 **File:** `pd_book_tools/layout/_mappings.py`, line 34
 
