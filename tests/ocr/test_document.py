@@ -395,7 +395,11 @@ def test_document_from_tesseract(sample_tesseract_output):
     assert doc.pages[0].height == 200
     assert doc.pages[0].ocr_provenance is not None
     assert doc.pages[0].ocr_provenance.engine == "tesseract"
-    assert doc.pages[0].ocr_provenance.models == ()  # L-15: tuple, not list
+    # L-15: tuple, not list. L-18: default ``lang="eng"`` is now recorded
+    # in the provenance so two language packs produce distinguishable
+    # records.
+    assert isinstance(doc.pages[0].ocr_provenance.models, tuple)
+    assert [m.name for m in doc.pages[0].ocr_provenance.models] == ["eng"]
     assert isinstance(doc.pages[0].ocr_provenance.engine_version, str)
 
 

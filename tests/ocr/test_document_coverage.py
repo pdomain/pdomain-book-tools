@@ -467,6 +467,63 @@ class TestFromTesseractStringFirstPage:
         assert doc.pages[0].original_ocr_tool_text == "full text"
 
 
+class TestFromTesseractRecordsLanguageInProvenance:
+    """L-18: Tesseract provenance must record the OCR language model.
+
+    Pre-fix ``tesseract_metadata["models"] = []`` was fixed at the empty
+    list, so two runs with different language packs (``eng`` vs ``deu``)
+    produced byte-identical provenance records — discoverability of
+    which language model produced which output was lost.
+    """
+
+    @staticmethod
+    def _single_word_df():
+        from pandas import DataFrame
+
+        return DataFrame(
+            {
+                "level": [1, 2, 3, 4, 5],
+                "page_num": [1, 1, 1, 1, 1],
+                "block_num": [0, 1, 1, 1, 1],
+                "par_num": [0, 0, 1, 1, 1],
+                "line_num": [0, 0, 0, 1, 1],
+                "left": [0, 10, 20, 30, 40],
+                "top": [0, 10, 20, 30, 40],
+                "width": [100, 90, 80, 70, 60],
+                "height": [200, 190, 180, 170, 160],
+                "text": ["", "", "", "", "hello"],
+                "conf": [0, 0, 0, 0, 90],
+            }
+        )
+
+    def test_lang_recorded_as_model(self):
+        df = self._single_word_df()
+        doc = Document.from_tesseract(df, lang="deu")
+        prov = doc.pages[0].ocr_provenance
+        assert prov is not None
+        names = [m.name for m in prov.models]
+        assert "deu" in names
+
+    def test_lang_default_still_recorded(self):
+        # Default lang is "eng" (Tesseract's default); we still surface it
+        # so the provenance is unambiguous about which model ran.
+        df = self._single_word_df()
+        doc = Document.from_tesseract(df)
+        prov = doc.pages[0].ocr_provenance
+        assert prov is not None
+        assert any(m.name == "eng" for m in prov.models)
+
+    def test_different_langs_produce_different_provenance(self):
+        df_a = self._single_word_df()
+        df_b = self._single_word_df()
+        doc_a = Document.from_tesseract(df_a, lang="eng")
+        doc_b = Document.from_tesseract(df_b, lang="deu")
+        prov_a = doc_a.pages[0].ocr_provenance
+        prov_b = doc_b.pages[0].ocr_provenance
+        assert prov_a is not None and prov_b is not None
+        assert prov_a.models != prov_b.models
+
+
 class TestToFromDictEmptyPages:
     def test_to_dict_empty_pages(self):
         doc = Document(source_lib="x", source_path=None, pages=[])

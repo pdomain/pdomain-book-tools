@@ -578,6 +578,8 @@ class Document:
         tesseract_output: "DataFrame",
         tesseract_string: Optional[str] = None,
         source_path: Union[str, Path, None] = None,
+        lang: str = "eng",
+        tesseract_config: Optional[str] = None,
     ) -> "Document":
         try:
             from pandas import to_numeric as pd_to_numeric
@@ -593,15 +595,28 @@ class Document:
         result = cls(source_lib="tesseract", source_path=source_path, pages=[])
 
         pytesseract_version = cls._safe_package_version("pytesseract")
+        # L-18: record the actual Tesseract language pack as a model entry.
+        # Pre-fix ``models`` was hardcoded to ``[]`` so two runs with
+        # different language packs produced byte-identical provenance and
+        # consumers could not tell which model produced which output.
+        tesseract_models: list[dict[str, Any]] = []
+        if lang:
+            tesseract_models.append({"name": str(lang)})
         tesseract_metadata: Dict[str, Any] = {
             "source_lib": "tesseract",
             "engine_version": cls._detect_tesseract_engine_version(),
-            "models": [],
+            "models": tesseract_models,
         }
+        fingerprint_parts = ["tesseract"]
         if pytesseract_version != "unknown":
-            tesseract_metadata["config_fingerprint"] = (
-                f"tesseract|pytesseract:{pytesseract_version}"
-            )
+            fingerprint_parts.append(f"pytesseract:{pytesseract_version}")
+        if tesseract_config:
+            # Include a fingerprint of the Tesseract config so the same
+            # binary + lang invoked with different ``--oem`` / ``--dpi`` /
+            # ``-c`` flags yields distinguishable provenance.
+            fingerprint_parts.append(f"config:{tesseract_config}")
+        if len(fingerprint_parts) > 1:
+            tesseract_metadata["config_fingerprint"] = "|".join(fingerprint_parts)
 
         ocr_provenance = cls._build_ocr_provenance(
             engine="tesseract", metadata=tesseract_metadata
