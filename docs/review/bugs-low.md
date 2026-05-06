@@ -219,7 +219,7 @@ directly is safe.
 
 ---
 
-## L-17 — `OCRProvenance` serialization asymmetry: empty string omitted on write, accepted on read
+## [FIXED in 23d8f7a] ~~L-17 — `OCRProvenance` serialization asymmetry: empty string omitted on write, accepted on read~~
 
 **File:** `pd_book_tools/ocr/provenance.py`, lines 41–49 vs 80–93
 
