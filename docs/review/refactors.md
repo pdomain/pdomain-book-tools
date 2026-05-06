@@ -200,7 +200,7 @@ methods for any Shapely features actually used by callers.
 
 ---
 
-## R-08 — All `__init__.py` files are empty; `utility/` has no `__init__.py` at all
+## [DEFERRED] R-08 — All `__init__.py` files are empty; `utility/` has no `__init__.py` at all
 
 **Files:**
 
