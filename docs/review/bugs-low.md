@@ -63,7 +63,7 @@ uses `>=` like the others. Pick one policy and document it.
 
 ---
 
-## L-05 — `iou()` returns `0.0` for two identical zero-area boxes
+## [FIXED in 3fd0b08] ~~L-05 — `iou()` returns `0.0` for two identical zero-area boxes~~
 
 **File:** `pd_book_tools/layout/geometry.py`, lines 14–28
 
