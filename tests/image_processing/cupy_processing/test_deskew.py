@@ -114,6 +114,29 @@ class TestAutoDeskewGpu:
         out, top, bottom = auto_deskew_gpu(img)
         assert isinstance(out, cp.ndarray)
 
+    def test_skewed_image_actually_rotates_canvas(self, cupy_module):
+        """Regression for L-36: with bottom_left_column != top_left_column,
+        the function MUST proceed past the early-return guards and rotate.
+        The previous `dist_b == dist_c` branch was unreachable dead code,
+        but if reintroduced via a bad refactor it would short-circuit and
+        return the original image unchanged, masking real skew.
+        """
+        cp = cupy_module
+        from pd_book_tools.image_processing.cupy_processing.deskew import (
+            auto_deskew_gpu,
+        )
+
+        img_np = np.zeros((200, 200), dtype=np.uint8)
+        for row, start_col in zip(range(40, 160), range(40, 160)):
+            img_np[row, start_col : start_col + 40] = 255
+        img = cp.asarray(img_np)
+        out, _, _ = auto_deskew_gpu(img)
+        # Rotation expands the canvas. If the function had short-circuited,
+        # out.shape would equal img.shape exactly.
+        assert out.shape != img.shape, (
+            "deskew with non-zero skew must rotate; canvas should grow"
+        )
+
     def test_matches_cpu_output_shape(self, cupy_module):
         """GPU deskew output shape should be within 5 pixels of CPU result."""
         cp = cupy_module
