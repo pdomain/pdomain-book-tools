@@ -874,13 +874,26 @@ def reconcile_dropped_words(
     """
     import sys  # local import: avoids polluting module top-level
 
-    post_words = [
-        w
-        for outer in final_blocks
-        for paragraph in outer.items
-        for line in paragraph.items
-        for w in (line.words if hasattr(line, "words") else [])
-    ]
+    # Walk every word reachable from ``final_blocks`` regardless of nesting
+    # depth. Earlier this was a hardcoded 3-level comprehension
+    # ``outer.items -> paragraph.items -> line.words`` (with a
+    # ``hasattr(line, "words")`` fallback) that assumed exactly
+    # ``BLOCK -> PARAGRAPH -> LINE -> WORDS``. Any other shape — e.g. a
+    # recovered/floated branch lacking the PARAGRAPH wrapper, or a
+    # multi-column block with extra BLOCK nesting — bottomed out at a
+    # ``Word`` in the place ``line`` was expected; ``hasattr(Word,
+    # "words")`` is False, so the comprehension yielded an empty list and
+    # ``reconcile_dropped_words`` reported every word as "dropped". M-13.
+    #
+    # ``Block.words`` (and ``Page.words``, which delegates to it) recurses
+    # through arbitrary BLOCKS / PARAGRAPHs / LINEs and terminates at the
+    # leaf ``WORDS`` child_type, so it covers every shape the reorganize
+    # pipeline can emit. We must NOT rely on ``page.words`` here because
+    # ``page.items`` is the LIVE tree, not the candidate ``final_blocks``
+    # we're validating — collect from each top-level block instead.
+    post_words: List[Word] = []
+    for outer in final_blocks:
+        post_words.extend(outer.words)
     errors = validate_word_preservation(pre_words, post_words)
     if not errors:
         return final_blocks
