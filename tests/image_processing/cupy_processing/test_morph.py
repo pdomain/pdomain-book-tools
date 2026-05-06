@@ -35,3 +35,51 @@ class TestCupyMorph:
         img[3:7, 3:7] = 1
         out = morph_mod.morph_fill(img, shape=(3, 3))
         assert tuple(out.shape) == (10, 10)
+
+    def test_erode_preserves_border_touching_foreground(self, cupy_morph):
+        """M-08: cv2.erode defaults to BORDER_REFLECT_101 which preserves
+        foreground pixels touching the image border. The cupy backend used
+        constant zero padding, which silently eroded those pixels away. After
+        the fix, both backends agree on a thick border-touching block.
+        """
+        import cv2
+        import numpy as np
+
+        morph_mod, cp = cupy_morph
+        # Solid block from row 0 (touches the top border) down to row 5.
+        img_np = np.zeros((10, 10), dtype=np.uint8)
+        img_np[0:6, 1:9] = 1
+        kernel_np = np.ones((3, 3), dtype=np.uint8)
+
+        cv2_eroded = cv2.erode(img_np, kernel_np, borderType=cv2.BORDER_REFLECT_101)
+        cp_eroded = cp.asnumpy(
+            morph_mod.erode(cp.asarray(img_np), cp.asarray(kernel_np))
+        )
+
+        # cv2 keeps the top row of the eroded interior; the buggy cupy backend
+        # would zero it out because the zero-padding floods the min-window.
+        assert cv2_eroded[0, 2:8].sum() > 0, "cv2 reference should preserve top row"
+        assert np.array_equal(cp_eroded, cv2_eroded), (
+            "cupy erode must match cv2 BORDER_REFLECT_101 behavior on "
+            "border-touching foreground"
+        )
+
+    def test_morph_fill_matches_cv2_on_border_blob(self, cupy_morph):
+        """M-08 parity: morph_fill on a foreground blob touching the top edge
+        should agree between cupy and cv2 backends."""
+        import cv2
+        import numpy as np
+
+        morph_mod, cp = cupy_morph
+        img_np = np.zeros((20, 20), dtype=np.uint8)
+        img_np[0:8, 4:16] = 1  # block flush against top edge
+
+        kernel_np = np.ones((3, 3), dtype=np.uint8)
+        closed = cv2.morphologyEx(img_np, cv2.MORPH_CLOSE, kernel_np)
+        cv2_out = cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel_np)
+
+        cp_out = cp.asnumpy(morph_mod.morph_fill(cp.asarray(img_np), shape=(3, 3)))
+
+        assert np.array_equal(cp_out, cv2_out), (
+            "cupy morph_fill must match cv2 morphologyEx for border-touching content"
+        )
