@@ -284,7 +284,7 @@ metadata when available.
 
 ---
 
-## M-20 — `cv2_tesseract.py` — `image_grayscale` stays `None` for RGBA / 4-channel images
+## [FIXED in bd0aef9] ~~M-20 — `cv2_tesseract.py` — `image_grayscale` stays `None` for RGBA / 4-channel images~~
 
 **File:** `pd_book_tools/ocr/cv2_tesseract.py`, lines 20–27
 

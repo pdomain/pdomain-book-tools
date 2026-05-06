@@ -409,6 +409,18 @@ now sweeps `bugs-medium.md` top-to-bottom.
   input with random alpha produces output bit-equal to running on the
   BGR-only slice — alpha is observably ignored. — fix `feb2eb8`,
   doc mark `<pending>`
+- M-20 `ocr/cv2_tesseract.py` `tesseract_ocr_cv2_image` input dispatch
+  only handled `ndim == 2` and `ndim == 3 and shape[2] == 3`. Any other
+  shape — RGBA / 4-channel BGRA, `(H, W, 1)` single-channel-as-3D,
+  accidental 4D batch — fell through with `image_grayscale = None`,
+  which then got passed to pytesseract and crashed deep inside with a
+  confusing error that did not name the actual problem. Added an
+  explicit 4-channel branch using `cvtColor(img, COLOR_BGRA2GRAY)`
+  (alpha dropped, matching cv2's documented BGRA2GRAY policy and
+  mirroring the M-18 cupy fix for cross-backend parity) plus a one-time
+  `logger.info` notice; any remaining unsupported shape now raises a
+  clear `ValueError` naming the actual `shape=` and `ndim=`. — fix
+  `bd0aef9`, doc mark `<pending>`
 - M-19 `ocr/cv2_tesseract.py` `tesseract_ocr_cv2_image` hardcoded
   `--dpi 300` in the Tesseract config regardless of input image
   resolution. Tesseract uses `--dpi` to size character-classifier
@@ -421,12 +433,11 @@ now sweeps `bugs-medium.md` top-to-bottom.
   regression tests cover dpi=150, dpi=600, and the dpi=300 default
   back-compat lock. — fix `d7f341a`, doc mark `<pending>`
 
-**Next pick:** M-20 — `ocr/cv2_tesseract.py` lines 20–27. The
-`image_grayscale` local stays `None` when an RGBA / 4-channel image
-arrives because the dispatch is `ndim == 2` or `ndim == 3 and
-shape[2] == 3` — anything else falls through and the next call passes
-`None` to pytesseract. Either add an explicit RGBA branch
-(`cvtColor(img, COLOR_BGRA2GRAY)`) or raise a clear `ValueError`.
+**Next pick:** M-21 — `ocr/cv2_tesseract.py`. The Tesseract config
+string includes `-c textord_noise_debug=1`, which forces Tesseract to
+emit noise-detection debug messages to the caller's stderr on every
+OCR call. Library code should not pollute the caller's stderr; remove
+the flag (or gate it behind an explicit debug parameter).
 
 **Workflow per iteration** (one bug per commit, no push):
 
