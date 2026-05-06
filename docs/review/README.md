@@ -723,13 +723,60 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   `object.__setattr__` instead of mutating in-place. Sibling pd-*
   repos grepped — no external `.models`-as-list consumers. —
   fix `0442d63`, doc mark `7999c1e`
+- L-16 `ocr/provenance.py` `OCRProvenance.coerce` did
+  `OCRProvenance.from_dict(value.to_dict())` when handed an existing
+  `OCRProvenance`, producing a wasteful equal-but-not-identical clone.
+  Since L-15 made the dataclass genuinely frozen (`models` is a
+  tuple), returning the input directly is safe. Test asserts identity
+  (`is`) rather than equality so a future regression to round-trip
+  would be caught. — fix `ab7e636`, doc mark `1f35861`
+- L-17 `ocr/provenance.py` `OCRProvenance.to_dict` used truthy guards
+  (`if self.engine_version`) to decide whether to include
+  `engine_version` and `config_fingerprint`. Empty strings are falsy
+  and were omitted; `from_dict` then defaulted the missing key back
+  to `None` via its `is not None` check, so an explicit
+  `engine_version=""` silently round-tripped to `None`, flipping
+  semantics from "explicit empty" to "unknown". Switched both
+  guards to `is not None`. — fix `23d8f7a`, doc mark `aeb6ccb`
+- L-18 `ocr/document.py` `Document.from_tesseract` hardcoded
+  `tesseract_metadata["models"] = []`, so two runs invoked with
+  different language packs (`eng` vs `deu`) produced byte-identical
+  provenance records — discoverability of which model produced which
+  output was lost. Added `lang: str = "eng"` and
+  `tesseract_config: Optional[str] = None` parameters; `lang` is
+  recorded as the model name and `tesseract_config` (when provided)
+  is appended to the config fingerprint. `tesseract_ocr_cv2_image`
+  plumbs both through; the previously hardcoded `lang="eng"` is now
+  configurable end-to-end. Updated three pre-existing
+  `assert_called_once_with` checks in `test_cv2_tesseract.py` and
+  the `models == ()` lock in `test_document_from_tesseract`. —
+  fix `c643ebd`, doc mark `f136a0f`
+- L-19 `ocr/document.py` `Document.from_doctr_output` did
+  `word_data.get("confidence", 0.0)` for every DocTR word, conflating
+  `0.0` ("0% confidence — near-certainty of error") with `None`
+  ("confidence unknown"). `Word.ocr_confidence` is explicitly typed
+  `float | None`. Confidence-based filters and quality reports were
+  silently polluted with phantom certain-error scores for any DocTR
+  word lacking the field. Defaulted to `None`. — fix `c5fcf71`,
+  doc mark `1cfa432`
+- L-20 `ocr/ground_truth_matching.py`
+  `update_line_match_difflib_lines_equal` had a dead
+  `if word_idx >= len(ground_truth_line): raise ValueError(...)`
+  inside the per-word loop. The pre-loop length-equality check
+  already raises when the lengths differ, and `word_idx` comes from
+  `enumerate(line.words)`, so once that check passes `word_idx`
+  cannot exceed `len(ground_truth_line) - 1`. Removed the dead
+  guard. Property-check test asserts the dead error string is
+  absent from the function source; happy-path behavioral lock
+  added so the removal can't silently break ground-truth
+  assignment. — fix `e415bd0`, doc mark `be5cfa7`
 
-**Next pick:** L-16 — `ocr/provenance.py` `OCRProvenance.coerce`
-performs an unnecessary dict round-trip (`from_dict(value.to_dict())`)
-when the input is already an `OCRProvenance`. Since the class is
-frozen, returning `value` directly is safe. Add an
-`if isinstance(value, OCRProvenance): return value` short-circuit
-before the round-trip.
+**Next pick:** L-21 — `ocr/ground_truth_matching_helpers/match_type.py`
+defines `WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION` (line 8) but it is never
+assigned to any word in `ground_truth_matching.py`. The `"TODO: ..."`
+string following it is an orphaned expression (not a docstring) so the
+intent is not even captured. Either implement the assignment in the
+matching pipeline or remove the enum member.
 
 **Workflow per iteration** (one bug per commit, no push):
 
