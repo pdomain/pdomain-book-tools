@@ -11,7 +11,11 @@ def func_log_excution_time(logger: logging.Logger, logLevel=logging.DEBUG):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             caller = inspect.stack()[1].function  # Get caller function
-            logging.log(
+            # L-28: route the call-site log line through the injected
+            # ``logger`` rather than the root ``logging`` module so the
+            # caller's per-module logger configuration (level, handlers,
+            # propagation) is honoured.
+            logger.log(
                 logLevel,
                 f"Function {func.__name__} called from {caller} with args: {args}, kwargs: {kwargs}",
             )
