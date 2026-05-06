@@ -38,10 +38,18 @@ remembering prior turns. Update this when an iteration completes (after the
 - H-01 `encoding.py` BGR/RGB swap — fix `702d402`, doc mark `b4f1140`
 - H-02 `pgdp_results.py` unescaped diacritic `.` regexes — fix `6b1ff5b`, doc mark `466d1df`
 - H-03 `ipynb_widgets.py` malformed HTML (operator-precedence) — fix `1f26286`, doc mark `e0da955`
+- H-04 `page.py` `Page.recompute_bounding_box` was reported missing but was
+  actually implemented in commit `2248366` (April 2025); review was stale —
+  regression-locked via test in fix `bd4ece9`, doc mark `<pending>`
 
-**Next pick:** H-04 — `page.py` `recompute_bounding_box` undefined, called from
-page.py:752/953/967/998. Define it as
-`BoundingBox.union([b.bounding_box for b in self._items if b.bounding_box is not None])`.
+**Next pick:** H-05 — `bounding_box.py` `_vertical_crop` (line ~649) discards
+`original_is_normalized` from `_extract_roi` and unconditionally calls
+`.normalize(img_w, img_h)`, flipping pixel-space boxes into normalized space.
+`word.py` `crop_bottom` / `crop_top` (lines 1080–1108) then store the
+corrupted box back. Fix: thread `original_is_normalized` through and use
+`_finalize_pixel_bbox` (as `refine` does) instead of the unconditional
+`.normalize()`. Also fix the swapped `keep='top'`/`keep='bottom'` mapping in
+the docstring at ~line 612.
 
 **Workflow per iteration** (one bug per commit, no push):
 

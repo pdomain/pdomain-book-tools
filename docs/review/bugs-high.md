@@ -52,7 +52,7 @@ The test only checks the return type (`ipywidgets.HTML`), so this is undetected 
 
 ---
 
-## H-04 — `Page.recompute_bounding_box()` is never defined → `AttributeError` on every editing operation
+## [FIXED in bd4ece9] ~~H-04 — `Page.recompute_bounding_box()` is never defined → `AttributeError` on every editing operation~~
 
 **File:** `pd_book_tools/ocr/page.py`, call sites at lines 752, 953, 967, 998, and others
 **Affects:** `merge_paragraphs`, `delete_paragraphs`, `split_paragraphs`,
