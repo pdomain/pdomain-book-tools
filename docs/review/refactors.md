@@ -278,7 +278,7 @@ duplication. R-10's actual concern is resolved.
 
 ---
 
-## R-11 — `BoundingBox.from_dict(self.to_dict())` is used as a copy idiom
+## [FIXED in 90caa36] ~~R-11 — `BoundingBox.from_dict(self.to_dict())` is used as a copy idiom~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 579, 585, 617, 625, 638
 
