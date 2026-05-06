@@ -89,7 +89,7 @@ mapping backwards — fix that comment at the same time.
 
 ---
 
-## H-06 — `crop_bottom` / `crop_top` can store `None` as `self.bounding_box`
+## [FIXED in 645c825] ~~H-06 — `crop_bottom` / `crop_top` can store `None` as `self.bounding_box`~~
 
 **File:** `pd_book_tools/ocr/word.py`, lines 1080–1108
 **Affects:** any word whose image region is blank
