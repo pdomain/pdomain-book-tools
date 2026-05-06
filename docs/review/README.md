@@ -961,13 +961,81 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   intact. Regression test exercises the dot-in-directory case. —
   fix `5973dfe`, doc mark `0c410a9`
 
-**Next pick:** L-36 — `image_processing/cupy_processing/deskew.py`
-contains an unreachable dead-code branch: after the guard
-`if bottom_left_column == top_left_column: return` on line 61,
-the later `if dist_b == dist_c: return ...` on lines 68–70 is
-mathematically impossible (and also a fragile floating-point `==`
-comparison). Fix: remove lines 68–70. (`bugs-low.md` has 40 entries
-total — 35/40 cleared, 5 remain.)
+- L-36 `image_processing/cupy_processing/deskew.py` `auto_deskew_gpu`
+  contained an unreachable `if dist_b == dist_c: return` branch. After
+  the earlier `bottom_left_column == top_left_column` guard, the
+  columns are guaranteed unequal so
+  `(bottom_left_column - top_left_column)**2 > 0` and `dist_c > dist_b`
+  strictly — the float `==` check could never fire and a `==` on
+  float-derived values would be fragile if math ever changed. Removed
+  the dead block; replaced with a comment documenting the invariant.
+  Regression test
+  `test_skewed_image_actually_rotates_canvas` locks the active
+  behavior: a real-skew input must produce a canvas-grown output (i.e.,
+  the function must not short-circuit before the rotate call). —
+  fix `cd0138d`, doc mark `<pending>`
+- L-37 `geometry/bounding_box.py` `_vertical_crop` contained
+  `y2 = y1 + (y - 0)` — a no-op left over from a refactor that
+  reduced an arithmetic expression but didn't clean up syntax. The
+  sibling branch (`keep == 'top'`) already used the clean
+  `y1 = y1 + y` form. Behaviorally equivalent simplification; existing
+  166-test geometry suite covers the path. — fix `8ca2024`, doc mark
+  `<pending>`
+- L-38 STALE — review claimed `Word.split` aliases
+  `text_style_label_scopes` between parent and child Words. Verified
+  empirically: `normalize_text_style_label_scopes` always builds a
+  fresh `{label: "whole" for ...}` dict, so the constructor never
+  stores the caller's container. Same for `text_style_labels`,
+  `word_labels`, and `word_components` — all normalize helpers return
+  fresh containers. Bug doesn't reproduce. Added
+  `test_split_does_not_alias_mutable_state_between_words` to lock the
+  current safe behavior — if a future refactor of any normalize helper
+  ever returns the input directly, this test will catch it. —
+  regression-lock `98c0674`, doc mark `<pending>`
+- L-39 `pyproject.toml` `isort` was in `[project].dependencies` despite
+  zero `import isort` / `from isort` references in source or tests
+  (it's a CLI / pre-commit tool only). Moved to `[dependency-groups].dev`
+  so end users don't pull a dev-only tool into their site-packages.
+  Same install footprint for contributors (`uv sync` resolves dev
+  group), smaller install for downstream pd-* consumers. — fix
+  `5f2400f`, doc mark `<pending>`
+- L-40 `pyproject.toml` `cupy-cuda12x` (and `opencv-cuda`) were
+  mandatory runtime deps — CUDA-12-only binaries that fail to install
+  on macOS, CPU-only Linux, or stock CI runners. Moved to
+  `[project.optional-dependencies] gpu = [...]` so install becomes
+  `pip install pd-book-tools[gpu]` for users who want GPU support.
+  The `_cupy_compat.py` shim was already in place: every
+  cupy_processing submodule uses `from ._cupy_compat import cp,
+  require_cupy` plus a `try: from cupyx... except ImportError: ...`
+  guard for the cupyx submodule it needs, so package import stays
+  clean on CPU-only installs. Added
+  `test_cupy_compat.py` (20 tests) regression-locking the contract:
+  (1) `_cupy_compat` imports cleanly with cupy missing,
+  (2) `require_cupy()` raises `ImportError` mentioning
+  `pd-book-tools[gpu]`, (3) all 16 cupy_processing submodules import
+  cleanly with cupy missing (parametrized — catches any future
+  unguarded top-level `import cupy`), (4) calling a public GPU entry
+  point with cupy missing produces the install-hint error rather than
+  a confusing `AttributeError`. The fixture patches
+  `builtins.__import__` and re-imports from a clean `sys.modules`
+  state; teardown restores the live cupy install so GPU-marked tests
+  in the same session keep working. NB: `uv lock` not refreshed in
+  these commits — coordinate manually so downstream lockfile bumps
+  stay aligned. — fix `5f2400f`, regression-lock `33fec7a`,
+  doc mark `<pending>`
+
+**Bug sweep complete.** All 40 entries in `bugs-low.md` processed: 37
+fixed, 2 stale-but-regression-locked (L-23 partly stale + partly
+deferred, L-38 fully stale), 1 (L-23) with a deferred refactor
+component noted in the entry body. Combined with bugs-high (21/21)
+and bugs-medium (30/30), the full ~91-bug review is cleared.
+
+**Next pick:** `refactors.md` R-01 — refactor sweep is the next phase.
+Same per-iteration workflow (verify-first, regression-lock-on-stale,
+one commit per item) applies, but refactors are structural / API /
+design improvements rather than bug fixes — expect each to need more
+discussion of trade-offs in the commit body, and some may require
+coordinated downstream changes in pd-* consumer repos.
 
 **Workflow per iteration** (one bug per commit, no push):
 
