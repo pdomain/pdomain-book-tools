@@ -101,3 +101,47 @@ class TestRegistry:
         det = get_detector("contour")
         layout = det.detect(_page_with_filled_rect())
         assert layout.inference_ms >= 0
+
+    def test_concurrent_get_detector_builds_once(self, monkeypatch):
+        # L-33: under concurrent first-time access, two threads could both
+        # see a cache miss and both call _build. For the model adapter this
+        # means a double 132 MB download and double VRAM allocation. The
+        # double-checked-lock fix should funnel concurrent first calls
+        # through a single _build invocation.
+        import threading
+
+        from pd_book_tools.layout import registry as registry_mod
+
+        clear_detector_cache()
+        build_calls = {"n": 0}
+        build_started = threading.Event()
+        release_build = threading.Event()
+        original_build = registry_mod._build
+
+        def slow_build(*args, **kwargs):
+            build_calls["n"] += 1
+            build_started.set()
+            # Hold the lock long enough for other threads to pile up on it.
+            release_build.wait(timeout=5.0)
+            return original_build(*args, **kwargs)
+
+        monkeypatch.setattr(registry_mod, "_build", slow_build)
+
+        results: list = []
+
+        def caller():
+            results.append(get_detector("contour"))
+
+        threads = [threading.Thread(target=caller) for _ in range(8)]
+        for t in threads:
+            t.start()
+        # Wait for the first thread to enter _build, then let it finish.
+        assert build_started.wait(timeout=5.0)
+        release_build.set()
+        for t in threads:
+            t.join(timeout=5.0)
+
+        assert build_calls["n"] == 1
+        assert len(results) == 8
+        # All callers receive the same memoised instance.
+        assert all(r is results[0] for r in results)

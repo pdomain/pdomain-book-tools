@@ -6,6 +6,7 @@ returns the cached one. This matters because the model adapter loads a
 ~132 MB checkpoint and we do not want to reload it per-page.
 """
 
+import threading
 import time
 from logging import getLogger
 from typing import Optional, Tuple
@@ -22,6 +23,11 @@ logger = getLogger(__name__)
 
 _CacheKey = Tuple[str, str, float, Optional[str]]
 _DETECTOR_CACHE: dict[_CacheKey, LayoutDetector] = {}
+# Guards _DETECTOR_CACHE under concurrent access. Without this, two threads
+# can both miss the cache and both call _build(); for PPDocLayoutPlusLDetector
+# that triggers a double model download (~132 MB) and double VRAM allocation,
+# potentially OOMing on smaller GPUs.
+_CACHE_LOCK = threading.Lock()
 
 
 class _TimingDetector:
@@ -75,18 +81,27 @@ def get_detector(
     core dependency (no install extra needed).
     """
     cache_key: _CacheKey = (key, device, confidence, checkpoint_path)
+    # Fast path: lock-free read for the common warm-cache case. dict.get is
+    # atomic under the GIL, so this is safe.
     cached = _DETECTOR_CACHE.get(cache_key)
     if cached is not None:
         return cached
-    inner = _build(key, device, confidence, checkpoint_path)
-    wrapped = _TimingDetector(inner)
-    _DETECTOR_CACHE[cache_key] = wrapped
-    return wrapped
+    # Slow path: serialize the build so concurrent first-time callers don't
+    # race into _build(). Re-check under the lock (double-checked locking).
+    with _CACHE_LOCK:
+        cached = _DETECTOR_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
+        inner = _build(key, device, confidence, checkpoint_path)
+        wrapped = _TimingDetector(inner)
+        _DETECTOR_CACHE[cache_key] = wrapped
+        return wrapped
 
 
 def clear_detector_cache() -> None:
     """Drop all memoised adapters. Mainly useful in tests."""
-    _DETECTOR_CACHE.clear()
+    with _CACHE_LOCK:
+        _DETECTOR_CACHE.clear()
 
 
 __all__ = ["clear_detector_cache", "get_detector"]
