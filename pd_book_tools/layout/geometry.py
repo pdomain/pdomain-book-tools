@@ -12,7 +12,25 @@ from pd_book_tools.layout.types import LayoutRegion, RegionType
 
 
 def iou(a: LayoutRegion, b: LayoutRegion) -> float:
-    """Intersection-over-union for two regions. Returns 0.0 if either is degenerate."""
+    """Intersection-over-union for two regions.
+
+    Returns 0.0 if either input is degenerate (zero width or zero height),
+    *including the case where two identical zero-area boxes are compared*.
+
+    The mathematical IoU of two identical sets is 1.0 even when they have
+    zero measure, but layout code here uses IoU as a "do these rectangles
+    meaningfully overlap" signal — and a pair of zero-area boxes carries no
+    spatial coverage to overlap on. Treating them as non-overlapping
+    (returning 0.0) is the intentional convention for this module so
+    deduplication / cluster passes don't collapse degenerate point-regions
+    against each other. Callers that need exact-equality detection on
+    layout regions should compare coordinates directly, not via IoU.
+
+    The 0.0 floor is enforced two ways: the intersection-area early
+    return (`if inter <= 0`) catches mismatched zero-area inputs; the
+    union-area early return (`if union <= 0`) catches the matched case,
+    where both inputs collapse to the same point/line.
+    """
     inter_l = max(a.L, b.L)
     inter_t = max(a.T, b.T)
     inter_r = min(a.R, b.R)
@@ -24,6 +42,8 @@ def iou(a: LayoutRegion, b: LayoutRegion) -> float:
         return 0.0
     union = a.area + b.area - inter
     if union <= 0:
+        # Both inputs are zero-area and coincident. By module convention
+        # (see docstring) this is not a meaningful overlap signal.
         return 0.0
     return inter / union
 
