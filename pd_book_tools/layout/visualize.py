@@ -19,7 +19,7 @@ from pd_book_tools.layout.types import PageLayout
 # Color per region type (BGR for cv2). Anything not listed falls back to gray.
 # Chosen to be distinguishable on both light and dark scans.
 _COLORS_BGR: dict[str, tuple[int, int, int]] = {
-    "text": (200, 200, 60),  # cyan-ish
+    "text": (200, 200, 60),  # yellow-green (BGR). L-10 historical: was "cyan-ish"
     "title": (30, 200, 255),  # gold
     "section": (50, 220, 255),  # gold-light
     "list": (200, 100, 200),  # pink

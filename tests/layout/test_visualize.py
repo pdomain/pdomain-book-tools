@@ -1,10 +1,31 @@
 """Tests for ``pd_book_tools.layout.visualize.draw_layout_overlay``."""
 
+import inspect
+
 import numpy as np
 import pytest
 
+from pd_book_tools.layout import visualize as visualize_module
 from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
 from pd_book_tools.layout.visualize import draw_layout_overlay
+
+
+def test_text_color_comment_does_not_claim_cyan():
+    """L-10: BGR (200, 200, 60) is yellow-green, not cyan-ish (cyan in BGR is
+    (255, 255, 0)). The original comment was misleading; this test prevents
+    a future edit from re-introducing the wrong claim."""
+    src = inspect.getsource(visualize_module)
+    text_lines = [
+        line for line in src.splitlines() if line.strip().startswith('"text":')
+    ]
+    assert text_lines, 'expected a "text" entry in _COLORS_BGR'
+    for line in text_lines:
+        # Strip out the "pre-L-10" historical breadcrumb so the regression
+        # only fires on a *new* claim of cyan.
+        before_l10 = line.split("L-10")[0]
+        assert "cyan" not in before_l10.lower(), (
+            f"misleading 'cyan' description present in: {line}"
+        )
 
 
 def _write_dummy_png(path):
