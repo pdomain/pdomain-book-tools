@@ -206,7 +206,7 @@ convert any incoming list to a tuple.
 
 ---
 
-## L-16 — `OCRProvenance.coerce` performs an unnecessary dict round-trip
+## [FIXED in ab7e636] ~~L-16 — `OCRProvenance.coerce` performs an unnecessary dict round-trip~~
 
 **File:** `pd_book_tools/ocr/provenance.py`, lines 96–105
 
