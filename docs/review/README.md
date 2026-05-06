@@ -506,11 +506,20 @@ now sweeps `bugs-medium.md` top-to-bottom.
   `pretrained_backbone` kwargs are preserved for back-compat and
   still flow to the predictor wrappers below. — fix `67f9d2d`, doc
   mark `<pending>`
+- M-26 `ocr/ground_truth_matching_helpers/character_groups.py`
+  `DASHES`, `QUOTES`, `PRIMES`, and `QUOTES_AND_PRIMES` were built via
+  `list(set(...))`. Python `set` iteration order depends on
+  `PYTHONHASHSEED`, so the resulting list ordering varied across
+  interpreter runs and tied-variant selection in
+  `ground_truth_matching` resolved differently on identical inputs.
+  Switched all four sites to `list(dict.fromkeys(...))` (Python 3.7+
+  guarantees dict insertion order). Added
+  `tests/ocr/test_character_groups.py` asserting the exact ordered
+  values so future edits can't regress to set-based dedup. — fix
+  `e5c03ac`, doc mark `<pending>`
 
-**Next pick:** M-26 — `ocr/ground_truth_matching_helpers/character_groups.py`.
-`DASHES`, `QUOTES`, `PRIMES` constructed via `list(set(...))` —
-non-deterministic iteration order causes different tied-variant
-results across runs. Fix: `list(dict.fromkeys(...))`.
+**Next pick:** M-27 — `image_processing/cupy_processing/canvas.py`.
+Hard dependency on `cv2_processing.canvas` for the `Alignment` enum.
 
 **Workflow per iteration** (one bug per commit, no push):
 

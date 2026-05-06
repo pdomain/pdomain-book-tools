@@ -362,7 +362,7 @@ the intent was to skip — not to insert a dead variant.
 
 ---
 
-## M-26 — `character_groups.py` — `DASHES`, `QUOTES`, `PRIMES` ordering is non-deterministic
+## [FIXED in e5c03ac] ~~M-26 — `character_groups.py` — `DASHES`, `QUOTES`, `PRIMES` ordering is non-deterministic~~
 
 **File:** `pd_book_tools/ocr/ground_truth_matching_helpers/character_groups.py`, lines 14–26
 
