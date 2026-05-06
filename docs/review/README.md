@@ -476,6 +476,20 @@ now sweeps `bugs-medium.md` top-to-bottom.
   preserved on `__cause__` so the underlying torch traceback remains
   available. Two regression tests cover the detection and recognition
   paths. — fix `5773daf`, doc mark `<pending>`
+- M-25 `ocr/ground_truth_matching.py`
+  `_build_current_work_gt_line_from_prev` returned `""` when the
+  previous-line boundary character at
+  `previous_ground_truth_text[-prev_char_count]` was a space, inserting
+  a zero-score dead variant into the candidates list. The scoring
+  filtered it out so no wrong result was produced, but the intent was
+  to skip prepending from the previous line, not to materialize an
+  empty candidate. Fixed to return `ground_truth_text` (matching the
+  `prev_char_count=0` case, observably equivalent for the scorer
+  without polluting the candidate list). Updated the prior test that
+  had locked in the buggy `""` return; added a no-silent-drop
+  adjacent invariant exercising the full pipeline. Verified
+  independent of the H-21 `try_matching_combined_words` quote-gate
+  fix at line ~610. — fix `3950457`, doc mark `<pending>`
 - M-24 `ocr/doctr_support.py` `get_finetuned_torch_doctr_predictor`
   built both detection and recognition models via `_build_arch(...,
   pretrained=True)` (literal True for det; via the public
@@ -493,10 +507,10 @@ now sweeps `bugs-medium.md` top-to-bottom.
   still flow to the predictor wrappers below. — fix `67f9d2d`, doc
   mark `<pending>`
 
-**Next pick:** M-25 — `ocr/ground_truth_matching.py`.
-`_build_current_work_gt_line_from_prev` returns `""` on a space
-boundary (per bugs-medium.md M-25 entry, lines 351-364). Verify
-the symptom is real before writing the fix.
+**Next pick:** M-26 — `ocr/ground_truth_matching_helpers/character_groups.py`.
+`DASHES`, `QUOTES`, `PRIMES` constructed via `list(set(...))` —
+non-deterministic iteration order causes different tied-variant
+results across runs. Fix: `list(dict.fromkeys(...))`.
 
 **Workflow per iteration** (one bug per commit, no push):
 

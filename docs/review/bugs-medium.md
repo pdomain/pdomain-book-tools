@@ -348,7 +348,7 @@ of them. The download is pure waste.
 
 ---
 
-## M-25 — `ground_truth_matching.py` — `_build_current_work_gt_line_from_prev` returns `""` on space boundary
+## [FIXED in 3950457] ~~M-25 — `ground_truth_matching.py` — `_build_current_work_gt_line_from_prev` returns `""` on space boundary~~
 
 **File:** `pd_book_tools/ocr/ground_truth_matching.py`, lines 1026–1036
 
