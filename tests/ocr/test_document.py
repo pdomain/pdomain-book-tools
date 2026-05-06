@@ -239,3 +239,63 @@ def test_document_from_tesseract_skips_nan_text_rows():
     )
     # The Hello word is preserved as-is.
     assert "Hello" in word_texts
+
+
+def test_document_from_tesseract_handles_noncontiguous_block_numbers():
+    """Regression test for H-18.
+
+    Tesseract's hierarchy fields (``block_num``, ``par_num``, ``line_num``)
+    are *not* guaranteed to be a contiguous 1..N sequence. Tesseract may
+    skip numbers when intermediate regions are empty, dropped as noise, or
+    filtered out earlier in the pipeline. The reconstruction in
+    ``Document.from_tesseract`` must use the actual ``block_num`` /
+    ``par_num`` / ``line_num`` values from the DataFrame rows, not the
+    positional ``enumerate`` index, otherwise child rows are filtered
+    against the wrong parent and entire branches of the hierarchy vanish.
+
+    This test exercises the worst case: blocks ``1`` and ``3`` (no block
+    ``2``), with the second block's paragraph numbered ``5`` (not ``1``)
+    and that paragraph's line numbered ``2`` (not ``1``). The pre-fix
+    positional code finds block ``1``'s "Hello" but loses block ``3``'s
+    "World" entirely because the inner filters look for ``block_num == 2``,
+    ``par_num == 1``, ``line_num == 1`` — none of which exist.
+    """
+    df = DataFrame(
+        {
+            # Page row, two block rows (1 and 3 — no 2!), paragraph rows
+            # within each block (par 1 in block 1, par 5 in block 3),
+            # line rows (line 1 in block 1/par 1; line 2 in block 3/par 5),
+            # word rows ("Hello" in block 1; "World" in block 3).
+            "level": [1, 2, 2, 3, 3, 4, 4, 5, 5],
+            "page_num": [1, 1, 1, 1, 1, 1, 1, 1, 1],
+            "block_num": [0, 1, 3, 1, 3, 1, 3, 1, 3],
+            "par_num": [0, 0, 0, 1, 5, 1, 5, 1, 5],
+            "line_num": [0, 0, 0, 0, 0, 1, 2, 1, 2],
+            "left": [0, 10, 200, 20, 210, 30, 220, 40, 230],
+            "top": [0, 10, 10, 20, 20, 30, 30, 40, 40],
+            "width": [400, 90, 90, 80, 80, 70, 70, 60, 60],
+            "height": [200, 190, 190, 180, 180, 170, 170, 160, 160],
+            "text": ["", "", "", "", "", "", "", "Hello", "World"],
+            "conf": [0, 0, 0, 0, 0, 0, 0, 95, 90],
+        }
+    )
+
+    doc = Document.from_tesseract(df)
+
+    # Both words must be ingested — neither branch of the hierarchy may
+    # be silently dropped because of non-contiguous numbering.
+    word_texts = sorted(w.text for w in doc.pages[0].words)
+    assert word_texts == ["Hello", "World"], (
+        f"Non-contiguous block_num/par_num/line_num caused word loss: got {word_texts}"
+    )
+
+    # And the hierarchy must be correctly partitioned: two blocks, each
+    # with exactly one word.
+    page = doc.pages[0]
+    assert len(page.items) == 2, (
+        f"Expected 2 blocks (block_num 1 and 3), got {len(page.items)}"
+    )
+    block_word_counts = [len(list(b.words)) for b in page.items]
+    assert block_word_counts == [1, 1], (
+        f"Words mis-grouped across blocks: per-block counts {block_word_counts}"
+    )

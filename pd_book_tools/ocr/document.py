@@ -571,7 +571,14 @@ class Document:
                 tesseract_output["page_num"] == page_idx + 1
             )
             block_filtered = tesseract_output.where(block_filter).dropna(how="all")
-            for block_idx, block_row in enumerate(block_filtered.itertuples()):
+            # H-18: Tesseract's block_num / par_num / line_num are NOT
+            # guaranteed to be a contiguous 1..N sequence — Tesseract may
+            # skip numbers when intermediate regions are empty or dropped.
+            # Use the actual values from the DataFrame row (block_row.block_num
+            # etc.) rather than the positional ``enumerate`` index, otherwise
+            # child rows are filtered against the wrong parent and entire
+            # branches of the hierarchy silently disappear.
+            for block_row in block_filtered.itertuples():
                 left, top, width, height = (
                     cls.safe_float(block_row.left),
                     cls.safe_float(block_row.top),
@@ -579,19 +586,18 @@ class Document:
                     cls.safe_float(block_row.height),
                 )
                 block_bounding_box = BoundingBox.from_ltwh(left, top, width, height)
+                block_num_value = block_row.block_num
 
                 paragraphs = []
                 paragraph_filter = (
                     (tesseract_output["level"] == 3.0)
                     & (tesseract_output["page_num"] == page_idx + 1)
-                    & (tesseract_output["block_num"] == block_idx + 1)
+                    & (tesseract_output["block_num"] == block_num_value)
                 )
                 paragraph_filtered = tesseract_output.where(paragraph_filter).dropna(
                     how="all"
                 )
-                for paragraph_idx, paragraph_row in enumerate(
-                    paragraph_filtered.itertuples()
-                ):
+                for paragraph_row in paragraph_filtered.itertuples():
                     left, top, width, height = (
                         cls.safe_float(paragraph_row.left),
                         cls.safe_float(paragraph_row.top),
@@ -601,18 +607,19 @@ class Document:
                     paragraph_bounding_box = BoundingBox.from_ltwh(
                         left, top, width, height
                     )
+                    par_num_value = paragraph_row.par_num
 
                     lines = []
                     line_filter = (
                         (tesseract_output["level"] == 4.0)
                         & (tesseract_output["page_num"] == page_idx + 1)
-                        & (tesseract_output["block_num"] == block_idx + 1)
-                        & (tesseract_output["par_num"] == paragraph_idx + 1)
+                        & (tesseract_output["block_num"] == block_num_value)
+                        & (tesseract_output["par_num"] == par_num_value)
                     )
                     line_filtered = tesseract_output.where(line_filter).dropna(
                         how="all"
                     )
-                    for line_idx, line_row in enumerate(line_filtered.itertuples()):
+                    for line_row in line_filtered.itertuples():
                         left, top, width, height = (
                             cls.safe_float(line_row.left),
                             cls.safe_float(line_row.top),
@@ -622,14 +629,15 @@ class Document:
                         line_bounding_box = BoundingBox.from_ltwh(
                             left, top, width, height
                         )
+                        line_num_value = line_row.line_num
 
                         words = []
                         word_filter = (
                             (tesseract_output["level"] == 5.0)
                             & (tesseract_output["page_num"] == page_idx + 1)
-                            & (tesseract_output["block_num"] == block_idx + 1)
-                            & (tesseract_output["par_num"] == paragraph_idx + 1)
-                            & (tesseract_output["line_num"] == line_idx + 1)
+                            & (tesseract_output["block_num"] == block_num_value)
+                            & (tesseract_output["par_num"] == par_num_value)
+                            & (tesseract_output["line_num"] == line_num_value)
                         )
                         word_filtered = tesseract_output.where(word_filter).dropna(
                             how="all"
