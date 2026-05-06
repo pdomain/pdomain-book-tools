@@ -2,6 +2,7 @@ from .canvas import (
     map_content_onto_scaled_canvas_gpu,
     np_uint8_map_content_onto_scaled_canvas,
 )
+from .color_to_gray import cupy_color_to_gray, np_uint8_color_to_gray
 from .colors import (
     bgr_to_gray_gpu,
     bgr_to_rgb_gpu,
@@ -11,7 +12,6 @@ from .colors import (
     np_uint8_gray_to_bgr,
     rgb_to_bgr_gpu,
 )
-from .colorToGray import cupy_colorToGray, np_uint8_float_colorToGray
 from .contours import (
     contour_size_stats_gpu,
     np_uint8_remove_small_contours,
@@ -55,8 +55,8 @@ from .whitespace import (
 __all__ = [
     "map_content_onto_scaled_canvas_gpu",
     "np_uint8_map_content_onto_scaled_canvas",
-    "cupy_colorToGray",
-    "np_uint8_float_colorToGray",
+    "cupy_color_to_gray",
+    "np_uint8_color_to_gray",
     "bgr_to_gray_gpu",
     "bgr_to_rgb_gpu",
     "gray_to_bgr_gpu",

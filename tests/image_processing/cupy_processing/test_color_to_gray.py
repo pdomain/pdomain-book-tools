@@ -1,4 +1,4 @@
-"""Tests for cupy_processing.colorToGray module."""
+"""Tests for cupy_processing.color_to_gray module."""
 
 import numpy as np
 import pytest
@@ -6,7 +6,7 @@ import pytest
 
 @pytest.fixture
 def cupy_color_to_gray(cupy_module):
-    from pd_book_tools.image_processing.cupy_processing import colorToGray as mod
+    from pd_book_tools.image_processing.cupy_processing import color_to_gray as mod
 
     return mod, cupy_module
 
@@ -15,7 +15,7 @@ class TestCupyColorToGray:
     def test_uniform_color_converts(self, cupy_color_to_gray):
         mod, cp = cupy_color_to_gray
         img = cp.full((20, 20, 3), 0.5, dtype=cp.float32)
-        out = mod.cupy_colorToGray(
+        out = mod.cupy_color_to_gray(
             img, radius=5, samples=2, iterations=2, batch_size=10
         )
         assert out.shape == (20, 20)
@@ -24,7 +24,7 @@ class TestCupyColorToGray:
     def test_uniform_color_with_shadows(self, cupy_color_to_gray):
         mod, cp = cupy_color_to_gray
         img = cp.full((20, 20, 3), 0.7, dtype=cp.float32)
-        out = mod.cupy_colorToGray(
+        out = mod.cupy_color_to_gray(
             img,
             radius=5,
             samples=2,
@@ -42,7 +42,9 @@ class TestCupyColorToGray:
         mod, cp = cupy_color_to_gray
         img = cp.full((20, 20), 0.5, dtype=cp.float32)
         with pytest.raises(ValueError, match="2-D grayscale|3-channel|ndim"):
-            mod.cupy_colorToGray(img, radius=5, samples=2, iterations=2, batch_size=10)
+            mod.cupy_color_to_gray(
+                img, radius=5, samples=2, iterations=2, batch_size=10
+            )
 
     def test_accepts_4channel_rgba_dropping_alpha(self, cupy_color_to_gray):
         """M-18 regression: a 4-channel RGBA input is accepted (matching
@@ -60,11 +62,11 @@ class TestCupyColorToGray:
         rgba = cp.concatenate([rgb, alpha], axis=2)
 
         cp.random.seed(42)
-        out_rgba = mod.cupy_colorToGray(
+        out_rgba = mod.cupy_color_to_gray(
             rgba, radius=5, samples=2, iterations=2, batch_size=10
         )
         cp.random.seed(42)
-        out_rgb = mod.cupy_colorToGray(
+        out_rgb = mod.cupy_color_to_gray(
             rgb, radius=5, samples=2, iterations=2, batch_size=10
         )
         assert out_rgba.shape == (20, 20)
@@ -76,14 +78,16 @@ class TestCupyColorToGray:
         mod, cp = cupy_color_to_gray
         img = cp.full((20, 20, 1), 0.5, dtype=cp.float32)
         with pytest.raises(ValueError, match="3 channels|channel"):
-            mod.cupy_colorToGray(img, radius=5, samples=2, iterations=2, batch_size=10)
+            mod.cupy_color_to_gray(
+                img, radius=5, samples=2, iterations=2, batch_size=10
+            )
 
 
 class TestNpUint8FloatColorToGray:
     def test_returns_uint8_grayscale(self, cupy_color_to_gray):
         mod, _ = cupy_color_to_gray
         img = np.full((20, 20, 3), 128, dtype=np.uint8)
-        out = mod.np_uint8_float_colorToGray(
+        out = mod.np_uint8_color_to_gray(
             img, radius=5, samples=2, iterations=2, batch_size=10
         )
         assert out.dtype == np.uint8
@@ -97,12 +101,12 @@ class TestNpUint8FloatColorToGray:
         # Lazy import: this test does not need cupy/CUDA — the dtype check
         # runs before any cp.asarray call. Skip only if numpy is missing.
         from pd_book_tools.image_processing.cupy_processing import (
-            colorToGray as mod,
+            color_to_gray as mod,
         )
 
         img = np.full((20, 20, 3), 0.5, dtype=np.float32)
         with pytest.raises(TypeError, match="uint8"):
-            mod.np_uint8_float_colorToGray(
+            mod.np_uint8_color_to_gray(
                 img, radius=5, samples=2, iterations=2, batch_size=10
             )
 
@@ -110,11 +114,11 @@ class TestNpUint8FloatColorToGray:
         """M-17 regression: float64 input is also rejected (same silent-collapse
         risk as float32)."""
         from pd_book_tools.image_processing.cupy_processing import (
-            colorToGray as mod,
+            color_to_gray as mod,
         )
 
         img = np.full((20, 20, 3), 0.5, dtype=np.float64)
         with pytest.raises(TypeError, match="uint8"):
-            mod.np_uint8_float_colorToGray(
+            mod.np_uint8_color_to_gray(
                 img, radius=5, samples=2, iterations=2, batch_size=10
             )

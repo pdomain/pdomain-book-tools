@@ -1,8 +1,11 @@
 # Configure logging
+from __future__ import annotations
+
 import logging
 
-import cupy as cp
 import numpy as np
+
+from ._cupy_compat import cp, require_cupy
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,7 @@ def _compute_envelopes(
 _RGBA_NOTICE_LOGGED = False
 
 
-def cupy_colorToGray(
+def cupy_color_to_gray(
     img: cp.array,  # type: ignore
     radius=300,
     samples=4,
@@ -60,19 +63,19 @@ def cupy_colorToGray(
     # ignoring alpha rather than alpha-blending). (M-18)
     if img.ndim != 3:
         raise ValueError(
-            "cupy_colorToGray expected a 3-channel BGR/RGB image with "
+            "cupy_color_to_gray expected a 3-channel BGR/RGB image with "
             f"shape (H, W, C); got ndim={img.ndim} shape={tuple(img.shape)}. "
             "2-D grayscale input is not supported — pass a 3-channel image."
         )
     channels = img.shape[2]
     if channels < 3:
         raise ValueError(
-            "cupy_colorToGray expected at least 3 channels (BGR/RGB); "
+            "cupy_color_to_gray expected at least 3 channels (BGR/RGB); "
             f"got shape={tuple(img.shape)} with {channels} channel(s)."
         )
     if channels > 4:
         raise ValueError(
-            "cupy_colorToGray expected 3-channel BGR/RGB or 4-channel "
+            "cupy_color_to_gray expected 3-channel BGR/RGB or 4-channel "
             f"BGRA/RGBA input; got shape={tuple(img.shape)} with "
             f"{channels} channels."
         )
@@ -80,12 +83,18 @@ def cupy_colorToGray(
         global _RGBA_NOTICE_LOGGED
         if not _RGBA_NOTICE_LOGGED:
             logger.info(
-                "cupy_colorToGray received 4-channel input; dropping alpha "
+                "cupy_color_to_gray received 4-channel input; dropping alpha "
                 "channel (matches cv2 COLOR_BGRA2GRAY semantics). This "
                 "notice is logged once per process."
             )
             _RGBA_NOTICE_LOGGED = True
         img = img[..., :3]
+
+    # Shape validation above is backend-agnostic. Only require CuPy here,
+    # past the boundary where actual GPU operations begin — so wrappers like
+    # `np_uint8_color_to_gray` can perform their own pre-checks before
+    # the GPU dependency kicks in.
+    require_cupy()
 
     height, width, _ = img.shape
 
@@ -114,7 +123,7 @@ def cupy_colorToGray(
     return dst
 
 
-def np_uint8_float_colorToGray(
+def np_uint8_color_to_gray(
     img: np.ndarray,
     radius=300,
     samples=4,
@@ -129,17 +138,23 @@ def np_uint8_float_colorToGray(
     # violation instead of a silent black image. (M-17)
     if img.dtype != np.uint8:
         raise TypeError(
-            "np_uint8_float_colorToGray requires a uint8 image in [0, 255]; "
+            "np_uint8_color_to_gray requires a uint8 image in [0, 255]; "
             f"got dtype={img.dtype}. If your input is already float in [0, 1], "
-            "call cupy_colorToGray directly with a cupy array instead."
+            "call cupy_color_to_gray directly with a cupy array instead."
         )
+
+    # The dtype gate above is intentionally placed BEFORE the CuPy requirement
+    # so callers see the precise contract violation (TypeError) on CPU-only
+    # installs too, rather than a less specific ImportError that hides the
+    # real problem.
+    require_cupy()
 
     img_float = img.astype(np.float32) / 255.0
 
     # Move source image to GPU
     src: cp.array = cp.asarray(img_float)  # type: ignore
 
-    cupy_result = cupy_colorToGray(
+    cupy_result = cupy_color_to_gray(
         img=src,
         radius=radius,
         samples=samples,
