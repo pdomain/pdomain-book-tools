@@ -585,12 +585,37 @@ class Page:
 
     @property
     def is_content_normalized(self) -> bool:
-        """Return True if existing word bboxes on the page are normalized."""
+        """Return True if existing word bboxes on the page are normalized.
+
+        Iterates every word with a non-``None`` bounding box and checks
+        their ``is_normalized`` flag. If all agree, returns the shared
+        value. If no word has a bounding box, returns ``False`` (preserved
+        legacy behavior — callers treat this as "fall through to the
+        pixel-space branch").
+
+        Raises:
+            ValueError: when the page contains a mix of normalized and
+                pixel-space word bboxes. Mixed coordinate state indicates
+                a logic error upstream (a partial editing operation or a
+                bad merge); callers should not silently pick one
+                convention from an arbitrary "first" word. (L-14)
+        """
+        seen: bool | None = None
         for line in self.lines:
             for word in line.words:
-                if word.bounding_box is not None:
-                    return word.bounding_box.is_normalized
-        return False
+                if word.bounding_box is None:
+                    continue
+                flag = word.bounding_box.is_normalized
+                if seen is None:
+                    seen = flag
+                elif seen != flag:
+                    raise ValueError(
+                        "Page.is_content_normalized: page contains a mix "
+                        "of normalized and pixel-space word bounding boxes. "
+                        "All words on a page must share one coordinate "
+                        "convention. See docs/review/bugs-low.md L-14."
+                    )
+        return bool(seen) if seen is not None else False
 
     @property
     def resolved_dimensions(self) -> tuple[float, float]:
