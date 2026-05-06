@@ -453,6 +453,35 @@ class Document:
             return 0.0
 
     @classmethod
+    def _tesseract_confidence(cls, val) -> Optional[float]:
+        """Convert a Tesseract ``conf`` cell to ``Optional[float]``.
+
+        Tesseract uses ``conf = -1`` (and emits empty/rejected rows) to mean
+        "no confidence available" rather than "very low confidence". Storing
+        that sentinel as ``-1.0`` corrupts every downstream confidence
+        consumer: rotation detection's per-page mean drops below the
+        ``0.6`` threshold and triggers spurious 90/180/270 probes on clean
+        pages, ``Block.mean_ocr_confidence`` is dragged toward ``-1``, and
+        confidence-based filters keep junk while rejecting good words.
+
+        Treat ``conf <= 0`` and any non-numeric value as ``None`` so the
+        sentinel is excluded from aggregation rather than averaged in.
+        """
+        if val is None:
+            return None
+        if hasattr(val, "item"):
+            val = val.item()
+        try:
+            f = float(val)
+        except (TypeError, ValueError):
+            return None
+        if f != f:  # NaN
+            return None
+        if f <= 0:
+            return None
+        return f
+
+    @classmethod
     def from_tesseract(
         cls,
         tesseract_output: "DataFrame",
@@ -593,7 +622,7 @@ class Document:
                             word = Word(
                                 text=str(word_row.text),
                                 bounding_box=word_bounding_box,
-                                ocr_confidence=cls.safe_float(word_row.conf),
+                                ocr_confidence=cls._tesseract_confidence(word_row.conf),
                             )
                             words.append(word)
 
