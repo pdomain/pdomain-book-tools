@@ -396,7 +396,7 @@ exactly 3 fallback calls (90/180/270 only).
 
 ---
 
-## R-18 — Mixed old-style and new-style type annotations throughout
+## [IN PROGRESS — modernized geometry/bounding_box, image_processing/{formats,cv2_processing/split,cupy_processing/split}; remaining sites tracked file-by-file] R-18 — Mixed old-style and new-style type annotations throughout
 
 **Files:** throughout `pd_book_tools/ocr/`, `pd_book_tools/geometry/`
 

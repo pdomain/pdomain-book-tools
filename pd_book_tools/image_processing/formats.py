@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +169,7 @@ _HEIF_BRANDS = frozenset(
 _AVIF_BRANDS = frozenset({b"avif", b"avis"})
 
 
-def _sniff_format(head: bytes) -> Optional[str]:
+def _sniff_format(head: bytes) -> str | None:
     """Return a short format name for ``head`` (first <= 16 bytes), or None."""
     if len(head) < 16:
         return None

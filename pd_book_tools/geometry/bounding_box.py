@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import functools
 from dataclasses import dataclass, replace
 from logging import getLogger
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Sequence
 
 import cv2
 from cv2 import (
@@ -60,7 +62,7 @@ class BoundingBox:
         return self.bottom_right.y
 
     @property
-    def lrtb(self) -> Tuple[float, float, float, float]:
+    def lrtb(self) -> tuple[float, float, float, float]:
         """Deprecated alias for :meth:`to_ltrb`.
 
         The ``lrtb`` name is misleading — the tuple returned is
@@ -87,12 +89,12 @@ class BoundingBox:
         return self.bottom_right.y - self.top_left.y
 
     @property
-    def size(self) -> Tuple[float, float]:
+    def size(self) -> tuple[float, float]:
         """Get (width, height) of the box"""
         return self.width, self.height
 
     @property
-    def lrwh(self) -> Tuple[float, float, float, float]:
+    def lrwh(self) -> tuple[float, float, float, float]:
         """Deprecated alias for :meth:`to_ltwh`.
 
         The ``lrwh`` name is misleading — the tuple returned is
@@ -110,7 +112,7 @@ class BoundingBox:
 
     def get_four_point_scaled_polygon_list(
         self, width: int, height: int
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """Get four points of the box"""
         return [
             [int(self.minX * width), int(self.minY * height)],
@@ -143,7 +145,7 @@ class BoundingBox:
         return (self.minX + self.maxX) / 2.0
 
     @property
-    def y_range(self) -> Tuple[float, float]:
+    def y_range(self) -> tuple[float, float]:
         """Return ``(minY, maxY)`` tuple."""
         return (self.minY, self.maxY)
 
@@ -183,7 +185,7 @@ class BoundingBox:
         )
         return left, right
 
-    def split_x_offset(self, x_offset: float) -> Tuple["BoundingBox", "BoundingBox"]:
+    def split_x_offset(self, x_offset: float) -> tuple["BoundingBox", "BoundingBox"]:
         """Split the bounding box into two boxes using the given x offset from left edge.
 
         Pure arithmetic implementation replaces earlier Shapely-based version
@@ -197,7 +199,7 @@ class BoundingBox:
 
     def split_x_absolute(
         self, x_absolute: float
-    ) -> Tuple["BoundingBox", "BoundingBox"]:
+    ) -> tuple["BoundingBox", "BoundingBox"]:
         """Split the bounding box into two boxes at absolute x coordinate.
 
         Arithmetic-only implementation (no Shapely).
@@ -245,7 +247,7 @@ class BoundingBox:
     @classmethod
     def from_points(
         cls,
-        points: Sequence[Union[dict, "Point", "ShapelyPoint", Sequence[float]]],
+        points: Sequence[dict | "Point" | "ShapelyPoint" | Sequence[float]],
         is_normalized: bool | None = None,
     ):
         """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats"""
@@ -348,11 +350,11 @@ class BoundingBox:
         bottom = top + height
         return cls._build(left, top, right, bottom, is_normalized)
 
-    def to_points(self) -> Tuple["Point", "Point"]:
+    def to_points(self) -> tuple["Point", "Point"]:
         """Convert to (Point,Point) format (top left point, bottom right point)"""
         return (self.top_left, self.bottom_right)
 
-    def to_ltrb(self) -> Tuple[float, float, float, float]:
+    def to_ltrb(self) -> tuple[float, float, float, float]:
         """Convert to (left, top, right, bottom) format"""
         return (
             self.top_left.x,
@@ -361,7 +363,7 @@ class BoundingBox:
             self.bottom_right.y,
         )
 
-    def to_ltwh(self) -> Tuple[float, float, float, float]:
+    def to_ltwh(self) -> tuple[float, float, float, float]:
         """Convert to (left, top, width, height) format"""
         return (
             self.top_left.x,
@@ -372,7 +374,7 @@ class BoundingBox:
 
     def to_scaled_ltwh(
         self, width: int, height: int
-    ) -> Tuple[float, float, float, float]:
+    ) -> tuple[float, float, float, float]:
         """Convert to (left, top, width, height) format with absolute pixel coordinates"""
         scaled: BoundingBox = self.scale(width, height)
         return scaled.to_ltwh()
@@ -445,7 +447,7 @@ class BoundingBox:
         return self.as_shapely().intersects(other.as_shapely())  # type: ignore
 
     @_require_same_coords
-    def intersection(self, other: "BoundingBox") -> Optional["BoundingBox"]:  # type: ignore
+    def intersection(self, other: "BoundingBox") -> "BoundingBox | None":  # type: ignore
         inter = self.as_shapely().intersection(other.as_shapely())  # type: ignore
         if inter.is_empty:  # type: ignore
             return None
@@ -518,7 +520,7 @@ class BoundingBox:
         return {"top_left": tl, "bottom_right": br, "is_normalized": self.is_normalized}
 
     @classmethod
-    def from_dict(cls, dict: Dict) -> "BoundingBox":
+    def from_dict(cls, dict: dict) -> "BoundingBox":
         """Create BoundingBox from dictionary"""
         tl = dict["top_left"]
         br = dict["bottom_right"]

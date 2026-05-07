@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Tuple
 
 import numpy as np
 
@@ -10,7 +9,7 @@ from ._cupy_compat import cp, require_cupy
 logger = logging.getLogger(__name__)
 
 
-def split_x_columns_gpu(img_cp: cp.ndarray, x: int) -> Tuple[cp.ndarray, cp.ndarray]:
+def split_x_columns_gpu(img_cp: cp.ndarray, x: int) -> tuple[cp.ndarray, cp.ndarray]:
     """Split img_cp into two parts at column index x."""
     require_cupy()
     h, w = img_cp.shape[:2]
@@ -19,7 +18,7 @@ def split_x_columns_gpu(img_cp: cp.ndarray, x: int) -> Tuple[cp.ndarray, cp.ndar
     return img_cp[:, :x], img_cp[:, x:]
 
 
-def split_y_rows_gpu(img_cp: cp.ndarray, y: int) -> Tuple[cp.ndarray, cp.ndarray]:
+def split_y_rows_gpu(img_cp: cp.ndarray, y: int) -> tuple[cp.ndarray, cp.ndarray]:
     """Split img_cp into two parts at row index y."""
     require_cupy()
     h, w = img_cp.shape[:2]
@@ -28,14 +27,14 @@ def split_y_rows_gpu(img_cp: cp.ndarray, y: int) -> Tuple[cp.ndarray, cp.ndarray
     return img_cp[:y, :], img_cp[y:, :]
 
 
-def np_uint8_split_x_columns(img: np.ndarray, x: int) -> Tuple[np.ndarray, np.ndarray]:
+def np_uint8_split_x_columns(img: np.ndarray, x: int) -> tuple[np.ndarray, np.ndarray]:
     """Transfers img to GPU, splits at column x, returns two CPU uint8 arrays."""
     require_cupy()
     left, right = split_x_columns_gpu(cp.asarray(img), x)
     return cp.asnumpy(left), cp.asnumpy(right)
 
 
-def np_uint8_split_y_rows(img: np.ndarray, y: int) -> Tuple[np.ndarray, np.ndarray]:
+def np_uint8_split_y_rows(img: np.ndarray, y: int) -> tuple[np.ndarray, np.ndarray]:
     """Transfers img to GPU, splits at row y, returns two CPU uint8 arrays."""
     require_cupy()
     top, bottom = split_y_rows_gpu(cp.asarray(img), y)

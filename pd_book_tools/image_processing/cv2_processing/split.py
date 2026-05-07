@@ -1,13 +1,12 @@
 # Configure logging
 import logging
-from typing import Tuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def split_x_columns(img: np.ndarray, x: int) -> Tuple[np.ndarray, np.ndarray]:
+def split_x_columns(img: np.ndarray, x: int) -> tuple[np.ndarray, np.ndarray]:
     """
     Splits an image into two parts at a specified column index.
 
@@ -16,7 +15,7 @@ def split_x_columns(img: np.ndarray, x: int) -> Tuple[np.ndarray, np.ndarray]:
         x (int): Column index to split the image at.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: Two images split at column x.
+        tuple[np.ndarray, np.ndarray]: Two images split at column x.
 
     Raises:
         ValueError: If x is out of bounds.
@@ -29,7 +28,7 @@ def split_x_columns(img: np.ndarray, x: int) -> Tuple[np.ndarray, np.ndarray]:
     return img[:, :x], img[:, x:]
 
 
-def split_y_rows(img: np.ndarray, y: int) -> Tuple[np.ndarray, np.ndarray]:
+def split_y_rows(img: np.ndarray, y: int) -> tuple[np.ndarray, np.ndarray]:
     """
     Splits an image into two parts at a specified row index.
 
@@ -38,7 +37,7 @@ def split_y_rows(img: np.ndarray, y: int) -> Tuple[np.ndarray, np.ndarray]:
         y (int): Row index to split the image at.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray]: Two images split at row y.
+        tuple[np.ndarray, np.ndarray]: Two images split at row y.
 
     Raises:
         ValueError: If y is out of bounds.
