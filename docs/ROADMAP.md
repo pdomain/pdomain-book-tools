@@ -277,6 +277,32 @@ plates, upside-down scans, the Peutinger map fixture) shipped as
 `pd_book_tools/ocr/rotation.py`. Documented in
 `docs/architecture/rotation.md`. **No further work tracked here.**
 
+## Open — developer tooling
+
+### dev-local-aware `upgrade-deps` flow
+
+`make upgrade-deps` ends in `uv sync --group dev`, which silently
+clobbers any dev-local venv state — editable sibling pd-* checkouts,
+`[gpu]` extras, doctr-from-git overrides — back to the canonical
+published / CPU baseline. Workspace-wide standardization across all
+`pd-*` repos. Spec lives in
+[`docs/planning/dev-local-upgrade-flow-spec.md`](planning/dev-local-upgrade-flow-spec.md).
+
+Foundation-library angle: this repo also defines the **detection
+contract** consumed by every downstream `pd-*` repo — they probe
+`uv pip show pd-book-tools` for an `Editable project location:`
+field. Once `make dev-local` lands here it MUST install
+`pd-book-tools` (and any sibling pd-* checkouts) editably so that
+field actually appears; a non-editable shortcut would silently break
+detection in every consumer.
+
+Implementation pass (separate change): add `_check_dev_local`,
+guard `upgrade-deps`, add `upgrade-deps-local`, optionally introduce
+`make dev-local` + `.venv/.pd-dev-local` marker. Pre-existing
+`make sync-gpu` (Makefile:87) already does conditional `--extra gpu`
+syncing on GPU autodetect; the dev-local detection should compose
+with it cleanly.
+
 ## Done (archived from PLAN-layout-aware-ocr.md)
 
 The original phases all shipped. Cross-referenced for anyone reading
