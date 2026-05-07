@@ -55,15 +55,21 @@ words already in either margin cluster, so a tall sidenote can't
 pull the median up). Default `None` preserves legacy x-only
 behaviour.
 
+Reorganize-level pass-through shipped:
+`Page.reorganize_page(sidenote_max_height_ratio=…)` threads through
+to Step Layout-1b. Default `None` preserves legacy behaviour; callers
+opt in by passing a float. A pd-ocr-cli flag remains a downstream
+follow-up tracked in that repo's roadmap; it can wire straight onto
+this kwarg without further changes here.
+
 Still open:
 
-- **Caller wiring.** `Page.reorganize_page` calls
-  `detect_geometric_sidenotes(page)` with default kwargs; nothing
-  surfaces `max_height_ratio` yet. Decide whether to flip the
-  default to e.g. `0.85` (more aggressive) or expose it as a
-  reorganize-level kwarg / `pd-ocr-cli` flag, and pick a default
-  that doesn't regress the fixtures that currently rely on the
-  legacy x-only behaviour.
+- **Default-flip decision.** Whether to flip the reorganize-level
+  default from `None` to e.g. `0.85` (more aggressive) needs tuning
+  on real fixtures. No fixture today regresses with the current
+  `None` default; flipping the default needs evidence that
+  `0.85`-style gating helps the corpus more than it hurts. Don't
+  pick this slice without a fixture pass first.
 - **Image-projection refinement.** Bbox heights are coarse for OCR
   output that bundles ascenders/descenders inconsistently. The
   PLAN sketched a horizontal-projection pass on the cropped image

@@ -297,6 +297,69 @@ class TestReorganizeAcceptsLayoutKwarg:
         assert "world" in page.text
 
 
+class TestReorganizeSidenoteMaxHeightRatio:
+    """``Page.reorganize_page(sidenote_max_height_ratio=…)`` threads through
+    to ``detect_geometric_sidenotes`` so callers can tune the glyph-size
+    gate without bypassing the orchestrator.
+
+    Default ``None`` preserves legacy x-only sidenote detection (matches
+    the kwarg default on ``detect_geometric_sidenotes`` itself).
+    """
+
+    def _page_with_body_and_x_cluster(self):
+        """Body column at x=80..600 plus a same-height x-cluster at the
+        right margin. Geometric x-only detection tags it; the glyph-size
+        gate (when active) rejects it because the cluster height matches
+        body height."""
+        body_words = [
+            _word(f"body{i}", 80, 100 + i * 40, 600, 130 + i * 40) for i in range(12)
+        ]
+        same_height_margin = [
+            _word(f"x{i}", 820, 110 + i * 50, 900, 140 + i * 50) for i in range(5)
+        ]
+        page = _make_page(
+            [
+                _paragraph_block([_line_block(body_words)]),
+                _paragraph_block([_line_block(same_height_margin)]),
+            ]
+        )
+        return page, same_height_margin
+
+    def _trivial_layout(self):
+        # A full-page text region so ``layout is not None`` triggers Step
+        # Layout-1b without dropping any words.
+        return PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.text,
+                    L=0,
+                    R=PAGE_W,
+                    T=0,
+                    B=PAGE_H,
+                    confidence=0.95,
+                )
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+    def test_default_none_preserves_legacy_xonly_tagging(self):
+        page, margin = self._page_with_body_and_x_cluster()
+        page.reorganize_page(layout=self._trivial_layout())
+        # Legacy x-only detection tags the same-height margin column.
+        assert all("layout:sidenote" in w.word_labels for w in margin)
+
+    def test_opt_in_rejects_same_height_cluster(self):
+        page, margin = self._page_with_body_and_x_cluster()
+        page.reorganize_page(
+            layout=self._trivial_layout(),
+            sidenote_max_height_ratio=0.8,
+        )
+        # Glyph-size gate kicks the same-height cluster.
+        assert not any("layout:sidenote" in w.word_labels for w in margin)
+
+
 class TestReorganizeDropLayoutWordsFlag:
     """Regression: footnote / header / footer / abandoned words must
     NEVER be silently dropped by ``Page.reorganize_page``, regardless

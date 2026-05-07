@@ -2704,6 +2704,7 @@ class Page:
         drop_layout_words: bool = False,
         capture_diagnostics: bool = True,
         emit_illustration_placeholders: bool = True,
+        sidenote_max_height_ratio: float | None = None,
     ):
         """Top-level reorganize pipeline — thin orchestration shim.
 
@@ -2762,6 +2763,17 @@ class Page:
         a sub-gate on the Step B2 heuristic sweep — it has effect only
         when ``drop_layout_words=True`` (Step Layout-2b is unaffected
         by it).
+
+        ``sidenote_max_height_ratio`` threads through to Step Layout-1b
+        (:func:`layout_aware_reorg.detect_geometric_sidenotes`) as its
+        ``max_height_ratio`` glyph-size gate. Default ``None`` preserves
+        legacy x-only sidenote detection. Pass e.g. ``0.85`` to require
+        a candidate margin cluster's median bbox height to be at most
+        85 % of the body median before tagging — useful when the
+        geometric x-cluster catches a same-font full-line that happens
+        to live in the margin (chapter rules, page numbers, decorative
+        flourishes). Has effect only when ``layout`` is supplied (Step
+        Layout-1b only fires in the layout-aware branch).
 
         Diagnostic snapshots
         --------------------
@@ -2848,7 +2860,9 @@ class Page:
             # margin-column words as ``layout:sidenote``. PP-DocLayout
             # often lumps narrow marginalia into the body's wide text
             # region; this catches what the model misses.
-            layout_aware_reorg.detect_geometric_sidenotes(self)
+            layout_aware_reorg.detect_geometric_sidenotes(
+                self, max_height_ratio=sidenote_max_height_ratio
+            )
 
             # Step Layout-2a (formerly: drop high-confidence header /
             # footer / footnote / abandoned regions before the geometric
