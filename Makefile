@@ -6,13 +6,22 @@ HF_LAYOUT_FORK     ?= CT2534/PP-DocLayout_plus-L
 HF_LAYOUT_MIRROR   ?= /tmp/pp-doclayout-mirror
 HF_LAYOUT_ADAPTER  := pd_book_tools/layout/adapters/pp_doclayout.py
 
+# Auto-detect a usable NVIDIA GPU (nvidia-smi present and succeeds) and not in CI.
+# When detected, GPU_EXTRA expands to "--extra gpu"; otherwise it is empty.
+GPU_EXTRA := $(shell [ -z "$$CI" ] && command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 && echo --extra gpu)
+
 help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install dependencies and set up development environment
+install: ## Install dependencies and set up development environment (auto-detects [gpu] extra)
 	@echo "📦 Installing dependencies..."
-	uv sync --group dev
+ifeq ($(strip $(GPU_EXTRA)),)
+	@echo "ℹ️  No usable NVIDIA GPU detected (or CI=$$CI); installing CPU-only."
+else
+	@echo "🚀 NVIDIA GPU detected; installing with [gpu] extra (CuPy)."
+endif
+	uv sync --group dev $(GPU_EXTRA)
 	@echo "🪝 Setting up pre-commit hooks..."
 	uv run pre-commit install
 	@echo "✅ Installation complete!"
@@ -75,9 +84,10 @@ coverage: sync-gpu ## Run tests with coverage report (parallelized)
 	uv run pytest --cov=pd_book_tools --cov-report=html -n auto -v -ra
 	@echo "📊 Coverage report generated in htmlcov/index.html"
 
-sync-gpu: ## Ensure the [gpu] extra (CuPy) is installed (skipped when CI=true)
-	@if [ -n "$$CI" ]; then \
-	  echo "ℹ️  CI=$$CI detected; skipping [gpu] extra sync (CPU-only CI)."; \
+sync-gpu: ## Sync the [gpu] extra (CuPy) when an NVIDIA GPU is auto-detected; no-op otherwise / in CI
+	@if [ -z "$(strip $(GPU_EXTRA))" ]; then \
+	  echo "ℹ️  No usable NVIDIA GPU detected (or CI=$$CI); syncing without [gpu] extra."; \
+	  uv sync --group dev; \
 	else \
 	  echo "📦 Syncing [gpu] extra (CuPy) for local GPU tests..."; \
 	  uv sync --group dev --extra gpu; \
