@@ -435,7 +435,7 @@ All 8 processing methods (`remove_blank_page`, `remove_proofer_notes`, etc.) are
 
 ---
 
-## R-21 — `_require_same_coords` decorator is missing `functools.wraps`
+## [FIXED in 90466bb] ~~R-21 — `_require_same_coords` decorator is missing `functools.wraps`~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 376–384
 
@@ -444,7 +444,7 @@ is already imported in `timing.py`; it needs to be added to `bounding_box.py` as
 
 ---
 
-## R-22 — `timing.py` public API has a typo in the function name
+## [FIXED — canonical name added; deprecated alias preserved] ~~R-22 — `timing.py` public API has a typo in the function name~~
 
 **File:** `pd_book_tools/utility/timing.py`, line 7
 
@@ -462,7 +462,7 @@ func_log_excution_time = func_log_execution_time  # deprecated alias
 
 ---
 
-## R-23 — `timing.py` `logLevel` parameter should be `log_level` (PEP8)
+## [FIXED — `log_level` keyword canonical; `logLevel` deprecated] ~~R-23 — `timing.py` `logLevel` parameter should be `log_level` (PEP8)~~
 
 **File:** `pd_book_tools/utility/timing.py`, line 7
 

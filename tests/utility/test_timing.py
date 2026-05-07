@@ -2,10 +2,27 @@
 
 import logging
 import time
+import warnings
 
 import pytest
 
-from pd_book_tools.utility.timing import func_log_excution_time
+from pd_book_tools.utility.timing import (
+    func_log_excution_time as _deprecated_alias,
+)
+from pd_book_tools.utility.timing import (
+    func_log_execution_time,
+)
+
+
+def func_log_excution_time(*args, **kwargs):
+    """Test shim that calls the deprecated alias while suppressing the
+    DeprecationWarning it emits — keeps the existing test bodies focused
+    on behavior rather than warning hygiene. Tests of the deprecation
+    behavior itself call ``_deprecated_alias`` directly below.
+    """
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        return _deprecated_alias(*args, **kwargs)
 
 
 class TestFuncLogExecutionTime:
@@ -233,3 +250,70 @@ class TestFuncLogExecutionTime:
         end_msg = next((m for m in messages if "Executed in" in m), None)
         assert end_msg is not None
         assert "seconds" in end_msg
+
+
+class TestCanonicalNameAndDeprecation:
+    """R-22 / R-23: canonical ``func_log_execution_time`` with snake_case
+    ``log_level`` keyword; deprecated alias preserves backward compat."""
+
+    def test_canonical_name_works(self):
+        logger = logging.getLogger("test_canonical_name_works")
+
+        @func_log_execution_time(logger, log_level=logging.DEBUG)
+        def add(a, b):
+            return a + b
+
+        assert add(2, 3) == 5
+
+    def test_canonical_default_log_level(self, caplog):
+        logger = logging.getLogger("test_canonical_default_log_level")
+        logger.setLevel(logging.DEBUG)
+
+        @func_log_execution_time(logger)
+        def quick():
+            return 1
+
+        with caplog.at_level(logging.DEBUG, logger="test_canonical_default_log_level"):
+            quick()
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("started at" in m for m in messages)
+        assert any("ended at" in m for m in messages)
+
+    def test_deprecated_alias_emits_warning(self):
+        logger = logging.getLogger("test_deprecated_alias_emits_warning")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+
+            @_deprecated_alias(logger)
+            def noop():
+                return None
+
+            noop()
+
+        depr = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+        assert any("func_log_excution_time" in str(w.message) for w in depr), (
+            "expected DeprecationWarning naming the typo'd alias"
+        )
+
+    def test_deprecated_logLevel_keyword_emits_warning(self):
+        logger = logging.getLogger("test_deprecated_logLevel_kw")
+        logger.setLevel(logging.INFO)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+
+            @_deprecated_alias(logger, logLevel=logging.INFO)
+            def noop():
+                return None
+
+            noop()
+
+        depr = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+        assert any("logLevel" in str(w.message) for w in depr)
+
+    def test_deprecated_alias_rejects_both_keywords(self):
+        logger = logging.getLogger("test_deprecated_alias_rejects_both_keywords")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            with pytest.raises(TypeError, match="not both"):
+                _deprecated_alias(logger, logLevel=logging.INFO, log_level=logging.INFO)
