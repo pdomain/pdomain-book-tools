@@ -126,17 +126,27 @@ def _new_run_dir(prefix: str) -> Path:
     human can diff debug PNGs across runs (e.g. before/after a heuristic
     change) without losing the previous output. The prefix
     (``test`` / ``regen``) makes the producer obvious in ``ls -t``.
+
+    Under ``pytest -n auto`` (xdist) every worker enters this
+    session-scoped fixture independently. To avoid a TOCTOU race where
+    two workers both compute the same wall-clock-second name and race on
+    ``mkdir``, the worker id (``PYTEST_XDIST_WORKER``, e.g. ``gw0``) is
+    folded into the directory name so each worker gets a disjoint
+    subtree. ``exist_ok=True`` then makes the create itself idempotent
+    in the unbelievable edge case of a re-collision.
     """
     DEBUG_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
-    run = DEBUG_DIR / f"{prefix}-{timestamp}"
+    worker = os.environ.get("PYTEST_XDIST_WORKER", "")
+    suffix = f"-{worker}" if worker else ""
+    run = DEBUG_DIR / f"{prefix}-{timestamp}{suffix}"
     counter = 0
     # Disambiguate when two runs land in the same wall-clock second
-    # (parallel pytest workers; back-to-back invocations).
+    # (back-to-back serial invocations; same worker re-entering).
     while run.exists():
         counter += 1
-        run = DEBUG_DIR / f"{prefix}-{timestamp}.{counter}"
-    run.mkdir(parents=True)
+        run = DEBUG_DIR / f"{prefix}-{timestamp}{suffix}.{counter}"
+    run.mkdir(parents=True, exist_ok=True)
     return run
 
 
