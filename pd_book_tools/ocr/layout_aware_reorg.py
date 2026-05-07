@@ -437,6 +437,7 @@ def detect_geometric_sidenotes(
     min_cluster_words: int = 4,
     min_gap_ratio: float = 0.04,
     max_column_width_ratio: float = 0.22,
+    max_height_ratio: float | None = None,
 ) -> int:
     """Tag words in a left- or right-margin sidenote column with ``layout:sidenote``.
 
@@ -457,6 +458,14 @@ def detect_geometric_sidenotes(
 
     Same logic mirrored on the left side. Returns the number of words
     tagged.
+
+    Optional glyph-size filter (``max_height_ratio``): real sidenotes are
+    typically rendered in a smaller font than body text. When this kwarg
+    is set (e.g. ``0.8``), a candidate cluster is rejected unless its
+    median bbox height is ``<= max_height_ratio * body_median_height``.
+    Default ``None`` preserves legacy x-position-only behaviour. Helps
+    distinguish a true sidenote column from a narrow body protrusion or
+    a hanging-indent line that happens to land in the margin x-range.
 
     The tag is the same shape model-emitted tags use
     (``layout:sidenote``), so :func:`bubble_block_roles_from_layout`
@@ -500,6 +509,22 @@ def detect_geometric_sidenotes(
         elif cx < body_left - gap:
             left_candidates.append(w)
 
+    # Body median glyph height — only computed if the caller opted into the
+    # glyph-size filter. Uses words *not* in either margin cluster as the
+    # body sample so a tall sidenote cluster can't pull the median up.
+    body_median_height = 0.0
+    if max_height_ratio is not None:
+        margin_ids = {id(w) for w in right_candidates} | {
+            id(w) for w in left_candidates
+        }
+        body_heights = sorted(
+            float(w.bounding_box.maxY) - float(w.bounding_box.minY)
+            for w in words
+            if id(w) not in margin_ids
+        )
+        if body_heights:
+            body_median_height = _percentile(body_heights, 0.50)
+
     tagged = 0
     for cluster_label, cluster in [
         ("right", right_candidates),
@@ -513,6 +538,24 @@ def detect_geometric_sidenotes(
         cluster_right = max(float(w.bounding_box.maxX) for w in cluster)
         if (cluster_right - cluster_left) > max_col_w:
             continue
+        # Optional glyph-size gate: real sidenotes use a smaller font than
+        # the body. Reject the cluster if its median bbox height isn't at
+        # least max_height_ratio times shorter than the body median.
+        if max_height_ratio is not None and body_median_height > 0:
+            cluster_heights = sorted(
+                float(w.bounding_box.maxY) - float(w.bounding_box.minY) for w in cluster
+            )
+            cluster_median_height = _percentile(cluster_heights, 0.50)
+            if cluster_median_height > max_height_ratio * body_median_height:
+                logger.debug(
+                    "detect_geometric_sidenotes: rejecting %s cluster "
+                    "on glyph-size (median=%.1f, body=%.1f, ratio_bar=%.2f)",
+                    cluster_label,
+                    cluster_median_height,
+                    body_median_height,
+                    max_height_ratio,
+                )
+                continue
         for w in cluster:
             label = _layout_label(RegionType.sidenote)
             if label not in w.word_labels:

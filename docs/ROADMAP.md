@@ -45,27 +45,30 @@ These are independent of the layout fine-tune. Each addresses a
 specific reorg-pipeline weakness called out in the archived
 `TODO-layout-training.md`.
 
-### Glyph-size analysis for sidenote detection
+### Glyph-size analysis for sidenote detection — partial
 
-Today's `detect_geometric_sidenotes` (in
-`pd_book_tools/ocr/layout_aware_reorg.py`) uses x-position alone —
-finds narrow margin columns by histogram analysis. Real sidenotes
-are usually rendered in a smaller font than the body. Add a glyph-
-height pass:
+Bbox-height pass shipped: `detect_geometric_sidenotes` now accepts
+`max_height_ratio: float | None = None`. When set (e.g. `0.8`), a
+margin cluster is rejected unless its median bbox height is
+`<= max_height_ratio * body_median_height` (body sample excludes
+words already in either margin cluster, so a tall sidenote can't
+pull the median up). Default `None` preserves legacy x-only
+behaviour.
 
-- For each candidate sidenote word, estimate median glyph height from
-  its OCR bbox plus a horizontal projection on the cropped image.
-- Compare against the page's body-text median height.
-- Promote to `layout:sidenote` only if the candidate's height is
-  ≤80 % of the body median.
+Still open:
 
-Where it goes: `pd_book_tools/ocr/layout_aware_reorg.py`, alongside
-`detect_geometric_sidenotes`. Pure image-processing — no new model
-weights, no new dependencies.
-
-Helps where the sidenote column overlaps the body's x-range (a
-narrow body protrusion that's not a sidenote) or where the body
-itself has sidenote-like protrusions.
+- **Caller wiring.** `Page.reorganize_page` calls
+  `detect_geometric_sidenotes(page)` with default kwargs; nothing
+  surfaces `max_height_ratio` yet. Decide whether to flip the
+  default to e.g. `0.85` (more aggressive) or expose it as a
+  reorganize-level kwarg / `pd-ocr-cli` flag, and pick a default
+  that doesn't regress the fixtures that currently rely on the
+  legacy x-only behaviour.
+- **Image-projection refinement.** Bbox heights are coarse for OCR
+  output that bundles ascenders/descenders inconsistently. The
+  PLAN sketched a horizontal-projection pass on the cropped image
+  to estimate true x-height per word. Worth doing only if a fixture
+  shows bbox-height alone misclassifying.
 
 ### Drop-cap glyph recognition for cursive caps
 

@@ -880,6 +880,45 @@ class TestDetectGeometricSidenotes:
         # The wide spread is well beyond the max_column_width_ratio cap.
         assert n == 0
 
+    def test_glyph_height_filter_accepts_smaller_cluster(self):
+        # Body words have height=30 (see _body_word). Sidenote candidates with
+        # height=20 are 20/30 ≈ 0.667 → comfortably under the 0.80 ratio bar.
+        body_words, page = self._make_body()
+        sidenote_words = [
+            _word(f"sn{i}", 820, 110 + i * 50, 900, 130 + i * 50) for i in range(5)
+        ]
+        page._items.append(_paragraph_block([_line_block(sidenote_words)]))
+
+        n = detect_geometric_sidenotes(page, max_height_ratio=0.8)
+        assert n == 5
+        assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
+
+    def test_glyph_height_filter_rejects_body_height_cluster(self):
+        # Body words have height=30. Candidate margin words ALSO have
+        # height=30 — geometric x-cluster matches but glyph-size says it's
+        # the same font as body, so reject.
+        body_words, page = self._make_body()
+        same_height = [
+            _word(f"x{i}", 820, 110 + i * 50, 900, 140 + i * 50) for i in range(5)
+        ]
+        page._items.append(_paragraph_block([_line_block(same_height)]))
+
+        n = detect_geometric_sidenotes(page, max_height_ratio=0.8)
+        assert n == 0
+        assert not any("layout:sidenote" in w.word_labels for w in same_height)
+
+    def test_glyph_height_filter_default_none_preserves_legacy(self):
+        # Without max_height_ratio, a same-height cluster is still tagged
+        # — preserves pre-glyph-size behaviour for callers that don't opt in.
+        body_words, page = self._make_body()
+        same_height = [
+            _word(f"x{i}", 820, 110 + i * 50, 900, 140 + i * 50) for i in range(5)
+        ]
+        page._items.append(_paragraph_block([_line_block(same_height)]))
+
+        n = detect_geometric_sidenotes(page)
+        assert n == 5
+
 
 class TestRouteSidenoteReadingOrder:
     def _sidenote_block(self, text, *, x_left, x_right, y_top=300, y_bot=500):
