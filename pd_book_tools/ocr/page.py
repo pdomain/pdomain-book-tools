@@ -2703,6 +2703,7 @@ class Page:
         drop_figure_internal_text: bool = True,
         drop_layout_words: bool = False,
         capture_diagnostics: bool = True,
+        emit_illustration_placeholders: bool = True,
     ):
         """Top-level reorganize pipeline — thin orchestration shim.
 
@@ -2986,7 +2987,11 @@ class Page:
 
                 layout_aware_reorg.bubble_block_roles_from_layout(self._items)
                 layout_aware_reorg.route_sidenote_reading_order(self)
-                layout_aware_reorg.associate_captions(self, layout)
+                layout_aware_reorg.associate_captions(
+                    self,
+                    layout,
+                    emit_placeholders=emit_illustration_placeholders,
+                )
             return
 
         for block in row_blocks.items:
@@ -3059,7 +3064,14 @@ class Page:
 
             # Step Layout-4: emit placeholder illustration + caption blocks
             # for high-confidence figure / decoration / table regions.
-            layout_aware_reorg.associate_captions(self, layout)
+            # ``emit_illustration_placeholders=False`` suppresses the
+            # geometry-only placeholder block (useful for plain-text
+            # consumers) without dropping caption OCR words.
+            layout_aware_reorg.associate_captions(
+                self,
+                layout,
+                emit_placeholders=emit_illustration_placeholders,
+            )
 
     def add_ground_truth(self, text: str):
         update_page_with_ground_truth_text(self, text)

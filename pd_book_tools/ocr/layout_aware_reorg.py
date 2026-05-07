@@ -720,8 +720,20 @@ def associate_captions(
     layout: PageLayout,
     confidence_threshold: float = 0.5,
     max_gap_px: int = 80,
+    emit_placeholders: bool = True,
 ) -> int:
-    """Attach caption blocks to figure / decoration / table regions."""
+    """Attach caption blocks to figure / decoration / table regions.
+
+    When ``emit_placeholders`` is ``True`` (default), each high-confidence
+    figure / decoration / table region also emits a geometry-only
+    placeholder ``Block`` tagged ``illustration`` (or ``decoration``) so
+    PGDP-bound consumers can serialise it as ``[Illustration: ...]``.
+    Set ``emit_placeholders=False`` to skip that emission — useful for
+    plain-text consumers (e.g. ``pd-ocr-cli``'s ``.txt`` output) that
+    have no rendering for an empty illustration block. Caption *words*
+    are still relocated into a new caption-roled block in either mode,
+    so opting out never silently drops OCR words.
+    """
     if layout is None or not layout.regions:
         return 0
     page_w, page_h = _resolve_dimensions(page)
@@ -767,12 +779,13 @@ def associate_captions(
     captions_attached = 0
     sort_offset = 1_000_000
     for region, caption_words in plan:
-        illustration = _empty_illustration_block(
-            region, page_w, page_h, layout_w, layout_h, is_normalized
-        )
-        illustration.override_page_sort_order = sort_offset
-        sort_offset += 1
-        page._items.append(illustration)
+        if emit_placeholders:
+            illustration = _empty_illustration_block(
+                region, page_w, page_h, layout_w, layout_h, is_normalized
+            )
+            illustration.override_page_sort_order = sort_offset
+            sort_offset += 1
+            page._items.append(illustration)
         if not caption_words:
             continue
         caption_block = emit_caption_block(caption_words, region_type=region.type)

@@ -365,6 +365,137 @@ class TestAssociateCaptions:
         words_in_caption = caption_block.words
         assert {w.text for w in words_in_caption} == {"Fig.", "1.", "Demo."}
 
+    def test_emit_placeholders_false_skips_illustration_block(self):
+        """ROADMAP "Opt-in suppression of placeholder illustration blocks":
+        when the caller asks not to emit placeholders, no illustration-roled
+        block is added — but the caption is still emitted as a normal
+        caption-roled block, and every input OCR word survives (no silent
+        drops).
+        """
+        body_words = [_word("body", 100, 200, 200, 230)]
+        body = _paragraph_block([_line_block(body_words)])
+        caption_words = [
+            _word("Fig.", 100, 720, 150, 750),
+            _word("1.", 160, 720, 200, 750),
+            _word("Demo.", 210, 720, 350, 750),
+        ]
+        caption_para = _paragraph_block([_line_block(caption_words)])
+        page = _make_page([body, caption_para])
+        original_word_texts = {w.text for w in page.words}
+
+        layout = PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=300,
+                    B=700,
+                    confidence=0.9,
+                ),
+                LayoutRegion(
+                    type=RegionType.caption,
+                    L=100,
+                    R=400,
+                    T=710,
+                    B=770,
+                    confidence=0.8,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+        attached = associate_captions(page, layout, emit_placeholders=False)
+        assert attached == 1
+
+        # No illustration / decoration placeholder block emitted.
+        illustration_blocks = [
+            b
+            for b in page.items
+            if "illustration" in b.block_role_labels
+            or "decoration" in b.block_role_labels
+        ]
+        assert illustration_blocks == []
+
+        # Caption block still emitted (consumers can still consume the
+        # caption, just without the placeholder illustration).
+        caption_blocks = [b for b in page.items if "caption" in b.block_role_labels]
+        assert len(caption_blocks) == 1
+        assert {w.text for w in caption_blocks[0].words} == {"Fig.", "1.", "Demo."}
+
+        # Word preservation: every pre-call OCR word still present
+        # somewhere on the page (caption words moved into caption block,
+        # body words unchanged).
+        assert {w.text for w in page.words} == original_word_texts
+
+    def test_emit_placeholders_default_true_preserves_legacy_behaviour(self):
+        """Default behaviour unchanged: placeholder illustration block
+        still emitted when ``emit_placeholders`` is omitted."""
+        body = _paragraph_block([_line_block([_word("body", 100, 200, 200, 230)])])
+        page = _make_page([body])
+        layout = PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=300,
+                    B=700,
+                    confidence=0.9,
+                )
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+        associate_captions(page, layout)  # default
+        assert any("illustration" in b.block_role_labels for b in page.items)
+
+    def test_reorganize_page_threads_emit_placeholders_kwarg(self):
+        """``Page.reorganize_page(emit_illustration_placeholders=False)``
+        threads through to ``associate_captions`` so the CLI / downstream
+        callers can flip the placeholder emission off without reaching
+        into the layout helper directly."""
+        body = _paragraph_block([_line_block([_word("body", 100, 200, 200, 230)])])
+        caption_words = [_word("Fig.", 100, 720, 150, 750)]
+        caption_para = _paragraph_block([_line_block(caption_words)])
+        page = _make_page([body, caption_para])
+        original_word_texts = {w.text for w in page.words}
+
+        layout = PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=300,
+                    B=700,
+                    confidence=0.9,
+                ),
+                LayoutRegion(
+                    type=RegionType.caption,
+                    L=100,
+                    R=400,
+                    T=710,
+                    B=770,
+                    confidence=0.8,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+        page.reorganize_page(layout=layout, emit_illustration_placeholders=False)
+        # No illustration/decoration placeholder block from layout-4 step.
+        assert not any(
+            "illustration" in b.block_role_labels or "decoration" in b.block_role_labels
+            for b in page.items
+        )
+        # All words preserved.
+        assert {w.text for w in page.words} == original_word_texts
+
     def test_low_confidence_figure_skipped(self):
         body = _paragraph_block([_line_block([_word("body", 100, 200, 200, 230)])])
         page = _make_page([body])
