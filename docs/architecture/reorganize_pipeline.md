@@ -98,6 +98,8 @@ demands them):
  [Step DC] stitch_drop_caps                    + emit_step_dropcap_debug
    │       Tag oversized initial letter with word_components=["drop cap"]
    │       and merge it into the next paragraph's first line.
+   │       (Followed by detect_and_stitch_cursive_dropcaps fallback for
+   │       cursive / decorative caps DocTR didn't recognise.)
    │
    ▼
  [Final] assemble_final_blocks                 (weave header/footer back in,
@@ -332,6 +334,29 @@ approaches exist:
    downstream consumer can decide whether to render the cap differently.
 
 We use approach 2.
+
+#### Step DC fallback — cursive / decorative caps (`pd_book_tools.ocr.dropcap`)
+
+`stitch_drop_caps` requires the OCR model to have *recognised* the
+cap glyph as a 1–2 character Word. Decorative serif / italic caps
+break that assumption — DocTR returns either a stray ``"-"`` token or
+nothing at all where the cap glyph sits. After `stitch_drop_caps`
+returns, `Page.reorganize_page` calls
+`detect_and_stitch_cursive_dropcaps(blocks, image, metrics)` as a
+fallback. The fallback runs a small image-processing + lexicon
+inference pipeline (geometric indent trigger →
+`cv2.connectedComponentsWithStats` scan in the gap region →
+single-letter prepend lookup against an embedded common-word
+lexicon). Recovered caps carry both ``"drop cap"`` (so
+`Block.text`'s no-separator rule applies) and ``"drop cap inferred"``
+(so labelers / training pipelines can flag the synthetic origin).
+Unrecoverable cases are tagged ``"drop cap unrecovered"`` on the
+closest body word with a `logger.warning` — never silently dropped.
+
+See the ROADMAP entry "Drop-cap glyph recognition for cursive /
+decorative caps" for the full Q1-Q7 design, the Iteration A scope, and
+the queued Iteration B work (separate-Word data model, full fixture
+sweep).
 
 ### Final assembly
 
