@@ -1,4 +1,6 @@
-from typing import Final, Optional
+from __future__ import annotations
+
+from typing import Final
 
 ALLOWED_TEXT_STYLE_LABELS: Final[frozenset[str]] = frozenset(
     {
@@ -50,7 +52,7 @@ def normalize_text_style_label(label: str) -> str:
     return normalized
 
 
-def normalize_text_style_labels(labels: Optional[list[str]]) -> list[str]:
+def normalize_text_style_labels(labels: list[str] | None) -> list[str]:
     if not labels:
         return ["regular"]
     normalized = list(
@@ -65,7 +67,7 @@ def normalize_text_style_labels(labels: Optional[list[str]]) -> list[str]:
     return normalized
 
 
-def normalize_text_style_label_scope(scope: Optional[str]) -> str:
+def normalize_text_style_label_scope(scope: str | None) -> str:
     if scope is None:
         return "whole"
 
@@ -80,7 +82,7 @@ def normalize_text_style_label_scope(scope: Optional[str]) -> str:
 
 
 def normalize_text_style_label_scopes(
-    labels: list[str], scopes: Optional[dict[str, str]]
+    labels: list[str], scopes: dict[str, str] | None
 ) -> dict[str, str]:
     normalized_labels = [normalize_text_style_label(label) for label in labels]
     if not normalized_labels:
@@ -121,7 +123,7 @@ def normalize_word_component(component: str) -> str:
     )
 
 
-def normalize_word_components(components: Optional[list[str]]) -> list[str]:
+def normalize_word_components(components: list[str] | None) -> list[str]:
     if not components:
         return []
     normalized = [normalize_word_component(component) for component in components]
@@ -160,7 +162,7 @@ def _normalize_component(
     return normalized
 
 
-def normalize_character_components(components: Optional[list[str]]) -> list[str]:
+def normalize_character_components(components: list[str] | None) -> list[str]:
     if not components:
         return []
     normalized = [normalize_character_component(component) for component in components]

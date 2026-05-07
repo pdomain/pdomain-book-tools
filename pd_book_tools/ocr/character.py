@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Dict, Optional
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.label_normalization import (
@@ -14,7 +15,7 @@ class Character:
 
     text: str
     bounding_box: BoundingBox
-    ocr_confidence: Optional[float] = None
+    ocr_confidence: float | None = None
     text_style_labels: list[str] = field(default_factory=list)
     word_components: list[str] = field(default_factory=list)
 
@@ -34,7 +35,7 @@ class Character:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "Character":
+    def from_dict(cls, data: dict) -> Character:
         """Create Character from dictionary."""
         word_components = list(data.get("word_components", []))
         if data.get("is_footnote_marker"):
