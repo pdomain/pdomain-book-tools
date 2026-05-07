@@ -131,28 +131,6 @@ default path emits the placeholder block, the opt-out path emits zero
 illustration-roled blocks while still preserving every input OCR word
 (no silent drops).
 
-### Detector failure hardening
-
-PLAN open question 6: adapter raises (model missing, OOM, etc.) →
-should log and return an empty `PageLayout`; reorg with empty layout
-falls back to the existing geometric path.
-
-Today's `registry.get_detector` propagates exceptions from
-`PPDocLayoutPlusLDetector.__init__` (which `from_pretrained` can
-raise on network errors, missing weights, OOM during model load).
-The construction failure leaks to the caller — fine for `pd-ocr-cli`
-which prints and exits, but the planned `pd-prep-for-pgdp` batch
-mode shouldn't abort a 400-page run because page 117 happens to OOM
-the layout model.
-
-Two-step fix:
-
-1. `registry.get_detector(..., on_error="raise" | "log_and_null")`.
-   `"log_and_null"` returns the `NullDetector` and logs once. Default
-   stays `"raise"` so existing CLI behaviour is unchanged.
-2. Per-page `detect()` failures (mid-batch) are already caught by
-   `_TimingDetector` — confirm that with a dedicated test.
-
 ## Open — image-processing improvements (no model fine-tune needed)
 
 These are independent of the layout fine-tune. Each addresses a
@@ -421,7 +399,7 @@ the old plan:
 | Confidence-threshold-blanket-vs-per-type design question | 🟡 Listed above as an open item. |
 | Decoration-vs-figure post-classify heuristic | 🟡 Listed above as an open item. |
 | Multi-column reading order primitive | 🟡 Listed above as an open item. |
-| Detector-failure fallback hardening | 🟡 Listed above as an open item. |
+| Detector-failure fallback hardening | ✅ Shipped via `get_detector(..., on_error="raise" \| "log_and_null")`. Default `"raise"` preserves CLI fail-fast; `"log_and_null"` memoises a `NullDetector` so batch callers (pd-prep-for-pgdp) survive transient build failures (network, OOM, missing weights, unknown key). Per-page `detect()` failures still propagate to the caller. |
 | Caption association distance (`max_gap_px` knob) | ✅ Shipped via `caption_for_figure(max_gap_px=…)` in `pd_book_tools/layout/geometry.py`. |
 | Performance instrumentation (`PageLayout.inference_ms`) | ✅ Shipped via `_TimingDetector` wrapper in `registry.py`. |
 | Custom-detector extensibility for downstream fine-tunes | ✅ Shipped via `register_detector` / `unregister_detector` in `pd_book_tools/layout/registry.py` (R-25). Lets pd-ocr-trainer plug a custom adapter under its own key without modifying the built-in chain. |
