@@ -8,7 +8,7 @@ from importlib.metadata import version as package_version
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Collection, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Collection, Sequence
 
 from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
 from numpy import array, ndarray
@@ -37,8 +37,8 @@ class Document:
 
     source_lib: str = ""
     source_identifier: str = ""
-    source_path: Optional[Path] = None
-    _pages: List[Page] = field(
+    source_path: Path | None = None
+    _pages: list[Page] = field(
         default_factory=list,
     )
 
@@ -85,7 +85,7 @@ class Document:
             pages=[page.scale(width, height) for page in self.pages],
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to a JSON-serializable dictionary"""
         return {
             "source_lib": self.source_lib,
@@ -96,7 +96,7 @@ class Document:
             "pages": [page.to_dict() for page in self.pages] if self.pages else [],
         }
 
-    def to_json_file(self, file_path: Union[str, Path]) -> None:
+    def to_json_file(self, file_path: str | Path) -> None:
         """Save OCR results to JSON file"""
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
@@ -116,7 +116,7 @@ class Document:
     @classmethod
     def from_image_ocr_via_doctr(
         cls,
-        image: Union[str, PathLike, ndarray, PILImage],
+        image: str | PathLike | ndarray | PILImage,
         source_identifier: str = "",
         predictor=None,
         *,
@@ -240,7 +240,7 @@ class Document:
     def from_doctr_result(
         cls,
         doctr_result,
-        source_path: Union[str, Path, None] = None,
+        source_path: str | Path | None = None,
         source_identifier: str = "",
     ) -> "Document":
         """Create Document from docTR result object"""
@@ -250,7 +250,7 @@ class Document:
         # ``str`` is a ``Sequence[str]`` in Python, passing the whole-document
         # string would silently yield a single character per page. Split into
         # one rendered string per page instead.
-        doctr_output: Dict = doctr_result.export()
+        doctr_output: dict = doctr_result.export()
         per_page_text: list[str] = [page.render() for page in doctr_result.pages]
         return cls.from_doctr_output(
             doctr_output=doctr_output,
@@ -262,9 +262,9 @@ class Document:
     @classmethod
     def from_doctr_output(
         cls,
-        doctr_output: Dict,
-        original_text: Optional[Sequence[str]] = None,
-        source_path: Union[str, Path, None] = None,
+        doctr_output: dict,
+        original_text: Sequence[str] | None = None,
+        source_path: str | Path | None = None,
         source_identifier: str = "",
     ) -> "Document":
         """Create Document from docTR dictionary"""
@@ -421,7 +421,7 @@ class Document:
 
     @classmethod
     def _build_ocr_provenance(
-        cls, engine: str, metadata: Dict[str, Any]
+        cls, engine: str, metadata: dict[str, Any]
     ) -> OCRProvenance:
         models = cls._normalize_ocr_models(metadata.get("models"))
 
@@ -505,7 +505,7 @@ class Document:
         return "unknown"
 
     @classmethod
-    def from_json_file(cls, file_path: Union[str, Path]) -> Document:
+    def from_json_file(cls, file_path: str | Path) -> Document:
         """Load OCR from JSON file"""
         d: dict
         with open(file_path, "r", encoding="utf-8") as f:
@@ -550,8 +550,8 @@ class Document:
         return str(val)
 
     @classmethod
-    def _tesseract_confidence(cls, val) -> Optional[float]:
-        """Convert a Tesseract ``conf`` cell to ``Optional[float]``.
+    def _tesseract_confidence(cls, val) -> float | None:
+        """Convert a Tesseract ``conf`` cell to ``float | None``.
 
         Tesseract uses ``conf = -1`` (and emits empty/rejected rows) to mean
         "no confidence available" rather than "very low confidence". Storing
@@ -582,10 +582,10 @@ class Document:
     def from_tesseract(
         cls,
         tesseract_output: "DataFrame",
-        tesseract_string: Optional[str] = None,
-        source_path: Union[str, Path, None] = None,
+        tesseract_string: str | None = None,
+        source_path: str | Path | None = None,
         lang: str = "eng",
-        tesseract_config: Optional[str] = None,
+        tesseract_config: str | None = None,
     ) -> "Document":
         try:
             from pandas import to_numeric as pd_to_numeric
@@ -608,7 +608,7 @@ class Document:
         tesseract_models: list[dict[str, Any]] = []
         if lang:
             tesseract_models.append({"name": str(lang)})
-        tesseract_metadata: Dict[str, Any] = {
+        tesseract_metadata: dict[str, Any] = {
             "source_lib": "tesseract",
             "engine_version": cls._detect_tesseract_engine_version(),
             "models": tesseract_models,
