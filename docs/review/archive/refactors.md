@@ -199,17 +199,33 @@ if self.block_category == BlockCategory.LINE:
 
 ---
 
-## R-15 (partial — closed sub-parts) — `_load_det_model` and `_load_reco_model` extracted
+## [FIXED in 794377b — closes the partial extraction archived earlier] ~~R-15 — `get_finetuned_torch_doctr_predictor` does too much in one function~~
 
-The full R-15 entry remains in the active `refactors.md`, scoped to the
-remaining work. The closed sub-parts archived here:
+**File:** `pd_book_tools/ocr/doctr_support.py`
 
-`_load_det_model` and `_load_reco_model` now live alongside the existing
-`_detect_*_arch` and `_read_*_sidecar` helpers in `doctr_support.py`;
-both encapsulate the torch_load → arch resolution → build_arch(pretrained=False)
-→ load_state_dict-with-M23-context pipeline. (Original R-15 also called for
-a `_detect_arch_from_checkpoint` helper and a `build_predictor` helper —
-both still pending and tracked in the active doc.)
+The function: detects architecture from checkpoint filename heuristics,
+downloads architecture-specific pretrained weights (wasteful — see M-24,
+already addressed), loads two state dicts, assembles an `OCRPredictor`,
+and optionally wraps it. Each concern should be a separate function.
+
+Closed in two stages:
+
+- First wave: `_load_det_model(path, arch) -> DetectionModel` and
+  `_load_reco_model(path, arch) -> RecognitionModel` extracted alongside
+  the existing `_detect_*_arch` and `_read_*_sidecar` helpers; both
+  encapsulate the torch_load → arch resolution → build_arch(pretrained=False)
+  → load_state_dict-with-M23-context pipeline.
+- Final wave (`794377b`): the remaining inlined orchestration was
+  extracted into three more module-level helpers — `_select_torch_device()`
+  (CUDA > MPS > CPU device pick), `_build_doctr_arch(arch_name, doctr_models, **kwargs)`
+  (the doctr factory lookup with the historical fallback policy, formerly
+  a closure inside the public function), and `_assemble_doctr_predictor(det_model, reco_model, *, pretrained)`
+  (the `ocr_predictor` + `detection_predictor` + `recognition_predictor`
+  wrap-up that attaches the latter two onto the full predictor).
+  `get_finetuned_torch_doctr_predictor` is now a thin top-level
+  orchestrator over six named helpers; the public signature is unchanged.
+  `tests/ocr/test_doctr_support.py::TestR15ExtractedHelpers` pins each
+  new helper independently.
 
 ---
 

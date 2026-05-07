@@ -6,16 +6,15 @@ to use correctly. Organized roughly by impact.
 
 ---
 
-**Status (2026-05-07):** 24 of 30 review-numbered items closed. Closed
+**Status (2026-05-07):** 25 of 30 review-numbered items closed. Closed
 items (FIXED / DECLINED / FIXED-with-deprecation) live in
 [`archive/refactors.md`](archive/refactors.md). Only the items that
 still need work remain below: four DEFERRED structural-coupling items
-(R-01, R-02, R-03, R-08) that need cross-repo coordination, the
-remaining sub-tasks of R-15, and the still-open R-16. New refactor
-ideas should be added here under the next available `R-NN` number;
-when closed, **move** the entry into `archive/refactors.md` rather
-than annotating it FIXED in place — see [`README.md`](README.md) for
-the workflow.
+(R-01, R-02, R-03, R-08) that need cross-repo coordination, plus the
+still-open R-16. New refactor ideas should be added here under the
+next available `R-NN` number; when closed, **move** the entry into
+`archive/refactors.md` rather than annotating it FIXED in place —
+see [`README.md`](README.md) for the workflow.
 
 ---
 
@@ -167,38 +166,6 @@ renaming submodules) is a breaking change for all downstream packages.
 - `pd_book_tools/utility/__init__.py`: create with `timing` and `ipynb_widgets` exports
 - `pd_book_tools/layout/__init__.py`: add `draw_layout_overlay`, `clear_detector_cache`,
   and all geometry helpers (`caption_for_figure`, `iou`, `contains`, etc.)
-
----
-
-## R-15 (remaining) — `get_finetuned_torch_doctr_predictor` still bundles arch-detection and predictor assembly
-
-**File:** `pd_book_tools/ocr/doctr_support.py`
-
-The original review broke this into four extractions:
-
-- `_detect_arch_from_checkpoint(path) -> str` — **still inlined**
-- `_load_det_model(path, arch) -> DetectionModel` — extracted
-  (closed; see `archive/refactors.md`)
-- `_load_reco_model(path, arch) -> RecognitionModel` — extracted
-  (closed; see `archive/refactors.md`)
-- `build_predictor(det_model, reco_model) -> OCRPredictor` —
-  **still inlined**
-
-Remaining work is therefore the two helpers that haven't landed:
-
-1. Pull arch-detection out into a named helper. Today architecture is
-   detected from the checkpoint filename via the existing `_detect_*_arch`
-   internals, but the orchestration around them (the heuristic resolution
-   plus the M-23 RuntimeError-context wrapping) is still inline in
-   `get_finetuned_torch_doctr_predictor`.
-2. Extract a `build_predictor(det_model, reco_model, ...) -> OCRPredictor`
-   helper that owns device selection, vocab fallback, and the
-   `OCRPredictor` + det/reco-predictor wrap-up that currently trails
-   the load-state-dict calls.
-
-After both land, `get_finetuned_torch_doctr_predictor` becomes a thin
-top-level orchestrator over five named helpers; archive this entry once
-the second extraction commits.
 
 ---
 
