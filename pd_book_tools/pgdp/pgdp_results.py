@@ -9,19 +9,24 @@ logger = getLogger(__name__)
 
 
 class PGDPResults:
-    png_file: str
-    png_full_path: pathlib.Path
-    original_page_text: str
-    original_lines: list
-    processed_page_text: str
-    processed_lines: list
-    processed_words: list
-
+    # NOTE: kept as a plain class (not @dataclass) because the constructor
+    # runs ``process()`` to populate the ``processed_*`` and ``original_lines``
+    # fields from ``page_text``. Dataclass-with-__post_init__ would express
+    # the same shape, but the public constructor takes only
+    # ``(png_file, page_text)`` — the other attributes are computed, not
+    # injected — so a custom __init__ is the honest representation. The
+    # bare class-level annotations (R-19) were misleading because they
+    # looked like class variables; they have been removed, and instance
+    # attribute types are now declared inline in __init__.
     def __init__(self, png_file: str, page_text: str):
-        self.png_file = png_file
-        self.png_full_path = pathlib.Path(png_file).resolve()
-        self.original_page_text = page_text
-        self.original_lines = page_text.splitlines()
+        self.png_file: str = png_file
+        self.png_full_path: pathlib.Path = pathlib.Path(png_file).resolve()
+        self.original_page_text: str = page_text
+        self.original_lines: list[str] = page_text.splitlines()
+        # processed_* fields populated by self.process()
+        self.processed_page_text: str = ""
+        self.processed_lines: list[tuple[int, str]] = []
+        self.processed_words: list[tuple[int, int, str]] = []
         self.process()
 
     def process(self):
@@ -51,8 +56,8 @@ class PGDPResults:
         ]
         return self
 
-    @classmethod
-    def remove_blank_page(cls, text):
+    @staticmethod
+    def remove_blank_page(text):
         logger.debug("Removing blank page markers from text")
         s = regex.sub(r"\[Blank Page\]", "", text, flags=regex.DOTALL)
         if s == text:
@@ -61,8 +66,8 @@ class PGDPResults:
             logger.debug("Blank page markers removed")
         return s
 
-    @classmethod
-    def remove_proofer_notes(cls, text):
+    @staticmethod
+    def remove_proofer_notes(text):
         logger.debug("Removing proofer notes from text")
         s = regex.sub(r"\[\*.*?\]", "", text, flags=regex.DOTALL)
         if s == text:
@@ -71,8 +76,8 @@ class PGDPResults:
             logger.debug("Proofer notes removed")
         return s
 
-    @classmethod
-    def convert_pgdp_dashes(cls, text):
+    @staticmethod
+    def convert_pgdp_dashes(text):
         logger.debug("Converting PGDP dashes to Unicode dashes")
         s = regex.sub(r"----", "⸺", text, flags=regex.DOTALL)
         s = regex.sub(r"--", "—", s, flags=regex.DOTALL)
@@ -82,8 +87,8 @@ class PGDPResults:
             logger.debug("PGDP dashes converted")
         return s
 
-    @classmethod
-    def convert_straight_to_curly_quotes(cls, text):
+    @staticmethod
+    def convert_straight_to_curly_quotes(text):
         logger.debug("Converting straight quotes to curly quotes")
         # Heuristic approach (no heavy NLP): handle elisions, decades, contractions, then generic quotes.
         s = text
@@ -158,12 +163,12 @@ class PGDPResults:
 
         return s
 
-    @classmethod
-    def split_hyphen_asterisk(cls, text):
+    @staticmethod
+    def split_hyphen_asterisk(text):
         return regex.sub(r"-\*(\S+)\n(\S+)", r"-\n\1 \2", text)
 
-    @classmethod
-    def remove_leading_trailing_asterisk(cls, text):
+    @staticmethod
+    def remove_leading_trailing_asterisk(text):
         text = text.strip()
         if text[0:1] == "*":
             text = text[1:]
@@ -174,13 +179,13 @@ class PGDPResults:
             text = text[:-1]
         return text
 
-    @classmethod
-    def fix_footnotes(cls, text):
+    @staticmethod
+    def fix_footnotes(text):
         text = regex.sub(r"\[(\d+)\]", r"\1", text)
         return text
 
-    @classmethod
-    def fix_pgdp_diacritics(cls, text):
+    @staticmethod
+    def fix_pgdp_diacritics(text):
         text = regex.sub(r"\[=A\]", "Ā", text)
         text = regex.sub(r"\[=E\]", "Ē", text)
         text = regex.sub(r"\[=I\]", "Ī", text)

@@ -410,7 +410,7 @@ direct modernization.
 
 ---
 
-## R-19 — `PGDPResults` uses bare class-level annotations without `@dataclass`
+## [FIXED] ~~R-19 — `PGDPResults` uses bare class-level annotations without `@dataclass`~~
 
 **File:** `pd_book_tools/pgdp/pgdp_results.py`, lines 12–18
 
@@ -422,9 +422,16 @@ accessing them on the class raises `AttributeError`.
 **Direction:** either apply `@dataclass` and generate `__init__`, or remove the
 class-level annotations and rely solely on the custom `__init__`.
 
+Resolved by removing the misleading class-level annotations and declaring
+all instance attributes inline in `__init__` (with `processed_*` initialized
+to empty defaults before `process()` populates them). `@dataclass` was
+declined because the public constructor takes only `(png_file, page_text)`
+and computes all other fields in `process()` — a custom `__init__` is the
+honest representation of that shape.
+
 ---
 
-## R-20 — `PGDPResults` processing methods are `@classmethod` but use neither `cls` nor class state
+## [FIXED] ~~R-20 — `PGDPResults` processing methods are `@classmethod` but use neither `cls` nor class state~~
 
 **File:** `pd_book_tools/pgdp/pgdp_results.py`, lines 55, 64, 74, 86, 162, 166, 178, 183
 
@@ -432,6 +439,10 @@ All 8 processing methods (`remove_blank_page`, `remove_proofer_notes`, etc.) are
 `@classmethod` that receive only `text: str` and return `str`. None use `cls`.
 `@classmethod` suggests these might construct instances or call other class methods;
 `@staticmethod` communicates the actual intent.
+
+Resolved by converting all 8 methods to `@staticmethod`. Workspace-wide
+grep confirmed all callers use the `PGDPResults.method(text)` form (no
+instance method calls, no `cls` usage), so the swap is behavior-preserving.
 
 ---
 
