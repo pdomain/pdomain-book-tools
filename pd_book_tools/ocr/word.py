@@ -457,47 +457,20 @@ class Word:
     def refine_bbox(self, page_image: ndarray | None, padding_px: int = 1) -> bool:
         """Refine this word's bounding box using the page image.
 
-        Tries ``BoundingBox.refine`` first, falls back to ``crop_bottom``.
-        Returns ``True`` if refinement succeeded (either via the primary
-        refine path or the crop_bottom fallback), ``False`` otherwise.
+        The implementation lives in
+        :func:`pd_book_tools.ocr.image_utilities.refine_word_bbox`; call
+        that directly in new code. This wrapper is preserved for
+        backward compatibility (R-01).
 
-        ``padding_px`` is forwarded to ``BoundingBox.refine``. The default
-        of 1 preserves the contract of pre-R-04 callers; callers that
-        previously used ``Word.refine_bounding_box(image, padding_px=...)``
-        flow through unchanged via the back-compat shim of the same name.
+        Tries ``BoundingBox.refine`` first, falls back to
+        ``crop_bottom``. Returns ``True`` on successful refinement,
+        ``False`` otherwise. ``padding_px`` is forwarded to
+        ``BoundingBox.refine``.
         """
-        bbox = self.bounding_box
-        if bbox is None:
-            return False
+        # Local import to avoid a cycle: image_utilities imports Word.
+        from pd_book_tools.ocr.image_utilities import refine_word_bbox
 
-        if page_image is None:
-            return False
-
-        try:
-            refined_bbox = bbox.refine(
-                page_image,
-                padding_px=padding_px,
-                expand_beyond_original=False,
-            )
-            if refined_bbox is not None:
-                self.bounding_box = refined_bbox
-                return True
-        except Exception:
-            logger.debug(
-                "Bounding-box refine failed during word refine; falling back",
-                exc_info=True,
-            )
-
-        try:
-            self.crop_bottom(page_image)
-            return True
-        except Exception:
-            logger.debug(
-                "crop_bottom failed during word refine",
-                exc_info=True,
-            )
-
-        return False
+        return refine_word_bbox(self, page_image, padding_px=padding_px)
 
     def expand_bbox(
         self,
@@ -1100,37 +1073,25 @@ class Word:
         self.text_style_label_scopes = merged_scopes
 
     def crop_bottom(self, img_ndarray):
-        """Crop the bottom of the word using bounding box crop_bottom method"""
-        if not self.bounding_box:
-            logger.warning("Bounding box is None, cannot crop bottom")
-            raise ValueError("Bounding box is None, cannot crop bottom")
+        """Crop the bottom of the word using bounding box crop_bottom method.
 
-        if img_ndarray is None:
-            logger.warning("Image ndarray is None, cannot crop bottom")
-            raise ValueError("Image ndarray is None, cannot crop bottom")
+        The implementation lives in
+        :func:`pd_book_tools.ocr.image_utilities.crop_word_bottom`; call
+        that directly in new code. This wrapper is preserved for
+        backward compatibility (R-01).
+        """
+        from pd_book_tools.ocr.image_utilities import crop_word_bottom
 
-        cropped_bbox = self.bounding_box.crop_bottom(img_ndarray)
-        if cropped_bbox is None:
-            logger.warning(
-                "Cropped bounding box is None, cannot crop bottom; preserving existing bounding_box"
-            )
-            return
-        self.bounding_box = cropped_bbox
+        crop_word_bottom(self, img_ndarray)
 
     def crop_top(self, img_ndarray):
-        """Crop the top of the word using bounding box crop_top method"""
-        if not self.bounding_box:
-            logger.warning("Bounding box is None, cannot crop top")
-            raise ValueError("Bounding box is None, cannot crop top")
+        """Crop the top of the word using bounding box crop_top method.
 
-        if img_ndarray is None:
-            logger.warning("Image ndarray is None, cannot crop top")
-            raise ValueError("Image ndarray is None, cannot crop top")
+        The implementation lives in
+        :func:`pd_book_tools.ocr.image_utilities.crop_word_top`; call
+        that directly in new code. This wrapper is preserved for
+        backward compatibility (R-01).
+        """
+        from pd_book_tools.ocr.image_utilities import crop_word_top
 
-        cropped_bbox = self.bounding_box.crop_top(img_ndarray)
-        if cropped_bbox is None:
-            logger.warning(
-                "Cropped bounding box is None, cannot crop top; preserving existing bounding_box"
-            )
-            return
-        self.bounding_box = cropped_bbox
+        crop_word_top(self, img_ndarray)

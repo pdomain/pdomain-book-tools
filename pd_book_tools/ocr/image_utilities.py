@@ -96,3 +96,145 @@ def get_cropped_block_image(
     if not line.bounding_box:
         raise ValueError("Line bounding box is not defined.")
     return get_cropped_encoded_image(img, line.bounding_box)
+
+
+# ---------------------------------------------------------------------------
+# R-01 / R-03 free-function image ops
+#
+# Canonical surface for image operations on Word / Block / Page. The
+# corresponding methods on Word / Block / Page remain in place as thin
+# wrappers preserving backward compatibility (downstream repos call
+# them directly). New code should call these free functions.
+#
+# For simple ops (refine, crop_top, crop_bottom) the implementation
+# lives here and the method delegates. For the more complex ops
+# (split_into_characters_from_whitespace, estimate_baseline_from_image)
+# the implementation continues to live on the method to limit blast
+# radius; these free-function entry points delegate to the method.
+# Callers see a uniform "free-function = canonical" surface either
+# way.
+# ---------------------------------------------------------------------------
+
+
+def refine_word_bbox(word: Word, image: ndarray | None, padding_px: int = 1) -> bool:
+    """Refine ``word.bounding_box`` against ``image``. Mutates ``word`` in place.
+
+    Wraps the existing logic on :meth:`Word.refine_bbox` (BoundingBox.refine
+    primary path with ``crop_bottom`` fallback). Returns ``True`` on
+    successful refinement, ``False`` otherwise.
+    """
+    bbox = word.bounding_box
+    if bbox is None or image is None:
+        return False
+
+    try:
+        refined_bbox = bbox.refine(
+            image, padding_px=padding_px, expand_beyond_original=False
+        )
+        if refined_bbox is not None:
+            word.bounding_box = refined_bbox
+            return True
+    except Exception:
+        logger.debug(
+            "Bounding-box refine failed during word refine; falling back",
+            exc_info=True,
+        )
+
+    try:
+        # Call the method (not the free function) so that downstream
+        # tests / call sites that monkey-patch ``word.crop_bottom``
+        # continue to work. The method itself thin-wraps the free
+        # function ``crop_word_bottom`` in production.
+        word.crop_bottom(image)
+        return True
+    except Exception:
+        logger.debug(
+            "crop_bottom failed during word refine",
+            exc_info=True,
+        )
+
+    return False
+
+
+def crop_word_bottom(word: Word, image: ndarray | None) -> None:
+    """Crop ``word.bounding_box`` to its bottom half. Mutates ``word``."""
+    if not word.bounding_box:
+        raise ValueError("Bounding box is None, cannot crop bottom")
+    if image is None:
+        raise ValueError("Image ndarray is None, cannot crop bottom")
+
+    cropped_bbox = word.bounding_box.crop_bottom(image)
+    if cropped_bbox is None:
+        logger.warning(
+            "Cropped bounding box is None, cannot crop bottom; preserving existing bounding_box"
+        )
+        return
+    word.bounding_box = cropped_bbox
+
+
+def crop_word_top(word: Word, image: ndarray | None) -> None:
+    """Crop ``word.bounding_box`` to its top half. Mutates ``word``."""
+    if not word.bounding_box:
+        raise ValueError("Bounding box is None, cannot crop top")
+    if image is None:
+        raise ValueError("Image ndarray is None, cannot crop top")
+
+    cropped_bbox = word.bounding_box.crop_top(image)
+    if cropped_bbox is None:
+        logger.warning(
+            "Cropped bounding box is None, cannot crop top; preserving existing bounding_box"
+        )
+        return
+    word.bounding_box = cropped_bbox
+
+
+def split_word_into_characters(
+    word: Word, image: ndarray | None, min_ink_pixels_per_column: int = 1
+):
+    """Split a :class:`Word` into :class:`Character` objects via vertical-whitespace gaps.
+
+    Free-function delegate of :meth:`Word.split_into_characters_from_whitespace`.
+    The complex implementation continues to live on the method for now;
+    new code should still prefer this free-function entry point so that
+    a future iteration can flip the directionality without touching
+    callers.
+    """
+    return word.split_into_characters_from_whitespace(
+        image, min_ink_pixels_per_column=min_ink_pixels_per_column
+    )
+
+
+def estimate_word_baseline(word: Word, image: ndarray | None):
+    """Estimate a horizontal baseline for ``word``. Mutates ``word.baseline``.
+
+    Free-function delegate of :meth:`Word.estimate_baseline_from_image`.
+    """
+    return word.estimate_baseline_from_image(image)
+
+
+def estimate_block_baseline(block: Block, image: ndarray | None):
+    """Estimate a linear baseline for a line block. Mutates ``block.baseline``.
+
+    Free-function delegate of :meth:`Block.estimate_baseline_from_image`.
+    """
+    return block.estimate_baseline_from_image(image)
+
+
+def refine_block_bounding_boxes(
+    block: Block, image: ndarray | None, padding_px: int = 0
+) -> None:
+    """Recursively refine ``block`` and its descendants' bboxes against ``image``.
+
+    Free-function delegate of :meth:`Block.refine_bounding_boxes`.
+    """
+    block.refine_bounding_boxes(image, padding_px=padding_px)
+
+
+def refine_page_bounding_boxes(page, image: ndarray | None = None, padding_px: int = 0):
+    """Refine all bboxes on a :class:`Page` against ``image``.
+
+    Free-function delegate of :meth:`Page.refine_bounding_boxes`. ``page``
+    is typed loosely to avoid an import cycle (``image_utilities`` is
+    imported from inside the OCR package; ``Page`` is too).
+    """
+    return page.refine_bounding_boxes(image=image, padding_px=padding_px)

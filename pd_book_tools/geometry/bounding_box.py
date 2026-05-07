@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import functools
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from logging import getLogger
 from typing import Sequence
 
-import cv2
-from cv2 import (
+import cv2  # noqa: F401  # historical import; kept for back-compat per R-03 wrapper-stays
+from cv2 import (  # noqa: F401  # historical re-exports; kept for back-compat
     COLOR_BGR2GRAY,
     THRESH_BINARY,
     THRESH_OTSU,
@@ -531,198 +531,52 @@ class BoundingBox:
             is_normalized=box_norm,
         )
 
-    def _extract_roi(self, image: ndarray):
-        """Internal: return (roi, x1,y1,x2,y2, img_w,img_h, original_is_normalized).
-        Scales to pixel space if normalized.
-        """
-        img_h, img_w = image.shape[:2]
-        original_is_normalized = bool(self.is_normalized)
-        box = self.scale(img_w, img_h) if original_is_normalized else self
-        x1, y1, x2, y2 = box.to_ltrb()
-        roi = image[y1:y2, x1:x2]
-        return roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized
-
-    @staticmethod
-    def _tight_bbox_from_thresh(thresh: ndarray):
-        non_zero = findNonZero(thresh)
-        if non_zero is None:
-            return None
-        x, y, w, h = cv2.boundingRect(non_zero)
-        return x, y, w, h
-
-    @staticmethod
-    def _connected_content_bbox_from_image_thresh(
-        thresh: ndarray,
-        x1: int,
-        y1: int,
-        x2: int,
-        y2: int,
-    ):
-        """Return bbox for connected components that intersect the original ROI.
-
-        Coordinates are in image pixel space and returned as (x_min, y_min, x_max, y_max).
-        """
-        if x1 >= x2 or y1 >= y2:
-            return None
-
-        components = cv2.connectedComponentsWithStats(thresh, connectivity=8)
-        num_labels, labels, stats, _ = components
-        if num_labels <= 1:
-            return None
-
-        roi_labels = labels[y1:y2, x1:x2]
-        touching_labels = {
-            int(label) for label in roi_labels.ravel() if int(label) != 0
-        }
-        if not touching_labels:
-            return None
-
-        x_min = float("inf")
-        y_min = float("inf")
-        x_max = float("-inf")
-        y_max = float("-inf")
-
-        for label in touching_labels:
-            comp_x = float(stats[label, cv2.CC_STAT_LEFT])
-            comp_y = float(stats[label, cv2.CC_STAT_TOP])
-            comp_w = float(stats[label, cv2.CC_STAT_WIDTH])
-            comp_h = float(stats[label, cv2.CC_STAT_HEIGHT])
-            x_min = min(x_min, comp_x)
-            y_min = min(y_min, comp_y)
-            x_max = max(x_max, comp_x + comp_w)
-            y_max = max(y_max, comp_y + comp_h)
-
-        return x_min, y_min, x_max, y_max
-
-    def _finalize_pixel_bbox(
-        self,
-        x_min: float,
-        y_min: float,
-        x_max: float,
-        y_max: float,
-        img_w: int,
-        img_h: int,
-        original_is_normalized: bool,
-    ) -> "BoundingBox":
-        bbox = BoundingBox.from_ltrb(x_min, y_min, x_max, y_max)
-        if original_is_normalized:
-            # round before renormalizing (existing behavior)
-            bbox = BoundingBox.from_ltrb(
-                int(round(x_min)),
-                int(round(y_min)),
-                int(round(x_max)),
-                int(round(y_max)),
-            ).normalize(img_w, img_h)
-        return bbox
-
     def refine(
         self,
         image: ndarray,
         padding_px: int = 0,
         expand_beyond_original: bool = False,
     ) -> "BoundingBox":
-        roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized = self._extract_roi(
-            image
-        )
-        orig_x1, orig_y1, orig_x2, orig_y2 = x1, y1, x2, y2
-        if expand_beyond_original:
-            thresh_full, _ = self._threshold_inverted(image)
-            connected_bbox = self._connected_content_bbox_from_image_thresh(
-                thresh_full,
-                x1,
-                y1,
-                x2,
-                y2,
-            )
-            if connected_bbox is None:
-                return replace(self)
-            x_min, y_min, x_max, y_max = connected_bbox
-        else:
-            thresh, _ = self._threshold_inverted(roi)
-            tight = self._tight_bbox_from_thresh(thresh)
-            if tight is None:
-                return replace(self)
-            x, y, w, h = tight
-            x_min = x1 + x
-            y_min = y1 + y
-            x_max = x1 + x + w
-            y_max = y1 + y + h
-        tight_width = x_max - x_min
-        tight_height = y_max - y_min
-        if expand_beyond_original:
-            slack_w = max(0.0, (orig_x2 - orig_x1) - tight_width)
-            slack_h = max(0.0, (orig_y2 - orig_y1) - tight_height)
-            extra_w = padding_px + slack_w / 2.0
-            extra_h = padding_px + slack_h / 2.0
-            x_min = max(0.0, x_min - extra_w)
-            y_min = max(0.0, y_min - extra_h)
-            x_max = min(float(img_w), x_max + extra_w)
-            y_max = min(float(img_h), y_max + extra_h)
-        else:
-            x_min = max(orig_x1, max(0.0, x_min - padding_px))
-            y_min = max(orig_y1, max(0.0, y_min - padding_px))
-            x_max = min(orig_x2, min(float(img_w), x_max + padding_px))
-            y_max = min(orig_y2, min(float(img_h), y_max + padding_px))
-        return self._finalize_pixel_bbox(
-            x_min, y_min, x_max, y_max, img_w, img_h, original_is_normalized
-        )
+        """Tighten this bbox around its image content (OTSU threshold).
 
-    def _vertical_crop(self, image: ndarray, keep: str) -> "BoundingBox":
-        """Shared implementation for crop_top (keep='top') and crop_bottom (keep='bottom').
-
-        ``keep`` indicates which half of the box to retain: ``'top'`` keeps the
-        upper half (raises ``y1`` toward the content), ``'bottom'`` keeps the
-        lower half (lowers ``y2``). The returned box stays in the same
-        coordinate space as ``self`` (pixel-space input -> pixel-space output;
-        normalized input -> normalized output).
+        The implementation lives in
+        :func:`pd_book_tools.geometry.image_ops.refine_bbox`; call that
+        directly in new code. This wrapper is preserved for backward
+        compatibility (R-01/R-03).
         """
-        roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized = self._extract_roi(
-            image
-        )
-        thresh, _ = self._threshold_inverted(roi)
-        non_zero = findNonZero(thresh)
-        if non_zero is None:
-            return replace(self)
-        coords = non_zero.reshape(-1, 2)
-        roi_h, _ = thresh.shape
-        center_y = roi_h // 2
-        if keep == "top":
-            # discard below center
-            coords = coords[coords[:, 1] <= center_y]
-            if coords.size == 0:
-                return replace(self)
-            for y in range(center_y - 1, -1, -1):
-                current = set(coords[coords[:, 1] == y][:, 0])
-                prev = set(coords[coords[:, 1] == y + 1][:, 0])
-                if not prev and current:
-                    continue
-                if current & prev:
-                    continue
-                y1 = y1 + y
-                break
-        else:  # keep == bottom
-            coords = coords[coords[:, 1] >= center_y]
-            if coords.size == 0:
-                return replace(self)
-            roi_h = thresh.shape[0]
-            for y in range(center_y + 1, roi_h):
-                current = set(coords[coords[:, 1] == y][:, 0])
-                prev = set(coords[coords[:, 1] == y - 1][:, 0])
-                if not prev and current:
-                    continue
-                if current & prev:
-                    continue
-                y2 = y1 + y  # adjust y2 based on offset
-                break
-        return self._finalize_pixel_bbox(
-            x1, y1, x2, y2, img_w, img_h, original_is_normalized
+        # Local import to avoid a cycle: image_ops imports BoundingBox.
+        from pd_book_tools.geometry.image_ops import refine_bbox
+
+        return refine_bbox(
+            self,
+            image,
+            padding_px=padding_px,
+            expand_beyond_original=expand_beyond_original,
         )
 
     def crop_bottom(self, image: ndarray) -> "BoundingBox":
-        return self._vertical_crop(image, keep="bottom")
+        """Return a new bbox cropped to the bottom half of its image content.
+
+        The implementation lives in
+        :func:`pd_book_tools.geometry.image_ops.crop_bottom_bbox`; call
+        that directly in new code. This wrapper is preserved for
+        backward compatibility (R-01/R-03).
+        """
+        from pd_book_tools.geometry.image_ops import crop_bottom_bbox
+
+        return crop_bottom_bbox(self, image)
 
     def crop_top(self, image: ndarray) -> "BoundingBox":
-        return self._vertical_crop(image, keep="top")
+        """Return a new bbox cropped to the top half of its image content.
+
+        The implementation lives in
+        :func:`pd_book_tools.geometry.image_ops.crop_top_bbox`; call
+        that directly in new code. This wrapper is preserved for
+        backward compatibility (R-01/R-03).
+        """
+        from pd_book_tools.geometry.image_ops import crop_top_bbox
+
+        return crop_top_bbox(self, image)
 
     def clamp_to_image(self, width: int, height: int) -> "BoundingBox | None":
         """Return new box clamped to [0,width]x[0,height] in pixel or [0,1] if normalized.
@@ -913,21 +767,6 @@ class BoundingBox:
     def _interval_overlap(a0: float, a1: float, b0: float, b1: float) -> float:
         """Return 1D interval overlap length (>=0)."""
         return max(0.0, min(a1, b1) - max(a0, b0))
-
-    @staticmethod
-    def _threshold_inverted(roi: ndarray) -> tuple[ndarray, ndarray]:
-        """Convert ROI to grayscale (if needed), invert, OTSU threshold.
-
-        Returns (thresh, grayscale_roi). Extracted to reduce duplication across
-        refine/crop/expand_to_content routines.
-        """
-        if len(roi.shape) == 3:
-            roi_gray = cvtColor(roi, COLOR_BGR2GRAY)
-        else:
-            roi_gray = roi
-        inverted = cv2.bitwise_not(roi_gray)
-        _, thresh = threshold(inverted, 0, 255, THRESH_BINARY + THRESH_OTSU)
-        return thresh, roi_gray
 
     def to_json(self) -> str:
         import json

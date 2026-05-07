@@ -544,3 +544,72 @@ catalogs the supported surface; submodule paths remain unsupported
 and may relocate in future versions. `tests/test_public_api.py` pins
 the re-exports. Per design decision Q4, eager OCR/cv2/numpy imports
 at top-level are accepted (not chasing a cv2-free import path).
+
+---
+
+## [FIXED — wrappers retained for back-compat] ~~R-01 — Image operations belong in `image_utilities.py`, not on `Word`, `Block`, and `Page`~~
+
+**Files:**
+
+- `pd_book_tools/ocr/word.py`, lines 768–959
+- `pd_book_tools/ocr/block.py`, lines 1000–1059
+
+`Word` and `Block` directly import `numpy` and `cv2` to implement
+`split_into_characters_from_whitespace`, `estimate_baseline_from_image`, `refine_bbox`,
+`crop_bottom`, `crop_top`, and visualization helpers. The image is always passed as a
+parameter — it is never owned by `Word` or `Block`. This couples the data model to
+OpenCV, so any consumer of `Word` or `Block` (tests, training code, labeler) pays the
+full OpenCV import cost even when images are never used.
+
+**Direction:** move all image-dependent methods out of `Word` and `Block` into
+`pd_book_tools/ocr/image_utilities.py` as free functions: `refine_word_bbox(word, image)`,
+`split_word_into_characters(word, image)`, etc. `Word` and `Block` should only know
+about `BoundingBox`.
+
+**Resolution:** Deprecation-overlap landed 2026-05-07. Free functions
+`refine_word_bbox`, `crop_word_bottom`, `crop_word_top`,
+`split_word_into_characters`, `estimate_word_baseline`,
+`estimate_block_baseline`, `refine_block_bounding_boxes`, and
+`refine_page_bounding_boxes` are the canonical surface in
+`pd_book_tools.ocr.image_utilities`. The existing
+`Word.refine_bbox` / `Word.crop_bottom` / `Word.crop_top` methods are
+preserved as thin wrappers, so downstream repos (pd-ocr-labeler, etc.)
+that monkey-patch these as instance methods continue to work
+unchanged. `refine_word_bbox` deliberately calls
+``word.crop_bottom(image)`` (the method) on its fallback path so that
+test monkey-patching of the method survives. The cv2 / numpy imports
+on Word and Block remain — per design decision Q4, this iteration
+is not chasing a cv2-free import path. Downstream migration from
+method-style to free-function style is non-blocking and can land at
+each repo's leisure.
+
+---
+
+## [FIXED — wrappers retained for back-compat] ~~R-03 — `BoundingBox` mixes geometry with image-processing (imports cv2 directly)~~
+
+**File:** `pd_book_tools/geometry/bounding_box.py`, lines 475–650
+
+The `refine` / `crop_bottom` / `crop_top` family of methods and their helpers
+(`_extract_roi`, `_threshold_inverted`, `_tight_bbox_from_thresh`, etc.) import and
+use `cv2` directly. A geometry data type should not depend on a computer vision
+framework. This prevents using `BoundingBox` in environments where cv2 is unavailable.
+
+**Direction:** extract the image-dependent helpers into a separate module
+(e.g., `pd_book_tools/geometry/image_ops.py` or fold into `ocr/image_utilities.py`)
+and have `BoundingBox` expose only coordinate geometry.
+
+**Resolution:** Landed 2026-05-07. Image-processing helpers extracted
+into a new module ``pd_book_tools.geometry.image_ops`` —
+``refine_bbox(bbox, image, ...)``, ``crop_top_bbox(bbox, image)``,
+``crop_bottom_bbox(bbox, image)`` plus the supporting
+``_extract_roi`` / ``_threshold_inverted`` /
+``_tight_bbox_from_thresh`` /
+``_connected_content_bbox_from_image_thresh`` /
+``_finalize_pixel_bbox`` / ``_vertical_crop`` helpers. The
+``BoundingBox.refine`` / ``crop_top`` / ``crop_bottom`` methods now
+thin-wrap the free functions and remain in place for backward
+compatibility (downstream test code monkey-patches
+``mock_word.bounding_box.refine = MagicMock(...)``). The cv2 import in
+``bounding_box.py`` is no longer strictly necessary but is kept (with
+``# noqa: F401``) per design decision Q4 — we are not chasing a
+cv2-free geometry module in this iteration.
