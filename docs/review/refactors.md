@@ -587,7 +587,7 @@ commented-out old implementation remains at lines 92–95.
 
 ---
 
-## R-30 — `np_uint8_float_*` naming convention is ambiguous
+## [FIXED — canonical name added; deprecated alias preserved] ~~R-30 — `np_uint8_float_*` naming convention is ambiguous~~
 
 **Files:**
 
@@ -601,3 +601,13 @@ accepted or returned.
 
 **Direction:** rename to `np_uint8_*` (dropping the `_float_` infix), which is
 consistent with the rest of the `np_uint8_*` wrapper family.
+
+After the f1448eb rename of `np_uint8_float_colorToGray` →
+`np_uint8_color_to_gray`, the only remaining offender was
+`np_uint8_float_binary_thresh`. Resolved by adding
+`np_uint8_otsu_binary_thresh` as the canonical name (semantically
+clearer: this wrapper is specifically for Otsu's method) and keeping
+`np_uint8_float_binary_thresh` as a thin deprecated alias that emits
+`DeprecationWarning`. Workspace-wide grep found no actual code callers
+outside this repo's own tests; only `pd-prep-for-pgdp/specs/` markdown
+references the old name (left as-is — historical spec context).

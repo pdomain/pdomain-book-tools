@@ -43,7 +43,8 @@ from .split import (
 from .threshold import (
     binary_thresh_gpu,
     np_uint8_binary_thresh,
-    np_uint8_float_binary_thresh,
+    np_uint8_float_binary_thresh,  # deprecated alias for np_uint8_otsu_binary_thresh (R-30)
+    np_uint8_otsu_binary_thresh,
     otsu_binary_thresh,
 )
 from .whitespace import (
@@ -95,6 +96,7 @@ __all__ = [
     "binary_thresh_gpu",
     "np_uint8_binary_thresh",
     "np_uint8_float_binary_thresh",
+    "np_uint8_otsu_binary_thresh",
     "otsu_binary_thresh",
     "add_whitespace_percentage_gpu",
     "add_whitespace_pixels_gpu",

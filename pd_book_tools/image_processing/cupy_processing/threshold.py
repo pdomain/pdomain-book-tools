@@ -107,9 +107,15 @@ def np_uint8_binary_thresh(img: np.ndarray, level: int = 127) -> np.ndarray:
     return cp.asnumpy(binary_thresh_gpu(cp.asarray(img), level))
 
 
-def np_uint8_float_binary_thresh(
+def np_uint8_otsu_binary_thresh(
     img: np.ndarray,
 ):
+    """Transfers img to GPU, applies Otsu binary threshold, returns CPU uint8 array.
+
+    Internally promotes the uint8 input to float32 for Otsu's variance
+    minimization, but the input contract and output contract are both
+    uint8 — matching the rest of the ``np_uint8_*`` wrapper family.
+    """
     require_cupy()
     img_float = img.astype(np.float32) / 255.0
     src = cp.asarray(img_float)
@@ -120,3 +126,23 @@ def np_uint8_float_binary_thresh(
     uint8_image: np.ndarray = cupy_result.get()
 
     return uint8_image
+
+
+def np_uint8_float_binary_thresh(img: np.ndarray):
+    """Deprecated alias for :func:`np_uint8_otsu_binary_thresh` (R-30).
+
+    The ``_float_`` infix was misleading — the function takes/returns
+    uint8 like every other ``np_uint8_*`` wrapper in this package; the
+    float intermediate is an internal implementation detail. Use
+    ``np_uint8_otsu_binary_thresh`` directly.
+    """
+    import warnings as _w
+
+    _w.warn(
+        "np_uint8_float_binary_thresh is deprecated; use "
+        "np_uint8_otsu_binary_thresh (the '_float_' infix was misleading — "
+        "the function takes and returns uint8). Will be removed in a future major.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return np_uint8_otsu_binary_thresh(img)

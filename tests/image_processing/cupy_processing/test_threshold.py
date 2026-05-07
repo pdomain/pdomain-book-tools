@@ -202,8 +202,41 @@ class TestNpUint8FloatBinaryThresh:
         img = np.zeros((20, 20), dtype=np.uint8)
         img[:10, :] = 30
         img[10:, :] = 220
-        out = thresh_mod.np_uint8_float_binary_thresh(img)
+        # The legacy ``_float_`` name is deprecated (R-30) — invoking it
+        # still works but emits a DeprecationWarning. Suppress here so
+        # this test stays focused on the output contract.
+        import warnings as _w
+
+        with _w.catch_warnings():
+            _w.simplefilter("ignore", DeprecationWarning)
+            out = thresh_mod.np_uint8_float_binary_thresh(img)
         assert out.dtype == np.uint8
         assert out.shape == img.shape
         # Values should be either 0 or 255
         assert set(np.unique(out).tolist()).issubset({0, 255})
+
+
+class TestNpUint8OtsuBinaryThresh:
+    """R-30: canonical replacement for np_uint8_float_binary_thresh."""
+
+    def test_canonical_name_returns_uint8(self, cupy_threshold):
+        thresh_mod, _ = cupy_threshold
+        img = np.zeros((20, 20), dtype=np.uint8)
+        img[:10, :] = 30
+        img[10:, :] = 220
+        out = thresh_mod.np_uint8_otsu_binary_thresh(img)
+        assert out.dtype == np.uint8
+        assert out.shape == img.shape
+        assert set(np.unique(out).tolist()).issubset({0, 255})
+
+    def test_alias_emits_deprecation_warning(self, cupy_threshold):
+        import pytest
+
+        thresh_mod, _ = cupy_threshold
+        img = np.zeros((20, 20), dtype=np.uint8)
+        img[10:, :] = 220
+        with pytest.warns(DeprecationWarning, match="np_uint8_otsu_binary_thresh"):
+            out = thresh_mod.np_uint8_float_binary_thresh(img)
+        # Same behavior as canonical name.
+        canonical = thresh_mod.np_uint8_otsu_binary_thresh(img)
+        np.testing.assert_array_equal(out, canonical)
