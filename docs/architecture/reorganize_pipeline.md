@@ -337,26 +337,37 @@ We use approach 2.
 
 #### Step DC fallback — cursive / decorative caps (`pd_book_tools.ocr.dropcap`)
 
-`stitch_drop_caps` requires the OCR model to have *recognised* the
-cap glyph as a 1–2 character Word. Decorative serif / italic caps
-break that assumption — DocTR returns either a stray ``"-"`` token or
-nothing at all where the cap glyph sits. After `stitch_drop_caps`
-returns, `Page.reorganize_page` calls
-`detect_and_stitch_cursive_dropcaps(blocks, image, metrics)` as a
-fallback. The fallback runs a small image-processing + lexicon
-inference pipeline (geometric indent trigger →
+`stitch_block_drop_caps` (the block-cap path) requires the OCR model
+to have *recognised* the cap glyph as a 1–2 character Word.
+Decorative serif / italic caps break that assumption — DocTR returns
+either a stray ``"-"`` token or nothing at all where the cap glyph
+sits. The unified Step DC entry point
+`detect_and_stitch_drop_caps(blocks, image, metrics)` runs the
+block-cap path first and then the cursive fallback
+`detect_and_stitch_cursive_dropcaps(blocks, image, metrics)` for caps
+the block-cap path missed. The fallback runs a small image-processing
+and lexicon inference pipeline (geometric indent trigger →
 `cv2.connectedComponentsWithStats` scan in the gap region →
 single-letter prepend lookup against an embedded common-word
-lexicon). Recovered caps carry both ``"drop cap"`` (so
-`Block.text`'s no-separator rule applies) and ``"drop cap inferred"``
-(so labelers / training pipelines can flag the synthetic origin).
+lexicon). Recovered caps carry the ``"drop cap"`` tag (so
+`Block.text`'s empty-string-join rule fuses the cap to the next body
+Word). Synthesised caps carry ``ocr_confidence=None`` as the
+synthetic-origin signal for downstream tooling / training pipelines.
 Unrecoverable cases are tagged ``"drop cap unrecovered"`` on the
-closest body word with a `logger.warning` — never silently dropped.
+closest body Word with a `logger.warning` — never silently dropped.
+The unrecovered tag does NOT trigger the empty-string-join rule;
+those Words render with the default space separator.
+
+Both paths produce the same structural shape: the cap is its own
+``Word`` at the front of the body line, and the body Word that
+follows is untouched (NOT prepended with the cap letter). The
+``Block.text`` empty-string-join rule fuses the rendered output —
+cap "S" + body "tudies" renders as `Studies`, not `S tudies`.
 
 See the ROADMAP entry "Drop-cap glyph recognition for cursive /
-decorative caps" for the full Q1-Q7 design, the Iteration A scope, and
-the queued Iteration B work (separate-Word data model, full fixture
-sweep).
+decorative caps" for the design history (Iteration A: cursive
+fallback shipped; Iteration B: tag rationalization + Step DC
+unification shipped).
 
 ### Final assembly
 

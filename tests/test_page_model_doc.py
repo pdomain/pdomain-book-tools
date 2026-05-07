@@ -21,6 +21,7 @@ import pytest
 
 from pd_book_tools.layout.types import RegionType
 from pd_book_tools.ocr.block import Block
+from pd_book_tools.ocr.label_normalization import ALLOWED_COMPONENTS
 from pd_book_tools.ocr.page import Page
 
 DOC_PATH = (
@@ -61,6 +62,22 @@ def test_doc_lists_every_allowed_line_role_label(doc_text: str) -> None:
         if f"`{label}`" not in doc_text:
             missing.append(label)
     assert not missing, f"page-model doc is missing line_role_labels values: {missing}"
+
+
+def test_doc_lists_every_allowed_word_component(doc_text: str) -> None:
+    """Every value in ``ALLOWED_COMPONENTS`` must appear backtick-quoted
+    in the doc. The drop-cap rendering contract (Iteration B) lives here:
+    the doc is the canonical reference for what ``"drop cap"`` and
+    ``"drop cap unrecovered"`` mean and what they do to ``Block.text``.
+    """
+    missing: list[str] = []
+    for component in sorted(ALLOWED_COMPONENTS):
+        if f"`{component}`" not in doc_text:
+            missing.append(component)
+    assert not missing, (
+        "page-model doc is missing word_components values "
+        f"(must appear in backticks): {missing}"
+    )
 
 
 def test_doc_lists_every_layout_region_type(doc_text: str) -> None:

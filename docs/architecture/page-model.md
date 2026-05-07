@@ -215,8 +215,30 @@ values flag lines on the boundary of a detected multi-column layout.
   detected).
 - `text_style_label_scopes` — start/end scope markers for ranged style
   spans.
-- `word_components` — sub-word components (e.g. characters from
-  `Word.split_into_characters_from_whitespace`).
+- `word_components` — sub-word component tags. Allowed values are
+  defined by `ALLOWED_COMPONENTS` in
+  [`pd_book_tools/ocr/label_normalization.py`](../../pd_book_tools/ocr/label_normalization.py):
+  `superscript`, `subscript`, `footnote marker`, `drop cap`,
+  `drop cap unrecovered`. The drop-cap tags are set by Step DC of the
+  reorganize pipeline (see
+  [`pd_book_tools/ocr/dropcap.py`](../../pd_book_tools/ocr/dropcap.py)):
+  - `drop cap` — this Word *is* the decorative initial glyph (e.g. the
+    oversized "R" in "READER!"). It is kept as its own Word at the
+    front of the body line, with its own bounding box and OCR
+    confidence (or `null` confidence for synthesised caps recovered by
+    the cursive fallback). `Block.text` keys on this tag to fuse the
+    cap to the next body Word with the empty string separator — so cap
+    "S" + body "tudies" renders as `Studies`, not `S tudies`. Only the
+    immediately following Word in the same line is fused; subsequent
+    Words still get the default space separator.
+  - `drop cap unrecovered` — set on the closest body Word when the
+    geometric trigger detected a drop cap but the letter inference
+    couldn't resolve it (e.g. body word is already a valid English
+    word like `BELIEF`, so single-letter prepend lookup is ambiguous).
+    Surfaced for downstream tooling / labelers to flag for human
+    review. This tag does NOT trigger the empty-string-join rendering
+    contract — the OCR text is preserved as-is and rendered with the
+    default space separator.
 - `baseline` — per-word baseline parameters when computed.
 - `ground_truth_text` / `ground_truth_bounding_box` /
   `ground_truth_match_keys` — populated only by ground-truth matching

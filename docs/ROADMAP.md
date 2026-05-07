@@ -76,64 +76,20 @@ Still open:
   to estimate true x-height per word. Worth doing only if a fixture
   shows bbox-height alone misclassifying.
 
-### Drop-cap glyph recognition for cursive / decorative caps
+### Drop-cap glyph recognition — Iteration C (queued)
 
-The geometric drop-cap stitcher in `reorganize_page_utils.py` works
-on plain block caps (R-style) but fails on decorative caps (S/O/A
-glyphs in `chapter-head-credulities`, `chapter-head-filial-duty`,
-`footnotes-stacked-with-anchor`). The DocTR recogniser doesn't pick
-the oversized serif glyph as a letter; it ends up as gibberish (a
-stray ``"-"`` sitting where the cap should have been) or skipped.
+Iterations A and B shipped (see the archive table below). The
+remaining open piece is the multi-letter heading-OCR cross-check: when
+body-word inference is ambiguous (e.g. body word "BELIEF" is already
+a valid English word, so the cursive fallback can't uniquely resolve
+the cap to "A"), look at the chapter title above to disambiguate
+("A BELIEF IN OMENS…" → cap is "A"). Today these cases land in the
+``"drop cap unrecovered"`` failure path and the closest body Word is
+tagged for human review.
 
-**Iteration A — shipped.** New module `pd_book_tools/ocr/dropcap.py`
-exposes `detect_and_stitch_cursive_dropcaps(blocks, image, metrics)`,
-called from `Page.reorganize_page` as a fallback after `stitch_drop_caps`
-when the geometric block-cap stitcher leaves the body region untouched.
-The fallback:
-
-1. Computes a per-page *indent signature* (the standard left margin and
-   typical first-line indent of normal body paragraphs).
-2. Looks at each body block's first paragraph: is the first line
-   abnormally indented vs. the indent signature, AND do lines 2–3 of
-   the same paragraph share that indent (real drop cap → multi-line
-   wrap; regular indent → only line 1)? That geometric trigger fires…
-3. …a `cv2.connectedComponentsWithStats` scan in the gap region. The
-   largest CC that's roughly N body-line-heights tall and sits left of
-   the first body word is the cap glyph.
-4. Letter inference is body-word-only (no peeking at the heading): try
-   prepending each ASCII uppercase letter to the post-cap body word
-   and accept the unique match against an embedded common-word
-   lexicon. ``"UPERSTITIONS"`` → ``"S"``, ``"NCE"`` → ``"O"``.
-5. OCR-state branching at the cap location:
-   - OCR returned a single-letter Word matching the inferred letter →
-     keep the OCR word + confidence, just tag it.
-   - OCR returned a single-letter Word with wrong/gibberish text →
-     replace the text with the inferred letter, set confidence
-     ``None``, tag ``"drop cap"`` + ``"drop cap inferred"``.
-   - OCR skipped the glyph entirely → synthesise a new Word at the
-     CC's bbox with the inferred letter, confidence ``None``, tag
-     ``"drop cap"`` + ``"drop cap inferred"``.
-6. On failure (geometric trigger fires but no CC found, or no unique
-   letter inference) — `logger.warning` + tag the closest body Word
-   with ``"drop cap unrecovered"``. Never silent.
-
-The output shape mirrors the existing block-cap stitcher: the cap is
-its own Word at the front of the body line, joined to the next word
-with no separator (`Block.text` rule keyed on ``"drop cap"``). So
-``"S" + "UPERSTITIONS"`` renders as ``"SUPERSTITIONS"``.
-
-**Iteration B (queued — not shipped).** Switch the data model from
-"prepend cap word into existing line" to "separate Word tagged as drop
-cap" so plain-text rendering can choose its own join policy (e.g. ``"A
-BELIEF"`` vs ``"ABELIEF"``); replace `stitch_drop_caps` entirely with
-the new module's pipeline; add the missing pair of word-component tags
-to the block-cap path; full fixture sweep across
-`tests/fixtures/layout_regression/`. Iteration A keeps the prepend
-shape to avoid a corpus-wide baseline rewrite.
-
-**Iteration C (queued).** Multi-letter heading-OCR cross-check (e.g.
-infer ``"S"`` from a chapter title ``"STUDIES IN…"``) when body-word
-inference is ambiguous.
+The fixture that exercises this gap is
+`tests/fixtures/layout_regression/inputs/footnotes-stacked-with-anchor`
+(cap "A", body "BELIEF" — currently unrecovered).
 
 ### Multi-column body detection enhancements
 
@@ -208,6 +164,8 @@ the old plan:
 | Optional `[layout]` install extra | ❌ Not shipped — `transformers` was promoted to mandatory `dependencies`. The install footprint is ~40 MB on top of DocTR; users get layout out of the box. The original plan's `pd_book_tools[layout]` extra never shipped. Documented here so future readers don't go looking for it. |
 | Page-model / OCR JSON output format reference | ✅ Shipped at [`docs/architecture/page-model.md`](architecture/page-model.md). Doc-vs-code drift gated by `tests/test_page_model_doc.py` (vocabulary lists must match `Block.ALLOWED_*_LABELS` and `RegionType` enum). pd-ocr-cli docs can now redirect format questions here. |
 | Aspect-ratio control in `rescale_image` (R-24 follow-up) | ✅ Dropped entirely — `aspect_ratio` parameter removed from `rescale_image`, `rescale_image_gpu`, and `np_uint8_rescale_image`. Aspect-shape applied downstream via `map_content_onto_scaled_canvas`, not at rescale time. New `long_side_clamp` option deferred until a fixture demonstrates need. Breaking change; downstream `pd-prep-for-pgdp/core/pipeline/process_page.py` caller must drop the kwarg. |
+| Drop-cap glyph recognition — Iteration A (cursive fallback) | ✅ Shipped. New module `pd_book_tools/ocr/dropcap.py` exposes `detect_and_stitch_cursive_dropcaps(blocks, image, metrics)` for caps DocTR mis-read or skipped entirely (decorative serif / italic). Geometric indent trigger → `cv2.connectedComponentsWithStats` scan → body-word lexicon lookup. Recovers `S`/`O` on credulities/filial-duty fixtures; tags closest body Word `"drop cap unrecovered"` (with `logger.warning`) when letter inference is ambiguous (e.g. `BELIEF` case in `footnotes-stacked-with-anchor`). |
+| Drop-cap glyph recognition — Iteration B (tag rationalization + Step DC unification) | ✅ Shipped. (1) The iteration-A `"drop cap inferred"` tag was consolidated away — synthesised caps are signalled by `ocr_confidence=None` instead, so `ALLOWED_COMPONENTS` carries just `"drop cap"` and `"drop cap unrecovered"`. (2) `pd_book_tools/ocr/dropcap.py` now owns BOTH the block-cap geometric stitcher and the cursive fallback under a unified `detect_and_stitch_drop_caps(blocks, image, metrics)` entry point; `reorganize_page_utils.stitch_drop_caps` is preserved as a one-line shim for the historical name. (3) The empty-string-join rendering contract on `Block.text` (cap "S" + body "tudies" → "Studies", not "S tudies") and the structural shape (cap is its own Word, body Word untouched) are pinned by `tests/ocr/test_block.py` (4 cases) and `tests/ocr/test_dropcap.py` (parametrized over preface-with-drop-cap / chapter-head-credulities / chapter-head-filial-duty). Layout-regression sweep unchanged: 26 pass + 5 xfail (no rendered-text deltas). |
 
 ## Out of scope (still)
 
