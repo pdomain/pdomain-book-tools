@@ -8,7 +8,66 @@ are preserved verbatim. Order matches the original review numbering.
 Open / deferred items remain in the active `refactors.md` and are NOT
 duplicated here:
 
-- R-01, R-02, R-03 — DEFERRED (cross-repo coordination required)
+- R-01, R-03 — DEFERRED (cross-repo coordination required)
+
+---
+
+## [FIXED in 5d5b57e + R-02 step-2 commit] ~~R-02 — `Page` uses `@dataclass` but also defines a custom `__init__` — pick one~~
+
+**File:** `pd_book_tools/ocr/page.py`, lines 56–250
+
+`@dataclass` generated an `__init__` that was immediately superseded by
+the custom one. Dataclass `field(default_factory=list, init=False)`
+declarations like `_items` were never initialized by the generated
+`__init__` (which never ran). Image cache fields
+(`_cv2_numpy_page_image_*`) were declared as dataclass fields but only
+set in `refresh_page_images()`.
+
+**Resolution (2026-05-07, two commits):**
+
+1. **Step 1 (5d5b57e):** Renamed the constructor kwargs that collided
+   with `@property` definitions on the class:
+   - ``items=`` → ``blocks=``
+   - ``cv2_numpy_page_image=`` → ``image_array=``
+
+   The read-side properties (``page.items``,
+   ``page.cv2_numpy_page_image``) were preserved unchanged. A
+   deprecation shim accepts the legacy kwargs with a
+   ``DeprecationWarning`` until v1.0. 4 production sites + 148 test
+   sites updated.
+
+2. **Step 2:** Full ``@dataclass`` conversion. All previously
+   undeclared attributes (``image_path``, ``name``, ``source``,
+   ``ocr_failed``, ``provenance_*``, ``rotation_applied``,
+   ``diagnostic_*``) became proper dataclass fields. ``blocks`` and
+   ``image_array`` became ``InitVar`` fields handled in a
+   ``__post_init__`` that runs the existing item-sort, bbox-recompute,
+   ``OCRProvenance.coerce``, and ``rotation_applied`` validation.
+   ``__eq__`` was made explicit (``@dataclass(eq=False)``) and
+   delegates to ``to_dict() == to_dict()`` — fixing the latent
+   "ambiguous truth value" bug that the auto-generated ``__eq__``
+   would have raised on any ndarray cache field. The deprecation shim
+   for the legacy kwargs lives as a thin wrapper around the
+   dataclass-generated ``__init__``.
+
+**Behavior delta:** the constructor signature now lists ``blocks`` and
+``image_array`` consecutively (both ``InitVar`` fields, declared
+together near the top of the field block), which moved them ahead of
+``bounding_box`` / ``page_labels`` in positional order. All known
+callers use kwargs — verified during the rename pass — so this is a
+benign reordering. Pinned in
+``tests/test_page_behavior_pin.py::test_constructor_signature_pin``.
+
+`@dataclass` generates an `__init__` that is immediately superseded by the custom one.
+Dataclass `field(default_factory=list, init=False)` declarations like `_items` are
+never initialized by the generated `__init__` (which never runs). Image cache fields
+(`_cv2_numpy_page_image_*`) are declared as dataclass fields but only set in
+`refresh_page_images()`.
+
+**Direction:** convert fully to `@dataclass` (using `__post_init__` for
+computed fields) and eliminate the custom `__init__` — but only after
+deciding how to handle the property/field name collisions on
+``items`` and ``cv2_numpy_page_image``.
 
 ---
 
