@@ -92,6 +92,45 @@ PGDP corpus has very few multi-column body pages so this is not
 urgent. List for completeness because the primitive is small and
 useful elsewhere.
 
+### Opt-in suppression of placeholder illustration blocks
+
+`associate_captions` (`pd_book_tools/ocr/layout_aware_reorg.py:716`)
+emits a placeholder `Block` per high-confidence figure / decoration /
+table region — built by `_empty_illustration_block` (same file, line
+681), tagged `block_role_labels=["illustration"]` (or `"decoration"`),
+geometry-only with empty `items`. PGDP-bound consumers want the
+placeholder so they can serialise it as `[Illustration: …]` and attach
+the caption; plain-text consumers (pd-ocr-cli's `.txt` output) don't —
+the empty block contributes a stray paragraph break in `Page.text` and
+the `illustration` role label has no plain-text rendering, so it's
+just noise in reading-order output.
+
+Proposed shape: a parameter on `Page.reorganize_page` (e.g.
+`emit_illustration_placeholders: bool = True`, default preserves
+today's behaviour) that, when false, skips the
+`associate_captions` placeholder-block emission step (page.py:3062-
+3064). Caption *words* should still be handled — either kept in their
+original block, or attached as a normal `caption`-roled paragraph
+without an adjacent illustration block — so opting out doesn't silently
+drop OCR text.
+
+Plumbing: thread the flag through to `associate_captions(...,
+emit_placeholders: bool = True)`; when false, skip the
+`_empty_illustration_block(...)` / `page._items.append(illustration)`
+pair but keep the caption-block emission and the
+`_purge_word_from_blocks` fixup. Backwards compatible — existing
+callers (pd-prep-for-pgdp) keep getting placeholders.
+
+Caller follow-on: pd-ocr-cli adds a matching opt-in flag (e.g.
+`--no-illustration-placeholders` or `--text-only-illustrations=skip`)
+that forwards into `reorganize_page`. Tracked separately in the pd-
+ocr-cli roadmap.
+
+Test surface: a fixture page with one figure + adjacent caption — the
+default path emits the placeholder block, the opt-out path emits zero
+illustration-roled blocks while still preserving every input OCR word
+(no silent drops).
+
 ### Detector failure hardening
 
 PLAN open question 6: adapter raises (model missing, OOM, etc.) →
