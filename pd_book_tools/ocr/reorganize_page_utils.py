@@ -10,12 +10,13 @@ specs, debug-PNG semantics, the rationale behind every threshold, and the
 fixture-driven decisions that shaped the pipeline.
 """
 
+from __future__ import annotations
+
 import itertools
 import os
 import pathlib
 from dataclasses import dataclass
 from logging import getLogger
-from typing import List, Tuple
 
 import numpy as np
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
@@ -56,8 +57,8 @@ class PageMetrics:
 
 
 def _coord_dims_from_words(
-    words: List[Word], page_w: float, page_h: float
-) -> Tuple[float, float]:
+    words: list[Word], page_w: float, page_h: float
+) -> tuple[float, float]:
     """Return the coordinate-domain (normalized vs pixel) page width/height.
 
     OCR pipelines may emit either normalized [0, 1] boxes or pixel boxes while
@@ -131,7 +132,7 @@ def _line_alphanumeric_count(line: Block) -> int:
     return sum(1 for c in (line.text or "") if c.isalnum())
 
 
-def _line_words(line: Block) -> List[Word]:
+def _line_words(line: Block) -> list[Word]:
     return list(line.words) if hasattr(line, "words") else []
 
 
@@ -177,7 +178,7 @@ def _is_weak_noise_line(
     return True
 
 
-def _purge_words_from_blocks(blocks: List[Block], targets: "set[int]") -> None:
+def _purge_words_from_blocks(blocks: list[Block], targets: "set[int]") -> None:
     """R-05: thin module-private alias around ``block.purge_words_from_blocks``.
 
     Pre-R-05 this module carried its own near-identical copy of the
@@ -350,8 +351,8 @@ def drop_heuristic_figure_noise(page) -> int:
     figure_gap = 5.0 * metrics.median_word_h
     solo_isolation_gap = 3.0 * metrics.median_word_h
 
-    clusters: List[List[int]] = []
-    cur: List[int] = []
+    clusters: list[list[int]] = []
+    cur: list[int] = []
     for i, line in enumerate(all_lines):
         if not weak_flags[i]:
             if cur:
@@ -440,13 +441,13 @@ def drop_heuristic_figure_noise(page) -> int:
 
 
 def extract_top_header_lines(
-    lines: List[Block],
+    lines: list[Block],
     metrics: PageMetrics,
     *,
     band_factor: float = 1.5,
     near_top_factor: float = 0.12,
     min_gap_factor: float = 0.7,
-) -> Tuple[List[Block], List[Block]]:
+) -> tuple[list[Block], list[Block]]:
     """Peel the topmost band of lines off as page-header lines.
 
     Returns ``(header_lines, body_lines)`` preserving original ordering inside
@@ -499,13 +500,13 @@ def extract_top_header_lines(
 
 
 def extract_bottom_footer_lines(
-    lines: List[Block],
+    lines: list[Block],
     metrics: PageMetrics,
     *,
     band_factor: float = 1.5,
     near_bottom_factor: float = 0.12,
     min_gap_factor: float = 0.7,
-) -> Tuple[List[Block], List[Block]]:
+) -> tuple[list[Block], list[Block]]:
     """Peel the bottommost band of lines off as page-footer lines.
 
     Mirror of :func:`extract_top_header_lines`. ``near_bottom_factor`` is the
@@ -546,7 +547,7 @@ def extract_bottom_footer_lines(
 
 
 def _build_band_block(
-    band_lines: List[Block],
+    band_lines: list[Block],
     *,
     role: str,
     position: str,
@@ -560,7 +561,7 @@ def _build_band_block(
     if not band_lines:
         return None
 
-    all_words: List[Word] = []
+    all_words: list[Word] = []
     for line in band_lines:
         all_words.extend(line.words)
     all_words = [w for w in all_words if w.bounding_box and (w.text or "").strip()]
@@ -591,11 +592,11 @@ def _build_band_block(
     return outer
 
 
-def build_page_header_block(header_lines: List[Block]) -> Block | None:
+def build_page_header_block(header_lines: list[Block]) -> Block | None:
     return _build_band_block(header_lines, role="page header", position="top")
 
 
-def build_page_footer_block(footer_lines: List[Block]) -> Block | None:
+def build_page_footer_block(footer_lines: list[Block]) -> Block | None:
     return _build_band_block(footer_lines, role="page footer", position="bottom")
 
 
@@ -611,9 +612,9 @@ _SPECIAL_BLOCK_LABELS = {
 
 def emit_step_h_debug(
     page,
-    debug_sections: List[tuple],
-    debug_squeezed_lines: List[str],
-    step_h_decisions: List[dict],
+    debug_sections: list[tuple],
+    debug_squeezed_lines: list[str],
+    step_h_decisions: list[dict],
 ) -> None:
     """Append the Step H summary section (and its overlay PNG) to debug_sections."""
     if not layout_debug_enabled():
@@ -643,8 +644,8 @@ def emit_step_h_debug(
 
 def emit_step_k_debug(
     page,
-    debug_sections: List[tuple],
-    final_blocks: List[Block],
+    debug_sections: list[tuple],
+    final_blocks: list[Block],
 ) -> None:
     """Append the Step K (paragraph splits) overlay to debug_sections."""
     if not layout_debug_enabled():
@@ -662,8 +663,8 @@ def emit_step_k_debug(
 
 def emit_step_l_debug(
     page,
-    debug_sections: List[tuple],
-    final_blocks: List[Block],
+    debug_sections: list[tuple],
+    final_blocks: list[Block],
 ) -> None:
     """Append the Step L summary section (and its overlay PNG) to debug_sections."""
     if not layout_debug_enabled():
@@ -679,7 +680,7 @@ def emit_step_l_debug(
     debug_sections.append(("Step L", step_l_summary))
 
 
-def _meaningful_words(words: List[Word]) -> List[Word]:
+def _meaningful_words(words: list[Word]) -> list[Word]:
     """Filter to words with non-empty text and a bounding box.
 
     The pipeline intentionally discards empty-text artifact words (e.g. an
@@ -690,8 +691,8 @@ def _meaningful_words(words: List[Word]) -> List[Word]:
 
 
 def collect_word_signatures(
-    words: List[Word],
-) -> List[tuple[str, float, float, float, float]]:
+    words: list[Word],
+) -> list[tuple[str, float, float, float, float]]:
     """Return a sorted list of (text, minX, minY, maxX, maxY) for every word.
 
     Used by ``validate_word_preservation`` to compare a page's word set
@@ -702,7 +703,7 @@ def collect_word_signatures(
     — those are routinely dropped by intent and shouldn't trigger validator
     warnings.
     """
-    sigs: List[tuple[str, float, float, float, float]] = []
+    sigs: list[tuple[str, float, float, float, float]] = []
     for w in _meaningful_words(words):
         bb = w.bounding_box
         sigs.append(
@@ -719,9 +720,9 @@ def collect_word_signatures(
 
 
 def validate_word_preservation(
-    pre_words: List[Word],
-    post_words: List[Word],
-) -> List[str]:
+    pre_words: list[Word],
+    post_words: list[Word],
+) -> list[str]:
     """Report words present in ``pre_words`` but missing from ``post_words``.
 
     The reorganize pipeline must never *drop* OCR words — it may move them
@@ -736,7 +737,7 @@ def validate_word_preservation(
     """
     pre_sigs = collect_word_signatures(pre_words)
     post_sig_set = set(collect_word_signatures(post_words))
-    errors: List[str] = []
+    errors: list[str] = []
     for sig in pre_sigs:
         if sig not in post_sig_set:
             text, x0, y0, x1, y1 = sig
@@ -747,9 +748,9 @@ def validate_word_preservation(
 
 
 def find_dropped_words(
-    pre_words: List[Word],
-    post_words: List[Word],
-) -> List[Word]:
+    pre_words: list[Word],
+    post_words: list[Word],
+) -> list[Word]:
     """Return ``Word`` objects that appear in ``pre_words`` but not in
     ``post_words`` (compared by text + bbox signature).
 
@@ -757,7 +758,7 @@ def find_dropped_words(
     actual ``Word`` instances so callers can splice them back into the output.
     """
     post_sig_set = set(collect_word_signatures(post_words))
-    dropped: List[Word] = []
+    dropped: list[Word] = []
     for w in _meaningful_words(pre_words):
         bb = w.bounding_box
         sig = (
@@ -792,7 +793,7 @@ def reorganize_strict_mode_enabled() -> bool:
 class ReorganizeDroppedWordsError(RuntimeError):
     """Raised in strict mode when reorganize_page drops one or more words."""
 
-    def __init__(self, dropped: List[Word], errors: List[str]):
+    def __init__(self, dropped: list[Word], errors: list[str]):
         super().__init__(
             f"reorganize_page dropped {len(dropped)} word(s); "
             f"first: {errors[0] if errors else '(none)'}"
@@ -801,7 +802,7 @@ class ReorganizeDroppedWordsError(RuntimeError):
         self.errors = errors
 
 
-def build_recovered_words_block(dropped: List[Word]) -> "Block | None":
+def build_recovered_words_block(dropped: list[Word]) -> "Block | None":
     """Wrap dropped-but-rescued words in a tagged BLOCK so they survive in
     the final ``page.text`` output.
 
@@ -814,7 +815,7 @@ def build_recovered_words_block(dropped: List[Word]) -> "Block | None":
     if not valid:
         return None
     valid.sort(key=lambda w: (w.bounding_box.minY, w.bounding_box.minX))
-    line_blocks: List[Block] = []
+    line_blocks: list[Block] = []
     for word in valid:
         line_blocks.append(
             Block(
@@ -836,7 +837,7 @@ def build_recovered_words_block(dropped: List[Word]) -> "Block | None":
     )
 
 
-def _format_big_warning(banner: str, lines: List[str]) -> str:
+def _format_big_warning(banner: str, lines: list[str]) -> str:
     rule = "=" * max(60, len(banner) + 4)
     body = "\n".join(f"  {line}" for line in lines)
     return f"\n{rule}\n  {banner}\n{rule}\n{body}\n{rule}\n"
@@ -844,9 +845,9 @@ def _format_big_warning(banner: str, lines: List[str]) -> str:
 
 def reconcile_dropped_words(
     page,
-    pre_words: List[Word],
-    final_blocks: List[Block],
-) -> List[Block]:
+    pre_words: list[Word],
+    final_blocks: list[Block],
+) -> list[Block]:
     """Detect words dropped by the pipeline and re-attach them.
 
     Strategy:
@@ -884,7 +885,7 @@ def reconcile_dropped_words(
     # pipeline can emit. We must NOT rely on ``page.words`` here because
     # ``page.items`` is the LIVE tree, not the candidate ``final_blocks``
     # we're validating — collect from each top-level block instead.
-    post_words: List[Word] = []
+    post_words: list[Word] = []
     for outer in final_blocks:
         post_words.extend(outer.words)
     errors = validate_word_preservation(pre_words, post_words)
@@ -966,7 +967,7 @@ def _looks_like_drop_cap_word(word: Word, metrics: PageMetrics) -> bool:
 
 def _next_word_attached_to_drop_cap(
     drop_cap: Word,
-    candidates: List[Word],
+    candidates: list[Word],
     metrics: PageMetrics,
 ) -> Word | None:
     """Return the body-text word immediately to the right of ``drop_cap``.
@@ -1062,7 +1063,7 @@ def _attach_drop_cap_to_target_line(
     target_line.recompute_bounding_box()
 
 
-def stitch_drop_caps(blocks: List[Block], metrics: PageMetrics) -> List[Block]:
+def stitch_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
     """Detect drop caps inside body BLOCKs and merge them into the next line.
 
     Walks each body block's paragraphs in order. Whenever the *current*
@@ -1094,7 +1095,7 @@ def stitch_drop_caps(blocks: List[Block], metrics: PageMetrics) -> List[Block]:
         if len(paragraphs) < 2:
             continue
 
-        kept_paragraphs: List[Block] = []
+        kept_paragraphs: list[Block] = []
         skip_idx: set[int] = set()
         for i, paragraph in enumerate(paragraphs):
             if i in skip_idx:
@@ -1138,8 +1139,8 @@ def stitch_drop_caps(blocks: List[Block], metrics: PageMetrics) -> List[Block]:
 
 def emit_step_dropcap_debug(
     page,
-    debug_sections: List[tuple],
-    final_blocks: List[Block],
+    debug_sections: list[tuple],
+    final_blocks: list[Block],
 ) -> None:
     """Append a Step DC summary listing every word now tagged ``drop cap``."""
     if not layout_debug_enabled():
@@ -1170,13 +1171,13 @@ def emit_step_dropcap_debug(
 
 def assemble_final_blocks(
     page_header_block: Block | None,
-    body_blocks: List[Block],
+    body_blocks: list[Block],
     page_footer_block: Block | None,
-) -> List[Block]:
+) -> list[Block]:
     """Pipeline assembly — weave header/footer bands around body blocks and
     stamp ``override_page_sort_order`` so re-sorts keep the order stable.
     """
-    final_blocks: List[Block] = []
+    final_blocks: list[Block] = []
     if page_header_block is not None:
         final_blocks.append(page_header_block)
     final_blocks.extend(body_blocks)
@@ -1187,7 +1188,7 @@ def assemble_final_blocks(
     return final_blocks
 
 
-def wrap_special_role_block(lines: List[Block], block_type: str) -> Block:
+def wrap_special_role_block(lines: list[Block], block_type: str) -> Block:
     """Wrap classified lines in PARAGRAPH+BLOCK with role/position labels.
 
     Replaces repetitive boilerplate for the page-header, page-footer,
@@ -1271,8 +1272,8 @@ def _bbox_to_px_rect(bb, image_w: int, image_h: int):
 
 def write_step_e_debug_overlay_png(
     page,
-    header_lines: List[Block],
-    footer_lines: List[Block],
+    header_lines: list[Block],
+    footer_lines: list[Block],
     suffix: str = "stepE",
 ) -> "pathlib.Path | None":
     """Write a debug PNG showing the detected page-header / page-footer bands.
@@ -1372,8 +1373,8 @@ def write_step_row_blocks_debug_overlay_png(
 
 def write_step_d_debug_overlay_png(
     page,
-    pre_split_paragraphs: List[Block],
-    post_split_paragraphs: List[Block],
+    pre_split_paragraphs: list[Block],
+    post_split_paragraphs: list[Block],
     suffix: str = "stepD",
 ) -> "pathlib.Path | None":
     """Write a debug PNG showing the result of mixed-content line splitting.
@@ -1396,7 +1397,7 @@ def write_step_d_debug_overlay_png(
         if line.block_category == BlockCategory.LINE
     }
 
-    post_lines: List[Block] = []
+    post_lines: list[Block] = []
     for paragraph in post_split_paragraphs:
         for item in paragraph.items:
             if item.block_category == BlockCategory.LINE:
@@ -1432,7 +1433,7 @@ def write_step_d_debug_overlay_png(
 
 def write_step_h_debug_overlay_png(
     page,
-    row_block_decisions: List[dict],
+    row_block_decisions: list[dict],
     suffix: str = "stepH",
 ) -> "pathlib.Path | None":
     """Write a debug PNG showing column-split decisions per row block.
@@ -1542,7 +1543,7 @@ _FINAL_BLOCK_COLOR = {
 
 def write_step_k_debug_overlay_png(
     page,
-    body_paragraph_blocks: List[Block],
+    body_paragraph_blocks: list[Block],
     suffix: str = "stepK",
 ) -> "pathlib.Path | None":
     """Write a debug PNG showing paragraph splits within body blocks.
@@ -1609,7 +1610,7 @@ def write_step_k_debug_overlay_png(
 
 def write_step_l_debug_overlay_png(
     page,
-    final_blocks: List[Block],
+    final_blocks: list[Block],
     suffix: str = "stepL",
 ) -> "pathlib.Path | None":
     """Write a debug PNG showing the final classified blocks in reading order.
@@ -1690,14 +1691,14 @@ def layout_debug_output_path(page) -> pathlib.Path:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def line_vertical_gaps(lines: List[Block]) -> List[float]:
+def line_vertical_gaps(lines: list[Block]) -> list[float]:
     sorted_lines = sorted(
         [l for l in lines if l.bounding_box],
         key=lambda l: (l.bounding_box.minY, l.bounding_box.minX),
     )
     if len(sorted_lines) < 2:
         return []
-    gaps: List[float] = []
+    gaps: list[float] = []
     for i in range(len(sorted_lines) - 1):
         curr = sorted_lines[i].bounding_box
         nxt = sorted_lines[i + 1].bounding_box
@@ -1707,7 +1708,7 @@ def line_vertical_gaps(lines: List[Block]) -> List[float]:
     return gaps
 
 
-def gaps_are_consistent(gaps: List[float]) -> bool:
+def gaps_are_consistent(gaps: list[float]) -> bool:
     if len(gaps) < 2:
         return False
     med = float(np_median(gaps))
@@ -1716,9 +1717,9 @@ def gaps_are_consistent(gaps: List[float]) -> bool:
 
 
 def write_layout_debug_report(
-    page, step_sections: List[tuple[str, List[str]]]
+    page, step_sections: list[tuple[str, list[str]]]
 ) -> pathlib.Path:
-    report_lines: List[str] = []
+    report_lines: list[str] = []
     report_lines.append(
         f"Layout debug for page_index={page.page_index}, name={page.name or 'n/a'}"
     )
@@ -1752,7 +1753,7 @@ def write_layout_debug_index_html(
 
     index_path = out_dir / "index.html"
     page_label = page.name or f"page-{page.page_index + 1}"
-    parts: List[str] = [
+    parts: list[str] = [
         "<!doctype html>",
         '<html><head><meta charset="utf-8">',
         f"<title>Layout debug — {page_label}</title>",
@@ -1784,9 +1785,9 @@ def interval_gap(min1: float, max1: float, min2: float, max2: float) -> float:
 
 
 def _cache_bbox_arrays(
-    words: List[Word],
+    words: list[Word],
 ) -> tuple[
-    List[Word], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+    list[Word], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
 ]:
     """Materialize bbox attributes for ``words`` into NumPy arrays.
 
@@ -1818,7 +1819,7 @@ def _cache_bbox_arrays(
     return filtered, minX, maxX, minY, maxY, mid_y, height
 
 
-def estimate_average_word_distance(words: List[Word], page_width: int) -> float:
+def estimate_average_word_distance(words: list[Word], page_width: int) -> float:
     """Estimate average local word spacing for neighborhood growth.
 
     Implementation note: the inner loop is bounded by a horizontal-gap
@@ -1879,10 +1880,10 @@ def estimate_average_word_distance(words: List[Word], page_width: int) -> float:
 
 
 def build_word_seeded_row_blocks(
-    words: List[Word],
+    words: list[Word],
     page_width: int,
     page_height: int,
-    source_lines: List[Block] | None = None,
+    source_lines: list[Block] | None = None,
 ) -> Block | None:
     """Build full text blocks by expanding from words, then split to lines.
 
@@ -1918,7 +1919,7 @@ def build_word_seeded_row_blocks(
     maxX_s = maxX[y_order]
 
     visited = np.zeros(n, dtype=bool)
-    components: List[List[Word]] = []
+    components: list[list[Word]] = []
 
     for start in range(n):
         if visited[start]:
@@ -1926,7 +1927,7 @@ def build_word_seeded_row_blocks(
 
         stack = [start]
         visited[start] = True
-        comp_indices: List[int] = []
+        comp_indices: list[int] = []
 
         while stack:
             idx = stack.pop()
@@ -1976,7 +1977,7 @@ def build_word_seeded_row_blocks(
     if not components:
         return None
 
-    row_blocks: List[Block] = []
+    row_blocks: list[Block] = []
     assigned_line_ids: set[int] = set()
     line_y_tolerance = max(0.8 * median_word_height, 0.006 * coord_height)
 
@@ -2009,8 +2010,8 @@ def build_word_seeded_row_blocks(
                 )
                 continue
 
-        line_buckets: List[List[Word]] = []
-        line_centers: List[float] = []
+        line_buckets: list[list[Word]] = []
+        line_centers: list[float] = []
 
         for word in component:
             bb = word.bounding_box
@@ -2042,7 +2043,7 @@ def build_word_seeded_row_blocks(
                     )
                 )
 
-        line_blocks: List[Block] = []
+        line_blocks: list[Block] = []
         for bucket in line_buckets:
             bucket.sort(key=lambda w: w.bounding_box.minX if w.bounding_box else 0)
             line_blocks.append(
@@ -2227,7 +2228,7 @@ def split_line_by_gap_and_word_height(
     return left_line, right_line
 
 
-def split_mixed_content_lines(paragraphs: List[Block], page_width: int) -> None:
+def split_mixed_content_lines(paragraphs: list[Block], page_width: int) -> None:
     """Split OCR lines that merge figure-caption and body fragments."""
     for paragraph in paragraphs:
         candidate_lines = [
@@ -2311,7 +2312,7 @@ def split_mixed_content_lines(paragraphs: List[Block], page_width: int) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def compute_text_paragraph_blocks(lines: List[Block]) -> Block:
+def compute_text_paragraph_blocks(lines: list[Block]) -> Block:
     logger.debug("Computing Paragraph Blocks")
 
     # Drop lines with no text content (empty OCR artifacts) so they don't
@@ -2444,12 +2445,12 @@ def _yx_sort_key(line: Block):
 
 def record_floated_flow_debug_squeezed(
     row_idx: int,
-    pre_lines: List[Block],
-    left_flow: List[Block],
-    right_flow: List[Block],
-    band_body: List[Block],
-    post_lines: List[Block],
-    debug_squeezed_lines: List[str],
+    pre_lines: list[Block],
+    left_flow: list[Block],
+    right_flow: list[Block],
+    band_body: list[Block],
+    post_lines: list[Block],
+    debug_squeezed_lines: list[str],
 ) -> None:
     """Append per-side gap-consistency info for the layout debug report."""
     body_gaps = line_vertical_gaps(band_body)
@@ -2485,10 +2486,10 @@ def record_floated_flow_debug_squeezed(
 def absorb_caption_tails_into_caption(
     page,
     row_block: Block,
-    flow_rest: List[Block],
-    caption_target: List[Block],
-    caption_seed: List[Block],
-) -> List[Block]:
+    flow_rest: list[Block],
+    caption_target: list[Block],
+    caption_seed: list[Block],
+) -> list[Block]:
     """Move trailing flow lines that look like caption continuation back into
     the caption. Geometry-only: works off the caption seed bbox + the
     surrounding row block's median line width.
@@ -2532,7 +2533,7 @@ def absorb_caption_tails_into_caption(
                     return True
         return False
 
-    kept: List[Block] = []
+    kept: list[Block] = []
     for idx, line in enumerate(sorted_flow):
         bb = line.bounding_box
         if not bb:
@@ -2562,9 +2563,9 @@ def expand_floated_flow_row_block(
     b: Block,
     floated_flow,
     row_idx: int,
-    debug_squeezed_lines: List[str],
-    step_h_decisions: List[dict],
-) -> List[Block]:
+    debug_squeezed_lines: list[str],
+    step_h_decisions: list[dict],
+) -> list[Block]:
     """Pipeline Step I — expand a row block that contains a floated figure."""
     pre_lines, left_flow, right_flow, band_body, post_lines = floated_flow
 
@@ -2597,7 +2598,7 @@ def expand_floated_flow_row_block(
         )
 
     left_caption, left_flow_rest = _split_caption_like_prefix(left_flow, page.width)
-    right_caption: List[Block] = []
+    right_caption: list[Block] = []
     right_flow_rest = list(right_flow)
 
     if left_caption + right_caption:
@@ -2609,7 +2610,7 @@ def expand_floated_flow_row_block(
             left_caption + right_caption,
         )
 
-    new_blocks: List[Block] = []
+    new_blocks: list[Block] = []
     merged_main_lines = sorted(
         pre_lines + band_body + left_flow_rest + right_flow_rest + post_lines,
         key=_yx_sort_key,
@@ -2642,8 +2643,8 @@ def expand_floated_flow_row_block(
 def expand_mixed_column_row_block(
     mixed_col_split,
     row_idx: int,
-    step_h_decisions: List[dict],
-) -> List[Block]:
+    step_h_decisions: list[dict],
+) -> list[Block]:
     """Pipeline Step H — expand a row block whose lines split into two narrow
     columns plus optional spanning lines."""
     left_lines, right_lines, spanning_lines = mixed_col_split
@@ -2694,11 +2695,11 @@ def expand_mixed_column_row_block(
 
 
 def _emit_floated_mixed_column_blocks(
-    left_lines: List[Block],
-    right_lines: List[Block],
-    spanning_lines: List[Block],
+    left_lines: list[Block],
+    right_lines: list[Block],
+    spanning_lines: list[Block],
     col_min_y_ff: float,
-) -> List[Block]:
+) -> list[Block]:
     """Emit blocks for a floated-figure layout: body wraps around the figure."""
     spanning_before = [
         l
@@ -2710,7 +2711,7 @@ def _emit_floated_mixed_column_blocks(
         for l in spanning_lines
         if l.bounding_box and l.bounding_box.minY >= col_min_y_ff
     ]
-    new_blocks: List[Block] = []
+    new_blocks: list[Block] = []
     body_main = sorted(spanning_before + right_lines, key=_yx_sort_key)
     if body_main:
         new_blocks.append(
@@ -2737,10 +2738,10 @@ def _emit_floated_mixed_column_blocks(
 
 
 def _emit_side_by_side_caption_blocks(
-    left_lines: List[Block],
-    right_lines: List[Block],
-    spanning_lines: List[Block],
-) -> List[Block]:
+    left_lines: list[Block],
+    right_lines: list[Block],
+    spanning_lines: list[Block],
+) -> list[Block]:
     """Emit blocks for side-by-side captions plus optional trailing body."""
     caption_groups = [left_lines, right_lines]
     caption_groups.sort(
@@ -2748,7 +2749,7 @@ def _emit_side_by_side_caption_blocks(
             np_median([l.bounding_box.minX for l in g if l.bounding_box] or [0])
         )
     )
-    new_blocks: List[Block] = []
+    new_blocks: list[Block] = []
     for group in caption_groups:
         new_blocks.append(
             Block(
@@ -2768,7 +2769,7 @@ def expand_multi_column_row_block(
     page,
     multi_col_split,
     row_idx: int,
-    step_h_decisions: List[dict],
+    step_h_decisions: list[dict],
 ) -> Block:
     """Pipeline Step H — collapse a multi-column row block into a single flow."""
     column_groups, spanning_lines = multi_col_split
@@ -2795,7 +2796,7 @@ def expand_simple_two_column_row_block(
     page,
     col_split,
     row_idx: int,
-    step_h_decisions: List[dict],
+    step_h_decisions: list[dict],
 ) -> Block:
     """Pipeline Step H — collapse a simple two-column row block into a single
     flow paragraph (left then right)."""
@@ -2830,11 +2831,11 @@ def expand_simple_two_column_row_block(
 def expand_row_blocks(
     page,
     row_blocks: Block,
-    debug_squeezed_lines: List[str],
-) -> Tuple[List[Block], List[dict]]:
+    debug_squeezed_lines: list[str],
+) -> tuple[list[Block], list[dict]]:
     """Pipeline Step H — dispatch each row block to the right expander."""
-    expanded_row_blocks: List[Block] = []
-    step_h_decisions: List[dict] = []
+    expanded_row_blocks: list[Block] = []
+    step_h_decisions: list[dict] = []
     for row_idx, b in enumerate(row_blocks.items, start=1):
         floated_flow = _detect_floated_flow_span(b.lines, page.width)
         if floated_flow is not None:
@@ -2903,8 +2904,8 @@ SPECIAL_BLOCK_TYPES = frozenset(
 
 def classify_and_paragraphize_blocks(
     page,
-    expanded_row_blocks: List[Block],
-) -> List[Block]:
+    expanded_row_blocks: list[Block],
+) -> list[Block]:
     """Pipeline Step L — classify each row block (page header/footer, sidenote,
     poetry, blockquote, body) and paragraphize body blocks via Step K."""
     all_lines = list(
@@ -2926,7 +2927,7 @@ def classify_and_paragraphize_blocks(
         max(b.bounding_box.maxY for b in expanded_row_blocks if b.bounding_box)
     )
 
-    result: List[Block] = []
+    result: list[Block] = []
     for b in expanded_row_blocks:
         block_type = _classify_row_block(
             b,
@@ -3003,7 +3004,7 @@ def reorganize_lines(block: Block) -> None:
     """Step B — re-merge OCR-fragmented lines inside ``block``."""
     if not block.items:
         return
-    lines: List[Block] = block.items
+    lines: list[Block] = block.items
     if not all(hasattr(line, "block_category") for line in lines) and not all(
         line.block_category == BlockCategory.LINE for line in lines
     ):
@@ -3088,7 +3089,7 @@ def reorganize_lines(block: Block) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def compute_text_row_blocks(lines: List[Block], tolerance=None) -> "Block | None":
+def compute_text_row_blocks(lines: list[Block], tolerance=None) -> "Block | None":
     """Step F — group lines into row blocks by dynamic vertical spacing.
 
     Does not mutate the caller's ``lines`` list — sorts a local copy.
@@ -3139,7 +3140,7 @@ def compute_text_row_blocks(lines: List[Block], tolerance=None) -> "Block | None
     )
     logger.debug("Tolerance Spacing: " + str(tolerance_spacing))
 
-    blocks: List[Block] = []
+    blocks: list[Block] = []
     current_block = [lines[0]]
     logger.debug("Starting Block: " + str(current_block[0].text[0:25] + "..."))
     for i in range(1, len(lines)):
@@ -3181,7 +3182,7 @@ def emit_band_only_blocks(
 ) -> None:
     """Assemble the page even when no body content remains so headerless pages
     stay consistent."""
-    band_only_blocks: List[Block] = []
+    band_only_blocks: list[Block] = []
     if page_header_block is not None:
         band_only_blocks.append(page_header_block)
     if page_footer_block is not None:
@@ -3196,7 +3197,7 @@ def emit_band_only_blocks(
 
 def run_step_d_split_mixed_content(
     page,
-    debug_sections: List[tuple],
+    debug_sections: list[tuple],
 ) -> None:
     """Step D — split OCR-merged caption/body lines and emit debug PNG."""
     debug = layout_debug_enabled()
@@ -3234,7 +3235,7 @@ def run_step_d_split_mixed_content(
 
 def run_step_e_extract_header_footer(
     page,
-    debug_sections: List[tuple],
+    debug_sections: list[tuple],
 ):
     """Step E — peel page header/footer bands and split body words."""
     page_metrics = compute_page_metrics(page)
@@ -3302,7 +3303,7 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
     if row_blocks is None or not row_blocks.items:
         return row_blocks
     seen_word_ids: set[int] = set()
-    kept: List[Block] = []
+    kept: list[Block] = []
     for rb in row_blocks.items:
         rb_word_ids = {id(w) for line in rb.lines for w in line.words}
         if rb_word_ids and rb_word_ids.issubset(seen_word_ids):
@@ -3321,9 +3322,9 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
 
 def run_step_f_row_blocks(
     page,
-    body_lines: List[Block],
-    body_words: List[Word],
-    debug_sections: List[tuple],
+    body_lines: list[Block],
+    body_words: list[Word],
+    debug_sections: list[tuple],
 ) -> Block | None:
     """Step F — pick between legacy and seeded row-block grouping."""
     legacy_row_blocks = compute_text_row_blocks(body_lines)
@@ -3365,7 +3366,7 @@ def run_step_f_row_blocks(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _compute_body_x_extent(blocks: List[Block], page_width: int) -> tuple[float, float]:
+def _compute_body_x_extent(blocks: list[Block], page_width: int) -> tuple[float, float]:
     """Estimate main body text X extent from row blocks using median positions."""
     min_xs = [b.bounding_box.minX for b in blocks if b.bounding_box]
     max_xs = [b.bounding_box.maxX for b in blocks if b.bounding_box]
@@ -3375,8 +3376,8 @@ def _compute_body_x_extent(blocks: List[Block], page_width: int) -> tuple[float,
 
 
 def _detect_column_split(
-    lines: List[Block], page_width: int
-) -> tuple[List[Block], List[Block]] | None:
+    lines: list[Block], page_width: int
+) -> tuple[list[Block], list[Block]] | None:
     """
     Detect whether a set of lines represents a two-column layout.
 
@@ -3488,8 +3489,8 @@ def _detect_column_split(
     # LINE blocks constructed from their word subsets.
     from pd_book_tools.ocr.block import BlockChildType
 
-    left_lines_out: List[Block] = []
-    right_lines_out: List[Block] = []
+    left_lines_out: list[Block] = []
+    right_lines_out: list[Block] = []
 
     for line in lines:
         left_words = [
@@ -3530,8 +3531,8 @@ def _detect_column_split(
 
 
 def _detect_mixed_column_split(
-    lines: List[Block], page_width: int
-) -> tuple[List[Block], List[Block], List[Block]] | None:
+    lines: list[Block], page_width: int
+) -> tuple[list[Block], list[Block], list[Block]] | None:
     """Detect a two-column region followed by full-width lines in one row block.
 
     Some pages contain side-by-side figure captions and then resume normal
@@ -3639,9 +3640,9 @@ def _detect_mixed_column_split(
     if flow_band_end <= flow_band_start:
         return None
 
-    left_lines: List[Block] = []
-    right_lines: List[Block] = []
-    spanning_lines: List[Block] = []
+    left_lines: list[Block] = []
+    right_lines: list[Block] = []
+    spanning_lines: list[Block] = []
     min_column_line_width = 0.12 * coord_width
 
     for line in lines:
@@ -3710,9 +3711,9 @@ def _detect_mixed_column_split(
 
 
 def _detect_floated_flow_span(
-    lines: List[Block],
+    lines: list[Block],
     page_width: int,
-) -> tuple[List[Block], List[Block], List[Block], List[Block], List[Block]] | None:
+) -> tuple[list[Block], list[Block], list[Block], list[Block], list[Block]] | None:
     """Detect a floated-content span by geometric left/right flow overlap.
 
     Returns (pre_lines, left_flow, right_flow, band_body_lines, post_lines)
@@ -3769,8 +3770,8 @@ def _detect_floated_flow_span(
         key=lambda l: l.bounding_box.minX if l.bounding_box else 0,
     )
     x_gap = 0.12 * coord_width
-    clusters: List[List[Block]] = []
-    current: List[Block] = []
+    clusters: list[list[Block]] = []
+    current: list[Block] = []
     prev_x = None
     for line in squeezed_sorted:
         x = line.bounding_box.minX if line.bounding_box else 0
@@ -3837,11 +3838,11 @@ def _detect_floated_flow_span(
     if len(left_in_band) < 2:
         return None
 
-    pre_lines: List[Block] = []
-    left_flow: List[Block] = []
-    right_flow: List[Block] = []
-    band_body: List[Block] = []
-    post_lines: List[Block] = []
+    pre_lines: list[Block] = []
+    left_flow: list[Block] = []
+    right_flow: list[Block] = []
+    band_body: list[Block] = []
+    post_lines: list[Block] = []
 
     for line in lines:
         bb = line.bounding_box
@@ -3899,8 +3900,8 @@ def _detect_floated_flow_span(
 
 
 def _detect_multi_column_split(
-    lines: List[Block], page_width: int
-) -> tuple[List[List[Block]], List[Block]] | None:
+    lines: list[Block], page_width: int
+) -> tuple[list[list[Block]], list[Block]] | None:
     """Detect and isolate multi-column regions (2-3 columns) plus spanning lines."""
     bbox_lines = [l for l in lines if l.bounding_box]
     if len(bbox_lines) < 6:
@@ -3929,8 +3930,8 @@ def _detect_multi_column_split(
     )
     gap_threshold = 0.09 * coord_width
 
-    clusters: List[List[Block]] = []
-    current_cluster: List[Block] = []
+    clusters: list[list[Block]] = []
+    current_cluster: list[Block] = []
     prev_x = None
     for line in sorted_candidates:
         x = line.bounding_box.minX if line.bounding_box else 0
@@ -3973,8 +3974,8 @@ def _detect_multi_column_split(
     median_w = float(np_median(widths)) if widths else 0.0
     wide_threshold = max(0.78 * coord_width, 1.30 * median_w)
 
-    column_lines: List[List[Block]] = [[] for _ in centers]
-    spanning_lines: List[Block] = []
+    column_lines: list[list[Block]] = [[] for _ in centers]
+    spanning_lines: list[Block] = []
 
     for line in lines:
         bb = line.bounding_box
@@ -4053,9 +4054,9 @@ def _detect_multi_column_split(
 
 
 def _merge_isolated_columns_into_flow(
-    column_groups: List[List[Block]],
-    spanning_lines: List[Block] | None = None,
-) -> List[Block]:
+    column_groups: list[list[Block]],
+    spanning_lines: list[Block] | None = None,
+) -> list[Block]:
     """Merge isolated column groups back into a single standard reading flow."""
     if not column_groups:
         return sorted(
@@ -4073,7 +4074,7 @@ def _merge_isolated_columns_into_flow(
         ),
     )
 
-    merged_lines: List[Block] = []
+    merged_lines: list[Block] = []
     for group in ordered_groups:
         merged_lines.extend(
             sorted(
@@ -4100,9 +4101,9 @@ def _merge_isolated_columns_into_flow(
 
 
 def _split_caption_like_prefix(
-    flow_lines: List[Block],
+    flow_lines: list[Block],
     page_width: int,
-) -> tuple[List[Block], List[Block]]:
+) -> tuple[list[Block], list[Block]]:
     """Split a compact top prefix from a flow as caption-like content.
 
     Uses only geometric cues: a dense run of lines at the top of a side flow

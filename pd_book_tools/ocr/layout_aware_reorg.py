@@ -29,9 +29,11 @@ monotonic improvement: never let a noisy model prediction make output
 worse than current behaviour.
 """
 
+from __future__ import annotations
+
 from collections import Counter
+from collections.abc import Iterable, Sequence
 from logging import getLogger
-from typing import Iterable, Optional, Sequence, Set
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
@@ -84,7 +86,7 @@ _REGION_TO_BLOCK_ROLE: dict[RegionType, str] = {
 
 def _word_bbox_in_layout_frame(
     word: Word, page_w: float, page_h: float, layout_w: float, layout_h: float
-) -> Optional[tuple[float, float, float, float]]:
+) -> tuple[float, float, float, float] | None:
     """Return ``(L, T, R, B)`` for ``word`` in the layout image's pixel frame.
 
     Handles both normalized and pixel-space word bounding boxes. Falls back
@@ -228,7 +230,7 @@ def _word_has_tag(word: Word, region_type: RegionType) -> bool:
 # Drop pass — uses the tags now
 
 
-def _purge_word_from_blocks(blocks: list[Block], targets: Set[int]) -> None:
+def _purge_word_from_blocks(blocks: list[Block], targets: set[int]) -> None:
     """R-05: thin module-private alias around ``block.purge_words_from_blocks``.
 
     Kept so the four in-module call sites read at the original level of
@@ -241,7 +243,7 @@ def _purge_word_from_blocks(blocks: list[Block], targets: Set[int]) -> None:
 def drop_layout_regions(
     page,
     layout: PageLayout,
-    drop_types: Set[RegionType],
+    drop_types: set[RegionType],
     confidence_threshold: float = DEFAULT_DROP_CONFIDENCE,
 ) -> int:
     """Remove words whose centers fall in high-confidence drop-type regions.
@@ -267,7 +269,7 @@ def drop_layout_regions(
     if not relevant:
         return 0
 
-    targets: Set[int] = set()
+    targets: set[int] = set()
     for word in page.words:
         for region in relevant:
             if _word_center_in_region(word, region, page_w, page_h, layout_w, layout_h):
@@ -345,7 +347,7 @@ def drop_figure_internal_words(
     if not has_figure:
         return 0
 
-    targets: Set[int] = set()
+    targets: set[int] = set()
     for line_block in _iter_line_blocks(list(page._items)):
         words = list(line_block._items)
         if not words:
@@ -371,7 +373,7 @@ def drop_figure_internal_words(
 # Geometric sidenote detection — a margin-column heuristic
 
 
-def _word_x_extents(word: Word) -> Optional[tuple[float, float, float]]:
+def _word_x_extents(word: Word) -> tuple[float, float, float] | None:
     """Return ``(left, right, center_x)`` in pixel-or-normalized space."""
     bb = word.bounding_box
     if bb is None:
@@ -499,7 +501,7 @@ def _all_words_in_block(block: Block) -> list[Word]:
 
 def _dominant_layout_info(
     words: Sequence[Word],
-) -> Optional[tuple[RegionType, int, int]]:
+) -> tuple[RegionType, int, int] | None:
     """Return ``(winning_type, winner_count, pool_size)`` or ``None``.
 
     The pool excludes ``RegionType.text`` whenever any non-text tag is
@@ -528,7 +530,7 @@ def _dominant_layout_info(
         return None
 
 
-def _dominant_layout_tag(words: Sequence[Word]) -> Optional[RegionType]:
+def _dominant_layout_tag(words: Sequence[Word]) -> RegionType | None:
     """Return the single most-common non-``text`` ``layout:*`` tag, or
     ``text`` if that's all there is."""
     info = _dominant_layout_info(words)
@@ -661,7 +663,7 @@ def route_sidenote_reading_order(page) -> int:
 def emit_caption_block(
     words: Sequence[Word],
     region_type: RegionType = RegionType.figure,
-) -> Optional[Block]:
+) -> Block | None:
     if not words:
         return None
     line = Block(
