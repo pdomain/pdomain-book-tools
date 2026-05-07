@@ -159,6 +159,25 @@ class Block:
     ):
         self.child_type: BlockChildType | None = child_type
         self.block_category: BlockCategory | None = block_category
+        # R-14: a ``LINE`` always contains words directly — never child
+        # blocks. Every code-path in the library that constructs a LINE
+        # passes ``BlockChildType.WORDS`` (verified across page.py,
+        # document.py, layout_aware_reorg.py, reorganize_page_utils.py),
+        # and downstream methods like ``estimate_baseline_from_image``
+        # silently no-op when the invariant is violated. Surface the
+        # mismatch at construction time instead. PARAGRAPH/BLOCK are
+        # intentionally NOT validated: existing tests exercise both
+        # PARAGRAPH+WORDS (a flat paragraph of words) and PARAGRAPH+BLOCKS
+        # (a paragraph of lines), and both are valid shapes.
+        if (
+            self.block_category == BlockCategory.LINE
+            and self.child_type is not None
+            and self.child_type != BlockChildType.WORDS
+        ):
+            raise ValueError(
+                "Block(block_category=LINE) must have child_type=WORDS; "
+                f"got child_type={self.child_type}"
+            )
         self.block_labels: list[str] | None = block_labels
         self.block_role_labels: list[str] = self._normalize_labels(
             block_role_labels,

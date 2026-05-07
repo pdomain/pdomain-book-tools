@@ -1077,3 +1077,49 @@ class TestR05PurgeWordsFromBlocks:
         empty_para = outer._items[0]
         assert empty_para.bounding_box is None
         assert empty_para.is_empty
+
+
+def test_line_must_have_child_type_words():
+    """R-14: ``Block(block_category=LINE, child_type=BLOCKS)`` is an
+    invalid shape — a line always contains words directly, never child
+    blocks. Construction must fail loudly so the bug surfaces at the
+    call site instead of silently no-op'ing in downstream methods like
+    ``estimate_baseline_from_image`` (which already gates on the same
+    invariant)."""
+    inner_block = Block(
+        items=[],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    with pytest.raises(ValueError, match="LINE.*child_type=WORDS"):
+        Block(
+            items=[inner_block],
+            child_type=BlockChildType.BLOCKS,
+            block_category=BlockCategory.LINE,
+        )
+
+
+def test_line_with_child_type_words_ok():
+    """R-14: the canonical LINE+WORDS shape still constructs cleanly."""
+    Block(
+        items=[],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+
+
+def test_paragraph_allows_either_child_type():
+    """R-14 narrowing: PARAGRAPH+WORDS (flat paragraph of words) AND
+    PARAGRAPH+BLOCKS (paragraph of lines) are BOTH valid shapes — the
+    consistency check is intentionally narrow to LINE."""
+    # Both should succeed.
+    Block(
+        items=[],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.PARAGRAPH,
+    )
+    Block(
+        items=[],
+        child_type=BlockChildType.BLOCKS,
+        block_category=BlockCategory.PARAGRAPH,
+    )

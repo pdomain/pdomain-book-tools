@@ -722,14 +722,17 @@ def test_page_add_ground_truth_calls_refresh(sample_page):
 
 def test_page_add_rect_type_errors():
     img = np.zeros((5, 5, 3), dtype=np.uint8)
-    # _add_text_label expects Word
+    # _add_text_label expects Word; passing any non-Word is the
+    # invariant under test. Use a valid BLOCK+BLOCKS shape — earlier
+    # this test paired LINE+BLOCKS, which R-14 now correctly rejects
+    # at Block construction time.
     with pytest.raises(TypeError):
         Page._add_text_label(
             img,
             Block(
                 items=[],
                 child_type=BlockChildType.BLOCKS,
-                block_category=BlockCategory.LINE,
+                block_category=BlockCategory.BLOCK,
             ),
         )
     with pytest.raises(TypeError):
@@ -738,7 +741,7 @@ def test_page_add_rect_type_errors():
             Block(
                 items=[],
                 child_type=BlockChildType.BLOCKS,
-                block_category=BlockCategory.LINE,
+                block_category=BlockCategory.BLOCK,
             ),
             text_attr="ground_truth_text",
         )

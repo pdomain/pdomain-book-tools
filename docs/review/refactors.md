@@ -323,7 +323,7 @@ canonical methods.
 
 ---
 
-## R-14 — `Block` validates `child_type` but not `block_category` / `child_type` consistency
+## [FIXED — narrowed to LINE+WORDS only; PARAGRAPH allows either child_type] ~~R-14 — `Block` validates `child_type` but not `block_category` / `child_type` consistency~~
 
 **File:** `pd_book_tools/ocr/block.py`, lines 420–446
 
