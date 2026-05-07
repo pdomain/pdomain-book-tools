@@ -540,7 +540,7 @@ an empty list, which looks like "no regions found" rather than "all regions."
 
 ---
 
-## R-27 — `ground_truth_text` property maps both `None` and `""` to the same external value
+## [FIXED — setter canonicalizes empty/None to None] ~~R-27 — `ground_truth_text` property maps both `None` and `""` to the same external value~~
 
 **File:** `pd_book_tools/ocr/word.py`, lines 140–146
 

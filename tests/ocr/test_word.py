@@ -1416,3 +1416,45 @@ def test_word_estimate_baseline_from_image_sets_attribute():
     assert baseline["coordinate_space"] == "pixel"
     assert baseline["y"] == pytest.approx(18, abs=1.0)
     assert w.baseline == baseline
+
+
+# ----------------------------------------------------------------------
+# R-27: ``None`` is canonical for "no ground truth"; the setter normalizes
+# empty strings to ``None`` so internal state matches what ``to_dict``
+# serializes and what ``clear_ground_truth`` produces.
+# ----------------------------------------------------------------------
+
+
+def test_ground_truth_text_setter_normalizes_empty_string_to_none(pixel_bbox):
+    w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
+    assert w._ground_truth_text == "prev"
+    w.ground_truth_text = ""
+    assert w._ground_truth_text is None
+    # External getter still returns "" for callers expecting a string.
+    assert w.ground_truth_text == ""
+
+
+def test_ground_truth_text_setter_accepts_none(pixel_bbox):
+    w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
+    w.ground_truth_text = None  # type: ignore[assignment]
+    assert w._ground_truth_text is None
+    assert w.ground_truth_text == ""
+
+
+def test_clear_ground_truth_canonicalizes_to_none(pixel_bbox):
+    w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
+    assert w.clear_ground_truth() is True
+    assert w._ground_truth_text is None
+    # to_dict serializes both None and "" as None — verify round-trip.
+    d = w.to_dict()
+    assert d["ground_truth_text"] is None
+
+
+def test_constructor_with_empty_ground_truth_text_stores_none(pixel_bbox):
+    w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="")
+    assert w._ground_truth_text is None
+
+
+def test_constructor_with_none_ground_truth_text_stores_none(pixel_bbox):
+    w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text=None)
+    assert w._ground_truth_text is None

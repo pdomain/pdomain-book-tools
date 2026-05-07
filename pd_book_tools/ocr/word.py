@@ -142,8 +142,13 @@ class Word:
         return self._ground_truth_text or ""
 
     @ground_truth_text.setter
-    def ground_truth_text(self, value: str) -> None:
-        self._ground_truth_text = value
+    def ground_truth_text(self, value: Optional[str]) -> None:
+        # R-27: ``None`` is the canonical "no ground truth" value. Normalize
+        # empty strings to ``None`` on assignment so the internal state is
+        # consistent with what ``to_dict`` serializes (both round-trip as
+        # ``None``) and what the property getter returns externally
+        # (always ``""`` for callers that expect a string).
+        self._ground_truth_text = value if value else None
 
     def copy_ocr_to_ground_truth(self) -> bool:
         """Copy OCR text into ground truth text. Returns True if text was present."""
