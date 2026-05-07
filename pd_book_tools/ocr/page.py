@@ -3051,21 +3051,19 @@ class Page:
         )
 
         # Step DC — detect drop caps in the body blocks and stitch them
-        # into the next paragraph's first line. Tags the word with
-        # ``word_components=["drop cap"]`` for downstream consumers.
+        # into the next paragraph's first line. The block-cap path catches
+        # plain Roman caps the OCR model already recognised; the cursive
+        # fallback catches the cases where DocTR mis-read or skipped the
+        # oversized serif glyph entirely. Both paths produce the same
+        # structural shape: a separate Word at the front of the body line,
+        # tagged ``word_components=["drop cap"]``. ``Block.text`` keys on
+        # that tag to fuse the cap to the next body Word with the empty
+        # string (so cap "S" + body "tudies" renders as "Studies"). See
+        # ``pd_book_tools/ocr/dropcap.py``.
+        from pd_book_tools.ocr.dropcap import detect_and_stitch_drop_caps
+
         page_metrics = reorganize_page_utils.compute_page_metrics(self)
-        reset_paragraph_blocks = reorganize_page_utils.stitch_drop_caps(
-            reset_paragraph_blocks, page_metrics
-        )
-
-        # Step DC fallback — cursive / decorative caps the geometric
-        # block-cap stitcher missed (DocTR mis-recognised the oversized
-        # serif glyph as gibberish or skipped it entirely). See
-        # ``pd_book_tools/ocr/dropcap.py`` for the indent-signature +
-        # connected-components recovery design (Iteration A).
-        from pd_book_tools.ocr.dropcap import detect_and_stitch_cursive_dropcaps
-
-        reset_paragraph_blocks = detect_and_stitch_cursive_dropcaps(
+        reset_paragraph_blocks = detect_and_stitch_drop_caps(
             reset_paragraph_blocks,
             self.cv2_numpy_page_image,
             page_metrics,

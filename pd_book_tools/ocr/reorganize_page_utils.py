@@ -916,151 +916,11 @@ def reconcile_dropped_words(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Drop-cap detection — find the oversized initial letter at the start of a
-# paragraph (e.g. "R" in "READER!") and stitch it into the same line as the
-# rest of the word so the text output reads as one logical word. The word is
-# tagged ``word_components += ["drop cap"]`` for downstream consumers.
+# Drop-cap detection — Step DC of reorganize_page. The implementation lives
+# in :mod:`pd_book_tools.ocr.dropcap` (Iteration B unification — that module
+# owns BOTH the block-cap geometric stitcher and the cursive-cap CC fallback).
+# ``stitch_drop_caps`` is preserved as a thin shim for the historical name.
 # ─────────────────────────────────────────────────────────────────────────────
-
-
-def _is_single_visible_word_paragraph(paragraph: Block) -> Word | None:
-    """Return the lone meaningful Word in a paragraph, or None.
-
-    A drop-cap paragraph is structurally trivial: one LINE child holding one
-    Word with non-empty text. Anything more complex is not a drop cap.
-    """
-    if paragraph.block_category != BlockCategory.PARAGRAPH:
-        return None
-    line_children = [
-        l for l in paragraph.items if l.block_category == BlockCategory.LINE
-    ]
-    if len(line_children) != 1:
-        return None
-    line = line_children[0]
-    visible_words = [w for w in line.words if (w.text or "").strip()]
-    if len(visible_words) != 1:
-        return None
-    return visible_words[0]
-
-
-def _looks_like_drop_cap_word(word: Word, metrics: PageMetrics) -> bool:
-    """Drop-cap candidates: very tall, very short text.
-
-    Drop caps are typically rendered ~2.5× the body cap-height. We use a
-    1.8× threshold against ``median_word_h`` to pick up shorter caps too.
-    Text length must be small (1 visible character common; allow up to 2 to
-    handle OCR oddities like ``R'`` where the apostrophe is part of the
-    same OCR word).
-    """
-    bb = word.bounding_box
-    if bb is None:
-        return False
-    if metrics.median_word_h <= 0:
-        return False
-    if bb.height < 1.8 * metrics.median_word_h:
-        return False
-    text = (word.text or "").strip()
-    if not text or len(text) > 2:
-        return False
-    return True
-
-
-def _next_word_attached_to_drop_cap(
-    drop_cap: Word,
-    candidates: list[Word],
-    metrics: PageMetrics,
-) -> Word | None:
-    """Return the body-text word immediately to the right of ``drop_cap``.
-
-    A drop cap visually flows into the first body word with no real gap. We
-    pick the candidate whose minX is just after ``drop_cap.maxX`` and whose
-    Y range overlaps the upper portion of ``drop_cap`` (the body word sits
-    next to the top of the cap, not its bottom).
-    """
-    cap_bb = drop_cap.bounding_box
-    if cap_bb is None:
-        return None
-    cap_top_y = cap_bb.minY
-    cap_mid_x = (cap_bb.minX + cap_bb.maxX) / 2.0
-    body_h = max(metrics.median_word_h, 1e-6)
-
-    candidates_sorted = sorted(
-        (
-            w
-            for w in candidates
-            if w is not drop_cap and w.bounding_box and (w.text or "").strip()
-        ),
-        key=lambda w: w.bounding_box.minX,
-    )
-    for w in candidates_sorted:
-        wb = w.bounding_box
-        # Allow a small overlap — OCR can place the body word's left edge
-        # slightly inside the drop-cap glyph's bbox. Use centroid-comparison:
-        # the body word must sit to the right of the drop cap's centre.
-        word_mid_x = (wb.minX + wb.maxX) / 2.0
-        if word_mid_x <= cap_mid_x:
-            continue
-        gap = wb.minX - cap_bb.maxX
-        # Tight gap: drop cap is visually fused with the next word. Allow a
-        # small negative gap (overlap) up to ~25% of the cap's width.
-        max_gap = max(2.5 * body_h, 0.04)
-        min_gap = -0.25 * cap_bb.width
-        if gap > max_gap or gap < min_gap:
-            continue
-        # The body word sits at the top of the cap (within ~1 line height).
-        if wb.minY < cap_top_y - 0.5 * body_h:
-            continue
-        if wb.minY > cap_top_y + 1.5 * body_h:
-            continue
-        return w
-    return None
-
-
-def _trim_drop_cap_to_first_character(cap_word: Word) -> None:
-    """Keep only the first character of a drop-cap word's text.
-
-    OCR often picks up a stray glyph alongside the oversized cap (a smudge,
-    a stylized initial flourish, or in the preface-with-drop-cap fixture
-    a curly apostrophe-looking artifact next to the ``R``). Once we've
-    identified the word as a
-    drop cap and committed to merging it with the next body word, only the
-    initial letter is meaningful — the trailing artifacts produce wrong
-    output like ``"R'EADER!"`` when ``"READER!"`` is intended.
-
-    The bbox is left untouched (the cap glyph occupies the whole bbox);
-    only the text label is trimmed. ``ground_truth_text`` is trimmed in
-    parallel when present.
-    """
-    text = (cap_word.text or "").strip()
-    if len(text) > 1:
-        cap_word.text = text[0]
-    gt = (cap_word.ground_truth_text or "").strip()
-    if len(gt) > 1:
-        cap_word.ground_truth_text = gt[0]
-
-
-def _attach_drop_cap_to_target_line(
-    drop_cap_word: Word,
-    target_line: Block,
-) -> None:
-    """Tag ``drop_cap_word`` with ``word_components=["drop cap"]`` and prepend
-    it to ``target_line``'s word list.
-
-    The drop cap stays as its own ``Word`` so the per-letter geometry / OCR
-    confidence / training data is preserved (the labeler shows it as a
-    distinct token, drop-cap labelled). Line ``text`` rendering joins a
-    drop-cap word to the next word with NO trailing space — see
-    ``Block.text`` — so the output reads ``"R'EADER!"`` rather than
-    ``"R' EADER!"``, while the structural model still flags the cap.
-    """
-    if "drop cap" not in (drop_cap_word.word_components or []):
-        drop_cap_word.word_components = list(
-            (drop_cap_word.word_components or []) + ["drop cap"]
-        )
-    if target_line.block_category != BlockCategory.LINE:
-        return
-    target_line.items = [drop_cap_word] + list(target_line.items)
-    target_line.recompute_bounding_box()
 
 
 def stitch_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
@@ -1075,66 +935,14 @@ def stitch_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
 
     Special blocks (page header, footer, sidenote, poetry, blockquote,
     recovered) are skipped — drop caps only appear in body text.
+
+    Iteration B: implementation hoisted into
+    :func:`pd_book_tools.ocr.dropcap.stitch_block_drop_caps`. This shim
+    is preserved as the historical entry point.
     """
-    SKIP_ROLES = {
-        "page header",
-        "page footer",
-        "sidenote",
-        "poetry",
-        "blockquote",
-        "recovered",
-        "page number",
-        "printers mark",
-    }
+    from pd_book_tools.ocr.dropcap import stitch_block_drop_caps
 
-    for outer in blocks:
-        roles = outer.block_role_labels or []
-        if any(r in SKIP_ROLES for r in roles):
-            continue
-        paragraphs = list(outer.items)
-        if len(paragraphs) < 2:
-            continue
-
-        kept_paragraphs: list[Block] = []
-        skip_idx: set[int] = set()
-        for i, paragraph in enumerate(paragraphs):
-            if i in skip_idx:
-                continue
-            cap_word = _is_single_visible_word_paragraph(paragraph)
-            if cap_word is None or not _looks_like_drop_cap_word(cap_word, metrics):
-                kept_paragraphs.append(paragraph)
-                continue
-            # Look at the next paragraph's first line.
-            if i + 1 >= len(paragraphs):
-                kept_paragraphs.append(paragraph)
-                continue
-            next_para = paragraphs[i + 1]
-            next_line_children = [
-                l for l in next_para.items if l.block_category == BlockCategory.LINE
-            ]
-            if not next_line_children:
-                kept_paragraphs.append(paragraph)
-                continue
-            target_line = next_line_children[0]
-            attached_to = _next_word_attached_to_drop_cap(
-                cap_word, target_line.words, metrics
-            )
-            if attached_to is None:
-                kept_paragraphs.append(paragraph)
-                continue
-            # Stitch: tag + move into target line, then trim the cap text
-            # down to its first character so OCR noise around the glyph
-            # doesn't pollute the rendered text. Drop the now-empty
-            # paragraph by NOT appending it to kept_paragraphs.
-            _attach_drop_cap_to_target_line(cap_word, target_line)
-            _trim_drop_cap_to_first_character(cap_word)
-            next_para.recompute_bounding_box()
-
-        if len(kept_paragraphs) != len(paragraphs):
-            outer.items = kept_paragraphs
-            outer.recompute_bounding_box()
-
-    return blocks
+    return stitch_block_drop_caps(blocks, metrics)
 
 
 def emit_step_dropcap_debug(
