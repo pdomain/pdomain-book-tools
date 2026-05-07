@@ -6,15 +6,15 @@ to use correctly. Organized roughly by impact.
 
 ---
 
-**Status (2026-05-07):** 25 of 30 review-numbered items closed. Closed
+**Status (2026-05-07):** 26 of 30 review-numbered items closed. Closed
 items (FIXED / DECLINED / FIXED-with-deprecation) live in
 [`archive/refactors.md`](archive/refactors.md). Only the items that
 still need work remain below: four DEFERRED structural-coupling items
-(R-01, R-02, R-03, R-08) that need cross-repo coordination, plus the
-still-open R-16. New refactor ideas should be added here under the
-next available `R-NN` number; when closed, **move** the entry into
-`archive/refactors.md` rather than annotating it FIXED in place —
-see [`README.md`](README.md) for the workflow.
+(R-01, R-02, R-03, R-08) that need cross-repo coordination. New
+refactor ideas should be added here under the next available `R-NN`
+number; when closed, **move** the entry into `archive/refactors.md`
+rather than annotating it FIXED in place — see
+[`README.md`](README.md) for the workflow.
 
 ---
 
@@ -166,20 +166,3 @@ renaming submodules) is a breaking change for all downstream packages.
 - `pd_book_tools/utility/__init__.py`: create with `timing` and `ipynb_widgets` exports
 - `pd_book_tools/layout/__init__.py`: add `draw_layout_overlay`, `clear_detector_cache`,
   and all geometry helpers (`caption_for_figure`, `iou`, `contains`, etc.)
-
----
-
-## R-16 — `from_doctr_output` and `from_tesseract_output` should break out per-level helpers
-
-**File:** `pd_book_tools/ocr/document.py`
-
-Both adapter functions iterate 3–4 nested levels (document → page → block →
-paragraph → line → word) with inline coordinate conversion at each level. Each level
-should be a separate function with a clear signature:
-
-```python
-def _word_from_doctr(word_data, page_w, page_h) -> Word
-def _line_from_doctr(line_data, page_w, page_h) -> Block
-def _block_from_doctr(block_data, page_w, page_h) -> Block
-def _page_from_doctr(page_data) -> Page
-```

@@ -9,10 +9,6 @@ Open / deferred items remain in the active `refactors.md` and are NOT
 duplicated here:
 
 - R-01, R-02, R-03, R-08 — DEFERRED (cross-repo coordination required)
-- R-15 — partial; the closed sub-parts (det/reco helpers extracted)
-  appear here. The remaining work (arch-detection helper, full
-  `build_predictor` extraction) stays in the active doc.
-- R-16 — open
 
 ---
 
@@ -226,6 +222,38 @@ Closed in two stages:
   orchestrator over six named helpers; the public signature is unchanged.
   `tests/ocr/test_doctr_support.py::TestR15ExtractedHelpers` pins each
   new helper independently.
+
+---
+
+## [FIXED in 0a5af0f + de99d93] ~~R-16 — `from_doctr_output` and `from_tesseract` should break out per-level helpers~~
+
+**File:** `pd_book_tools/ocr/document.py`
+
+Both adapter functions iterate 3–4 nested levels (document → page →
+block → paragraph → line → word) with inline coordinate conversion at
+each level. Each level should be a separate function with a clear
+signature:
+
+```python
+def _word_from_doctr(word_data, page_w, page_h) -> Word
+def _line_from_doctr(line_data, page_w, page_h) -> Block
+def _block_from_doctr(block_data, page_w, page_h) -> Block
+def _page_from_doctr(page_data) -> Page
+```
+
+Resolved across two commits — `0a5af0f` extracts the DocTR side,
+`de99d93` extracts the Tesseract side. The DocTR adapter now uses
+`_doctr_bbox`, `_word_from_doctr`, `_line_from_doctr`,
+`_artefact_from_doctr`, `_block_from_doctr`, and `_page_from_doctr`.
+The Tesseract adapter uses `_tesseract_filter_level`,
+`_tesseract_bbox`, `_word_from_tesseract`, `_line_from_tesseract`,
+`_paragraph_from_tesseract`, `_block_from_tesseract`, and
+`_page_from_tesseract`. `from_doctr_output` and `from_tesseract` are
+now thin drivers; behavior is preserved (M-14 PARAGRAPH wrapping, M-15
+artefact promotion, M-16 missing-geometry guard, L-19 confidence
+None-vs-zero, L-18 lang-pack provenance, H-18 non-contiguous-id
+filtering all unchanged). 10 new helper-targeted tests pin the
+contracts; the 88 existing adapter tests still pass.
 
 ---
 
