@@ -97,6 +97,7 @@ def detect_best_rotation(
     ocr_fn: Callable[[ndarray], "Document"],
     confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
     rotations: Sequence[int] = DEFAULT_ROTATIONS,
+    upright_result: "Document | None" = None,
 ) -> tuple[int, "Document", list[RotationProbe]]:
     """Find the rotation that maximises OCR confidence on ``image``.
 
@@ -120,6 +121,12 @@ def detect_best_rotation(
     rotations
         Rotations to try, in order. Must start with 0; subsequent values
         are tried only if the 0° pass fails the threshold.
+    upright_result
+        Optional pre-computed :class:`Document` for the 0° pass. When
+        provided, the upright OCR call is skipped and this result is used
+        directly — useful for callers that already have OCR output for
+        the upright orientation and want to avoid a redundant pass. When
+        ``None`` (default), the upright pass runs as before.
 
     Returns
     -------
@@ -140,8 +147,9 @@ def detect_best_rotation(
 
     probes: list[RotationProbe] = []
 
-    # Fast path: try the page upright first.
-    doc_upright = ocr_fn(image)
+    # Fast path: try the page upright first. If the caller already has
+    # the upright OCR result, skip the redundant call.
+    doc_upright = upright_result if upright_result is not None else ocr_fn(image)
     conf_upright, count_upright = _mean_confidence(doc_upright)
     probes.append(RotationProbe(0, conf_upright, count_upright))
     if conf_upright >= confidence_threshold:

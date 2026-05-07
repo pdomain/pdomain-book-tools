@@ -373,7 +373,7 @@ def _page_from_doctr(page_data) -> Page
 
 ---
 
-## R-17 — `detect_best_rotation` always runs OCR at 0° even when the caller has the result
+## [FIXED] ~~R-17 — `detect_best_rotation` always runs OCR at 0° even when the caller has the result~~
 
 **File:** `pd_book_tools/ocr/rotation.py`
 
@@ -387,6 +387,12 @@ a redundant OCR pass.
 def detect_best_rotation(image, ocr_fn, ..., upright_result=None):
     result_0 = upright_result if upright_result is not None else ocr_fn(image)
 ```
+
+Resolved by adding the optional ``upright_result`` keyword parameter.
+When provided, the upright OCR call is skipped entirely. Two new tests
+pin the behavior: pre-supplied high-confidence upright result triggers
+zero ocr_fn calls; pre-supplied low-confidence upright result triggers
+exactly 3 fallback calls (90/180/270 only).
 
 ---
 

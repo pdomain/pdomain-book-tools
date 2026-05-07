@@ -132,6 +132,34 @@ class TestDetectBestRotation:
         with pytest.raises(ValueError, match="must start with 0"):
             detect_best_rotation(_make_image(), ocr_fn=ocr_fn, rotations=(90, 180, 270))
 
+    def test_upright_result_skips_redundant_zero_call(self):
+        # When the caller already has the 0° OCR result, ocr_fn should
+        # not be called for the upright pass. Confidence is high enough
+        # to take the fast path, so ocr_fn shouldn't be called at all.
+        precomputed = _stub_doc_with_confidences(0.9, 0.85)
+        ocr_fn = MagicMock()
+        chosen, doc, probes = detect_best_rotation(
+            _make_image(), ocr_fn=ocr_fn, upright_result=precomputed
+        )
+        assert chosen == 0
+        assert doc is precomputed
+        assert ocr_fn.call_count == 0
+        assert probes[0].rotation == 0
+        assert probes[0].mean_confidence == pytest.approx(0.875)
+
+    def test_upright_result_low_conf_still_falls_back(self):
+        # Pre-computed upright result below threshold — fallbacks still
+        # invoke ocr_fn for 90/180/270 only (3 calls, not 4).
+        precomputed = _stub_doc_with_confidences(0.1)
+        ocr_fn = MagicMock(return_value=_stub_doc_with_confidences(0.2))
+        chosen, _, probes = detect_best_rotation(
+            _make_image(), ocr_fn=ocr_fn, upright_result=precomputed
+        )
+        assert ocr_fn.call_count == 3  # 90, 180, 270 only — 0 was supplied
+        assert len(probes) == 4
+        # 0.2 > 0.1, so a non-upright rotation wins.
+        assert chosen != 0
+
     def test_default_threshold_is_documented_constant(self):
         # Sanity: catching accidental drift between the doc constant and
         # the default arg value.
