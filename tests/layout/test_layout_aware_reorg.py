@@ -176,6 +176,101 @@ class TestDropLayoutRegions:
         assert removed == 0
 
 
+class TestDropLayoutRegionsPerTypeConfidence:
+    """ROADMAP "Per-type confidence thresholds": ``confidence_threshold``
+    accepts a ``dict[RegionType, float]`` so callers can tune the trust
+    bar per-type — e.g. trust ``figure`` at 0.5 (the model is good at
+    figures) while requiring ≥0.7 for ``header`` (the noisiest class).
+    """
+
+    def _page_with_header_and_footer(self):
+        header_words = [_word("PAGE", 100, 30, 200, 60)]
+        footer_words = [_word("FOOT", 100, 1400, 200, 1430)]
+        body_words = [_word("body", 100, 700, 200, 730)]
+        return _make_page(
+            [
+                _paragraph_block([_line_block(header_words)]),
+                _paragraph_block([_line_block(body_words)]),
+                _paragraph_block([_line_block(footer_words)]),
+            ]
+        )
+
+    def _layout_header_and_footer(self, header_conf=0.5, footer_conf=0.5):
+        return PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.header,
+                    L=0,
+                    R=PAGE_W,
+                    T=0,
+                    B=100,
+                    confidence=header_conf,
+                ),
+                LayoutRegion(
+                    type=RegionType.footer,
+                    L=0,
+                    R=PAGE_W,
+                    T=1380,
+                    B=PAGE_H,
+                    confidence=footer_conf,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+    def test_per_type_threshold_drops_only_above_per_type_bar(self):
+        # Header @ 0.6, footer @ 0.55. Per-type policy keeps headers
+        # only at ≥0.7 but footers at ≥0.5 — so footer drops, header
+        # stays.
+        page = self._page_with_header_and_footer()
+        layout = self._layout_header_and_footer(header_conf=0.6, footer_conf=0.55)
+        removed = drop_layout_regions(
+            page,
+            layout,
+            drop_types={RegionType.header, RegionType.footer},
+            confidence_threshold={
+                RegionType.header: 0.7,
+                RegionType.footer: 0.5,
+            },
+        )
+        assert removed == 1
+        remaining = {w.text for w in page.words}
+        # Footer dropped, header + body kept.
+        assert remaining == {"PAGE", "body"}
+
+    def test_per_type_threshold_falls_back_for_missing_types(self):
+        # Header type missing from the dict — should fall back to
+        # DEFAULT_DROP_CONFIDENCE (0.7); footer present at 0.5.
+        page = self._page_with_header_and_footer()
+        # Header @ 0.65 (below default 0.7 → kept), footer @ 0.55 (above 0.5 → dropped).
+        layout = self._layout_header_and_footer(header_conf=0.65, footer_conf=0.55)
+        removed = drop_layout_regions(
+            page,
+            layout,
+            drop_types={RegionType.header, RegionType.footer},
+            confidence_threshold={RegionType.footer: 0.5},
+        )
+        assert removed == 1
+        remaining = {w.text for w in page.words}
+        assert remaining == {"PAGE", "body"}
+
+    def test_float_threshold_still_works(self):
+        """Backwards compatibility: float threshold preserves legacy
+        single-bar behaviour."""
+        page = self._page_with_header_and_footer()
+        layout = self._layout_header_and_footer(header_conf=0.95, footer_conf=0.95)
+        removed = drop_layout_regions(
+            page,
+            layout,
+            drop_types={RegionType.header, RegionType.footer},
+            confidence_threshold=0.7,
+        )
+        assert removed == 2
+        assert {w.text for w in page.words} == {"body"}
+
+
 class TestEmitCaptionBlock:
     def test_returns_none_for_empty(self):
         assert emit_caption_block([]) is None

@@ -56,6 +56,36 @@ logger = getLogger(__name__)
 DEFAULT_TAG_CONFIDENCE = 0.5
 DEFAULT_DROP_CONFIDENCE = 0.7
 
+# Per-type minimum confidence overrides for callers passing a
+# ``dict[RegionType, float]`` to ``drop_layout_regions`` /
+# ``drop_figure_internal_words``. Tuned on the observation that figures
+# are detected confidently (we can trust them at 0.5) while headers
+# are the noisiest class (require ≥0.7 before dropping their words).
+# Types not listed fall back to ``DEFAULT_DROP_CONFIDENCE``.
+DEFAULT_DROP_CONFIDENCE_BY_TYPE: dict[RegionType, float] = {
+    RegionType.figure: 0.50,
+    RegionType.header: 0.70,
+    RegionType.footer: 0.65,
+    RegionType.footnote: 0.65,
+    RegionType.abandoned: 0.70,
+}
+
+
+def _resolve_confidence_threshold(
+    threshold: float | dict[RegionType, float],
+    region_type: RegionType,
+) -> float:
+    """Pick the minimum confidence for ``region_type``.
+
+    Accepts either a single ``float`` (legacy single-bar policy) or a
+    ``dict[RegionType, float]`` (per-type policy). For dict input,
+    types not present fall back to ``DEFAULT_DROP_CONFIDENCE``.
+    """
+    if isinstance(threshold, dict):
+        return float(threshold.get(region_type, DEFAULT_DROP_CONFIDENCE))
+    return float(threshold)
+
+
 # Prefix used for the ``word_labels`` entries. Kept short to match the
 # free-form pattern already used for OCR-confidence / debug labels.
 LAYOUT_LABEL_PREFIX = "layout:"
@@ -244,7 +274,7 @@ def drop_layout_regions(
     page,
     layout: PageLayout,
     drop_types: set[RegionType],
-    confidence_threshold: float = DEFAULT_DROP_CONFIDENCE,
+    confidence_threshold: float | dict[RegionType, float] = DEFAULT_DROP_CONFIDENCE,
 ) -> int:
     """Remove words whose centers fall in high-confidence drop-type regions.
 
@@ -252,6 +282,13 @@ def drop_layout_regions(
     high-confidence regions directly from ``layout`` (does NOT depend on
     :func:`tag_words_with_layout` having been called first — although in
     the standard pipeline that's the order).
+
+    ``confidence_threshold`` accepts either a single ``float`` (single
+    blanket bar — legacy behaviour) or a ``dict[RegionType, float]`` for
+    a per-type policy. With a dict, region types not listed fall back to
+    :data:`DEFAULT_DROP_CONFIDENCE`. See
+    :data:`DEFAULT_DROP_CONFIDENCE_BY_TYPE` for a sensible default
+    per-type policy.
     """
     if not drop_types or layout is None or not layout.regions:
         return 0
@@ -264,7 +301,8 @@ def drop_layout_regions(
     relevant = [
         r
         for r in layout.regions
-        if r.type in drop_types and r.confidence >= confidence_threshold
+        if r.type in drop_types
+        and r.confidence >= _resolve_confidence_threshold(confidence_threshold, r.type)
     ]
     if not relevant:
         return 0
@@ -318,7 +356,7 @@ def _word_has_only_layout_tag(word: Word, tag: str) -> bool:
 def drop_figure_internal_words(
     page,
     layout: PageLayout,
-    confidence_threshold: float = DEFAULT_DROP_CONFIDENCE,
+    confidence_threshold: float | dict[RegionType, float] = DEFAULT_DROP_CONFIDENCE,
 ) -> int:
     """Drop OCR lines that exist *only* inside a high-confidence figure region.
 
@@ -340,8 +378,11 @@ def drop_figure_internal_words(
     """
     if layout is None or not layout.regions:
         return 0
+    figure_threshold = _resolve_confidence_threshold(
+        confidence_threshold, RegionType.figure
+    )
     has_figure = any(
-        r.type == RegionType.figure and r.confidence >= confidence_threshold
+        r.type == RegionType.figure and r.confidence >= figure_threshold
         for r in layout.regions
     )
     if not has_figure:
@@ -803,6 +844,7 @@ def associate_captions(
 
 __all__ = [
     "DEFAULT_DROP_CONFIDENCE",
+    "DEFAULT_DROP_CONFIDENCE_BY_TYPE",
     "DEFAULT_TAG_CONFIDENCE",
     "LAYOUT_LABEL_PREFIX",
     "associate_captions",
