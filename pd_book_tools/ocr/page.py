@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 import pathlib
 from dataclasses import dataclass, field
@@ -11,10 +13,6 @@ from typing import (
     Any,
     Callable,
     Collection,
-    Dict,
-    List,
-    Optional,
-    Tuple,
 )
 
 if TYPE_CHECKING:
@@ -61,26 +59,26 @@ class Page:
     width: int
     height: int
     page_index: int
-    bounding_box: Optional[BoundingBox] = None
-    _items: List[Block] = field(
+    bounding_box: BoundingBox | None = None
+    _items: list[Block] = field(
         default_factory=list, init=False, repr=False, compare=False
     )
-    page_labels: Optional[list[str]] = None
-    _cv2_numpy_page_image: Optional[ndarray] = None
-    _cv2_numpy_page_image_page_with_bbox: Optional[ndarray] = None
-    _cv2_numpy_page_image_blocks_with_bboxes: Optional[ndarray] = None
-    _cv2_numpy_page_image_paragraph_with_bboxes: Optional[ndarray] = None
-    _cv2_numpy_page_image_line_with_bboxes: Optional[ndarray] = None
-    _cv2_numpy_page_image_word_with_bboxes: Optional[ndarray] = None
-    _cv2_numpy_page_image_word_with_bboxes_and_ocr_text: Optional[ndarray] = None
-    _cv2_numpy_page_image_word_with_bboxes_and_gt_text: Optional[ndarray] = None
-    _cv2_numpy_page_image_matched_word_with_colors: Optional[ndarray] = None
+    page_labels: list[str] | None = None
+    _cv2_numpy_page_image: ndarray | None = None
+    _cv2_numpy_page_image_page_with_bbox: ndarray | None = None
+    _cv2_numpy_page_image_blocks_with_bboxes: ndarray | None = None
+    _cv2_numpy_page_image_paragraph_with_bboxes: ndarray | None = None
+    _cv2_numpy_page_image_line_with_bboxes: ndarray | None = None
+    _cv2_numpy_page_image_word_with_bboxes: ndarray | None = None
+    _cv2_numpy_page_image_word_with_bboxes_and_ocr_text: ndarray | None = None
+    _cv2_numpy_page_image_word_with_bboxes_and_gt_text: ndarray | None = None
+    _cv2_numpy_page_image_matched_word_with_colors: ndarray | None = None
 
-    unmatched_ground_truth_lines: Optional[List] = None
+    unmatched_ground_truth_lines: list | None = None
     "List of Ground Truth Lines and the line they were found on before an OCR match"
 
-    original_ocr_tool_text: Optional[str] = ""
-    original_ground_truth_text: Optional[str] = ""
+    original_ocr_tool_text: str | None = ""
+    original_ground_truth_text: str | None = ""
     ocr_provenance: OCRProvenance | None = None
 
     def __init__(
@@ -89,20 +87,20 @@ class Page:
         height: int,
         page_index: int,
         items: Collection,
-        bounding_box: Optional[BoundingBox] = None,
-        page_labels: Optional[list[str]] = None,
-        cv2_numpy_page_image: Optional[ndarray] = None,
-        unmatched_ground_truth_lines: Optional[List[Tuple[int, str]]] = None,
-        original_ocr_tool_text: Optional[str] = "",
-        original_ground_truth_text: Optional[str] = "",
-        ocr_provenance: OCRProvenance | Dict[str, Any] | None = None,
+        bounding_box: BoundingBox | None = None,
+        page_labels: list[str] | None = None,
+        cv2_numpy_page_image: ndarray | None = None,
+        unmatched_ground_truth_lines: list[tuple[int, str]] | None = None,
+        original_ocr_tool_text: str | None = "",
+        original_ground_truth_text: str | None = "",
+        ocr_provenance: OCRProvenance | dict[str, Any] | None = None,
         image_path: pathlib.Path | str | None = None,
         name: str | None = None,
         source: str = "ocr",
         ocr_failed: bool = False,
-        provenance_live_ocr: Dict[str, Any] | None = None,
-        provenance_saved_ocr: Dict[str, Any] | None = None,
-        provenance_saved: Dict[str, Any] | None = None,
+        provenance_live_ocr: dict[str, Any] | None = None,
+        provenance_saved_ocr: dict[str, Any] | None = None,
+        provenance_saved: dict[str, Any] | None = None,
         rotation_applied: int = 0,
     ):
         self.width = width
@@ -144,9 +142,9 @@ class Page:
         self.name: str | None = name
         self.source: str = source
         self.ocr_failed: bool = ocr_failed
-        self.provenance_live_ocr: Dict[str, Any] | None = provenance_live_ocr
-        self.provenance_saved_ocr: Dict[str, Any] | None = provenance_saved_ocr
-        self.provenance_saved: Dict[str, Any] | None = provenance_saved
+        self.provenance_live_ocr: dict[str, Any] | None = provenance_live_ocr
+        self.provenance_saved_ocr: dict[str, Any] | None = provenance_saved_ocr
+        self.provenance_saved: dict[str, Any] | None = provenance_saved
 
         # Rotation OCR applied to the source image before recognition. 0
         # means OCR ran on the page as it sat on disk; 90/180/270 mean the
@@ -183,8 +181,8 @@ class Page:
         # is preserved as a full ``Page`` clone so the same text /
         # JSON exporters that work on the live page can be invoked on
         # it.
-        self.diagnostic_pure_ocr: Optional["Page"] = None
-        self.diagnostic_post_noise_removal: Optional["Page"] = None
+        self.diagnostic_pure_ocr: "Page" | None = None
+        self.diagnostic_post_noise_removal: "Page" | None = None
 
         # Words deleted by the noise-removal steps (Step Layout-2b and
         # Step B2) between the two diagnostic snapshots. Each entry is a
@@ -201,7 +199,7 @@ class Page:
         #
         # NOT persisted by ``to_dict`` / ``copy`` and reset on each
         # ``reorganize_page`` call.
-        self.diagnostic_noise_dropped_words: List[Word] = []
+        self.diagnostic_noise_dropped_words: list[Word] = []
         self.diagnostic_noise_dropped_count: int = 0
 
     @property
@@ -234,7 +232,7 @@ class Page:
         )
 
     @property
-    def items(self) -> List[Block]:
+    def items(self) -> list[Block]:
         """Returns a copy of the item list in this page"""
         self._sort_items()
         return self._items.copy()
@@ -584,17 +582,17 @@ class Page:
         return any(results)
 
     @property
-    def words(self) -> List[Word]:
+    def words(self) -> list[Word]:
         """Get flat list of all words in the page"""
         return list(itertools.chain.from_iterable([item.words for item in self.items]))
 
     @property
-    def lines(self) -> List["Block"]:
+    def lines(self) -> list["Block"]:
         """Get flat list of all 'lines' in the page"""
         return list(itertools.chain.from_iterable([item.lines for item in self.items]))
 
     @property
-    def paragraphs(self) -> List["Block"]:
+    def paragraphs(self) -> list["Block"]:
         """Get flat list of all 'paragraphs' in the page"""
         return list(
             itertools.chain.from_iterable([item.paragraphs for item in self.items])
@@ -2660,9 +2658,9 @@ class Page:
             ocr_provenance=self.ocr_provenance,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary"""
-        result: Dict[str, Any] = {
+        result: dict[str, Any] = {
             "type": "Page",
             "width": self.width,
             "height": self.height,
@@ -2700,7 +2698,7 @@ class Page:
 
     def reorganize_page(
         self,
-        layout: Optional["PageLayout"] = None,
+        layout: "PageLayout" | None = None,
         *,
         drop_figure_internal_text: bool = True,
         drop_layout_words: bool = False,
@@ -2889,8 +2887,8 @@ class Page:
         if self._cv2_numpy_page_image is not None:
             self.refine_bounding_boxes()
 
-        debug_sections: List[tuple[str, List[str]]] = []
-        debug_squeezed_lines: List[str] = []
+        debug_sections: list[tuple[str, list[str]]] = []
+        debug_squeezed_lines: list[str] = []
 
         # Step B — merge OCR-fragmented lines back together.
         for block in self.items:
@@ -3078,7 +3076,7 @@ class Page:
         self.refresh_page_images()
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Page":
+    def from_dict(cls, data: dict[str, Any]) -> "Page":
         """Create OCRPage from dictionary"""
         # Resolve source from either "source" or legacy "page_source" key
         source = data.get("source", data.get("page_source", "ocr"))
@@ -3152,7 +3150,7 @@ class Page:
         self: "Page",
         output_path: pathlib.Path,
         prefix: str = "",
-        word_filter: Optional[Callable[["Word"], bool]] = None,
+        word_filter: Callable[["Word"], bool] | None = None,
     ) -> None:
         """
         Create a DocTR text detection training or validation set from a page
@@ -3259,8 +3257,8 @@ class Page:
         self: "Page",
         output_path: pathlib.Path,
         prefix: str = "",
-        word_filter: Optional[Callable[["Word"], bool]] = None,
-        label_formatter: Optional[Callable[["Word"], Any]] = None,
+        word_filter: Callable[["Word"], bool] | None = None,
+        label_formatter: Callable[["Word"], Any] | None = None,
     ) -> None:
         """
         Create a text recognition training or validation set from a page
@@ -3377,7 +3375,7 @@ class Page:
         self: "Page",
         output_path: pathlib.Path,
         prefix: str = "",
-        word_filter: Optional[Callable[["Word"], bool]] = None,
+        word_filter: Callable[["Word"], bool] | None = None,
     ) -> None:
         """
         Create recognition and detection training sets from a page image
