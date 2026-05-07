@@ -133,56 +133,83 @@ def caption_for_figure(
     return best
 
 
-def region_reading_order(regions: Iterable[LayoutRegion]) -> list[LayoutRegion]:
-    """Stable left-right-top-down sort.
+def _detect_columns(regions: list[LayoutRegion]) -> list[list[LayoutRegion]] | None:
+    """Cluster ``regions`` into left-to-right columns by horizontal gap.
 
-    Sorts primarily by top edge, secondarily by left edge. The plan flags
-    multi-column reading order as an open design question — this is a sensible
-    default for single-column books and a starting point for the column-aware
-    sort to come.
+    Returns a list of column groups (each itself a list of regions) when
+    a stable multi-column structure is detected; returns ``None`` when
+    the input is single-column or when at least one region spans more
+    than one would-be column (which means columns can't be cleanly
+    separated and a fall-back (T, L) sort is more honest than an
+    arbitrary assignment).
 
-    .. warning::
-       Single-column only. For multi-column layouts (two-column body text,
-       a marginalia + body split, etc.) a right-column region with a slightly
-       smaller top can sort *before* a left-column region with a slightly
-       larger top, producing an interleaved (and wrong) reading order.
-       Multi-column input is detected heuristically via L/R-half coverage
-       and emits a one-shot :class:`UserWarning` so callers know the result
-       may be wrong; column-aware sorting is tracked as a separate L-07
-       follow-up. Cast to ``list`` first if you need deterministic detection
-       on a one-shot iterable.
+    The algorithm sweeps the regions left-to-right by ``L`` and groups
+    consecutive regions whose horizontal extents overlap into a single
+    column. A clean break (the next region's ``L`` exceeds the running
+    column's ``R``) starts a new column. If any region spans across a
+    detected column boundary (``r.L < column_R`` and ``r.R > next.L``),
+    we bail out of column detection.
     """
-    import warnings
+    if len(regions) < 2:
+        return None
+    # Sort by L for the sweep.
+    by_left = sorted(regions, key=lambda r: r.L)
+    columns: list[list[LayoutRegion]] = [[by_left[0]]]
+    column_R = by_left[0].R
+    for r in by_left[1:]:
+        if r.L >= column_R:
+            # Clean horizontal gap — start a new column.
+            columns.append([r])
+            column_R = r.R
+        else:
+            # Horizontal overlap with the running column — same column.
+            columns[-1].append(r)
+            if r.R > column_R:
+                column_R = r.R
+    if len(columns) < 2:
+        return None
+    # Sanity: a region must fit entirely inside its assigned column. A
+    # full-width header (overlapping multiple would-be columns) ends up
+    # in the first column in the sweep above, so ``column_R`` for that
+    # column extends past the next column's ``L``. Detect that and bail.
+    for i in range(len(columns) - 1):
+        cur_R = max(r.R for r in columns[i])
+        next_L = min(r.L for r in columns[i + 1])
+        if cur_R > next_L:
+            return None
+    return columns
 
+
+def region_reading_order(regions: Iterable[LayoutRegion]) -> list[LayoutRegion]:
+    """Column-aware reading-order sort.
+
+    Detects vertical column gaps via a left-to-right sweep on ``L``: a
+    region whose left edge lies past the running column's right edge
+    starts a new column. When two or more clean columns are detected,
+    each column is sorted top-to-bottom (``T``, then ``L`` as a stable
+    tiebreaker) and the columns are concatenated left-to-right. This
+    matches typeset reading order for two- and three-column layouts.
+
+    Falls back to a single (T, L) sort when:
+
+    - Input has fewer than two regions.
+    - No column gap is detected (single-column page).
+    - At least one region spans across a detected column boundary
+      (e.g. a full-page-width header above two body columns) — the
+      column assignment can't be done cleanly so the legacy sort is
+      used; the wide region naturally lands at the top of the result.
+
+    No regions are silently dropped: every input is present in the
+    returned list exactly once.
+    """
     region_list = list(regions)
-    # Heuristic: detect a true column gap — at least one left-side region whose
-    # right edge sits well inside the page's left half, AND at least one
-    # right-side region whose left edge sits well inside the page's right half,
-    # with no horizontal overlap between any such pair. Avoids false positives
-    # on single-column docs where one region happens to start at the midline.
-    if len(region_list) >= 2:
-        page_l = min(r.L for r in region_list)
-        page_r = max(r.R for r in region_list)
-        page_w = page_r - page_l
-        if page_w > 0:
-            left_quarter = page_l + page_w * 0.4
-            right_quarter = page_l + page_w * 0.6
-            left_side = [r for r in region_list if r.R <= left_quarter]
-            right_side = [r for r in region_list if r.L >= right_quarter]
-            if left_side and right_side:
-                # Confirm at least one disjoint pair (true column gap).
-                disjoint_pair = any(
-                    lr.R <= rr.L for lr in left_side for rr in right_side
-                )
-                if disjoint_pair:
-                    warnings.warn(
-                        "region_reading_order: multi-column layout detected; "
-                        "(T, L) sort can interleave columns and produce wrong "
-                        "reading order. Column-aware sort is tracked as L-07.",
-                        UserWarning,
-                        stacklevel=2,
-                    )
-    return sorted(region_list, key=lambda r: (r.T, r.L))
+    columns = _detect_columns(region_list)
+    if columns is None:
+        return sorted(region_list, key=lambda r: (r.T, r.L))
+    ordered: list[LayoutRegion] = []
+    for column in columns:
+        ordered.extend(sorted(column, key=lambda r: (r.T, r.L)))
+    return ordered
 
 
 __all__ = [

@@ -150,27 +150,77 @@ class TestReadingOrder:
         c = R(0, 100, 200, 200)
         assert region_reading_order([c, a, b]) == [b, a, c]
 
-    def test_multi_column_warns(self):
-        """L-07: two-column layouts emit a UserWarning so callers know the
-        (T, L) sort can interleave columns."""
+    def test_multi_column_returns_column_first_order(self):
+        """Two-column layouts: sort left column top-to-bottom, then right
+        column top-to-bottom. Order is column-first, not interleaved
+        (which the legacy (T, L) sort would have produced because each
+        right-column region has a slightly larger T than its left-column
+        peer).
+        """
         # Left column (L=0..400) and right column (L=600..1000) — clearly
         # disjoint in the lateral half-split heuristic.
         left_top = R(0, 100, 400, 200)
         right_top = R(600, 110, 1000, 210)
         left_bot = R(0, 300, 400, 400)
         right_bot = R(600, 310, 1000, 410)
-        with pytest.warns(UserWarning, match="L-07"):
+        # No warning expected — multi-column input is now handled.
+        with __import__("warnings").catch_warnings():
+            __import__("warnings").simplefilter("error", UserWarning)
             ordered = region_reading_order([right_top, left_top, right_bot, left_bot])
-        # And no words/regions are silently dropped — count is preserved.
-        assert len(ordered) == 4
-        for r in (right_top, left_top, right_bot, left_bot):
-            assert r in ordered
+        # Column-first reading order: left column first (top→bottom), then
+        # right column (top→bottom).
+        assert ordered == [left_top, left_bot, right_top, right_bot]
 
     def test_single_column_no_warn(self):
-        """L-07: single-column input must not emit the warning."""
+        """Single-column input: legacy (T, L) sort behaviour preserved."""
         a = R(100, 0, 300, 50)
         b = R(100, 80, 300, 130)
         with __import__("warnings").catch_warnings():
             __import__("warnings").simplefilter("error", UserWarning)
             # Should not raise — no warning emitted.
             assert region_reading_order([b, a]) == [a, b]
+
+    def test_three_column_layout(self):
+        """Three columns separated by clear gaps — each column ordered
+        top-to-bottom, columns ordered left-to-right.
+        """
+        # Columns at L=0..200, L=400..600, L=800..1000; clear gaps.
+        c1_top = R(0, 100, 200, 200)
+        c1_bot = R(0, 300, 200, 400)
+        c2_top = R(400, 110, 600, 210)
+        c2_bot = R(400, 310, 600, 410)
+        c3_top = R(800, 105, 1000, 205)
+        c3_bot = R(800, 305, 1000, 405)
+        ordered = region_reading_order([c3_bot, c2_top, c1_bot, c3_top, c2_bot, c1_top])
+        assert ordered == [c1_top, c1_bot, c2_top, c2_bot, c3_top, c3_bot]
+
+    def test_full_width_region_does_not_split_columns(self):
+        """A full-page-width region (e.g. a page header spanning both
+        columns) should not be wrongly assigned to one column. It sorts
+        naturally into the (T, L) flow that a wide region implies — the
+        column detector requires disjoint left/right halves, so a
+        full-width region prevents the split heuristic from firing.
+        """
+        full_width = R(0, 0, 1000, 50)  # spans both halves
+        left_body = R(0, 100, 400, 500)
+        right_body = R(600, 100, 1000, 500)
+        # The full-width region overlaps both halves so the disjoint-pair
+        # check should fail and the function should fall back to the
+        # legacy (T, L) sort.
+        ordered = region_reading_order([right_body, full_width, left_body])
+        assert ordered[0] is full_width
+        assert set(ordered[1:]) == {left_body, right_body}
+
+    def test_preserves_all_regions(self):
+        """No silent drops — count and identity are preserved on any
+        input shape (single column, two column, mixed)."""
+        regions = [
+            R(0, 100, 400, 200),
+            R(600, 110, 1000, 210),
+            R(0, 300, 400, 400),
+            R(600, 310, 1000, 410),
+            R(100, 0, 900, 50),  # full-width header
+        ]
+        ordered = region_reading_order(regions)
+        assert len(ordered) == len(regions)
+        assert set(map(id, ordered)) == set(map(id, regions))
