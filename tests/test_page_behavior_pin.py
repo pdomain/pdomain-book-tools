@@ -1,0 +1,196 @@
+"""Behavior-pinning regression tests for ``Page``.
+
+These tests pin the public-facing behavior of :class:`Page` BEFORE the
+R-02 conversion to a pure-``@dataclass`` form. They are intentionally
+focused on observable surface area:
+
+- Constructor signature (positional + keyword args).
+- Post-init attribute access for the ~20 currently-undeclared
+  attributes (``image_path``, ``name``, ``source``, ``ocr_failed``,
+  ``provenance_*``, ``rotation_applied``, ``diagnostic_*``).
+- ``to_dict`` round-trip behavior on a representative fixture.
+- Image-cache field access (``_cv2_numpy_page_image*``) before
+  ``refresh_page_images()`` returns ``None`` (NOT ``AttributeError``,
+  contrary to the original review claim — verified empirically
+  2026-05).
+
+After R-02 lands, the same expectations should still hold. If any of
+these tests change, the commit converting to a pure dataclass MUST
+document the behavior delta in its message.
+"""
+
+from __future__ import annotations
+
+import inspect
+
+import pytest
+
+from pd_book_tools.ocr.page import Page
+
+
+def test_constructor_signature_pin():
+    """Pin the parameter list of ``Page.__init__`` exactly.
+
+    R-02 will move some/all of these to ``field()`` declarations with
+    ``__post_init__`` for computed values. The set of accepted
+    parameter names — and thus the kwarg surface for downstream
+    callers — must not regress.
+    """
+    sig = inspect.signature(Page.__init__)
+    params = list(sig.parameters.keys())
+    assert params == [
+        "self",
+        "width",
+        "height",
+        "page_index",
+        "items",
+        "bounding_box",
+        "page_labels",
+        "cv2_numpy_page_image",
+        "unmatched_ground_truth_lines",
+        "original_ocr_tool_text",
+        "original_ground_truth_text",
+        "ocr_provenance",
+        "image_path",
+        "name",
+        "source",
+        "ocr_failed",
+        "provenance_live_ocr",
+        "provenance_saved_ocr",
+        "provenance_saved",
+        "rotation_applied",
+    ]
+
+
+def _make_minimal_page() -> Page:
+    return Page(width=100, height=200, page_index=3, items=[])
+
+
+def test_post_init_undeclared_attrs_default_values():
+    """Pin default values for attrs the custom __init__ sets but that
+    are NOT declared as dataclass fields today.
+
+    These are the attributes that R-02 must add as proper ``field()``
+    declarations. The defaults here are the contract.
+    """
+    p = _make_minimal_page()
+
+    assert p.image_path is None
+    assert p.name is None
+    assert p.source == "ocr"
+    assert p.ocr_failed is False
+    assert p.provenance_live_ocr is None
+    assert p.provenance_saved_ocr is None
+    assert p.provenance_saved is None
+    assert p.rotation_applied == 0
+    assert p.diagnostic_pure_ocr is None
+    assert p.diagnostic_post_noise_removal is None
+    assert p.diagnostic_noise_dropped_words == []
+    assert p.diagnostic_noise_dropped_count == 0
+
+
+def test_post_init_declared_field_defaults():
+    """Pin the declared-field defaults the constructor leaves in place
+    when not supplied by the caller.
+    """
+    p = _make_minimal_page()
+
+    assert p.page_labels is None
+    assert p._cv2_numpy_page_image is None
+    assert p._cv2_numpy_page_image_page_with_bbox is None
+    assert p._cv2_numpy_page_image_blocks_with_bboxes is None
+    assert p._cv2_numpy_page_image_paragraph_with_bboxes is None
+    assert p._cv2_numpy_page_image_line_with_bboxes is None
+    assert p._cv2_numpy_page_image_word_with_bboxes is None
+    assert p._cv2_numpy_page_image_word_with_bboxes_and_ocr_text is None
+    assert p._cv2_numpy_page_image_word_with_bboxes_and_gt_text is None
+    assert p._cv2_numpy_page_image_matched_word_with_colors is None
+    assert p.unmatched_ground_truth_lines == []
+    assert p.original_ocr_tool_text == ""
+    assert p.original_ground_truth_text == ""
+    assert p.ocr_provenance is None
+    assert p.bounding_box is None
+    assert p.items == []
+
+
+def test_compatibility_aliases():
+    """Pin ``index`` ⇄ ``page_index`` and ``page_source`` ⇄ ``source``."""
+    p = _make_minimal_page()
+    assert p.index == p.page_index == 3
+    p.index = 7
+    assert p.page_index == 7
+
+    assert p.page_source == p.source == "ocr"
+    p.page_source = "labeler"
+    assert p.source == "labeler"
+
+
+def test_rotation_applied_validator():
+    """The custom __init__ rejects rotations that aren't 0/90/180/270.
+
+    R-02's __post_init__ must preserve this validation.
+    """
+    with pytest.raises(ValueError, match="rotation_applied"):
+        Page(width=10, height=10, page_index=0, items=[], rotation_applied=45)
+
+
+def test_to_dict_minimal_roundtrip_omits_defaults():
+    """to_dict omits metadata fields at their defaults (compact output)."""
+    p = _make_minimal_page()
+    d = p.to_dict()
+
+    # Always present
+    assert d["type"] == "Page"
+    assert d["width"] == 100
+    assert d["height"] == 200
+    assert d["page_index"] == 3
+    assert d["items"] == []
+    assert d["bounding_box"] is None
+    assert d["ocr_provenance"] is None
+
+    # Defaults: omitted
+    for omitted in (
+        "image_path",
+        "name",
+        "source",
+        "ocr_failed",
+        "provenance_live_ocr",
+        "provenance_saved_ocr",
+        "provenance_saved",
+        "rotation_applied",
+    ):
+        assert omitted not in d, f"{omitted} should be omitted at default"
+
+
+def test_to_dict_with_metadata_roundtrip():
+    """to_dict / from_dict preserves metadata fields."""
+    p = Page(
+        width=10,
+        height=20,
+        page_index=1,
+        items=[],
+        image_path="/tmp/foo.png",
+        name="page-001",
+        source="labeler",
+        ocr_failed=True,
+        provenance_live_ocr={"engine": "doctr"},
+        rotation_applied=90,
+    )
+    d = p.to_dict()
+    assert d["image_path"] == "/tmp/foo.png"
+    assert d["name"] == "page-001"
+    assert d["source"] == "labeler"
+    assert d["ocr_failed"] is True
+    assert d["provenance_live_ocr"] == {"engine": "doctr"}
+    assert d["rotation_applied"] == 90
+
+    p2 = Page.from_dict(d)
+    assert p2.image_path == "/tmp/foo.png"
+    assert p2.name == "page-001"
+    assert p2.source == "labeler"
+    assert p2.ocr_failed is True
+    assert p2.provenance_live_ocr == {"engine": "doctr"}
+    assert p2.rotation_applied == 90
+    assert p2.width == 10
+    assert p2.height == 20
+    assert p2.page_index == 1
