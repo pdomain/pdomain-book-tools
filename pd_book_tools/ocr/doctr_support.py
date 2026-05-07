@@ -128,6 +128,80 @@ def get_default_doctr_predictor():
     )
 
 
+def _load_det_model(
+    *,
+    det_path: Path,
+    torch_load,
+    device: str,
+    device_nbr: str,
+    build_arch,
+):
+    """Load and return a DocTR detection model from ``det_path``.
+
+    Architecture is read from the ``.arch`` sidecar when present and falls
+    back to heuristic detection over the state_dict keys. The model is
+    constructed with ``pretrained=False`` because the immediately
+    following ``load_state_dict`` call overwrites all weights — passing
+    ``pretrained=True`` would download doctr-hosted weights from the
+    internet just to discard them (M-24). Mismatch failures are wrapped
+    so the offending file and detected arch surface in the message
+    instead of a bare framework error (M-23).
+    """
+    det_params = torch_load(det_path, map_location=device_nbr)
+    det_arch_name = _read_arch_sidecar(det_path) or _detect_detection_arch(det_params)
+    det_model = build_arch(det_arch_name, pretrained=False).to(device)
+    try:
+        det_model.load_state_dict(det_params)
+    except (RuntimeError, KeyError) as e:
+        raise RuntimeError(
+            f"Failed to load DocTR detection checkpoint {det_path} into "
+            f"architecture {det_arch_name!r}: {e}"
+        ) from e
+    return det_model
+
+
+def _load_reco_model(
+    *,
+    reco_path: Path,
+    vocab: str,
+    torch_load,
+    device: str,
+    device_nbr: str,
+    build_arch,
+):
+    """Load and return a DocTR recognition model from ``reco_path``.
+
+    Same ``pretrained=False`` reasoning as :func:`_load_det_model`: the
+    immediately-following ``load_state_dict`` overwrites every weight, so
+    network-fetching pretrained weights at construction time is pure
+    waste (M-24). Some archs (e.g. ``parseq``) do not accept the
+    ``pretrained_backbone`` kwarg, so a ``TypeError`` triggers a retry
+    without it. Load failures are wrapped (M-23).
+    """
+    reco_params = torch_load(reco_path, map_location=device_nbr)
+    reco_arch_name = _read_arch_sidecar(reco_path) or _detect_recognition_arch(
+        reco_params
+    )
+    reco_kwargs = dict(
+        pretrained=False,
+        pretrained_backbone=False,
+        vocab=vocab,
+    )
+    try:
+        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
+    except TypeError:
+        reco_kwargs.pop("pretrained_backbone", None)
+        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
+    try:
+        reco_model.load_state_dict(reco_params)
+    except (RuntimeError, KeyError) as e:
+        raise RuntimeError(
+            f"Failed to load DocTR recognition checkpoint {reco_path} into "
+            f"architecture {reco_arch_name!r}: {e}"
+        ) from e
+    return reco_model
+
+
 def get_finetuned_torch_doctr_predictor(
     dectection_pt_file: PathLike,
     recognition_pt_file: PathLike,
@@ -196,28 +270,13 @@ def get_finetuned_torch_doctr_predictor(
     logger.info("Using device: %s", device)
 
     # ---- Detection model -------------------------------------------------
-    det_params = torch_load(dectection_pt_file, map_location=device_nbr)
-    det_arch_name = _read_arch_sidecar(dectection_pt_file) or _detect_detection_arch(
-        det_params
+    det_model = _load_det_model(
+        det_path=det_path,
+        torch_load=torch_load,
+        device=device,
+        device_nbr=device_nbr,
+        build_arch=_build_arch,
     )
-    # Construct the architecture with ``pretrained=False`` — the very next call
-    # is ``load_state_dict(det_params)``, which fully overwrites any weights the
-    # constructor would have populated. Passing ``pretrained=True`` here would
-    # download the doctr-hosted pretrained weights from the internet just to
-    # immediately discard them (M-24).
-    det_model = _build_arch(det_arch_name, pretrained=False).to(device)
-    # Wrap load_state_dict so a checkpoint/architecture mismatch surfaces a
-    # message naming the offending file and detected arch instead of a bare
-    # torch ``RuntimeError`` / ``KeyError`` from deep inside the framework
-    # (M-23). Architecture detection is heuristic, so this is a realistic
-    # failure mode worth identifying clearly.
-    try:
-        det_model.load_state_dict(det_params)
-    except (RuntimeError, KeyError) as e:
-        raise RuntimeError(
-            f"Failed to load DocTR detection checkpoint {det_path} into "
-            f"architecture {det_arch_name!r}: {e}"
-        ) from e
 
     if not vocab:
         vocab = _read_vocab_sidecar(recognition_pt_file) or "".join(
@@ -232,35 +291,14 @@ def get_finetuned_torch_doctr_predictor(
         )
 
     # ---- Recognition model ----------------------------------------------
-    reco_params = torch_load(recognition_pt_file, map_location=device_nbr)
-    reco_arch_name = _read_arch_sidecar(
-        recognition_pt_file
-    ) or _detect_recognition_arch(reco_params)
-    # Same reasoning as the detection model above: the immediately-following
-    # ``reco_model.load_state_dict(reco_params)`` overwrites all weights, so
-    # downloading pretrained weights (or pretrained backbone weights) at
-    # construction time is pure network waste (M-24). The public ``pretrained``
-    # / ``pretrained_backbone`` kwargs on this function remain for backward
-    # compatibility and are still threaded through to the predictor wrappers
-    # below.
-    reco_kwargs = dict(
-        pretrained=False,
-        pretrained_backbone=False,
+    reco_model = _load_reco_model(
+        reco_path=reco_path,
         vocab=vocab,
+        torch_load=torch_load,
+        device=device,
+        device_nbr=device_nbr,
+        build_arch=_build_arch,
     )
-    try:
-        reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
-    except TypeError:
-        # Some archs (e.g. parseq) do not accept ``pretrained_backbone``.
-        reco_kwargs.pop("pretrained_backbone", None)
-        reco_model = _build_arch(reco_arch_name, **reco_kwargs).to(device)
-    try:
-        reco_model.load_state_dict(reco_params)
-    except (RuntimeError, KeyError) as e:
-        raise RuntimeError(
-            f"Failed to load DocTR recognition checkpoint {reco_path} into "
-            f"architecture {reco_arch_name!r}: {e}"
-        ) from e
 
     full_predictor = ocr_predictor(
         det_arch=det_model,
