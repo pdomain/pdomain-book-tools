@@ -1025,3 +1025,18 @@ def test_from_points_with_shapely_point():
     bb = BoundingBox.from_points([ShapelyPoint(0, 0), ShapelyPoint(10, 10)])
     assert bb.minX == 0
     assert bb.maxX == 10
+
+
+def test_require_same_coords_preserves_metadata():
+    """R-21: ``_require_same_coords`` uses ``functools.wraps`` so decorated
+    methods keep their ``__name__`` / ``__doc__`` / ``__qualname__``."""
+    from pd_book_tools.geometry.bounding_box import BoundingBox
+
+    assert BoundingBox.intersects.__name__ == "intersects"
+    assert BoundingBox.intersection.__name__ == "intersection"
+    assert BoundingBox.overlap_y_amount.__name__ == "overlap_y_amount"
+    assert BoundingBox.overlap_x_amount.__name__ == "overlap_x_amount"
+    # Spot-check docstring is preserved on a method that has one
+    assert (BoundingBox.overlap_y_amount.__doc__ or "").startswith(
+        "Return the amount of overlap on the y-axis"
+    )

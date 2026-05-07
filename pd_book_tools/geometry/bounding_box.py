@@ -1,3 +1,4 @@
+import functools
 from dataclasses import dataclass, replace
 from logging import getLogger
 from typing import Dict, List, Optional, Sequence, Tuple, Union
@@ -425,6 +426,11 @@ class BoundingBox:
 
     @staticmethod
     def _require_same_coords(fn):  # type: ignore
+        # R-21: ``functools.wraps`` preserves ``__name__``/``__doc__``/
+        # ``__qualname__`` on decorated bounding-box methods so help(),
+        # tracebacks, and tooling report the underlying method instead
+        # of the generic ``wrapper`` shim.
+        @functools.wraps(fn)
         def wrapper(self, other, *args, **kwargs):  # type: ignore
             if self.is_normalized != other.is_normalized:
                 raise ValueError(
