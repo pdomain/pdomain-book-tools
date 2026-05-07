@@ -92,45 +92,6 @@ PGDP corpus has very few multi-column body pages so this is not
 urgent. List for completeness because the primitive is small and
 useful elsewhere.
 
-### Opt-in suppression of placeholder illustration blocks
-
-`associate_captions` (`pd_book_tools/ocr/layout_aware_reorg.py:716`)
-emits a placeholder `Block` per high-confidence figure / decoration /
-table region — built by `_empty_illustration_block` (same file, line
-681), tagged `block_role_labels=["illustration"]` (or `"decoration"`),
-geometry-only with empty `items`. PGDP-bound consumers want the
-placeholder so they can serialise it as `[Illustration: …]` and attach
-the caption; plain-text consumers (pd-ocr-cli's `.txt` output) don't —
-the empty block contributes a stray paragraph break in `Page.text` and
-the `illustration` role label has no plain-text rendering, so it's
-just noise in reading-order output.
-
-Proposed shape: a parameter on `Page.reorganize_page` (e.g.
-`emit_illustration_placeholders: bool = True`, default preserves
-today's behaviour) that, when false, skips the
-`associate_captions` placeholder-block emission step (page.py:3062-
-3064). Caption *words* should still be handled — either kept in their
-original block, or attached as a normal `caption`-roled paragraph
-without an adjacent illustration block — so opting out doesn't silently
-drop OCR text.
-
-Plumbing: thread the flag through to `associate_captions(...,
-emit_placeholders: bool = True)`; when false, skip the
-`_empty_illustration_block(...)` / `page._items.append(illustration)`
-pair but keep the caption-block emission and the
-`_purge_word_from_blocks` fixup. Backwards compatible — existing
-callers (pd-prep-for-pgdp) keep getting placeholders.
-
-Caller follow-on: pd-ocr-cli adds a matching opt-in flag (e.g.
-`--no-illustration-placeholders` or `--text-only-illustrations=skip`)
-that forwards into `reorganize_page`. Tracked separately in the pd-
-ocr-cli roadmap.
-
-Test surface: a fixture page with one figure + adjacent caption — the
-default path emits the placeholder block, the opt-out path emits zero
-illustration-roled blocks while still preserving every input OCR word
-(no silent drops).
-
 ## Open — image-processing improvements (no model fine-tune needed)
 
 These are independent of the layout fine-tune. Each addresses a
@@ -400,6 +361,7 @@ the old plan:
 | Decoration-vs-figure post-classify heuristic | 🟡 Listed above as an open item. |
 | Multi-column reading order primitive | 🟡 Listed above as an open item. |
 | Detector-failure fallback hardening | ✅ Shipped via `get_detector(..., on_error="raise" \| "log_and_null")`. Default `"raise"` preserves CLI fail-fast; `"log_and_null"` memoises a `NullDetector` so batch callers (pd-prep-for-pgdp) survive transient build failures (network, OOM, missing weights, unknown key). Per-page `detect()` failures still propagate to the caller. |
+| Opt-in suppression of placeholder illustration blocks | ✅ Shipped via `Page.reorganize_page(emit_illustration_placeholders=...)` threading through `associate_captions(..., emit_placeholders=...)`. Default `True` preserves PGDP-bound behaviour; plain-text consumers (pd-ocr-cli `.txt` output) can pass `False` to skip the geometry-only placeholder block. Caption words are still relocated into a caption-roled block in either mode (no silent OCR-word drops). pd-ocr-cli flag wiring tracked in that repo's roadmap. |
 | Caption association distance (`max_gap_px` knob) | ✅ Shipped via `caption_for_figure(max_gap_px=…)` in `pd_book_tools/layout/geometry.py`. |
 | Performance instrumentation (`PageLayout.inference_ms`) | ✅ Shipped via `_TimingDetector` wrapper in `registry.py`. |
 | Custom-detector extensibility for downstream fine-tunes | ✅ Shipped via `register_detector` / `unregister_detector` in `pd_book_tools/layout/registry.py` (R-25). Lets pd-ocr-trainer plug a custom adapter under its own key without modifying the built-in chain. |
