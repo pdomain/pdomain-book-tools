@@ -1,3 +1,5 @@
+import warnings
+
 from ipywidgets import HTML, HBox
 from numpy import ndarray
 
@@ -83,7 +85,28 @@ def get_html_widget_from_cropped_image(img: ndarray, bounding_box: BoundingBox):
     return html_widget
 
 
-def get_hbox_widget_for_cropped_image(bounding_box: BoundingBox, img: ndarray):
+def get_hbox_widget_for_cropped_image(
+    img: ndarray | BoundingBox,
+    bounding_box: BoundingBox | ndarray,
+):
+    """Wrap the cropped-image HTML widget in an :class:`HBox`.
+
+    Canonical signature: ``(img, bounding_box)`` — matches every other
+    function in this module. The legacy reversed order
+    ``(bounding_box, img)`` is detected at runtime and accepted with a
+    :class:`DeprecationWarning`; callers should swap argument order.
+    """
+    # Detect legacy (bounding_box, img) order. ndarray vs BoundingBox is
+    # a clean type discriminator — they never overlap.
+    if isinstance(img, BoundingBox) and isinstance(bounding_box, ndarray):
+        warnings.warn(
+            "get_hbox_widget_for_cropped_image(bounding_box, img) is deprecated; "
+            "pass arguments in (img, bounding_box) order to match the rest of "
+            "the ipynb_widgets API.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        img, bounding_box = bounding_box, img
     image_hbox = HBox()
     image_hbox.children = [get_html_widget_from_cropped_image(img, bounding_box)]
     return image_hbox

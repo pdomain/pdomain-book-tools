@@ -543,7 +543,7 @@ through the property getter, setter, `to_dict`, and `from_dict`.
 
 ---
 
-## R-28 — `ipynb_widgets.py` has inconsistent argument order across related functions
+## [FIXED — deprecation warning emitted; legacy order still accepted] ~~R-28 — `ipynb_widgets.py` has inconsistent argument order across related functions~~
 
 **File:** `pd_book_tools/utility/ipynb_widgets.py`, lines 65–89
 
@@ -553,6 +553,16 @@ through the property getter, setter, `to_dict`, and `from_dict`.
 easily pass arguments in the wrong order, getting silent wrong output.
 
 **Direction:** standardize to `(img, bounding_box)` order across all three functions.
+
+Resolved by standardizing `get_hbox_widget_for_cropped_image` to
+`(img, bounding_box)`. The legacy `(bounding_box, img)` order is
+detected at runtime via `isinstance` type discriminator (BoundingBox
+vs ndarray — they never overlap), arguments are swapped internally,
+and a `DeprecationWarning` is raised pointing callers at the canonical
+order. Workspace-wide grep found no callers outside this repo's own
+tests, so removal can land in a future major; deprecation is the safe
+interim. The repo's own test was updated to use the canonical order,
+plus a new test pins the deprecation-warning behavior.
 
 ---
 

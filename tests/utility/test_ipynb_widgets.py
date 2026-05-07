@@ -162,7 +162,25 @@ class TestGetHboxWidgetForCroppedImage:
         )
         img = np.zeros((10, 10, 3), dtype=np.uint8)
         bbox = BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=True)
-        hbox = get_hbox_widget_for_cropped_image(bbox, img)
+        # Canonical (img, bounding_box) order (R-28 standardization).
+        hbox = get_hbox_widget_for_cropped_image(img, bbox)
         assert isinstance(hbox, ipywidgets.HBox)
         assert len(hbox.children) == 1
         assert isinstance(hbox.children[0], ipywidgets.HTML)
+
+    @patch("pd_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
+    def test_legacy_argument_order_emits_deprecation(self, mock_get_cropped):
+        # Backward-compat: legacy (bounding_box, img) order still works
+        # but raises DeprecationWarning. Detected by type discriminator
+        # (BoundingBox vs ndarray).
+        mock_get_cropped.return_value = (
+            np.zeros((1, 1, 3), dtype=np.uint8),
+            b"x",
+            "b64",
+            "data:image/png;base64,abc",
+        )
+        img = np.zeros((10, 10, 3), dtype=np.uint8)
+        bbox = BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=True)
+        with pytest.warns(DeprecationWarning, match="img, bounding_box"):
+            hbox = get_hbox_widget_for_cropped_image(bbox, img)
+        assert isinstance(hbox, ipywidgets.HBox)
