@@ -518,16 +518,17 @@ def _find_existing_cap_word(
 def _make_cap_word(letter: str, bbox: BoundingBox) -> Word:
     """Synthesise a Word to stand in for the un-OCR'd cap glyph.
 
-    Carries both the ``"drop cap"`` tag (so ``Block.text`` joins it to
-    the next word with no separator, matching the block-cap stitcher's
-    contract) and ``"drop cap inferred"`` so labelers / training
-    pipelines can flag the synthetic origin.
+    Carries the ``"drop cap"`` tag so ``Block.text`` joins it to the
+    next word with no separator (so cap "S" + body "tudies" renders as
+    "Studies"). ``ocr_confidence=None`` is the synthetic-origin signal
+    for downstream tooling / training pipelines that want to filter
+    inferred caps.
     """
     return Word(
         text=letter,
         bounding_box=bbox,
         ocr_confidence=None,
-        word_components=["drop cap", "drop cap inferred"],
+        word_components=["drop cap"],
     )
 
 
@@ -642,8 +643,6 @@ def detect_and_stitch_cursive_dropcaps(
                 components = list(existing.word_components or [])
                 if "drop cap" not in components:
                     components.append("drop cap")
-                if "drop cap inferred" not in components:
-                    components.append("drop cap inferred")
                 existing.word_components = components
                 # Move it to the front of the line if it's not already.
                 if list(candidate.target_line.words)[0] is not existing:
@@ -672,8 +671,6 @@ def detect_and_stitch_cursive_dropcaps(
                 components = list(existing.word_components or [])
                 if "drop cap" not in components:
                     components.append("drop cap")
-                if "drop cap inferred" not in components:
-                    components.append("drop cap inferred")
                 existing.word_components = components
                 if list(candidate.target_line.words)[0] is not existing:
                     line_items = [existing] + [

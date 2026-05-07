@@ -22,14 +22,18 @@ ALLOWED_COMPONENTS: Final[frozenset[str]] = frozenset(
         "superscript",
         "subscript",
         "footnote marker",
+        # Drop-cap recognition tags. ``drop cap`` = this Word *is* the
+        # decorative initial glyph, regardless of whether its text came
+        # from the OCR engine or from the cursive-cap inference fallback
+        # (see ``pd_book_tools.ocr.dropcap``). ``Block.text`` keys on
+        # this tag to fuse the cap to the next body Word with the empty
+        # string separator (so cap "S" + body "tudies" renders as
+        # "Studies", not "S tudies").
+        # ``drop cap unrecovered`` = the geometric trigger fired but the
+        # letter couldn't be resolved; surfaced on the closest body word
+        # so downstream tooling / labelers can flag the case for human
+        # review. This tag does NOT trigger the empty-string join.
         "drop cap",
-        # Iteration-A drop-cap recognition tags. ``drop cap inferred`` =
-        # the cap letter was recovered by the cursive-cap fallback (see
-        # ``pd_book_tools.ocr.dropcap``). ``drop cap unrecovered`` =
-        # geometric trigger fired but the letter couldn't be resolved;
-        # surfaced on the closest body word so downstream tooling /
-        # labelers can flag the case for human review.
-        "drop cap inferred",
         "drop cap unrecovered",
     }
 )

@@ -1,4 +1,4 @@
-"""Iteration A regression tests for ``pd_book_tools.ocr.dropcap``.
+"""Drop-cap recognition regression tests for ``pd_book_tools.ocr.dropcap``.
 
 Exercises the cursive / decorative drop-cap fallback against the three
 known fixtures where the geometric block-cap stitcher fails because
@@ -15,6 +15,11 @@ DocTR doesn't recognise the oversized serif glyph as a letter:
 
 Plus a negative test: a body page (no drop cap, just a regular indent)
 must NOT get a false-positive prepend.
+
+Iteration B: the recovered cap is its own ``Word`` tagged
+``word_components=["drop cap"]`` (the iteration-A ``"drop cap inferred"``
+tag was consolidated away — the inferred-vs-OCR distinction is carried
+by ``ocr_confidence=None`` on synthesised caps instead).
 """
 
 from __future__ import annotations
@@ -51,34 +56,40 @@ def _line_holding(page, predicate):
 
 
 def test_credulities_cursive_cap_S_recovered():
-    """Cap glyph OCR'd as ``"-"``; body word ``"UPERSTITIONS"`` →
-    inferred ``"S"``, prepended into the same line so it renders as
-    ``"SUPERSTITIONS"``.
+    """Cap glyph OCR'd as ``"-"``; body word ``"UPERSTITIONS"`` → inferred
+    ``"S"``, kept as its own ``Word`` tagged ``["drop cap"]`` at the front
+    of the same line. ``Block.text``'s empty-string-join contract fuses
+    cap + body so the rendered line still starts with ``"SUPERSTITIONS"``.
     """
     page = _load_and_reorganize("chapter-head-credulities")
-    inferred = [
-        w for w in page.words if "drop cap inferred" in (w.word_components or [])
-    ]
-    assert len(inferred) == 1, (
-        f"expected exactly 1 inferred drop cap, got {len(inferred)}: "
-        f"{[(w.text, w.word_components) for w in inferred]}"
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
+    assert len(drop_caps) == 1, (
+        f"expected exactly 1 drop-cap-tagged Word, got {len(drop_caps)}: "
+        f"{[(w.text, w.word_components) for w in drop_caps]}"
     )
-    cap = inferred[0]
+    cap = drop_caps[0]
     assert cap.text == "S", f"cap text={cap.text!r}, expected 'S'"
-    # The cap word should also carry the existing ``"drop cap"`` tag so
-    # ``Block.text`` joins it to the next word with no separator (matches
-    # the block-cap stitcher's contract).
-    assert "drop cap" in cap.word_components
-    # The cap bbox must sit to the LEFT of the body word's bbox.
+    # Synthesised / inferred caps signal their origin via ocr_confidence=None
+    # (the iteration-A "drop cap inferred" tag was consolidated away).
+    assert cap.ocr_confidence is None, (
+        f"recovered cap should have ocr_confidence=None, got {cap.ocr_confidence}"
+    )
+    # Structural shape: cap is its own Word, sitting at the front of
+    # the line, and the next Word holds the body text.
     line, words = _line_holding(page, lambda w: w is cap)
     assert line is not None, "cap word missing from final lines"
     assert words[0] is cap, "cap should be the first word in the line"
     body = words[1]
     assert body.text == "UPERSTITIONS", f"body word={body.text!r}"
+    assert "drop cap" not in (body.word_components or []), (
+        "body word must NOT carry the drop cap tag — only the cap itself"
+    )
+    # The cap bbox must sit to the LEFT of the body word's bbox.
     assert cap.bounding_box.maxX <= body.bounding_box.minX + 0.01, (
         f"cap bbox should be left of body bbox: cap maxX={cap.bounding_box.maxX:.4f}, "
         f"body minX={body.bounding_box.minX:.4f}"
     )
+    # Rendering contract: empty-string join → "SUPERSTITIONS".
     assert line.text.startswith("SUPERSTITIONS"), (
         f"line.text={line.text!r}, expected to start with 'SUPERSTITIONS'"
     )
@@ -89,14 +100,12 @@ def test_filial_duty_cursive_cap_O_recovered():
     new Word synthesised at the CC bbox, ``Word.ocr_confidence`` is None.
     """
     page = _load_and_reorganize("chapter-head-filial-duty")
-    inferred = [
-        w for w in page.words if "drop cap inferred" in (w.word_components or [])
-    ]
-    assert len(inferred) == 1, (
-        f"expected exactly 1 inferred drop cap, got {len(inferred)}: "
-        f"{[(w.text, w.word_components) for w in inferred]}"
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
+    assert len(drop_caps) == 1, (
+        f"expected exactly 1 drop-cap-tagged Word, got {len(drop_caps)}: "
+        f"{[(w.text, w.word_components) for w in drop_caps]}"
     )
-    cap = inferred[0]
+    cap = drop_caps[0]
     assert cap.text == "O", f"cap text={cap.text!r}, expected 'O'"
     # Synthesised cap (no OCR) → confidence None.
     assert cap.ocr_confidence is None, (
@@ -107,6 +116,7 @@ def test_filial_duty_cursive_cap_O_recovered():
     assert words[0] is cap
     body = words[1]
     assert body.text == "NCE", f"body word={body.text!r}"
+    assert "drop cap" not in (body.word_components or [])
     assert line.text.startswith("ONCE"), f"line.text={line.text!r}"
 
 
@@ -118,14 +128,13 @@ def test_footnotes_stacked_cursive_cap_unrecovered():
     ``"drop cap unrecovered"`` tag and no text rewrite happens.
     """
     page = _load_and_reorganize("footnotes-stacked-with-anchor")
-    inferred = [
-        w for w in page.words if "drop cap inferred" in (w.word_components or [])
-    ]
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
     unrecovered = [
         w for w in page.words if "drop cap unrecovered" in (w.word_components or [])
     ]
-    assert inferred == [], (
-        f"BELIEF case should not produce a confident inference; got {[(w.text, w.word_components) for w in inferred]}"
+    assert drop_caps == [], (
+        f"BELIEF case should not produce a recovered cap; got "
+        f"{[(w.text, w.word_components) for w in drop_caps]}"
     )
     assert len(unrecovered) >= 1, (
         "expected at least one body Word tagged 'drop cap unrecovered' "
@@ -138,18 +147,16 @@ def test_footnotes_stacked_cursive_cap_unrecovered():
 
 def test_body_page_no_false_positive():
     """Negative control. A plain body page (no drop cap, no chapter
-    opener) must not grow phantom inferred caps.
+    opener) must not grow phantom drop caps.
     """
     page = _load_and_reorganize("body-running-header-page-number")
-    inferred = [
-        w for w in page.words if "drop cap inferred" in (w.word_components or [])
-    ]
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
     unrecovered = [
         w for w in page.words if "drop cap unrecovered" in (w.word_components or [])
     ]
-    assert inferred == [], (
-        f"body page should have no inferred caps, got "
-        f"{[(w.text, w.word_components) for w in inferred]}"
+    assert drop_caps == [], (
+        f"body page should have no drop caps, got "
+        f"{[(w.text, w.word_components) for w in drop_caps]}"
     )
     assert unrecovered == [], (
         f"body page should not flag any unrecovered caps, got "
