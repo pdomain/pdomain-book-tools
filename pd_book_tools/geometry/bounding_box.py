@@ -60,7 +60,20 @@ class BoundingBox:
 
     @property
     def lrtb(self) -> Tuple[float, float, float, float]:
-        return self.minX, self.minY, self.maxX, self.maxY
+        """Deprecated alias for :meth:`to_ltrb`.
+
+        The ``lrtb`` name is misleading — the tuple returned is
+        ``(left, top, right, bottom)``, not left-right-top-bottom. Use
+        :meth:`to_ltrb` instead.
+        """
+        import warnings
+
+        warnings.warn(
+            "BoundingBox.lrtb is deprecated; use BoundingBox.to_ltrb() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.to_ltrb()
 
     @property
     def width(self) -> float:
@@ -79,7 +92,20 @@ class BoundingBox:
 
     @property
     def lrwh(self) -> Tuple[float, float, float, float]:
-        return self.minX, self.minY, self.width, self.height
+        """Deprecated alias for :meth:`to_ltwh`.
+
+        The ``lrwh`` name is misleading — the tuple returned is
+        ``(left, top, width, height)``, not left-right-width-height. Use
+        :meth:`to_ltwh` instead.
+        """
+        import warnings
+
+        warnings.warn(
+            "BoundingBox.lrwh is deprecated; use BoundingBox.to_ltwh() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.to_ltwh()
 
     def get_four_point_scaled_polygon_list(
         self, width: int, height: int

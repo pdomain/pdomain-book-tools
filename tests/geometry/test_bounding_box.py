@@ -73,8 +73,18 @@ def test_min_max_properties(sample_bounding_box):
 
 
 def test_lrtb_property(sample_bounding_box):
-    """Test lrtb property."""
-    assert sample_bounding_box.lrtb == (2, 3, 8, 10)
+    """Test lrtb property — deprecated alias for to_ltrb()."""
+    import warnings
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = sample_bounding_box.lrtb
+    assert result == (2, 3, 8, 10)
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+    # Behaviour matches to_ltrb()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert sample_bounding_box.lrtb == sample_bounding_box.to_ltrb()
 
 
 def test_width_height_properties(sample_bounding_box):
@@ -89,8 +99,18 @@ def test_size_property(sample_bounding_box):
 
 
 def test_lrwh_property(sample_bounding_box):
-    """Test lrwh property."""
-    assert sample_bounding_box.lrwh == (2, 3, 6, 7)  # (minX, minY, width, height)
+    """Test lrwh property — deprecated alias for to_ltwh()."""
+    import warnings
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        result = sample_bounding_box.lrwh
+    assert result == (2, 3, 6, 7)  # (minX, minY, width, height)
+    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+    # Behaviour matches to_ltwh()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        assert sample_bounding_box.lrwh == sample_bounding_box.to_ltwh()
 
 
 def test_area_property(sample_bounding_box):

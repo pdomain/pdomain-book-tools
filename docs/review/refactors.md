@@ -303,7 +303,7 @@ The Shapely path allocates objects unnecessarily.
 
 ---
 
-## R-13 — `lrtb` and `lrwh` properties are misnamed and redundant duplicates
+## [FIXED — deprecation warnings emitted; behaviour preserved] ~~R-13 — `lrtb` and `lrwh` properties are misnamed and redundant duplicates~~
 
 **File:** `pd_book_tools/geometry/bounding_box.py`, lines 62–63, 81–82
 
@@ -313,6 +313,13 @@ The Shapely path allocates objects unnecessarily.
 - `to_ltwh()` returns identical values with a correct name
 
 **Direction:** deprecate `lrtb` and `lrwh`; keep only `to_ltrb()` and `to_ltwh()`.
+
+Resolved by emitting `DeprecationWarning` from both properties while
+preserving their return values (delegates to `to_ltrb()` / `to_ltwh()`).
+Workspace-wide grep found no callers outside this repo's own tests, so
+removal can land in a future major; deprecation is the safe interim.
+Tests assert the warning fires and the return values still match the
+canonical methods.
 
 ---
 
