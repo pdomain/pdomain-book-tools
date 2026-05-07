@@ -162,3 +162,64 @@ def test_body_page_no_false_positive():
         f"body page should not flag any unrecovered caps, got "
         f"{[(w.text, w.word_components) for w in unrecovered]}"
     )
+
+
+# Iteration B structural assertion: every fixture in the regression set
+# that has a recovered drop cap must produce exactly one Word tagged
+# ``["drop cap"]`` AND that Word must be a separate Word (not a body
+# word with the cap letter prepended). The tuple is the (case_name,
+# expected_cap_text, expected_body_text_after_cap) triple — the body
+# word is what the cap fuses to under Block.text's empty-string-join
+# rule, so cap "R" + body "EADER!" renders as "READER!".
+_DROP_CAP_FIXTURES = [
+    ("preface-with-drop-cap", "R", "EADER!"),
+    ("chapter-head-credulities", "S", "UPERSTITIONS"),
+    ("chapter-head-filial-duty", "O", "NCE"),
+]
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_cap", "expected_body"),
+    _DROP_CAP_FIXTURES,
+    ids=[case for case, *_ in _DROP_CAP_FIXTURES],
+)
+def test_known_drop_cap_fixture_keeps_cap_as_separate_word(
+    case: str, expected_cap: str, expected_body: str
+):
+    """Iteration B structural contract: the cap is its own ``Word`` tagged
+    ``["drop cap"]``; the body Word that follows is untouched (NOT prepended
+    with the cap letter); ``Block.text`` fuses them under the empty-string-
+    join rule so the rendered text reads as one logical word.
+
+    Asserting per fixture proves the structural shape AND the rendering
+    contract simultaneously: same data, two complementary checks.
+    """
+    page = _load_and_reorganize(case)
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
+    assert len(drop_caps) == 1, (
+        f"{case}: expected exactly 1 drop-cap-tagged Word, got {len(drop_caps)}: "
+        f"{[(w.text, w.word_components) for w in drop_caps]}"
+    )
+    cap = drop_caps[0]
+    assert cap.text == expected_cap, (
+        f"{case}: cap text={cap.text!r}, expected {expected_cap!r}"
+    )
+    # Find the line and verify the body word is its own Word, untouched.
+    line, words = _line_holding(page, lambda w: w is cap)
+    assert line is not None, f"{case}: cap word missing from final lines"
+    assert words[0] is cap, f"{case}: cap should be the first Word in its line"
+    assert len(words) >= 2, f"{case}: cap must be followed by a body Word"
+    body = words[1]
+    assert body.text == expected_body, (
+        f"{case}: body Word text={body.text!r}, expected {expected_body!r} "
+        f"(must NOT include the cap letter — the cap is a SEPARATE Word)"
+    )
+    assert "drop cap" not in (body.word_components or []), (
+        f"{case}: body Word must not carry the drop cap tag"
+    )
+    # Rendering contract — the line text reads "<cap><body>..." without a
+    # space between cap and body (Block.text's empty-string-join rule).
+    fused = expected_cap + expected_body
+    assert line.text.startswith(fused), (
+        f"{case}: line.text={line.text!r}, expected to start with {fused!r}"
+    )
