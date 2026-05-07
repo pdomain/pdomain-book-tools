@@ -3058,6 +3058,19 @@ class Page:
             reset_paragraph_blocks, page_metrics
         )
 
+        # Step DC fallback — cursive / decorative caps the geometric
+        # block-cap stitcher missed (DocTR mis-recognised the oversized
+        # serif glyph as gibberish or skipped it entirely). See
+        # ``pd_book_tools/ocr/dropcap.py`` for the indent-signature +
+        # connected-components recovery design (Iteration A).
+        from pd_book_tools.ocr.dropcap import detect_and_stitch_cursive_dropcaps
+
+        reset_paragraph_blocks = detect_and_stitch_cursive_dropcaps(
+            reset_paragraph_blocks,
+            self.cv2_numpy_page_image,
+            page_metrics,
+        )
+
         # Final assembly — weave header/footer back in.
         final_blocks = reorganize_page_utils.assemble_final_blocks(
             page_header_block, reset_paragraph_blocks, page_footer_block
