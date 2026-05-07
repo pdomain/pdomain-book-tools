@@ -12,6 +12,12 @@ Public surface:
 - :func:`get_detector` — registry: returns a memoised adapter for the given
   key. Keys: ``"none"`` (no-op), ``"contour"`` (rule-based heuristic),
   ``"pp-doclayout-plus-l"`` (RT-DETR via ``transformers``).
+- :func:`clear_detector_cache` — drop the memoised adapters (mostly for
+  tests / hot-swap workflows).
+- :func:`draw_layout_overlay` — render a per-region overlay PNG.
+- Region-geometry helpers: :func:`iou`, :func:`contains`,
+  :func:`horizontal_overlap_ratio`, :func:`caption_for_figure`,
+  :func:`region_reading_order`.
 """
 
 from pd_book_tools.layout.detector import (
@@ -19,8 +25,16 @@ from pd_book_tools.layout.detector import (
     LayoutDetector,
     NullDetector,
 )
-from pd_book_tools.layout.registry import get_detector
+from pd_book_tools.layout.geometry import (
+    caption_for_figure,
+    contains,
+    horizontal_overlap_ratio,
+    iou,
+    region_reading_order,
+)
+from pd_book_tools.layout.registry import clear_detector_cache, get_detector
 from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+from pd_book_tools.layout.visualize import draw_layout_overlay
 
 __all__ = [
     "ContourDetector",
@@ -29,5 +43,12 @@ __all__ = [
     "NullDetector",
     "PageLayout",
     "RegionType",
+    "caption_for_figure",
+    "clear_detector_cache",
+    "contains",
+    "draw_layout_overlay",
     "get_detector",
+    "horizontal_overlap_ratio",
+    "iou",
+    "region_reading_order",
 ]

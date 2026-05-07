@@ -8,7 +8,7 @@ are preserved verbatim. Order matches the original review numbering.
 Open / deferred items remain in the active `refactors.md` and are NOT
 duplicated here:
 
-- R-01, R-02, R-03, R-08 — DEFERRED (cross-repo coordination required)
+- R-01, R-02, R-03 — DEFERRED (cross-repo coordination required)
 
 ---
 
@@ -511,3 +511,36 @@ clearer: this wrapper is specifically for Otsu's method) and keeping
 `DeprecationWarning`. Workspace-wide grep found no actual code callers
 outside this repo's own tests; only `pd-prep-for-pgdp/specs/` markdown
 references the old name (left as-is — historical spec context).
+
+---
+
+## [FIXED] ~~R-08 — All `__init__.py` files are empty; `utility/` has no `__init__.py` at all~~
+
+**Files:**
+
+- `pd_book_tools/pd_book_tools/__init__.py` (0 lines)
+- `pd_book_tools/pd_book_tools/geometry/__init__.py` (0 lines)
+- `pd_book_tools/pd_book_tools/pgdp/__init__.py` (0 lines)
+- `pd_book_tools/pd_book_tools/utility/` (no `__init__.py`)
+
+The library has no stable public API surface. Every consumer must know and use full
+internal submodule paths. Internal restructuring (moving `bounding_box.py`,
+renaming submodules) is a breaking change for all downstream packages.
+
+**Direction:**
+
+- `pd_book_tools/__init__.py`: re-export `BoundingBox`, `Point`
+- `pd_book_tools/geometry/__init__.py`: re-export `BoundingBox`, `Point`
+- `pd_book_tools/pgdp/__init__.py`: re-export `PGDPResults`, `PGDPExport`
+- `pd_book_tools/utility/__init__.py`: create with `timing` and `ipynb_widgets` exports
+- `pd_book_tools/layout/__init__.py`: add `draw_layout_overlay`, `clear_detector_cache`,
+  and all geometry helpers (`caption_for_figure`, `iou`, `contains`, etc.)
+
+**Resolution:** All five `__init__.py` files now expose the documented
+public API. The top-level `pd_book_tools` package re-exports
+`BoundingBox`, `Point`, `Page`, `Block`, `BlockCategory`, `Word`,
+`RegionType`, `PGDPResults`, `PGDPExport`. New `docs/public-api.md`
+catalogs the supported surface; submodule paths remain unsupported
+and may relocate in future versions. `tests/test_public_api.py` pins
+the re-exports. Per design decision Q4, eager OCR/cv2/numpy imports
+at top-level are accepted (not chasing a cv2-free import path).

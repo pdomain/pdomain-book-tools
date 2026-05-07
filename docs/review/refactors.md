@@ -6,14 +6,13 @@ to use correctly. Organized roughly by impact.
 
 ---
 
-**Status (2026-05-07):** 26 of 30 review-numbered items closed. Closed
+**Status (2026-05-07):** 27 of 30 review-numbered items closed. Closed
 items (FIXED / DECLINED / FIXED-with-deprecation) live in
 [`archive/refactors.md`](archive/refactors.md). Only the items that
-still need work remain below: four DEFERRED structural-coupling items
-(R-01, R-02, R-03, R-08) that need cross-repo coordination. New
-refactor ideas should be added here under the next available `R-NN`
-number; when closed, **move** the entry into `archive/refactors.md`
-rather than annotating it FIXED in place — see
+still need work remain below: three DEFERRED structural-coupling items
+(R-01, R-02, R-03). New refactor ideas should be added here under the
+next available `R-NN` number; when closed, **move** the entry into
+`archive/refactors.md` rather than annotating it FIXED in place — see
 [`README.md`](README.md) for the workflow.
 
 ---
@@ -142,27 +141,3 @@ framework. This prevents using `BoundingBox` in environments where cv2 is unavai
 **Direction:** extract the image-dependent helpers into a separate module
 (e.g., `pd_book_tools/geometry/image_ops.py` or fold into `ocr/image_utilities.py`)
 and have `BoundingBox` expose only coordinate geometry.
-
----
-
-## [DEFERRED] R-08 — All `__init__.py` files are empty; `utility/` has no `__init__.py` at all
-
-**Files:**
-
-- `pd_book_tools/pd_book_tools/__init__.py` (0 lines)
-- `pd_book_tools/pd_book_tools/geometry/__init__.py` (0 lines)
-- `pd_book_tools/pd_book_tools/pgdp/__init__.py` (0 lines)
-- `pd_book_tools/pd_book_tools/utility/` (no `__init__.py`)
-
-The library has no stable public API surface. Every consumer must know and use full
-internal submodule paths. Internal restructuring (moving `bounding_box.py`,
-renaming submodules) is a breaking change for all downstream packages.
-
-**Direction:**
-
-- `pd_book_tools/__init__.py`: re-export `BoundingBox`, `Point`
-- `pd_book_tools/geometry/__init__.py`: re-export `BoundingBox`, `Point`
-- `pd_book_tools/pgdp/__init__.py`: re-export `PGDPResults`, `PGDPExport`
-- `pd_book_tools/utility/__init__.py`: create with `timing` and `ipynb_widgets` exports
-- `pd_book_tools/layout/__init__.py`: add `draw_layout_overlay`, `clear_detector_cache`,
-  and all geometry helpers (`caption_for_figure`, `iou`, `contains`, etc.)
