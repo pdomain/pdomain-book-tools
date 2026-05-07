@@ -73,25 +73,6 @@ Out of scope until the fine-tune lands — once the model has a
 first-class `decoration` head, the heuristic becomes a fallback
 rather than the primary classifier.
 
-### Multi-column reading order primitives
-
-PLAN open question 4 noted regions arrive "in roughly
-left-right-top-down order" but tied/overlapping regions need stable
-sort. Today the geometric reorg path handles two-column body via
-`expand_row_blocks` heuristics; layout-aware reorg inherits whatever
-order the regions arrive in.
-
-Add `pd_book_tools/layout/geometry.py:region_reading_order(regions)`
-that takes a `list[LayoutRegion]` and returns them in stable, cluster
--aware reading order (column detection by x-projection, then
-top-to-bottom inside each column). Consumers: `associate_captions`
-(so caption-finding respects column structure), and any future
-multi-column page-level reorg.
-
-PGDP corpus has very few multi-column body pages so this is not
-urgent. List for completeness because the primitive is small and
-useful elsewhere.
-
 ## Open — image-processing improvements (no model fine-tune needed)
 
 These are independent of the layout fine-tune. Each addresses a
@@ -359,7 +340,7 @@ the old plan:
 | Page rotation detection follow-up | ✅ Shipped as `pd_book_tools/ocr/rotation.py`. |
 | Confidence-threshold-blanket-vs-per-type design question | 🟡 Listed above as an open item. |
 | Decoration-vs-figure post-classify heuristic | 🟡 Listed above as an open item. |
-| Multi-column reading order primitive | 🟡 Listed above as an open item. |
+| Multi-column reading order primitive | ✅ Shipped via `pd_book_tools/layout/geometry.py:region_reading_order`. Detects column gaps via a left-to-right sweep on `L`, sorts each column top-to-bottom, concatenates left-to-right. Falls back to legacy (T, L) for single-column input or layouts where a region spans across detected column boundaries (e.g. a full-width header). No silent drops. |
 | Detector-failure fallback hardening | ✅ Shipped via `get_detector(..., on_error="raise" \| "log_and_null")`. Default `"raise"` preserves CLI fail-fast; `"log_and_null"` memoises a `NullDetector` so batch callers (pd-prep-for-pgdp) survive transient build failures (network, OOM, missing weights, unknown key). Per-page `detect()` failures still propagate to the caller. |
 | Opt-in suppression of placeholder illustration blocks | ✅ Shipped via `Page.reorganize_page(emit_illustration_placeholders=...)` threading through `associate_captions(..., emit_placeholders=...)`. Default `True` preserves PGDP-bound behaviour; plain-text consumers (pd-ocr-cli `.txt` output) can pass `False` to skip the geometry-only placeholder block. Caption words are still relocated into a caption-roled block in either mode (no silent OCR-word drops). pd-ocr-cli flag wiring tracked in that repo's roadmap. |
 | Caption association distance (`max_gap_px` knob) | ✅ Shipped via `caption_for_figure(max_gap_px=…)` in `pd_book_tools/layout/geometry.py`. |
