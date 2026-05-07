@@ -101,6 +101,16 @@ class TestPageLayout:
         assert len(layout.of_type(RegionType.figure, RegionType.caption)) == 2
         assert len(layout.of_type(RegionType.header)) == 0
 
+    def test_of_type_no_args_raises(self):
+        """R-26: ``of_type()`` with no arguments used to silently return
+        ``[]`` (because ``r.type in set()`` is always False), looking like
+        "no regions found" rather than "all regions." Now raises ValueError."""
+        import pytest
+
+        layout = PageLayout(regions=[_region(type=RegionType.figure)])
+        with pytest.raises(ValueError, match="at least one RegionType"):
+            layout.of_type()
+
     def test_round_trip(self):
         layout = PageLayout(
             regions=[_region(), _region(type=RegionType.header, T=0, B=50)],

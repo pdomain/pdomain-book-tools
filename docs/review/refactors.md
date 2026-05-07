@@ -501,7 +501,7 @@ function that populates a user-extension dict checked before the built-in chain.
 
 ---
 
-## R-26 — `PageLayout.of_type()` with no arguments silently returns `[]`
+## [FIXED — now raises ValueError] ~~R-26 — `PageLayout.of_type()` with no arguments silently returns `[]`~~
 
 **File:** `pd_book_tools/layout/types.py`, lines 126–128
 

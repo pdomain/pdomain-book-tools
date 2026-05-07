@@ -155,6 +155,17 @@ class PageLayout:
         return len(self.regions)
 
     def of_type(self, *types: RegionType) -> List[LayoutRegion]:
+        # R-26: ``of_type()`` with no arguments previously returned ``[]``
+        # because ``r.type in set()`` is always False — indistinguishable
+        # at the call site from "no regions of these types found", and
+        # almost never the caller's intent. Raise instead so the bug
+        # is surfaced. Use ``layout.regions`` directly to iterate all
+        # regions.
+        if not types:
+            raise ValueError(
+                "of_type() requires at least one RegionType; "
+                "use `layout.regions` to iterate all regions"
+            )
         s = set(types)
         return [r for r in self.regions if r.type in s]
 
