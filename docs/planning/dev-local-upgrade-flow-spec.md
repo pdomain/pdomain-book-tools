@@ -1,8 +1,25 @@
 # Spec: dev-local-aware `upgrade-deps` flow
 
-Status: spec only — no implementation yet. Documents the contract this
-repo exposes to its downstream pd-* consumers; a follow-up
-implementation pass will land the Makefile changes.
+Status: **shipped** (2026-05). All required behavior in §2 landed across
+commits `ba267f3` (refuse-rather-than-clobber `upgrade-deps` +
+`upgrade-deps-local`) and `68c64e2` (`make dev-local` recipe + marker
+writer). This document is retained as the canonical contract this repo
+exposes to its downstream pd-* consumers — the Makefile recipes and
+`scripts/check_dev_local.py` are the implementation; deviations from
+this spec should update both.
+
+Implementation pointers:
+
+- `Makefile` targets `check-dev-local`, `dev-local`, `upgrade-deps`,
+  `upgrade-deps-local`, `sync-gpu`.
+- `scripts/check_dev_local.py` — detection logic (exit-code contract,
+  `--quiet` mode).
+- `scripts/write_dev_local_marker.py` — writes `.venv/.pd-dev-local`.
+
+Open follow-up tracked in `docs/ROADMAP.md` ("doctr-from-git probe"):
+whether non-canonical `python-doctr` install URLs should auto-flag
+dev-local mode without a marker file. Deferred until a concrete
+fork-pin workflow needs it.
 
 ## 1. Problem
 
