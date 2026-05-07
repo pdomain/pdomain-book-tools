@@ -53,7 +53,7 @@ def four_word_page():
         width=50,
         height=50,
         page_index=0,
-        items=[_make_paragraph([line1, line2])],
+        blocks=[_make_paragraph([line1, line2])],
     )
 
 
@@ -78,7 +78,7 @@ def six_word_page():
         width=50,
         height=50,
         page_index=0,
-        items=[_make_paragraph([line1, line2])],
+        blocks=[_make_paragraph([line1, line2])],
     )
 
 
@@ -112,7 +112,7 @@ class TestSplitLinesIntoSelectedAndUnselected:
     def test_only_one_word_in_line_skipped(self):
         line = _make_line([_make_word("only", 0, 0, 10, 10)])
         para = _make_paragraph([line])
-        page = Page(width=50, height=50, page_index=0, items=[para])
+        page = Page(width=50, height=50, page_index=0, blocks=[para])
         assert page.split_lines_into_selected_and_unselected_words([(0, 0)]) is False
 
 
@@ -160,7 +160,7 @@ class TestSplitParagraphSelectedLines:
             _make_line([_make_word(f"l{i}w", 0, i * 12, 10, i * 12 + 10)])
             for i in range(3)
         ]
-        page = Page(width=50, height=50, page_index=0, items=[_make_paragraph(lines)])
+        page = Page(width=50, height=50, page_index=0, blocks=[_make_paragraph(lines)])
         result = page.split_paragraph_with_selected_lines([1])
         assert result in (True, False)
 
@@ -211,7 +211,7 @@ class TestCv2NumpyRenderingVariants:
         )
         line = _make_line([word])
         para = _make_paragraph([line])
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
         img = np.zeros((100, 100, 3), dtype=np.uint8)
         page.cv2_numpy_page_image = img
         # Should have rendered without error
@@ -225,7 +225,7 @@ class TestGenerateDoctrChecksEdgeCases:
         """Line 3006: raises when output_path.parent does not exist."""
         import numpy as np
 
-        page = Page(width=100, height=100, page_index=0, items=[])
+        page = Page(width=100, height=100, page_index=0, blocks=[])
         page.cv2_numpy_page_image = np.zeros((100, 100, 3), dtype=np.uint8)
         # Add a word so items is not empty
         from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -247,7 +247,7 @@ class TestGenerateDoctrChecksEdgeCases:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
         page.cv2_numpy_page_image = np.zeros((100, 100, 3), dtype=np.uint8)
         # Use a path whose parent doesn't exist
 
@@ -437,7 +437,7 @@ class TestFinalizePageStructureExceptions:
 
         from pd_book_tools.ocr.page import Page
 
-        page = Page(width=1000, height=1000, page_index=0, items=[])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[])
 
         with patch.object(
             Page,
@@ -455,7 +455,7 @@ class TestFinalizePageStructureExceptions:
 
         from pd_book_tools.ocr.page import Page
 
-        page = Page(width=1000, height=1000, page_index=0, items=[])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[])
 
         with patch.object(
             page, "recompute_bounding_box", side_effect=RuntimeError("bbox fail")
@@ -488,7 +488,7 @@ class TestRecomputeParagraphBboxes:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
 
         with patch.object(
             para, "recompute_bounding_box", side_effect=RuntimeError("bbox fail")

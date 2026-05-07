@@ -81,7 +81,7 @@ def test_page_items_getter_currently_resorts_on_each_read_deferred_fix():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    page = Page(width=100, height=100, page_index=0, items=[outer_block])
+    page = Page(width=100, height=100, page_index=0, blocks=[outer_block])
 
     with patch.object(Page, "_sort_items", autospec=True) as mock_sort:
         for _ in range(3):

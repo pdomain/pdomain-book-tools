@@ -57,7 +57,7 @@ def test_page_to_dict_includes_ocr_provenance():
         engine_version="0.8.1",
     )
     page = Page(
-        width=100, height=200, page_index=1, items=[], ocr_provenance=provenance
+        width=100, height=200, page_index=1, blocks=[], ocr_provenance=provenance
     )
 
     page_dict = page.to_dict()
@@ -129,7 +129,7 @@ def test_page_init_filters_none_bbox_items(sample_block4):
         width=100,
         height=200,
         page_index=1,
-        items=[empty_block, sample_block4],
+        blocks=[empty_block, sample_block4],
     )
 
     # Page bbox must come from the non-None entry only
@@ -153,7 +153,7 @@ def test_page_init_all_none_bboxes_yields_none():
         width=100,
         height=200,
         page_index=1,
-        items=[empty_a, empty_b],
+        blocks=[empty_a, empty_b],
     )
 
     assert page.bounding_box is None
@@ -164,7 +164,7 @@ def test_page_copy_preserves_ocr_provenance_without_shared_mutation():
         width=100,
         height=200,
         page_index=1,
-        items=[],
+        blocks=[],
         ocr_provenance=OCRProvenance(
             engine="doctr",
             models=[OCRModelProvenance(name="det")],
@@ -231,7 +231,7 @@ def test_page_remove_ground_truth():
     )
 
     # Create a page with these blocks
-    page = Page(width=100, height=200, page_index=1, items=[block1])
+    page = Page(width=100, height=200, page_index=1, blocks=[block1])
 
     # Verify ground truth data exists before removal
     words = page.words
@@ -266,7 +266,7 @@ def test_page_remove_ground_truth():
 def test_page_remove_ground_truth_empty_page():
     """remove_ground_truth on empty page is a no-op"""
     # Create an empty page
-    page = Page(width=100, height=200, page_index=1, items=[])
+    page = Page(width=100, height=200, page_index=1, blocks=[])
 
     # Should not raise any errors
     page.remove_ground_truth()
@@ -299,7 +299,7 @@ def test_page_remove_ground_truth_no_ground_truth_data():
     )
 
     # Create a page with these blocks
-    page = Page(width=100, height=200, page_index=1, items=[block1])
+    page = Page(width=100, height=200, page_index=1, blocks=[block1])
 
     # Verify no ground truth data exists
     words = page.words
@@ -372,14 +372,14 @@ def test_page_add_and_remove_item(sample_page, sample_block4):
 def test_page_items_setter_errors():
     # Non-collection
     with pytest.raises(TypeError):
-        Page(width=10, height=10, page_index=0, items=None)  # type: ignore[arg-type]
+        Page(width=10, height=10, page_index=0, blocks=None)  # type: ignore[arg-type]
     # Collection with non Block
     with pytest.raises(TypeError):
-        Page(width=10, height=10, page_index=0, items=["notablock"])  # type: ignore[list-item]
+        Page(width=10, height=10, page_index=0, blocks=["notablock"])  # type: ignore[list-item]
 
 
 def test_page_recompute_bounding_box_empty():
-    p = Page(width=10, height=20, page_index=0, items=[])
+    p = Page(width=10, height=20, page_index=0, blocks=[])
     # Initially no bbox
     assert p.bounding_box is None
     # Add then remove to trigger recompute path
@@ -410,7 +410,7 @@ def test_page_recompute_bounding_box_h04_regression():
         "Page.recompute_bounding_box must be defined; H-04 reproduction"
     )
 
-    p = Page(width=100, height=100, page_index=0, items=[])
+    p = Page(width=100, height=100, page_index=0, blocks=[])
 
     # Empty -> None (no exception).
     p.recompute_bounding_box()
@@ -457,7 +457,7 @@ def test_page_scale_normalized():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=100, height=200, page_index=0, items=[para])
+    page = Page(width=100, height=200, page_index=0, blocks=[para])
     scaled = page.scale(1000, 2000)
     assert scaled.width == 1000 and scaled.height == 2000
     assert not scaled.items[0].items[0].items[0].bounding_box.is_normalized
@@ -491,7 +491,7 @@ def test_page_ground_truth_text_and_match():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=10, height=10, page_index=0, items=[para])
+    page = Page(width=10, height=10, page_index=0, blocks=[para])
     assert page.ground_truth_text.strip() == "abc def"
     assert page.ground_truth_exact_match
 
@@ -565,7 +565,7 @@ def test_page_remove_line_if_exists_nested():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    page = Page(width=50, height=50, page_index=0, items=[outer])
+    page = Page(width=50, height=50, page_index=0, blocks=[outer])
     page.remove_line_if_exists(l2)
     assert l2 not in page.lines
 
@@ -583,7 +583,7 @@ def test_page_remove_empty_items():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    page = Page(width=10, height=10, page_index=0, items=[outer])
+    page = Page(width=10, height=10, page_index=0, blocks=[outer])
     para.remove_item(l1)
     page.remove_empty_items()
     # Paragraph should be removed
@@ -602,7 +602,7 @@ def test_page_refresh_page_images_and_setters(tmp_path):
         width=20,
         height=20,
         page_index=0,
-        items=[
+        blocks=[
             Block(
                 items=[l1],
                 child_type=BlockChildType.BLOCKS,
@@ -634,7 +634,7 @@ def test_page_doctr_detection_training_set(tmp_path):
         width=20,
         height=20,
         page_index=5,
-        items=[
+        blocks=[
             Block(
                 items=[l1],
                 child_type=BlockChildType.BLOCKS,
@@ -658,7 +658,7 @@ def test_page_doctr_recognition_training_set_skips_no_gt(tmp_path):
         width=20,
         height=20,
         page_index=2,
-        items=[
+        blocks=[
             Block(
                 items=[l1],
                 child_type=BlockChildType.BLOCKS,
@@ -697,7 +697,7 @@ def test_page_convert_to_training_set(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=20, height=20, page_index=3, items=[para])
+    page = Page(width=20, height=20, page_index=3, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((40, 60, 3), dtype=np.uint8)
     out = tmp_path / "both"
     page.convert_to_training_set(out, prefix="set")
@@ -706,7 +706,7 @@ def test_page_convert_to_training_set(tmp_path):
 
 
 def test_page_generate_doctr_checks_errors(tmp_path):
-    p = Page(width=10, height=10, page_index=0, items=[])
+    p = Page(width=10, height=10, page_index=0, blocks=[])
     with pytest.raises(ValueError):
         p.generate_doctr_detection_training_set(tmp_path / "out")
 
@@ -783,7 +783,7 @@ def test_page_detection_labels_overwrite(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=100, height=100, page_index=7, items=[para])
+    page = Page(width=100, height=100, page_index=7, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
     page.generate_doctr_detection_training_set(tmp_path, prefix="book")
     with open(detection_dir / "labels.json") as f:
@@ -819,7 +819,7 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=100, height=100, page_index=9, items=[para])
+    page = Page(width=100, height=100, page_index=9, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((60, 80, 3), dtype=np.uint8)
     page.generate_doctr_recognition_training_set(tmp_path, prefix="pref")
     # Old image removed
@@ -863,7 +863,7 @@ def test_page_detection_word_filter(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=100, height=100, page_index=0, items=[para])
+    page = Page(width=100, height=100, page_index=0, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
 
     page.generate_doctr_detection_training_set(
@@ -904,7 +904,7 @@ def test_page_recognition_word_filter(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=100, height=100, page_index=0, items=[para])
+    page = Page(width=100, height=100, page_index=0, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
 
     page.generate_doctr_recognition_training_set(
@@ -939,7 +939,7 @@ def test_page_recognition_label_formatter(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=100, height=100, page_index=0, items=[para])
+    page = Page(width=100, height=100, page_index=0, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
 
     def my_formatter(w):
@@ -983,7 +983,7 @@ def test_page_refresh_page_images_match_score_coloring():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=300, height=100, page_index=0, items=[para])
+    page = Page(width=300, height=100, page_index=0, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((20, 40, 3), dtype=np.uint8)
     img = page.cv2_numpy_page_image_matched_word_with_colors
     # First word region should remain all zeros, others should have some non-zero pixels
@@ -1067,14 +1067,12 @@ def test_page_constructor_cv2_type_error():
         block_category=BlockCategory.PARAGRAPH,
     )
     with pytest.raises(TypeError):
-        Page(
-            width=10, height=10, page_index=0, items=[para], cv2_numpy_page_image="bad"
-        )  # type: ignore[arg-type]
+        Page(width=10, height=10, page_index=0, blocks=[para], image_array="bad")  # type: ignore[arg-type]
 
 
 def test_page_scale_no_bounding_box():
     # empty page -> bounding_box None path
-    p = Page(width=10, height=20, page_index=1, items=[])
+    p = Page(width=10, height=20, page_index=1, blocks=[])
     scaled = p.scale(100, 200)
     assert scaled.bounding_box is None
 
@@ -1100,7 +1098,7 @@ def test_page_init_with_explicit_bounding_box():
         block_category=BlockCategory.PARAGRAPH,
     )
     explicit = BoundingBox.from_ltrb(0, 0, 50, 50)
-    page = Page(width=60, height=60, page_index=2, items=[para], bounding_box=explicit)
+    page = Page(width=60, height=60, page_index=2, blocks=[para], bounding_box=explicit)
     # Should retain explicit bbox not shrink to union
     assert page.bounding_box.to_ltrb() == explicit.to_ltrb()
 
@@ -1123,7 +1121,7 @@ def test_page_init_with_unmatched_ground_truth_lines():
         width=20,
         height=20,
         page_index=0,
-        items=[para],
+        blocks=[para],
         unmatched_ground_truth_lines=[(0, "UNMATCHED")],
     )
     assert page.unmatched_ground_truth_lines == [(0, "UNMATCHED")]
@@ -1144,7 +1142,7 @@ def test_page_add_rect_with_normalized_block():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    page = Page(width=100, height=100, page_index=0, items=[block_block])
+    page = Page(width=100, height=100, page_index=0, blocks=[block_block])
     img = np.zeros((50, 50, 3), dtype=np.uint8)
     Page._add_rect(img, page)  # page color branch
     Page._add_rect(img, block_block)  # block color branch
@@ -1179,7 +1177,7 @@ def test_page_reorganize_page_flow():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    page = Page(width=100, height=100, page_index=0, items=[top_block])
+    page = Page(width=100, height=100, page_index=0, blocks=[top_block])
     page.reorganize_page()
     # After reorganize, items should be paragraph blocks only; merged line content present
     # After reorganize, top-level items should be paragraph blocks; search their text for merged token
@@ -1245,14 +1243,14 @@ def test_page_convert_to_training_set_missing_image(tmp_path):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
-    page = Page(width=10, height=10, page_index=1, items=[para])
+    page = Page(width=10, height=10, page_index=1, blocks=[para])
     with pytest.raises(ValueError):
         page.convert_to_training_set(tmp_path / "out", prefix="x")
 
 
 def test_page_detection_on_empty_items(tmp_path):
     # Page with no items but with an image exercises early return in checks
-    page = Page(width=50, height=50, page_index=4, items=[])
+    page = Page(width=50, height=50, page_index=4, blocks=[])
     page.cv2_numpy_page_image = np.zeros((30, 30, 3), dtype=np.uint8)
     page.generate_doctr_detection_training_set(tmp_path / "set", prefix="emp")
     # labels.json should exist with one entry (no polygons) since method proceeds
@@ -1274,7 +1272,7 @@ class TestPageMetadata:
     """Tests for first-class metadata fields on Page."""
 
     def _make_page(self, **kwargs):
-        return Page(width=10, height=10, page_index=0, items=[], **kwargs)
+        return Page(width=10, height=10, page_index=0, blocks=[], **kwargs)
 
     def test_defaults(self):
         page = self._make_page()

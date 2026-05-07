@@ -176,7 +176,7 @@ class TestPageRotationAppliedField:
     def test_default_zero(self):
         from pd_book_tools.ocr.page import Page
 
-        page = Page(width=10, height=10, page_index=0, items=[])
+        page = Page(width=10, height=10, page_index=0, blocks=[])
         assert page.rotation_applied == 0
 
     def test_invalid_value_rejected(self):
@@ -187,7 +187,7 @@ class TestPageRotationAppliedField:
                 width=10,
                 height=10,
                 page_index=0,
-                items=[],
+                blocks=[],
                 rotation_applied=45,
             )
 
@@ -198,7 +198,7 @@ class TestPageRotationAppliedField:
             width=10,
             height=10,
             page_index=0,
-            items=[],
+            blocks=[],
             rotation_applied=90,
         )
         data = page.to_dict()
@@ -210,5 +210,5 @@ class TestPageRotationAppliedField:
         # Default 0 isn't serialized, keeping existing JSONs unchanged.
         from pd_book_tools.ocr.page import Page
 
-        page = Page(width=10, height=10, page_index=0, items=[])
+        page = Page(width=10, height=10, page_index=0, blocks=[])
         assert "rotation_applied" not in page.to_dict()

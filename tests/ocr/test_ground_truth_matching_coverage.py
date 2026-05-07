@@ -54,7 +54,7 @@ def _make_para(lines, y_start=0):
 def _make_page(lines_of_words):
     lines = [_make_line(words, y=20 + i * 30) for i, words in enumerate(lines_of_words)]
     para = _make_para(lines)
-    return Page(width=1000, height=1000, page_index=0, items=[para])
+    return Page(width=1000, height=1000, page_index=0, blocks=[para])
 
 
 # ---------------------------------------------------------------------------

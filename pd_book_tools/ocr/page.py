@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import pathlib
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from hashlib import sha256
@@ -86,10 +87,10 @@ class Page:
         width: int,
         height: int,
         page_index: int,
-        items: Collection,
+        blocks: Collection | None = None,
         bounding_box: BoundingBox | None = None,
         page_labels: list[str] | None = None,
-        cv2_numpy_page_image: ndarray | None = None,
+        image_array: ndarray | None = None,
         unmatched_ground_truth_lines: list[tuple[int, str]] | None = None,
         original_ocr_tool_text: str | None = "",
         original_ground_truth_text: str | None = "",
@@ -102,11 +103,60 @@ class Page:
         provenance_saved_ocr: dict[str, Any] | None = None,
         provenance_saved: dict[str, Any] | None = None,
         rotation_applied: int = 0,
+        # Deprecated legacy kwargs — accepted for backward compatibility,
+        # emit DeprecationWarning. Removed in v1.0.
+        items: Collection | None = None,
+        cv2_numpy_page_image: ndarray | None = None,
     ):
+        # Backward-compat translation for renamed kwargs. The new
+        # canonical names are ``blocks=`` and ``image_array=``. The
+        # legacy ``items=`` / ``cv2_numpy_page_image=`` names collided
+        # with @property descriptors on the class, which blocked the
+        # full @dataclass conversion in R-02. They remain accepted with
+        # a DeprecationWarning until v1.0.
+        if items is not None:
+            if blocks is not None:
+                raise TypeError(
+                    "Page() got both 'blocks' and the deprecated alias "
+                    "'items' — pass only 'blocks'."
+                )
+            warnings.warn(
+                "Page(items=...) is deprecated; use Page(blocks=...) "
+                "instead. The 'items=' constructor kwarg will be removed "
+                "in v1.0. (The read-side 'page.items' property is "
+                "unchanged.)",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            blocks = items
+        if cv2_numpy_page_image is not None:
+            if image_array is not None:
+                raise TypeError(
+                    "Page() got both 'image_array' and the deprecated "
+                    "alias 'cv2_numpy_page_image' — pass only "
+                    "'image_array'."
+                )
+            warnings.warn(
+                "Page(cv2_numpy_page_image=...) is deprecated; use "
+                "Page(image_array=...) instead. The "
+                "'cv2_numpy_page_image=' constructor kwarg will be "
+                "removed in v1.0. (The read-side "
+                "'page.cv2_numpy_page_image' property is unchanged.)",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            image_array = cv2_numpy_page_image
+
+        if blocks is None:
+            raise TypeError(
+                "Page() missing required argument: 'blocks' (or the "
+                "deprecated alias 'items')."
+            )
+
         self.width = width
         self.height = height
         self.page_index = page_index
-        self.items = items  # Use the setter for validation or processing
+        self.items = blocks  # Use the setter for validation or processing
         if bounding_box:
             self.bounding_box = bounding_box
         elif self.items:
@@ -120,12 +170,12 @@ class Page:
             self.bounding_box = BoundingBox.union(bboxes) if bboxes else None
         self.page_labels = page_labels
 
-        if cv2_numpy_page_image is not None:
-            if not isinstance(cv2_numpy_page_image, ndarray):
-                raise TypeError("cv2_numpy_page_image must be a numpy ndarray")
+        if image_array is not None:
+            if not isinstance(image_array, ndarray):
+                raise TypeError("image_array must be a numpy ndarray")
 
             self.cv2_numpy_page_image = (
-                cv2_numpy_page_image  # Use the setter for validation or processing
+                image_array  # Use the setter for validation or processing
             )
 
         if unmatched_ground_truth_lines:
@@ -2650,7 +2700,7 @@ class Page:
             width=width,
             height=height,
             page_index=self.page_index,
-            items=[item.scale(width, height) for item in self.items],
+            blocks=[item.scale(width, height) for item in self.items],
             bounding_box=self.bounding_box.scale(width, height)
             if self.bounding_box
             else None,
@@ -3107,7 +3157,7 @@ class Page:
         # Resolve source from either "source" or legacy "page_source" key
         source = data.get("source", data.get("page_source", "ocr"))
         return cls(
-            items=[Block.from_dict(block) for block in data["items"]],
+            blocks=[Block.from_dict(block) for block in data["items"]],
             width=data["width"],
             height=data["height"],
             page_index=data["page_index"],

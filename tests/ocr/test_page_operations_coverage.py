@@ -52,7 +52,7 @@ def multi_paragraph_page():
         width=100,
         height=100,
         page_index=0,
-        items=[
+        blocks=[
             _make_paragraph([p1l1, p1l2]),
             _make_paragraph([p2l1, p2l2]),
         ],
@@ -112,7 +112,7 @@ class TestSplitParagraphs:
 
     def test_split_paragraph_single_line_skipped(self):
         para = _make_paragraph([_make_line([_make_word("w", 0, 0, 10, 10)])])
-        page = Page(width=50, height=50, page_index=0, items=[para])
+        page = Page(width=50, height=50, page_index=0, blocks=[para])
         # Single line in paragraph, can't split
         assert page.split_paragraphs([0]) is False
 
@@ -258,7 +258,7 @@ class TestReorganizePage:
         assert multi_paragraph_page is not None
 
     def test_reorganize_empty_page(self):
-        page = Page(width=10, height=10, page_index=0, items=[])
+        page = Page(width=10, height=10, page_index=0, blocks=[])
         page.reorganize_page()
         assert page is not None
 

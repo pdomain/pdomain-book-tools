@@ -86,7 +86,7 @@ def test_doc_enumerates_top_level_page_fields(doc_text: str) -> None:
         width=10,
         height=10,
         page_index=0,
-        items=[],
+        blocks=[],
         bounding_box=None,
     )
     emitted = page.to_dict()

@@ -49,7 +49,7 @@ def simple_page(simple_paragraph):
         width=100,
         height=200,
         page_index=0,
-        items=[simple_paragraph],
+        blocks=[simple_paragraph],
     )
 
 
@@ -92,7 +92,7 @@ def two_paragraph_page():
         width=100,
         height=100,
         page_index=0,
-        items=[para1, para2],
+        blocks=[para1, para2],
     )
 
 
@@ -114,12 +114,12 @@ class TestPropertyAliases:
         assert simple_page.resolved_dimensions == (100.0, 200.0)
 
     def test_resolved_dimensions_falls_back_to_image(self):
-        page = Page(width=0, height=0, page_index=0, items=[])
+        page = Page(width=0, height=0, page_index=0, blocks=[])
         page._cv2_numpy_page_image = np.zeros((50, 70, 3), dtype=np.uint8)
         assert page.resolved_dimensions == (70.0, 50.0)
 
     def test_resolved_dimensions_zero_when_neither(self):
-        page = Page(width=0, height=0, page_index=0, items=[])
+        page = Page(width=0, height=0, page_index=0, blocks=[])
         assert page.resolved_dimensions == (0.0, 0.0)
 
 
@@ -143,14 +143,14 @@ class TestIsContentNormalized:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
         assert page.is_content_normalized is True
 
     def test_pixel_words(self, simple_page):
         assert simple_page.is_content_normalized is False
 
     def test_empty_page(self):
-        page = Page(width=100, height=100, page_index=0, items=[])
+        page = Page(width=100, height=100, page_index=0, blocks=[])
         assert page.is_content_normalized is False
 
 
@@ -223,7 +223,7 @@ class TestRemoveLineIfExists:
             block_category=BlockCategory.LINE,
             child_type=BlockChildType.WORDS,
         )
-        page = Page(width=50, height=50, page_index=0, items=[line])
+        page = Page(width=50, height=50, page_index=0, blocks=[line])
         assert page.remove_line_if_exists(line) is True
 
     def test_removes_nested_line(self, simple_page, simple_line):
@@ -250,7 +250,7 @@ class TestRemoveLineIfExists:
 
 class TestRemoveEmptyItems:
     def test_no_op_on_empty_page(self):
-        page = Page(width=10, height=10, page_index=0, items=[])
+        page = Page(width=10, height=10, page_index=0, blocks=[])
         # Should be a no-op
         page.remove_empty_items()
         assert page.items == []
@@ -263,9 +263,7 @@ class TestCv2NumpyImage:
     def test_constructor_accepts_ndarray(self):
         """Lines 113-115: cv2_numpy_page_image passed to Page constructor."""
         img = np.zeros((100, 200, 3), dtype=np.uint8)
-        page = Page(
-            width=200, height=100, page_index=0, items=[], cv2_numpy_page_image=img
-        )
+        page = Page(width=200, height=100, page_index=0, blocks=[], image_array=img)
         assert page.cv2_numpy_page_image is not None
 
     def test_setter_validates_type(self, simple_page):
@@ -352,7 +350,7 @@ class TestTextProperties:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
         assert page.copy_ocr_to_ground_truth() is False
 
     def test_copy_ground_truth_to_ocr(self, simple_page):
@@ -586,14 +584,14 @@ class TestScaleAndCopy:
             block_category=BlockCategory.PARAGRAPH,
             child_type=BlockChildType.BLOCKS,
         )
-        page = Page(width=10, height=20, page_index=0, items=[para])
+        page = Page(width=10, height=20, page_index=0, blocks=[para])
         new = page.scale(100, 200)
         assert isinstance(new, Page)
         assert new.width == 100
         assert new.height == 200
 
     def test_scale_no_bbox(self):
-        page = Page(width=10, height=20, page_index=0, items=[])
+        page = Page(width=10, height=20, page_index=0, blocks=[])
         new = page.scale(50, 60)
         assert new.bounding_box is None
 
@@ -613,7 +611,7 @@ class TestToFromDictEdgeCases:
             width=100,
             height=200,
             page_index=0,
-            items=[],
+            blocks=[],
             image_path="/path/to.png",
             name="page-name",
             source="manual",
@@ -657,7 +655,7 @@ class TestRecomputeBoundingBox:
         del old_bbox  # noqa: F841
 
     def test_recompute_empty_page(self):
-        page = Page(width=10, height=10, page_index=0, items=[])
+        page = Page(width=10, height=10, page_index=0, blocks=[])
         page.recompute_bounding_box()
         # Empty -> bounding_box may stay None
         assert page.bounding_box is None or isinstance(page.bounding_box, BoundingBox)

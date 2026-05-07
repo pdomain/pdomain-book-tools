@@ -84,7 +84,7 @@ class TestValidateLineConsistency:
             child_type=BlockChildType.WORDS,
             block_category=BlockCategory.LINE,
         )
-        return Page(width=100, height=100, page_index=0, items=[line])
+        return Page(width=100, height=100, page_index=0, blocks=[line])
 
     def test_basic_validation(self):
         page = self._make_simple_page()

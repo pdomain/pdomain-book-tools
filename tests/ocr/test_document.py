@@ -60,7 +60,7 @@ def sample_tesseract_output():
 
 def test_document_to_dict():
     doc = Document(source_lib="test_lib", source_path=Path("test_path"), pages=[])
-    page = Page(page_index=0, width=800, height=1000, items=[])
+    page = Page(page_index=0, width=800, height=1000, blocks=[])
     doc._pages.append(page)
     doc_dict = doc.to_dict()
     assert doc_dict["source_lib"] == "test_lib"
@@ -116,7 +116,7 @@ def test_document_from_dict_tolerates_legacy_none_string():
 
 def test_document_to_json_file(tmp_path):
     doc = Document(source_lib="test_lib", source_path=Path("test_path"), pages=[])
-    page = Page(page_index=0, width=800, height=1000, items=[])
+    page = Page(page_index=0, width=800, height=1000, blocks=[])
     doc._pages.append(page)
     file_path = tmp_path / "test.json"
     doc.to_json_file(file_path)

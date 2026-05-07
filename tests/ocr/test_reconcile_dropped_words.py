@@ -73,7 +73,7 @@ def _make_block_line_words_page(words: list[Word]) -> tuple[Page, list[Block]]:
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    page = Page(width=1000, height=1000, page_index=0, items=[outer])
+    page = Page(width=1000, height=1000, page_index=0, blocks=[outer])
     return page, [outer]
 
 

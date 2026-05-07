@@ -48,7 +48,7 @@ class TestMergeLines:
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
         line3 = _line([_word("c", "C", 40)], 40)
-        page = Page(width=100, height=100, page_index=0, items=[line1, line2, line3])
+        page = Page(width=100, height=100, page_index=0, blocks=[line1, line2, line3])
 
         result = page.merge_lines([0, 2])
 
@@ -64,7 +64,7 @@ class TestMergeLines:
             width=100,
             height=100,
             page_index=0,
-            items=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
+            blocks=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
         )
 
         assert page.merge_lines([0]) is False
@@ -76,7 +76,7 @@ class TestMergeLines:
             width=100,
             height=100,
             page_index=0,
-            items=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
+            blocks=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
         )
 
         result = page.merge_lines([0, 5])
@@ -100,7 +100,7 @@ class TestMergeLines:
             child_type=BlockChildType.BLOCKS,
             block_category=BlockCategory.PARAGRAPH,
         )
-        page = Page(width=100, height=100, page_index=0, items=[para1, para2])
+        page = Page(width=100, height=100, page_index=0, blocks=[para1, para2])
 
         result = page.merge_lines([0, 1])
 
@@ -116,7 +116,7 @@ class TestMergeLines:
         """Merge should still succeed when Block.merge fails with NoneType.is_normalized."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
-        page = Page(width=100, height=100, page_index=0, items=[line1, line2])
+        page = Page(width=100, height=100, page_index=0, blocks=[line1, line2])
 
         def _broken_merge(_self, _other):
             raise AttributeError("'NoneType' object has no attribute 'is_normalized'")
@@ -133,7 +133,7 @@ class TestMergeLines:
         """Merge should succeed when finalize recompute raises NoneType.is_normalized."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
-        page = Page(width=100, height=100, page_index=0, items=[line1, line2])
+        page = Page(width=100, height=100, page_index=0, blocks=[line1, line2])
 
         original_recompute = Block.recompute_bounding_box
 
@@ -166,7 +166,7 @@ class TestMergeLines:
         line2 = _line([_word("beta", "B", 20)], 20)
         para1 = _paragraph([line1], 0)
         para2 = _paragraph([line2], 30)
-        page = Page(width=100, height=100, page_index=0, items=[para1, para2])
+        page = Page(width=100, height=100, page_index=0, blocks=[para1, para2])
 
         monkeypatch.setattr(
             page,
@@ -190,7 +190,7 @@ class TestDeleteLines:
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
         line3 = _line([_word("c", "C", 40)], 40)
-        page = Page(width=100, height=100, page_index=0, items=[line1, line2, line3])
+        page = Page(width=100, height=100, page_index=0, blocks=[line1, line2, line3])
 
         result = page.delete_lines([1, 2])
 
@@ -204,7 +204,7 @@ class TestDeleteLines:
             width=100,
             height=100,
             page_index=0,
-            items=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
+            blocks=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
         )
 
         assert page.delete_lines([]) is False
@@ -215,7 +215,7 @@ class TestDeleteLines:
             width=100,
             height=100,
             page_index=0,
-            items=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
+            blocks=[_line([_word("a", "A", 0)], 0), _line([_word("b", "B", 20)], 20)],
         )
 
         result = page.delete_lines([0, 5])
@@ -229,7 +229,7 @@ class TestDeleteParagraphs:
         """Deleting selected paragraphs removes them from the page."""
         para1 = _paragraph([_line([_word("a", "A", 0)], 0)], 0)
         para2 = _paragraph([_line([_word("b", "B", 20)], 20)], 30)
-        page = Page(width=100, height=100, page_index=0, items=[para1, para2])
+        page = Page(width=100, height=100, page_index=0, blocks=[para1, para2])
 
         result = page.delete_paragraphs([1])
 
@@ -246,7 +246,7 @@ class TestDeleteParagraphs:
             width=100,
             height=100,
             page_index=0,
-            items=[para1, para2, malformed_para],
+            blocks=[para1, para2, malformed_para],
         )
         malformed_para.bounding_box = None
 
@@ -271,7 +271,7 @@ class TestDeleteWords:
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
             0,
         )
-        page = Page(width=100, height=100, page_index=0, items=[line])
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
 
         result = page.delete_words([(0, 1)])
 
@@ -283,7 +283,7 @@ class TestDeleteWords:
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
         paragraph = _paragraph([line1, line2], 0)
-        page = Page(width=100, height=100, page_index=0, items=[paragraph])
+        page = Page(width=100, height=100, page_index=0, blocks=[paragraph])
 
         result = page.delete_words([(0, 0)])
 
@@ -299,7 +299,7 @@ class TestMergeWords:
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
             0,
         )
-        page = Page(width=100, height=100, page_index=0, items=[line])
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
 
         result = page.lines[0].merge_word_left(1)
 
@@ -316,7 +316,7 @@ class TestMergeWords:
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
             0,
         )
-        page = Page(width=100, height=100, page_index=0, items=[line])
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
 
         result = page.lines[0].merge_word_right(1)
 
@@ -330,7 +330,7 @@ class TestMergeWords:
     def test_merge_word_left_fails_for_first_word(self):
         """Merging left on the first word fails."""
         line = _line([_word("alpha", "A", 0), _word("beta", "B", 20)], 0)
-        page = Page(width=100, height=100, page_index=0, items=[line])
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
 
         result = page.lines[0].merge_word_left(0)
 
@@ -342,7 +342,7 @@ class TestSplitWord:
     def test_split_word_success(self):
         """Splitting a word creates two words and clears GT for the line."""
         line = _line([_word("alphabet", "ALPHABET", 0), _word("gamma", "GAMMA", 20)], 0)
-        page = Page(width=100, height=100, page_index=0, items=[line])
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
 
         result = page.split_word(0, 0, 0.5)
 
@@ -353,7 +353,7 @@ class TestSplitWord:
     def test_split_word_rejects_edge_fraction(self):
         """Split fails when requested at start/end boundaries."""
         line = _line([_word("alpha", "A", 0)], 0)
-        page = Page(width=100, height=100, page_index=0, items=[line])
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
 
         assert page.split_word(0, 0, 0.0) is False
         assert page.split_word(0, 0, 1.0) is False
@@ -379,7 +379,7 @@ class TestSplitWord:
             block_category=BlockCategory.LINE,
         )
         page = Page(
-            width=100, height=100, page_index=0, items=[source_line, lower_line]
+            width=100, height=100, page_index=0, blocks=[source_line, lower_line]
         )
 
         result = page.split_word_vertically_and_assign_to_closest_line(0, 0, 0.5)
@@ -402,7 +402,7 @@ class TestReboxWord:
     def test_rebox_word_replaces_word_bounding_box(self):
         """Reboxing replaces the target word bounding box coordinates."""
         line = _line([_word("alpha", "A", 0)], 0)
-        page = Page(width=200, height=100, page_index=0, items=[line])
+        page = Page(width=200, height=100, page_index=0, blocks=[line])
 
         result = page.rebox_word(0, 0, 30.0, 5.0, 70.0, 25.0)
 
@@ -416,7 +416,7 @@ class TestReboxWord:
     def test_rebox_word_runs_word_refine_helpers(self, monkeypatch):
         """Rebox auto-refines the updated word when a page image exists."""
         line = _line([_word("alpha", "A", 0)], 0)
-        page = Page(width=200, height=100, page_index=0, items=[line])
+        page = Page(width=200, height=100, page_index=0, blocks=[line])
         target_word = page.lines[0].words[0]
 
         dummy_image = np.zeros((100, 200, 3), dtype=np.uint8)
@@ -436,7 +436,7 @@ class TestNudgeWordBbox:
     def test_nudge_word_bbox_expands_and_contracts_size(self):
         """Nudging resizes bbox dimensions, not translation."""
         line = _line([_word("alpha", "A", 20)], 20)
-        page = Page(width=200, height=100, page_index=0, items=[line])
+        page = Page(width=200, height=100, page_index=0, blocks=[line])
 
         result = page.nudge_word_bbox(0, 0, 3.0, 3.0, 2.0, 2.0)
 
@@ -461,7 +461,7 @@ class TestNudgeWordBbox:
         from unittest.mock import MagicMock
 
         line = _line([_word("alpha", "A", 20)], 20)
-        page = Page(width=200, height=100, page_index=0, items=[line])
+        page = Page(width=200, height=100, page_index=0, blocks=[line])
         word = page.lines[0].words[0]
 
         word.crop_bottom = MagicMock()
@@ -480,7 +480,7 @@ class TestParagraphSplitting:
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
         para = _paragraph([line1, line2], 0)
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
 
         result = page.split_paragraph_after_line(0)
 
@@ -494,7 +494,7 @@ class TestParagraphSplitting:
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
         para = _paragraph([line1, line2], 0)
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
 
         result = page.split_paragraph_after_line(1)
 
@@ -507,7 +507,7 @@ class TestParagraphSplitting:
         line2 = _line([_word("b", "B", 20)], 20)
         line3 = _line([_word("c", "C", 40)], 40)
         para = _paragraph([line1, line2, line3], 0)
-        page = Page(width=100, height=100, page_index=0, items=[para])
+        page = Page(width=100, height=100, page_index=0, blocks=[para])
 
         result = page.split_paragraph_with_selected_lines([0, 2])
 
@@ -520,7 +520,7 @@ class TestParagraphSplitting:
         """Split-by-selection fails when lines span multiple paragraphs."""
         para1 = _paragraph([_line([_word("a", "A", 0)], 0)], 0)
         para2 = _paragraph([_line([_word("b", "B", 20)], 20)], 30)
-        page = Page(width=100, height=100, page_index=0, items=[para1, para2])
+        page = Page(width=100, height=100, page_index=0, blocks=[para1, para2])
 
         result = page.split_paragraph_with_selected_lines([0, 1])
 
@@ -536,7 +536,7 @@ class TestSplitLineOps:
             0,
         )
         para = _paragraph([line], 0)
-        page = Page(width=120, height=100, page_index=0, items=[para])
+        page = Page(width=120, height=100, page_index=0, blocks=[para])
 
         result = page.split_line_after_word(0, 0)
 
@@ -549,7 +549,7 @@ class TestSplitLineOps:
         """Splitting after the last word fails because trailing segment is empty."""
         line = _line([_word("alpha", "A", 0), _word("beta", "B", 20)], 0)
         para = _paragraph([line], 0)
-        page = Page(width=120, height=100, page_index=0, items=[para])
+        page = Page(width=120, height=100, page_index=0, blocks=[para])
 
         result = page.split_line_after_word(0, 1)
 
@@ -566,7 +566,7 @@ class TestSplitLineOps:
             20,
         )
         para = _paragraph([line1, line2], 0)
-        page = Page(width=180, height=120, page_index=0, items=[para])
+        page = Page(width=180, height=120, page_index=0, blocks=[para])
 
         result = page.split_line_with_selected_words([(0, 1), (1, 0), (1, 2)])
 
@@ -595,7 +595,7 @@ class TestSplitLineOps:
         )
         para1 = _paragraph([para1_line], 0)
         para2 = _paragraph([para2_line], 20)
-        page = Page(width=180, height=120, page_index=0, items=[para1, para2])
+        page = Page(width=180, height=120, page_index=0, blocks=[para1, para2])
 
         result = page.split_line_with_selected_words([(0, 1), (1, 0)])
 
@@ -625,7 +625,7 @@ class TestSplitLineOps:
             0,
         )
         para = _paragraph([line], 0)
-        page = Page(width=180, height=120, page_index=0, items=[para])
+        page = Page(width=180, height=120, page_index=0, blocks=[para])
 
         result = page.split_line_with_selected_words([(0, 0), (0, 1), (0, 2), (0, 3)])
 
@@ -651,7 +651,7 @@ class TestGroupSelectedWords:
             20,
         )
         para = _paragraph([line1, line2], 0)
-        page = Page(width=160, height=100, page_index=0, items=[para])
+        page = Page(width=160, height=100, page_index=0, blocks=[para])
 
         result = page.group_selected_words_into_new_paragraph([(0, 1), (1, 0), (1, 2)])
 
@@ -671,7 +671,7 @@ class TestGroupSelectedWords:
         """Grouping allows moving all words from a selected line."""
         line = _line([_word("alpha", "A", 0), _word("beta", "B", 20)], 0)
         para = _paragraph([line], 0)
-        page = Page(width=120, height=100, page_index=0, items=[para])
+        page = Page(width=120, height=100, page_index=0, blocks=[para])
 
         result = page.group_selected_words_into_new_paragraph([(0, 0), (0, 1)])
 
@@ -696,7 +696,7 @@ class TestGroupSelectedWords:
         )
         para1 = _paragraph([para1_line], 0)
         para2 = _paragraph([para2_line], 20)
-        page = Page(width=160, height=120, page_index=0, items=[para1, para2])
+        page = Page(width=160, height=120, page_index=0, blocks=[para1, para2])
 
         selected_keys: list[tuple[int, int]] = []
         for line_index, line in enumerate(page.lines):
@@ -742,7 +742,9 @@ class TestGroupSelectedWords:
             child_type=BlockChildType.BLOCKS,
             block_category=BlockCategory.BLOCK,
         )
-        page = Page(width=220, height=120, page_index=0, items=[container1, container2])
+        page = Page(
+            width=220, height=120, page_index=0, blocks=[container1, container2]
+        )
 
         selected_keys: list[tuple[int, int]] = []
         for line_index, line in enumerate(page.lines):
@@ -776,7 +778,7 @@ class TestAddWordToPage:
     def test_add_word_inserts_into_only_line(self):
         """A word drawn over the single line is inserted into it."""
         line = self._make_line([_word("hello", "Hello", 0)], 0, 0, 100, 10)
-        page = Page(width=200, height=100, page_index=0, items=[line])
+        page = Page(width=200, height=100, page_index=0, blocks=[line])
 
         result = page.add_word_to_page(50, 0, 80, 10, text="new")
 
@@ -788,7 +790,7 @@ class TestAddWordToPage:
         """center_y inside line2's Y range but not line1's goes to line2."""
         line1 = self._make_line([_word("top", "Top", 0)], 0, 0, 100, 10)
         line2 = self._make_line([_word("bottom", "Bottom", 0)], 0, 50, 100, 60)
-        page = Page(width=200, height=100, page_index=0, items=[line1, line2])
+        page = Page(width=200, height=100, page_index=0, blocks=[line1, line2])
 
         result = page.add_word_to_page(10, 53, 40, 57, text="near")
 
@@ -802,7 +804,7 @@ class TestAddWordToPage:
         """Parallel columns at same Y: both are Y-range candidates, X breaks the tie."""
         left_line = self._make_line([_word("left", "Left", 5)], 0, 40, 80, 60)
         right_line = self._make_line([_word("right", "Right", 125)], 120, 40, 200, 60)
-        page = Page(width=200, height=100, page_index=0, items=[left_line, right_line])
+        page = Page(width=200, height=100, page_index=0, blocks=[left_line, right_line])
 
         result = page.add_word_to_page(150, 45, 170, 55, text="col")
 
@@ -817,7 +819,7 @@ class TestAddWordToPage:
         """Both lines span center_y; the one with the nearer center X wins."""
         line_a = self._make_line([_word("a", "A", 0)], 0, 30, 60, 50)
         line_b = self._make_line([_word("b", "B", 140)], 140, 30, 200, 50)
-        page = Page(width=200, height=100, page_index=0, items=[line_a, line_b])
+        page = Page(width=200, height=100, page_index=0, blocks=[line_a, line_b])
 
         result = page.add_word_to_page(5, 38, 15, 42, text="near_a")
 

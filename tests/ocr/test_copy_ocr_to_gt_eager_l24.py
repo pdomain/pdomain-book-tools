@@ -48,7 +48,7 @@ def _make_page(line: Block) -> Page:
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.BLOCK,
     )
-    return Page(width=100, height=100, page_index=0, items=[outer])
+    return Page(width=100, height=100, page_index=0, blocks=[outer])
 
 
 def test_block_copy_ocr_to_gt_processes_every_word():

@@ -67,7 +67,7 @@ def _paragraph_block(line_blocks):
 
 
 def _make_page(blocks):
-    return Page(width=PAGE_W, height=PAGE_H, page_index=0, items=blocks)
+    return Page(width=PAGE_W, height=PAGE_H, page_index=0, blocks=blocks)
 
 
 class TestWordsInside:

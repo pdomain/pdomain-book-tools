@@ -21,7 +21,7 @@ def empty_doc():
 def doc_with_pages():
     doc = Document(source_lib="lib", source_path=Path("img.png"), pages=[])
     for idx in (2, 0, 1):
-        doc._pages.append(Page(page_index=idx, width=10, height=10, items=[]))
+        doc._pages.append(Page(page_index=idx, width=10, height=10, blocks=[]))
     return doc
 
 
@@ -77,7 +77,7 @@ class TestScale:
 class TestToFromJsonFile:
     def test_round_trip(self, tmp_path):
         doc = Document(source_lib="my_lib", source_path=Path("p.png"), pages=[])
-        doc._pages.append(Page(page_index=0, width=10, height=20, items=[]))
+        doc._pages.append(Page(page_index=0, width=10, height=20, blocks=[]))
 
         out_path = tmp_path / "out.json"
         doc.to_json_file(out_path)

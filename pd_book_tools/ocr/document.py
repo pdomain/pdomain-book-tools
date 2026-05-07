@@ -376,7 +376,7 @@ class Document:
             page_index=page_idx,
             width=width,
             height=height,
-            items=blocks,
+            blocks=blocks,
             original_ocr_tool_text=original_ocr_tool_text,
             ocr_provenance=deepcopy(ocr_provenance),
         )
@@ -740,7 +740,7 @@ class Document:
             page_index=page_idx,
             width=int(page_bbox.width),
             height=int(page_bbox.height),
-            items=blocks,
+            blocks=blocks,
             bounding_box=page_bbox,
             ocr_provenance=deepcopy(ocr_provenance),
         )

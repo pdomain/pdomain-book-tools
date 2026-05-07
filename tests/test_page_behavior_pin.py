@@ -38,15 +38,20 @@ def test_constructor_signature_pin():
     """
     sig = inspect.signature(Page.__init__)
     params = list(sig.parameters.keys())
+    # R-02 prep (2026-05-07): renamed ``items=`` → ``blocks=`` and
+    # ``cv2_numpy_page_image=`` → ``image_array=`` to clear the
+    # InitVar / @property name collision blocking the full
+    # ``@dataclass`` conversion. The legacy names remain accepted as
+    # deprecated trailing kwargs (DeprecationWarning, removal in v1.0).
     assert params == [
         "self",
         "width",
         "height",
         "page_index",
-        "items",
+        "blocks",
         "bounding_box",
         "page_labels",
-        "cv2_numpy_page_image",
+        "image_array",
         "unmatched_ground_truth_lines",
         "original_ocr_tool_text",
         "original_ground_truth_text",
@@ -59,11 +64,13 @@ def test_constructor_signature_pin():
         "provenance_saved_ocr",
         "provenance_saved",
         "rotation_applied",
+        "items",
+        "cv2_numpy_page_image",
     ]
 
 
 def _make_minimal_page() -> Page:
-    return Page(width=100, height=200, page_index=3, items=[])
+    return Page(width=100, height=200, page_index=3, blocks=[])
 
 
 def test_post_init_undeclared_attrs_default_values():
@@ -131,7 +138,7 @@ def test_rotation_applied_validator():
     R-02's __post_init__ must preserve this validation.
     """
     with pytest.raises(ValueError, match="rotation_applied"):
-        Page(width=10, height=10, page_index=0, items=[], rotation_applied=45)
+        Page(width=10, height=10, page_index=0, blocks=[], rotation_applied=45)
 
 
 def test_to_dict_minimal_roundtrip_omits_defaults():
@@ -168,7 +175,7 @@ def test_to_dict_with_metadata_roundtrip():
         width=10,
         height=20,
         page_index=1,
-        items=[],
+        blocks=[],
         image_path="/tmp/foo.png",
         name="page-001",
         source="labeler",
@@ -194,3 +201,39 @@ def test_to_dict_with_metadata_roundtrip():
     assert p2.width == 10
     assert p2.height == 20
     assert p2.page_index == 1
+
+
+# ---------------------------------------------------------------------------
+# R-02 prep (2026-05-07): deprecation shim for renamed kwargs.
+# ``items=`` and ``cv2_numpy_page_image=`` still work but emit
+# DeprecationWarning. Both will be removed in v1.0.
+# ---------------------------------------------------------------------------
+
+
+def test_legacy_items_kwarg_still_works_but_warns():
+    with pytest.warns(DeprecationWarning, match=r"Page\(items=\.\.\.\) is deprecated"):
+        p = Page(width=10, height=20, page_index=0, items=[])
+    assert p.items == []
+
+
+def test_legacy_cv2_numpy_page_image_kwarg_still_works_but_warns():
+    import numpy as np
+
+    arr = np.zeros((5, 5, 3), dtype=np.uint8)
+    with pytest.warns(
+        DeprecationWarning,
+        match=r"Page\(cv2_numpy_page_image=\.\.\.\) is deprecated",
+    ):
+        p = Page(
+            width=5,
+            height=5,
+            page_index=0,
+            blocks=[],
+            cv2_numpy_page_image=arr,
+        )
+    assert p.cv2_numpy_page_image is arr
+
+
+def test_passing_both_old_and_new_kwarg_raises():
+    with pytest.raises(TypeError, match="both 'blocks' and the deprecated alias"):
+        Page(width=10, height=20, page_index=0, blocks=[], items=[])

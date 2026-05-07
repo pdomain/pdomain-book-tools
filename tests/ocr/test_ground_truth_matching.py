@@ -43,7 +43,7 @@ def _make_page(lines_of_words):
     line_blocks = [
         _make_line(words, y=20 + i * 30) for i, words in enumerate(lines_of_words)
     ]
-    return Page(width=1000, height=1000, page_index=0, items=line_blocks)
+    return Page(width=1000, height=1000, page_index=0, blocks=line_blocks)
 
 
 class TestGroundTruthMatching:

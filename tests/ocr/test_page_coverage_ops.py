@@ -60,7 +60,7 @@ def _make_page(*paragraph_defs):
             lines.append(line)
             y += 30
         items.append(_make_paragraph(lines))
-    return Page(width=1000, height=1000, page_index=0, items=items)
+    return Page(width=1000, height=1000, page_index=0, blocks=items)
 
 
 def _make_empty_line_with_bbox(x1=0, y1=0, x2=100, y2=20):
@@ -141,7 +141,7 @@ class TestSplitParagraphAfterLineErrors:
         # Use an empty LINE block with bbox so page.paragraphs returns [] without
         # raising AttributeError. This covers the target_paragraph is None path (lines 1024-1028).
         orphan_line = _make_empty_line_with_bbox()
-        page = Page(width=1000, height=1000, page_index=0, items=[orphan_line])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[orphan_line])
         # page.lines = 1, page.paragraphs = 0 -> target_paragraph is None
         result = page.split_paragraph_after_line(0)
         assert result is False
@@ -180,7 +180,7 @@ class TestSplitParagraphAfterLineErrors:
         AttributeError inside the try block, which is caught at line 1086.
         """
         broken_line = _make_line(["orphan word"])
-        page = Page(width=1000, height=1000, page_index=0, items=[broken_line])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[broken_line])
         result = page.split_paragraph_after_line(0)
         assert result is False
 
@@ -221,7 +221,7 @@ class TestSplitParagraphWithSelectedLinesErrors:
         """When line is orphan (not in any paragraph) returns False (1130-1134)."""
         # Use empty LINE block so page.paragraphs returns [] without raising.
         orphan_line = _make_empty_line_with_bbox()
-        page = Page(width=1000, height=1000, page_index=0, items=[orphan_line])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[orphan_line])
         result = page.split_paragraph_with_selected_lines([0])
         assert result is False
 
@@ -251,7 +251,7 @@ class TestSplitParagraphWithSelectedLinesErrors:
         AttributeError inside the try block, which is caught at line 1201.
         """
         broken_line = _make_line(["orphan word"])
-        page = Page(width=1000, height=1000, page_index=0, items=[broken_line])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[broken_line])
         result = page.split_paragraph_with_selected_lines([0])
         assert result is False
 
@@ -421,7 +421,7 @@ class TestReboxWord:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         assert page.is_content_normalized
         result = page.rebox_word(0, 0, 50, 50, 200, 100, refine_after=False)
         assert result is True
@@ -448,7 +448,7 @@ class TestReboxWord:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=0, height=0, page_index=0, items=[para])
+        page = Page(width=0, height=0, page_index=0, blocks=[para])
         assert page.resolved_dimensions == (0.0, 0.0)
         # normalized word on zero-dim page -> cannot compute pixel bbox -> returns False
         result = page.rebox_word(0, 0, 0.1, 0.1, 0.5, 0.2, refine_after=False)
@@ -463,7 +463,7 @@ class TestReboxWord:
 class TestAddWordToPage:
     def test_rejects_page_with_no_lines(self):
         """add_word_to_page when page has no lines returns False."""
-        empty_page = Page(width=1000, height=1000, page_index=0, items=[])
+        empty_page = Page(width=1000, height=1000, page_index=0, blocks=[])
         result = empty_page.add_word_to_page(10.0, 10.0, 50.0, 30.0)
         assert result is False
 
@@ -491,7 +491,7 @@ class TestAddWordToPage:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         assert page.is_content_normalized
         words_before = len(page.words)
         # pixel coords on a normalized page – function normalizes them internally
@@ -508,7 +508,7 @@ class TestAddWordToPage:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=0, height=0, page_index=0, items=[para])
+        page = Page(width=0, height=0, page_index=0, blocks=[para])
         assert page.is_content_normalized
         assert page.resolved_dimensions == (0.0, 0.0)
         result = page.add_word_to_page(10.0, 10.0, 50.0, 30.0, text="new")
@@ -556,7 +556,7 @@ class TestSplitLineAfterWordErrors:
         # Add an orphan empty LINE block with a bbox - it appears in page.lines
         # but its .paragraphs doesn't raise (empty items list).
         orphan_line = _make_empty_line_with_bbox(0, 60, 100, 80)
-        Page(width=1000, height=1000, page_index=0, items=[para, orphan_line])
+        Page(width=1000, height=1000, page_index=0, blocks=[para, orphan_line])
         # line index 2 is the orphan_line; it has no words so split_line_after_word
         # fails at "line_words < 2" check (1807-1811) before reaching the para search.
         # Instead, we need 2+ words. Let's use a real 2-word line placed outside a para.
@@ -590,7 +590,7 @@ class TestSplitLineAfterWordErrors:
         """split_line_after_word on empty orphan line (< 2 words) returns False."""
         # Empty orphan line has 0 words -> len(line_words) < 2 -> covers 1807-1811
         orphan_line = _make_empty_line_with_bbox()
-        page = Page(width=1000, height=1000, page_index=0, items=[orphan_line])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[orphan_line])
         result = page.split_line_after_word(0, 0)
         assert result is False
 
@@ -684,7 +684,7 @@ class TestSplitLineWithSelectedWordsEdge:
             bounding_box=BoundingBox.from_ltrb(0, 0, 100, 20, is_normalized=False),
         )
         para = _make_paragraph([empty_line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         result = page.split_line_with_selected_words([(0, 0)])
         # line has 0 words -> len(line_words) < 1 -> warning -> return False
         assert result is False
@@ -722,7 +722,7 @@ class TestSplitLineWithSelectedWordsEdge:
         """
         line = _make_line(["word1", "word2"])
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # Clear bbox after structure is built
         line.bounding_box = None
         result = page.split_line_with_selected_words([(0, 0)])
@@ -796,7 +796,7 @@ class TestNudgeWordBboxEdge:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # Now clear the bbox after the block structure is set up
         word.bounding_box = None
         result = page.nudge_word_bbox(0, 0, 1.0, 1.0, 1.0, 1.0)
@@ -812,7 +812,7 @@ class TestNudgeWordBboxEdge:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # right_delta = -20 -> nx2 = 60 + (-20) = 40; nx1 = max(0, 50-0) = 50
         # nx2 (40) <= nx1 (50) -> invalid -> return False
         result = page.nudge_word_bbox(0, 0, 0.0, -20.0, 0.0, 0.0)
@@ -833,7 +833,7 @@ class TestNudgeWordBboxEdge:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=0, height=0, page_index=0, items=[para])
+        page = Page(width=0, height=0, page_index=0, blocks=[para])
         result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0)
         assert result is False
 
@@ -846,7 +846,7 @@ class TestNudgeWordBboxEdge:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0, refine_after=False)
         assert result is True
 
@@ -865,7 +865,7 @@ class TestNudgeWordBboxEdge:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=0, height=0, page_index=0, items=[para])
+        page = Page(width=0, height=0, page_index=0, blocks=[para])
         # Small nudge: right +1, others 0 -> nx2 = 51, ny2 = 30, nx1 = 10, ny1 = 10
         # page dims = 0 -> no clamping applied; nx2 > nx1 -> valid -> rebox succeeds
         result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0, refine_after=False)
@@ -1022,7 +1022,7 @@ class TestRefineBoundingBoxesEdge:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([empty_line, normal_line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # Empty inner loop on line 0 covers 502->501; then line 1 has a word
         # with non-normalized bbox -> returns False
         result = page.is_content_normalized
@@ -1044,7 +1044,7 @@ class TestIsContentNormalizedBranches:
             bounding_box=BoundingBox.from_ltrb(0, 0, 100, 20, is_normalized=False),
         )
         para = _make_paragraph([empty_line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # Empty inner loop -> goes to outer-loop-next-iteration -> 502->501 branch
         result = page.is_content_normalized
         assert result is False
@@ -1072,7 +1072,7 @@ class TestIsContentNormalizedBranches:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
 
         # Out-of-band swap: a partial editing op replaced one word's bbox
         # with normalized coords without re-normalizing siblings. The
@@ -1095,7 +1095,7 @@ class TestIsContentNormalizedBranches:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         assert page.is_content_normalized is True
 
     def test_returns_false_for_word_with_none_bbox(self):
@@ -1108,7 +1108,7 @@ class TestIsContentNormalizedBranches:
             child_type=BlockChildType.WORDS,
         )
         para = _make_paragraph([line])
-        page = Page(width=1000, height=1000, page_index=0, items=[para])
+        page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # Clear bbox after structure is set
         word.bounding_box = None
         # word.bounding_box is None -> if condition False -> continues -> 503->502 branch

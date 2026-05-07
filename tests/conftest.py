@@ -309,7 +309,7 @@ def sample_page(sample_two_paragraph_block1, sample_block4):
         width=100,
         height=200,
         page_index=1,
-        items=[sample_two_paragraph_block1, sample_block4],
+        blocks=[sample_two_paragraph_block1, sample_block4],
         page_labels=["labelpage1"],
     )
 
