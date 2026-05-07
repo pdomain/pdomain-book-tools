@@ -340,7 +340,7 @@ if self.block_category == BlockCategory.LINE:
 
 ---
 
-## R-15 — `get_finetuned_torch_doctr_predictor` does too much in one function
+## [PARTIALLY FIXED] R-15 — `get_finetuned_torch_doctr_predictor` does too much in one function
 
 **File:** `pd_book_tools/ocr/doctr_support.py`
 
@@ -350,9 +350,16 @@ assembles a `OCRPredictor`, and optionally wraps it. Each concern should be a se
 function:
 
 - `_detect_arch_from_checkpoint(path) -> str`
-- `_load_det_model(path, arch) -> DetectionModel`
-- `_load_reco_model(path, arch) -> RecognitionModel`
+- `_load_det_model(path, arch) -> DetectionModel` — **extracted**
+- `_load_reco_model(path, arch) -> RecognitionModel` — **extracted**
 - `build_predictor(det_model, reco_model) -> OCRPredictor`
+
+`_load_det_model` and `_load_reco_model` now live alongside the existing
+`_detect_*_arch` and `_read_*_sidecar` helpers; both encapsulate the
+torch_load → arch resolution → build_arch(pretrained=False) →
+load_state_dict-with-M23-context pipeline. The remaining inlined work
+(device selection, vocab fallback, predictor + det/reco_predictor
+wrap-up) is plausible to extract further but smaller in payoff.
 
 ---
 
