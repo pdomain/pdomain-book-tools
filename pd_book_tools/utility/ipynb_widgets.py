@@ -27,11 +27,11 @@ def get_formatted_text_html_span(
 
 
 def get_hbox_widget_for_colored_text(linecolor_css, text: str):
-    text_HBox = HBox()
-    text_HBox.children = [
+    text_hbox = HBox()
+    text_hbox.children = [
         get_formatted_text_html_span(linecolor_css=linecolor_css, text=text)
     ]
-    return text_HBox
+    return text_hbox
 
 
 def get_html_string_from_image_src(
@@ -84,12 +84,6 @@ def get_html_widget_from_cropped_image(img: ndarray, bounding_box: BoundingBox):
 
 
 def get_hbox_widget_for_cropped_image(bounding_box: BoundingBox, img: ndarray):
-    ImageHBox = HBox()
-    ImageHBox.children = [get_html_widget_from_cropped_image(img, bounding_box)]
-    return ImageHBox
-
-
-# def get_hbox_widget_for_colored_text(linecolor, text: str):
-#     TextHBox = HBox()
-#     TextHBox.children = [get_colored_text_html(linecolor, text)]
-#     return TextHBox
+    image_hbox = HBox()
+    image_hbox.children = [get_html_widget_from_cropped_image(img, bounding_box)]
+    return image_hbox

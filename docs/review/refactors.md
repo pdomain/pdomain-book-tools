@@ -539,7 +539,7 @@ easily pass arguments in the wrong order, getting silent wrong output.
 
 ---
 
-## R-29 — `ipynb_widgets.py` has dead commented-out code and PascalCase local variable names
+## [FIXED] ~~R-29 — `ipynb_widgets.py` has dead commented-out code and PascalCase local variable names~~
 
 **File:** `pd_book_tools/utility/ipynb_widgets.py`, lines 30, 87–88, 92–95
 
