@@ -515,7 +515,7 @@ future major; downstream callers should drop the keyword argument.
 
 ---
 
-## R-25 — Layout registry has no extensibility path for custom adapters
+## [FIXED — `register_detector`/`unregister_detector` added; built-in keys reserved] ~~R-25 — Layout registry has no extensibility path for custom adapters~~
 
 **File:** `pd_book_tools/layout/registry.py`; `pd_book_tools/layout/adapters/__init__.py`
 

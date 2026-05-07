@@ -9,7 +9,7 @@ returns the cached one. This matters because the model adapter loads a
 import threading
 import time
 from logging import getLogger
-from typing import Any, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 from pd_book_tools.layout.detector import (
     ContourDetector,
@@ -19,6 +19,16 @@ from pd_book_tools.layout.detector import (
 from pd_book_tools.layout.types import PageLayout
 
 logger = getLogger(__name__)
+
+# Built-in adapter keys — reserved against shadowing by user registrations.
+_BUILTIN_KEYS = frozenset({"none", "contour", "pp-doclayout-plus-l"})
+
+# User-registered factory functions, populated by ``register_detector``.
+# A factory receives ``(device, confidence, checkpoint_path, **extra_kwargs)``
+# and returns a ``LayoutDetector``; the registry wraps the result in
+# ``_TimingDetector`` and memoises the same way it does for built-ins.
+_DetectorFactory = Callable[..., LayoutDetector]
+_USER_DETECTORS: dict[str, _DetectorFactory] = {}
 
 
 # A tuple whose first elements are (key, device, confidence, checkpoint_path)
@@ -88,6 +98,14 @@ def _build(
             confidence=confidence,
             checkpoint_path=checkpoint_path,
         )
+    factory = _USER_DETECTORS.get(key)
+    if factory is not None:
+        return factory(
+            device=device,
+            confidence=confidence,
+            checkpoint_path=checkpoint_path,
+            **extra_kwargs,
+        )
     raise ValueError(f"Unknown layout detector: {key!r}")
 
 
@@ -124,6 +142,16 @@ def get_detector(
             0.0,
             None,
         ) + tuple(sorted(detector_kwargs.items()))
+    elif key in _USER_DETECTORS:
+        # User-registered detectors may take extra kwargs; fold them into
+        # the cache key the same way ``contour`` does so distinct tunings
+        # memoise to distinct instances.
+        cache_key = (
+            key,
+            device,
+            confidence,
+            checkpoint_path,
+        ) + tuple(sorted(detector_kwargs.items()))
     else:
         if detector_kwargs:
             raise TypeError(
@@ -154,4 +182,66 @@ def clear_detector_cache() -> None:
         _DETECTOR_CACHE.clear()
 
 
-__all__ = ["clear_detector_cache", "get_detector"]
+def register_detector(key: str, factory: _DetectorFactory) -> None:
+    """Register a custom layout-detector adapter under ``key``.
+
+    The ``factory`` is called as
+    ``factory(device=..., confidence=..., checkpoint_path=..., **extra_kwargs)``
+    when :func:`get_detector` first sees a previously-uncached cache key.
+    The returned :class:`LayoutDetector` is wrapped in the same timing
+    wrapper as built-in adapters and memoised on
+    ``(key, device, confidence, checkpoint_path, sorted(extra_kwargs))``.
+
+    Built-in keys (``"none"``, ``"contour"``, ``"pp-doclayout-plus-l"``)
+    cannot be shadowed; re-registering an existing user key replaces the
+    previous factory and clears the detector cache so the next
+    :func:`get_detector` call rebuilds with the new factory.
+
+    Intended for downstream projects (e.g. ``pd-ocr-trainer``) that
+    produce custom fine-tuned checkpoints needing their own adapter
+    keys without modifying this registry's hard-coded chain.
+    """
+    if not isinstance(key, str) or not key:
+        raise ValueError("register_detector: key must be a non-empty string")
+    if key in _BUILTIN_KEYS:
+        raise ValueError(
+            f"register_detector: {key!r} is a built-in detector key and "
+            "cannot be overridden"
+        )
+    if not callable(factory):
+        raise TypeError("register_detector: factory must be callable")
+    with _CACHE_LOCK:
+        previous = _USER_DETECTORS.get(key)
+        _USER_DETECTORS[key] = factory
+        if previous is not None:
+            # Drop any cached instances built by the previous factory so
+            # subsequent ``get_detector`` calls pick up the new one.
+            stale = [k for k in _DETECTOR_CACHE if k and k[0] == key]
+            for k in stale:
+                _DETECTOR_CACHE.pop(k, None)
+
+
+def unregister_detector(key: str) -> None:
+    """Remove a previously-registered custom adapter.
+
+    Built-in keys cannot be unregistered. Unknown keys are silently
+    ignored so this is safe to call from test teardown.
+    """
+    if key in _BUILTIN_KEYS:
+        raise ValueError(
+            f"unregister_detector: {key!r} is a built-in detector key and "
+            "cannot be removed"
+        )
+    with _CACHE_LOCK:
+        if _USER_DETECTORS.pop(key, None) is not None:
+            stale = [k for k in _DETECTOR_CACHE if k and k[0] == key]
+            for k in stale:
+                _DETECTOR_CACHE.pop(k, None)
+
+
+__all__ = [
+    "clear_detector_cache",
+    "get_detector",
+    "register_detector",
+    "unregister_detector",
+]

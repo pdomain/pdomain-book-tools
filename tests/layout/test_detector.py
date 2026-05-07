@@ -12,8 +12,10 @@ from pd_book_tools.layout.detector import ContourDetector, NullDetector
 from pd_book_tools.layout.registry import (
     clear_detector_cache,
     get_detector,
+    register_detector,
+    unregister_detector,
 )
-from pd_book_tools.layout.types import RegionType
+from pd_book_tools.layout.types import PageLayout, RegionType
 
 
 @pytest.fixture(autouse=True)
@@ -180,3 +182,92 @@ class TestRegistry:
         assert len(results) == 8
         # All callers receive the same memoised instance.
         assert all(r is results[0] for r in results)
+
+
+class TestRegisterDetector:
+    """R-25: ``register_detector`` allows downstream projects (e.g.
+    ``pd-ocr-trainer``) to plug in custom adapter keys without modifying
+    the registry's hard-coded chain."""
+
+    def teardown_method(self, method):
+        # Each test registers its own keys; clean up so they don't leak.
+        for key in ("custom-x", "custom-y"):
+            try:
+                unregister_detector(key)
+            except ValueError:
+                pass
+
+    def _make_factory(self, calls):
+        def factory(*, device, confidence, checkpoint_path, **kwargs):
+            calls.append((device, confidence, checkpoint_path, dict(kwargs)))
+
+            class _Stub:
+                def detect(self, source):
+                    return PageLayout(
+                        regions=[],
+                        image_width=10,
+                        image_height=10,
+                        detector="custom-x",
+                    )
+
+            return _Stub()
+
+        return factory
+
+    def test_register_then_get(self):
+        calls = []
+        register_detector("custom-x", self._make_factory(calls))
+        det = get_detector("custom-x", device="cpu", confidence=0.7)
+        assert det is not None
+        # Factory invoked once with the forwarded args.
+        assert calls == [("cpu", 0.7, None, {})]
+
+    def test_register_memoises_per_kwargs(self):
+        calls = []
+        register_detector("custom-x", self._make_factory(calls))
+        a = get_detector("custom-x", scale=1)
+        b = get_detector("custom-x", scale=1)
+        c = get_detector("custom-x", scale=2)
+        assert a is b
+        assert a is not c
+        assert len(calls) == 2
+
+    def test_register_rejects_builtin_keys(self):
+        for key in ("none", "contour", "pp-doclayout-plus-l"):
+            with pytest.raises(ValueError, match="built-in"):
+                register_detector(key, lambda **_: None)
+
+    def test_register_requires_callable(self):
+        with pytest.raises(TypeError, match="callable"):
+            register_detector("custom-x", "not-callable")  # type: ignore[arg-type]
+
+    def test_register_requires_nonempty_key(self):
+        with pytest.raises(ValueError, match="non-empty"):
+            register_detector("", lambda **_: None)
+
+    def test_re_register_replaces_and_clears_cache(self):
+        calls_a = []
+        calls_b = []
+        register_detector("custom-x", self._make_factory(calls_a))
+        get_detector("custom-x")
+        # Replace factory; previously-cached instance must be evicted so
+        # the next call goes through the new factory.
+        register_detector("custom-x", self._make_factory(calls_b))
+        get_detector("custom-x")
+        assert len(calls_a) == 1
+        assert len(calls_b) == 1
+
+    def test_unregister_drops_cache_and_makes_key_unknown(self):
+        register_detector("custom-x", self._make_factory([]))
+        get_detector("custom-x")
+        unregister_detector("custom-x")
+        with pytest.raises(ValueError, match="Unknown layout detector"):
+            get_detector("custom-x")
+
+    def test_unregister_unknown_key_is_noop(self):
+        # Safe to call from teardown without tracking what was registered.
+        unregister_detector("never-registered")
+
+    def test_unregister_rejects_builtin(self):
+        with pytest.raises(ValueError, match="built-in"):
+            unregister_detector("contour")
