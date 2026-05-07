@@ -218,29 +218,33 @@ plates, upside-down scans, the Peutinger map fixture) shipped as
 
 ## Open — developer tooling
 
-### dev-local-aware `upgrade-deps` flow
+### dev-local-aware `upgrade-deps` flow — partial
 
-`make upgrade-deps` ends in `uv sync --group dev`, which silently
-clobbers any dev-local venv state — editable sibling pd-* checkouts,
-`[gpu]` extras, doctr-from-git overrides — back to the canonical
-published / CPU baseline. Workspace-wide standardization across all
-`pd-*` repos. Spec lives in
+Detection + guard shipped: `scripts/check_dev_local.py` reports
+dev-local mode (sibling pd-* editables, `[gpu]` extra installed,
+`.venv/.pd-dev-local` marker, or `PD_DEV_LOCAL=1` env var) with
+exit-code contract (0 canonical / 1 dev-local) and a `--quiet`
+mode for Makefile branching. `make upgrade-deps` now refuses with
+a pointer to `make upgrade-deps-local` when dev-local is detected;
+`make upgrade-deps-local` runs the canonical sync then re-applies
+the `[gpu]` extra via `make sync-gpu`. Spec
 [`docs/planning/dev-local-upgrade-flow-spec.md`](planning/dev-local-upgrade-flow-spec.md).
 
-Foundation-library angle: this repo also defines the **detection
-contract** consumed by every downstream `pd-*` repo — they probe
-`uv pip show pd-book-tools` for an `Editable project location:`
-field. Once `make dev-local` lands here it MUST install
-`pd-book-tools` (and any sibling pd-* checkouts) editably so that
-field actually appears; a non-editable shortcut would silently break
-detection in every consumer.
+Still open:
 
-Implementation pass (separate change): add `_check_dev_local`,
-guard `upgrade-deps`, add `upgrade-deps-local`, optionally introduce
-`make dev-local` + `.venv/.pd-dev-local` marker. Pre-existing
-`make sync-gpu` (Makefile:87) already does conditional `--extra gpu`
-syncing on GPU autodetect; the dev-local detection should compose
-with it cleanly.
+- **`make dev-local` recipe.** No first-class entry point yet that
+  enters dev-local mode (e.g. installs sibling `pd-*` checkouts
+  editably + writes the `.venv/.pd-dev-local` marker). Today users
+  arrive at dev-local mode by running `make sync-gpu` on a GPU box
+  or layering manual `uv pip install -e ...` calls. The detection
+  catches both, but a one-shot recipe is still missing — its absence
+  means downstream `pd-*` repos can't tell users "run `make dev-local`
+  in pd-book-tools first."
+- **Doctr-from-git signal.** `python-doctr` installed from git is a
+  dev-local override (the layout-detector fork-pin work depends on
+  it), but the current detector only flags package-level signals it
+  can read from `uv pip list --format=json`. Adding a doctr-source
+  probe would catch this without a marker file.
 
 ## Done (archived from PLAN-layout-aware-ocr.md)
 

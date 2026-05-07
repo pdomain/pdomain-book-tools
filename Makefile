@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local sync-gpu test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -94,12 +94,30 @@ sync-gpu: ## Sync the [gpu] extra (CuPy) when an NVIDIA GPU is auto-detected; no
 	fi
 
 
-upgrade-deps: ## Upgrade dependencies and sync local environment
+check-dev-local: ## Print whether the venv is in dev-local mode (exit 1 if so, 0 if canonical)
+	@uv run python scripts/check_dev_local.py
+
+upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if dev-local — see upgrade-deps-local)
+	@if ! uv run python scripts/check_dev_local.py --quiet; then \
+	  uv run python scripts/check_dev_local.py >&2 || true; \
+	  echo "" >&2; \
+	  echo "❌ Refusing to clobber dev-local overrides. Run 'make upgrade-deps-local' instead." >&2; \
+	  exit 1; \
+	fi
 	@echo "⬆️ Upgrading dependency lockfile..."
 	uv lock --upgrade
 	@echo "📦 Syncing upgraded dependencies..."
 	uv sync --group dev
 	@echo "✅ Dependencies upgraded and environment synced!"
+
+upgrade-deps-local: ## Upgrade dependencies, then restore dev-local overrides ([gpu] extra if GPU detected)
+	@echo "⬆️ Upgrading dependency lockfile (dev-local mode)..."
+	uv lock --upgrade
+	@echo "📦 Syncing canonical baseline first..."
+	uv sync --group dev
+	@echo "🔁 Restoring dev-local overrides..."
+	@$(MAKE) --no-print-directory sync-gpu
+	@echo "✅ Dependencies upgraded; dev-local overrides restored."
 
 lint: ## Run linting checks
 	@echo "🔍 Running linting checks..."
