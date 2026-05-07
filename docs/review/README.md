@@ -5,12 +5,20 @@ Full library review conducted May 2026 using 7 parallel agents, one per module g
 
 ## Files
 
+The active docs (`bugs-*.md`, `refactors.md`) hold **only open work**.
+Closed entries are moved into [`archive/`](archive/) — see the
+**Workflow per iteration** below.
+
 | File | Contents |
 |------|----------|
-| [bugs-high.md](bugs-high.md) | 21 critical bugs — data corruption, definite crashes, wrong output |
-| [bugs-medium.md](bugs-medium.md) | 30 medium-severity bugs — incorrect behavior on realistic inputs |
-| [bugs-low.md](bugs-low.md) | 40 low-severity bugs — edge-case failures, misleading errors, minor correctness |
-| [refactors.md](refactors.md) | 30 refactor opportunities — structural, design, and API improvements |
+| [bugs-high.md](bugs-high.md) | Open high-severity bugs (active) — currently empty; all 21 closed |
+| [bugs-medium.md](bugs-medium.md) | Open medium-severity bugs (active) — currently empty; all 30 closed |
+| [bugs-low.md](bugs-low.md) | Open low-severity bugs (active) — currently empty; all 40 closed |
+| [refactors.md](refactors.md) | Open refactor opportunities (active) — 4 deferred + R-15 partial + R-16 |
+| [archive/bugs-high.md](archive/bugs-high.md) | All closed high-severity entries (FIXED / STALE), with original text + resolution notes |
+| [archive/bugs-medium.md](archive/bugs-medium.md) | All closed medium-severity entries |
+| [archive/bugs-low.md](archive/bugs-low.md) | All closed low-severity entries |
+| [archive/refactors.md](archive/refactors.md) | Closed refactor entries (FIXED / DECLINED / FIXED-with-deprecation) |
 
 ## Highest-priority fixes
 
@@ -1158,10 +1166,20 @@ coordinated downstream changes in pd-* consumer repos.
 2. Write a failing test that reproduces the symptom from the review doc.
 3. Implement minimal fix; re-run test; run module test suite for regressions.
 4. Commit `fix(<module>): <one-line>` referencing the review ID in the body.
-5. Edit `docs/review/bugs-*.md`: prepend `[FIXED in <short-sha>]` and wrap the
-   heading text in `~~...~~` (matching H-01..H-03 format).
-6. Update **Fixed so far** and **Next pick** in this README.
-7. Commit `docs(review): mark H-XX fixed`.
+5. **Move** the entry from `docs/review/bugs-*.md` (or `refactors.md`)
+   into the matching `docs/review/archive/<file>.md`, prepending
+   `[FIXED in <short-sha>]` (or `[STALE — verified in <sha>]`,
+   `[DECLINED — ...]`, etc.) to the heading and wrapping it in
+   `~~...~~`. **Do not leave a FIXED/DEFERRED/STALE entry in the
+   active doc** — the active docs hold only open work. For partially
+   fixed entries, leave the entry in the active doc but rewrite it to
+   describe ONLY the remaining work, and move the closed sub-parts
+   to the archive.
+6. Update **Fixed so far** and **Next pick** in this README's Loop
+   progress section (these still log the full per-iteration history
+   and are intentionally not pruned).
+7. Commit `docs(review): mark H-XX fixed` (or `docs(review): archive
+   H-XX`).
 
 ## Modules reviewed
 
