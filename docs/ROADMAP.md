@@ -104,109 +104,6 @@ splitter shouldn't break on a sidenote that produces a narrow third
 column. Currently rare in the PGDP corpus, so this is a follow-up to
 the glyph-size work, not standalone.
 
-### Aspect-ratio control in `rescale_image` (follow-up to R-24)
-
-Commit `9b8f651` (R-24) deprecated the `aspect_ratio` parameter in
-both rescale backends because the parameter was accepted but unused —
-the function always preserved the source aspect ratio. On reflection,
-there *is* a real use case for aspect-ratio-aware rescale: at minimum,
-the existing downstream caller
-(`pd-prep-for-pgdp/src/pd_prep_for_pgdp/core/pipeline/process_page.py:154`,
-which passes `aspect_ratio=cfg.page_h_w_ratio` and which spec
-`pd-prep-for-pgdp/specs/06-page-workbench.md:502` documents) was
-written assuming the parameter clamps the long side to a target
-page-shape ratio. R-24's deprecation closed the silent-no-op
-behaviour, but it didn't answer the underlying question: should
-rescale support an aspect-ratio option, and if so, with what
-semantics?
-
-This entry exists to capture that the next implementing session must
-**design the semantics first** — the user has flagged the need but
-not pinned the exact shape.
-
-#### Backends affected
-
-- `pd_book_tools/image_processing/cv2_processing/rescale.py` (the
-  `rescale_image` function; currently emits `DeprecationWarning` on
-  non-default `aspect_ratio`).
-- `pd_book_tools/image_processing/cupy_processing/rescale.py`
-  (the GPU `rescale_image_gpu` equivalent — same deprecated parameter
-  shape).
-
-Both backends must end up with the same public surface; downstream
-code branches on availability of cupy, not on a different signature.
-
-#### Rationale — what "aspect-ratio control" might mean
-
-Several distinct features get conflated under "aspect ratio". The
-implementing session must decide which one(s) the option actually
-covers:
-
-1. **Long-side clamp to a target page shape.** Cap the long side at
-   `target_short_side * aspect_ratio` so an unusually tall scan (e.g.
-   a page that includes margin junk) gets cropped/clamped down to the
-   canonical book-page proportion. This is what
-   `pd-prep-for-pgdp` was originally trying to do.
-2. **Aspect-preserving resize when only one dimension is supplied.**
-   Caller passes `target_width` *or* `target_height` and rescale
-   computes the other from the source aspect. Today the only knob is
-   `target_short_side`, which already preserves source aspect — so
-   this only matters if a `target_long_side` / `target_width` /
-   `target_height` knob is added.
-3. **Aspect override (stretch / letterbox / crop).** Caller passes a
-   target ratio and rescale either stretches, letterboxes (pad), or
-   crops to match. This is the most invasive option and the least
-   likely to be wanted for OCR pipelines, but flagging it here so it
-   gets explicitly ruled in or out.
-
-#### Open questions for the implementing session
-
-Resolve these before writing code:
-
-- **Type of `aspect_ratio`:** float (target H/W or W/H — which?), a
-  `(w, h)` tuple, or an enum like
-  `Literal["preserve", "stretch", "letterbox", "crop", "clamp_long_side"]`?
-  Pure float is what the deprecated param was; an enum better
-  expresses the actual semantic decisions above.
-- **Interaction with existing `target_short_side`:** if both
-  `target_short_side` and an aspect-ratio override are passed, which
-  wins? Does aspect-ratio control imply a different primary
-  dimension knob (e.g. `target_long_side`)?
-- **Naming vs. R-24:** R-24's deprecation warning fires on any
-  non-default `aspect_ratio` value. Re-introducing the same parameter
-  name with different semantics would surprise callers who saw the
-  warning and dropped the keyword. Options:
-  - Pick a new parameter name (e.g. `aspect_mode`,
-    `target_aspect_ratio`, `long_side_clamp`) and leave R-24's
-    deprecation in place until a future major removes it.
-  - Reuse `aspect_ratio` but bump a major version and document the
-    semantic change in CHANGELOG.
-  Recommend the new-name path unless there's a strong reason to
-  reuse.
-- **Default behaviour:** the current default
-  (`_ASPECT_RATIO_DEFAULT = 1.65`) is silently no-op. Whatever the
-  new option is, its default must continue to preserve source aspect
-  exactly so existing callers don't shift output silently.
-- **Downstream coordination:** any new option needs a paired update in
-  `pd-prep-for-pgdp/core/pipeline/process_page.py` and its
-  `specs/06-page-workbench.md` entry — flag this in the implementing
-  session's hand-off so the downstream agent picks it up promptly
-  rather than living on the deprecation warning indefinitely.
-- **Both backends in lock-step:** whichever signature lands must ship
-  in the cv2 *and* cupy backends in the same change. Drifting them
-  re-creates the original R-24 confusion.
-
-#### Reference
-
-- Commit `9b8f651` — R-24, the deprecation that motivated this
-  follow-up.
-- `docs/review/refactors.md` — R-24 entry (search for "R-24") explains
-  why deprecation was chosen over implementation last time.
-- `pd-prep-for-pgdp/src/pd_prep_for_pgdp/core/pipeline/process_page.py:154`
-  — the live downstream caller still passing `aspect_ratio=...`.
-- `pd-prep-for-pgdp/specs/06-page-workbench.md:502` — downstream spec
-  expecting aspect-ratio-aware rescale.
-
 ## Open — page handling
 
 ### Page rotation — already shipped
@@ -271,6 +168,7 @@ the old plan:
 | Custom-detector extensibility for downstream fine-tunes | ✅ Shipped via `register_detector` / `unregister_detector` in `pd_book_tools/layout/registry.py` (R-25). Lets pd-ocr-trainer plug a custom adapter under its own key without modifying the built-in chain. |
 | Optional `[layout]` install extra | ❌ Not shipped — `transformers` was promoted to mandatory `dependencies`. The install footprint is ~40 MB on top of DocTR; users get layout out of the box. The original plan's `pd_book_tools[layout]` extra never shipped. Documented here so future readers don't go looking for it. |
 | Page-model / OCR JSON output format reference | ✅ Shipped at [`docs/architecture/page-model.md`](architecture/page-model.md). Doc-vs-code drift gated by `tests/test_page_model_doc.py` (vocabulary lists must match `Block.ALLOWED_*_LABELS` and `RegionType` enum). pd-ocr-cli docs can now redirect format questions here. |
+| Aspect-ratio control in `rescale_image` (R-24 follow-up) | ✅ Dropped entirely — `aspect_ratio` parameter removed from `rescale_image`, `rescale_image_gpu`, and `np_uint8_rescale_image`. Aspect-shape applied downstream via `map_content_onto_scaled_canvas`, not at rescale time. New `long_side_clamp` option deferred until a fixture demonstrates need. Breaking change; downstream `pd-prep-for-pgdp/core/pipeline/process_page.py` caller must drop the kwarg. |
 
 ## Out of scope (still)
 

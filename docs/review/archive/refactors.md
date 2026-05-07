@@ -375,7 +375,7 @@ rest of the codebase.
 
 ---
 
-## [FIXED — deprecation warning emitted on non-default values; behavior preserved] ~~R-24 — `aspect_ratio` parameter in both `rescale` backends is accepted but never used~~
+## [FIXED — parameter removed entirely (was: deprecation warning on non-default values)] ~~R-24 — `aspect_ratio` parameter in both `rescale` backends is accepted but never used~~
 
 **Files:**
 
@@ -399,6 +399,19 @@ regressions on production pipelines. Both backends now emit a
 existing `1.65` default is silent so existing default-using callers
 don't get spammed). The warning will be promoted to removal in a
 future major; downstream callers should drop the keyword argument.
+
+**Update — followed up by removing the parameter entirely.** Rather
+than re-implementing aspect clamping inside `rescale_image`, the design
+review concluded that aspect-shape control already lives downstream in
+`pd-prep-for-pgdp`'s `map_content_onto_scaled_canvas`, applied *after*
+rescale. The rescale-level parameter was therefore silent-no-op for a
+good reason — there was nothing meaningful for it to do. The followup
+slice removed `aspect_ratio` from `rescale_image`, `rescale_image_gpu`,
+and `np_uint8_rescale_image` outright (passing the kwarg now raises
+`TypeError`). If a future fixture demonstrates a "tall junky scan
+polluting canvas-padded output" case, a new parameter named
+`long_side_clamp` (new name, not the loaded `aspect_ratio` token) can
+be added then. See ROADMAP "Done" entry.
 
 ---
 

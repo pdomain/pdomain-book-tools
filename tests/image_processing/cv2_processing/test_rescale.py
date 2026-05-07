@@ -1,5 +1,7 @@
 """Tests for cv2_processing.rescale module."""
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -13,7 +15,7 @@ from pd_book_tools.image_processing.cv2_processing.rescale import (  # noqa: E40
 class TestRescaleImage:
     def test_portrait_image(self):
         img = np.zeros((400, 200), dtype=np.uint8)
-        out = rescale_image(img, aspect_ratio=1.65, target_short_side=100)
+        out = rescale_image(img, target_short_side=100)
         # Width is the short side, so it should equal target_short_side
         assert out.shape[1] == 100
         # The long side should scale by short_side / orig_short = 100/200 = 0.5
@@ -21,7 +23,7 @@ class TestRescaleImage:
 
     def test_landscape_image(self):
         img = np.zeros((200, 400), dtype=np.uint8)
-        out = rescale_image(img, aspect_ratio=1.65, target_short_side=100)
+        out = rescale_image(img, target_short_side=100)
         # Height is the short side, so it should equal target_short_side
         assert out.shape[0] == 100
         assert out.shape[1] == 200
@@ -32,24 +34,18 @@ class TestRescaleImage:
         assert out.ndim == 3
         assert out.shape[2] == 3
 
-    def test_non_default_aspect_ratio_warns_unused(self):
-        # R-24: aspect_ratio is deprecated and has no effect. A non-default
-        # value emits DeprecationWarning. The output is identical to the
-        # call without the parameter — i.e. always preserves source ratio.
-        img = np.zeros((400, 200), dtype=np.uint8)
-        with pytest.warns(DeprecationWarning, match="aspect_ratio"):
-            out_explicit = rescale_image(img, aspect_ratio=2.5, target_short_side=100)
-        out_default = rescale_image(img, target_short_side=100)
-        assert out_explicit.shape == out_default.shape
+    def test_signature_has_no_aspect_ratio_param(self):
+        # The deprecated `aspect_ratio` parameter was removed entirely.
+        # Aspect-shape control is applied downstream via
+        # `map_content_onto_scaled_canvas` (in pd-prep-for-pgdp), not at
+        # rescale time. Any future re-introduction must use a new name
+        # (e.g. `long_side_clamp`) — see ROADMAP "Done" entry.
+        params = inspect.signature(rescale_image).parameters
+        assert "aspect_ratio" not in params
 
-    def test_default_aspect_ratio_does_not_warn(self):
-        # The 1.65 default-sentinel value is silent — only non-default
-        # values emit the warning, so existing callers using the default
-        # don't get spammed.
+    def test_aspect_ratio_kwarg_now_raises_typeerror(self):
+        # Defensive: passing the removed kwarg should fail cleanly with
+        # TypeError rather than silently no-op as it did pre-R-24.
         img = np.zeros((400, 200), dtype=np.uint8)
-        import warnings as _w
-
-        with _w.catch_warnings():
-            _w.simplefilter("error", DeprecationWarning)
-            rescale_image(img, target_short_side=100)
-            rescale_image(img, aspect_ratio=1.65, target_short_side=100)
+        with pytest.raises(TypeError):
+            rescale_image(img, aspect_ratio=1.65, target_short_side=100)  # type: ignore[call-arg]

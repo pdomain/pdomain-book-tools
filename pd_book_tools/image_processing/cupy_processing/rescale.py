@@ -1,28 +1,10 @@
 from __future__ import annotations
 
 import logging
-import warnings
 
 import numpy as np
 
 from ._cupy_compat import cp, require_cupy
-
-# R-24: aspect_ratio is unused; warn when callers pass a non-default value.
-# Match the cv2 backend's sentinel-default approach for parity.
-_ASPECT_RATIO_DEFAULT = 1.65
-
-
-def _warn_deprecated_aspect_ratio(aspect_ratio: float) -> None:
-    if aspect_ratio != _ASPECT_RATIO_DEFAULT:
-        warnings.warn(
-            "rescale_image_gpu / np_uint8_rescale_image: aspect_ratio is "
-            "deprecated and has no effect. The function always preserves the "
-            "source image's aspect ratio. Drop the keyword argument; it will "
-            "be removed in a future major.",
-            DeprecationWarning,
-            stacklevel=3,  # surface caller of the public function
-        )
-
 
 try:
     from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
@@ -38,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 def rescale_image_gpu(
     img_cp: cp.ndarray,
-    aspect_ratio: float = _ASPECT_RATIO_DEFAULT,
     target_short_side: int = 1000,
 ) -> cp.ndarray:
     """
@@ -52,10 +33,9 @@ def rescale_image_gpu(
 
     img_cp: 2-D (grayscale) or 3-D (colour) uint8 CuPy array.
 
-    The ``aspect_ratio`` parameter is **deprecated and unused** (R-24);
-    a non-default value emits a ``DeprecationWarning``.
+    The deprecated ``aspect_ratio`` parameter was removed entirely; see the
+    cv2 backend docstring and ROADMAP "Done" for context.
     """
-    _warn_deprecated_aspect_ratio(aspect_ratio)
     require_cupy()
     height, width = img_cp.shape[:2]
 
@@ -102,18 +82,13 @@ def rescale_image_gpu(
 
 def np_uint8_rescale_image(
     img: np.ndarray,
-    aspect_ratio: float = _ASPECT_RATIO_DEFAULT,
     target_short_side: int = 1000,
 ) -> np.ndarray:
     """Transfers img to GPU, rescales, returns CPU uint8 array.
 
-    The ``aspect_ratio`` parameter is **deprecated and unused** (R-24);
-    a non-default value emits a ``DeprecationWarning``.
+    The deprecated ``aspect_ratio`` parameter was removed entirely; see the
+    cv2 backend docstring and ROADMAP "Done" for context.
     """
-    _warn_deprecated_aspect_ratio(aspect_ratio)
     require_cupy()
     img_cp = cp.asarray(img)
-    # Pass the default through so rescale_image_gpu doesn't re-warn.
-    return cp.asnumpy(
-        rescale_image_gpu(img_cp, _ASPECT_RATIO_DEFAULT, target_short_side)
-    )
+    return cp.asnumpy(rescale_image_gpu(img_cp, target_short_side))

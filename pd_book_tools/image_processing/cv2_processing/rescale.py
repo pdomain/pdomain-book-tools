@@ -1,42 +1,26 @@
 # Configure logging
 import logging
-import warnings
 
 import cv2
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# Sentinel for "caller did not pass aspect_ratio" so we can distinguish a
-# deliberate (legacy, no-op) call from a default-valued one and only warn
-# in the former case. R-24: the parameter is unused — the function always
-# preserves the source aspect ratio — but downstream callers
-# (pd-prep-for-pgdp/core/pipeline/process_page.py:154) pass it expecting
-# it to clamp the long side. Warn loudly rather than silently honor.
-_ASPECT_RATIO_DEFAULT = 1.65
-
 
 def rescale_image(
     img: np.ndarray,
-    aspect_ratio: float = _ASPECT_RATIO_DEFAULT,
     target_short_side: int = 1000,
 ):
     """Resize ``img`` so its short side equals ``target_short_side``.
 
-    The original aspect ratio is always preserved. The ``aspect_ratio``
-    parameter is **deprecated and unused**: a non-default value emits a
-    ``DeprecationWarning``. It will be removed in a future major. See
-    R-24 in ``docs/review/refactors.md``.
-    """
-    if aspect_ratio != _ASPECT_RATIO_DEFAULT:
-        warnings.warn(
-            "rescale_image(aspect_ratio=...) is deprecated and has no effect. "
-            "The function always preserves the source image's aspect ratio. "
-            "Drop the keyword argument; it will be removed in a future major.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+    The original aspect ratio is always preserved. Width and height scale
+    by a single factor of ``target_short_side / min(height, width)``.
 
+    The deprecated ``aspect_ratio`` parameter was removed entirely (see
+    ROADMAP "Done"). Aspect-shape clamping, when needed, is applied
+    downstream by ``map_content_onto_scaled_canvas`` in pd-prep-for-pgdp,
+    not at rescale time.
+    """
     height, width = img.shape[:2]
 
     logger.debug(f"height: {height} width: {width}")
