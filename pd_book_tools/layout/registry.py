@@ -116,6 +116,7 @@ def get_detector(
     device: str = "cpu",
     confidence: float = 0.5,
     checkpoint_path: str | None = None,
+    on_error: str = "raise",
     **detector_kwargs,
 ) -> LayoutDetector:
     """Return a memoised detector instance for ``key``.
@@ -131,7 +132,20 @@ def get_detector(
     ``max_area_frac``, ``min_aspect``, ``max_aspect``, ``close_kernel_px``)
     are forwarded to ``ContourDetector`` and *do* participate in the
     cache key.
+
+    ``on_error`` controls how build failures are surfaced. The default
+    ``"raise"`` re-raises the underlying exception (network error,
+    missing weights, OOM during model load, unknown key) — appropriate
+    for CLI flows that should fail fast. ``"log_and_null"`` instead
+    logs a single warning and returns a memoised :class:`NullDetector`
+    so batch callers (e.g. ``pd-prep-for-pgdp``) can survive transient
+    failures and fall back to the geometric reorg path.
     """
+    if on_error not in ("raise", "log_and_null"):
+        raise ValueError(
+            f"get_detector: on_error must be 'raise' or 'log_and_null', "
+            f"got {on_error!r}"
+        )
     if key == "contour":
         # confidence / checkpoint_path are meaningless for the rule-based
         # contour detector — collapse them to fixed values in the cache
@@ -172,7 +186,21 @@ def get_detector(
         cached = _DETECTOR_CACHE.get(cache_key)
         if cached is not None:
             return cached
-        inner = _build(key, device, confidence, checkpoint_path, detector_kwargs)
+        try:
+            inner = _build(key, device, confidence, checkpoint_path, detector_kwargs)
+        except Exception as exc:
+            if on_error == "log_and_null":
+                logger.warning(
+                    "get_detector: build failed for key=%r (%s: %s); "
+                    "falling back to NullDetector.",
+                    key,
+                    type(exc).__name__,
+                    exc,
+                )
+                wrapped = _TimingDetector(NullDetector())
+                _DETECTOR_CACHE[cache_key] = wrapped
+                return wrapped
+            raise
         wrapped = _TimingDetector(inner)
         _DETECTOR_CACHE[cache_key] = wrapped
         return wrapped

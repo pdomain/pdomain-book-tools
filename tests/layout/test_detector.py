@@ -184,6 +184,90 @@ class TestRegistry:
         assert all(r is results[0] for r in results)
 
 
+class TestDetectorFailureHardening:
+    """Detector failure hardening (ROADMAP `Detector failure hardening`).
+
+    ``get_detector(..., on_error=...)`` lets batch callers (e.g.
+    ``pd-prep-for-pgdp``) survive transient build failures (network,
+    OOM, missing weights) by falling back to a ``NullDetector`` instead
+    of aborting a long-running run. Default stays ``"raise"`` so the
+    CLI's existing fail-fast behaviour is preserved.
+    """
+
+    def teardown_method(self, method):
+        for key in ("failing-x",):
+            try:
+                unregister_detector(key)
+            except ValueError:
+                pass
+
+    def _failing_factory(self):
+        def factory(*, device, confidence, checkpoint_path, **kwargs):
+            raise RuntimeError("boom — model load failed")
+
+        return factory
+
+    def test_default_on_error_raises(self):
+        register_detector("failing-x", self._failing_factory())
+        with pytest.raises(RuntimeError, match="boom"):
+            get_detector("failing-x")
+
+    def test_explicit_on_error_raise(self):
+        register_detector("failing-x", self._failing_factory())
+        with pytest.raises(RuntimeError, match="boom"):
+            get_detector("failing-x", on_error="raise")
+
+    def test_on_error_log_and_null_returns_null_detector(self, caplog):
+        import logging
+
+        register_detector("failing-x", self._failing_factory())
+        with caplog.at_level(logging.WARNING, logger="pd_book_tools.layout.registry"):
+            det = get_detector("failing-x", on_error="log_and_null")
+        # Wrapped in _TimingDetector but exposes a NullDetector inner.
+        assert det is not None
+        layout = det.detect(_blank_page(100, 200))
+        assert layout.regions == []
+        assert layout.image_width == 100
+        assert layout.image_height == 200
+        # Logged once.
+        assert any("failing-x" in rec.message for rec in caplog.records)
+
+    def test_on_error_log_and_null_caches_null_so_second_call_does_not_rebuild(self):
+        register_detector("failing-x", self._failing_factory())
+        det_a = get_detector("failing-x", on_error="log_and_null")
+        det_b = get_detector("failing-x", on_error="log_and_null")
+        # Same memoised fallback — no rebuild attempt on second call.
+        assert det_a is det_b
+
+    def test_on_error_invalid_value_raises(self):
+        with pytest.raises(ValueError, match="on_error"):
+            get_detector("contour", on_error="silent")  # type: ignore[arg-type]
+
+    def test_unknown_key_with_log_and_null_still_falls_back(self, caplog):
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="pd_book_tools.layout.registry"):
+            det = get_detector("nonexistent-detector", on_error="log_and_null")
+        layout = det.detect(_blank_page(50, 80))
+        assert layout.regions == []
+        assert layout.image_width == 50
+
+    def test_timing_detector_per_page_failure_routes_through_caller(self):
+        """Per-page detect() failures are not swallowed inside the registry —
+        callers (``_TimingDetector`` wrapping the user inner) propagate so
+        the consumer can decide whether to swallow per-page exceptions.
+        """
+        from pd_book_tools.layout.registry import _TimingDetector
+
+        class _Boom:
+            def detect(self, source):
+                raise RuntimeError("OOM mid-batch")
+
+        wrapped = _TimingDetector(_Boom())
+        with pytest.raises(RuntimeError, match="OOM"):
+            wrapped.detect(_blank_page(10, 10))
+
+
 class TestRegisterDetector:
     """R-25: ``register_detector`` allows downstream projects (e.g.
     ``pd-ocr-trainer``) to plug in custom adapter keys without modifying
