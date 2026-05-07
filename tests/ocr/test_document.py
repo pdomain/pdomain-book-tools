@@ -587,3 +587,134 @@ def test_document_from_tesseract_handles_noncontiguous_block_numbers():
     assert block_word_counts == [1, 1], (
         f"Words mis-grouped across blocks: per-block counts {block_word_counts}"
     )
+
+
+# ---------------------------------------------------------------------------
+# R-16: per-level DocTR helper functions
+#
+# ``from_doctr_output`` now delegates to small per-level helpers so that
+# adapters can be reused (e.g. by tests, downstream tools, or future formats)
+# and reasoned about in isolation. These tests pin the helper contracts
+# directly — the high-level integration is covered by the ``sample_doctr_output``
+# tests above.
+# ---------------------------------------------------------------------------
+
+
+def test_word_from_doctr_preserves_confidence_and_geometry():
+    word = Document._word_from_doctr(
+        {
+            "value": "Hello",
+            "geometry": [[0.1, 0.2], [0.3, 0.4]],
+            "confidence": 0.87,
+        }
+    )
+    assert word.text == "Hello"
+    assert word.ocr_confidence == 0.87
+    assert word.bounding_box is not None
+
+
+def test_word_from_doctr_missing_geometry_yields_none_bbox():
+    # M-16: missing geometry must NOT raise; the word survives with bbox=None
+    word = Document._word_from_doctr({"value": "x", "confidence": 0.5})
+    assert word.text == "x"
+    assert word.bounding_box is None
+
+
+def test_word_from_doctr_missing_confidence_is_none_not_zero():
+    # L-19: missing confidence is "unknown", not "0% confident"
+    word = Document._word_from_doctr({"value": "x"})
+    assert word.ocr_confidence is None
+
+
+def test_line_from_doctr_builds_line_block_with_words():
+    line = Document._line_from_doctr(
+        {
+            "geometry": [[0.1, 0.1], [0.5, 0.2]],
+            "words": [
+                {"value": "a", "geometry": [[0.1, 0.1], [0.2, 0.2]], "confidence": 0.9},
+                {"value": "b", "geometry": [[0.3, 0.1], [0.4, 0.2]], "confidence": 0.8},
+            ],
+        }
+    )
+    assert [w.text for w in line.items] == ["a", "b"]
+    assert line.bounding_box is not None
+
+
+def test_block_from_doctr_wraps_in_block_paragraph_line_and_yields_artefact_siblings():
+    blocks = Document._block_from_doctr(
+        {
+            "geometry": [[0.1, 0.1], [0.5, 0.5]],
+            "lines": [
+                {
+                    "geometry": [[0.1, 0.1], [0.5, 0.2]],
+                    "words": [{"value": "hi", "geometry": [[0.1, 0.1], [0.2, 0.2]]}],
+                }
+            ],
+            "artefacts": [
+                {
+                    "geometry": [[0.6, 0.6], [0.7, 0.7]],
+                    "type": "barcode",
+                    "confidence": 0.4,
+                }
+            ],
+        }
+    )
+    # Canonical block + 1 artefact sibling.
+    assert len(blocks) == 2
+    canonical, artefact = blocks
+
+    # Canonical: BLOCK -> PARAGRAPH -> LINE -> Word
+    assert canonical.block_category.name == "BLOCK"
+    paragraph = canonical.items[0]
+    assert paragraph.block_category.name == "PARAGRAPH"
+    line = paragraph.items[0]
+    assert line.block_category.name == "LINE"
+    assert [w.text for w in line.items] == ["hi"]
+
+    # Artefact: empty items, role-labelled, attrs preserved
+    assert artefact.items == []
+    assert artefact.block_role_labels == ["artefact"]
+    assert artefact.additional_block_attributes is not None
+    assert artefact.additional_block_attributes["artefact_type"] == "barcode"
+    assert artefact.additional_block_attributes["artefact_confidence"] == 0.4
+
+
+def test_artefact_from_doctr_with_no_metadata_has_empty_attrs():
+    # ``Block`` normalizes ``additional_block_attributes`` to ``{}`` even
+    # when ``None`` is passed in, so what we pin here is that no spurious
+    # type/confidence keys leak in when DocTR didn't supply any.
+    block = Document._artefact_from_doctr({"geometry": [[0.0, 0.0], [0.1, 0.1]]})
+    assert block.block_role_labels == ["artefact"]
+    assert not block.additional_block_attributes
+
+
+def test_page_from_doctr_uses_dimensions_and_threads_original_text():
+    provenance = OCRProvenance(engine="doctr", models=[], engine_version="x")
+    page = Document._page_from_doctr(
+        page_data={
+            "dimensions": [1000, 800],
+            "blocks": [
+                {
+                    "geometry": [[0.1, 0.1], [0.5, 0.5]],
+                    "lines": [
+                        {
+                            "geometry": [[0.1, 0.1], [0.5, 0.2]],
+                            "words": [
+                                {
+                                    "value": "Hi",
+                                    "geometry": [[0.1, 0.1], [0.2, 0.2]],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        },
+        page_idx=0,
+        ocr_provenance=provenance,
+        original_text=["original"],
+    )
+    assert page.height == 1000
+    assert page.width == 800
+    assert page.original_ocr_tool_text == "original"
+    assert [w.text for w in page.words] == ["Hi"]

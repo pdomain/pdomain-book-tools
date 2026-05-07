@@ -259,6 +259,128 @@ class Document:
             source_identifier=source_identifier,
         )
 
+    @staticmethod
+    def _doctr_bbox(geometry: Any) -> BoundingBox | None:
+        """Return a ``BoundingBox`` from a DocTR geometry tuple, or ``None``.
+
+        DocTR emits geometry as a nested float tuple; absent/falsy geometry
+        means "not provided" (M-16), and the caller must preserve the
+        record without raising — pd-book-tools' invariant is to never
+        silently drop OCR-derived content.
+        """
+        if not geometry:
+            return None
+        return BoundingBox.from_nested_float(geometry)
+
+    @classmethod
+    def _word_from_doctr(cls, word_data: dict) -> Word:
+        """Build a ``Word`` from a DocTR word dict.
+
+        Geometry is guarded (M-16) and ``confidence`` is forwarded as-is so
+        a missing key remains ``None`` ("unknown") rather than ``0.0``
+        ("certain error") — see L-19.
+        """
+        return Word(
+            text=word_data.get("value", ""),
+            bounding_box=cls._doctr_bbox(word_data.get("geometry")),
+            ocr_confidence=word_data.get("confidence"),
+        )
+
+    @classmethod
+    def _line_from_doctr(cls, line_data: dict) -> Block:
+        """Build a ``Block(LINE)`` of ``Word`` children from a DocTR line dict."""
+        words = [cls._word_from_doctr(w) for w in line_data.get("words", [])]
+        return Block(
+            items=words,
+            bounding_box=cls._doctr_bbox(line_data.get("geometry")),
+            block_category=BlockCategory.LINE,
+            child_type=BlockChildType.WORDS,
+        )
+
+    @classmethod
+    def _artefact_from_doctr(cls, artefact_data: dict) -> Block:
+        """Build a role-labelled artefact ``Block`` from a DocTR artefact dict.
+
+        DocTR's block export carries non-text regions (stamps, barcodes, QR
+        codes, figures, unclassified blobs) under ``"artefacts"`` alongside
+        ``"lines"``. They have no words but we preserve them as sibling
+        page-level Blocks tagged ``role="artefact"`` (M-15) so consumers
+        can keep, render, or strip them on intent.
+        """
+        attrs: dict = {}
+        if "type" in artefact_data:
+            attrs["artefact_type"] = artefact_data["type"]
+        if "confidence" in artefact_data:
+            attrs["artefact_confidence"] = artefact_data["confidence"]
+        return Block(
+            items=[],
+            bounding_box=cls._doctr_bbox(artefact_data.get("geometry")),
+            block_category=BlockCategory.BLOCK,
+            child_type=BlockChildType.WORDS,
+            block_role_labels=["artefact"],
+            additional_block_attributes=attrs or None,
+        )
+
+    @classmethod
+    def _block_from_doctr(cls, block_data: dict) -> list[Block]:
+        """Expand a DocTR block dict into one canonical Block plus artefact siblings.
+
+        DocTR's data model is ``pages -> blocks -> lines -> words`` (no
+        paragraph layer). Tesseract produces ``Page -> BLOCK -> PARAGRAPH
+        -> LINE -> Word``. To give consumers a single canonical nesting
+        depth across adapters, this wraps DocTR's per-block grouping as
+        ``Block(BLOCK) -> Block(PARAGRAPH) -> Block(LINE) -> Word`` (M-14).
+        Artefacts are returned as sibling page-level blocks (M-15).
+        """
+        block_bbox = cls._doctr_bbox(block_data.get("geometry"))
+        lines = [cls._line_from_doctr(ln) for ln in block_data.get("lines", [])]
+        # The synthetic PARAGRAPH carries the same geometry as its parent
+        # BLOCK because DocTR provides only one grouping level — there is
+        # exactly one paragraph per block.
+        paragraph = Block(
+            items=lines,
+            bounding_box=block_bbox,
+            block_category=BlockCategory.PARAGRAPH,
+            child_type=BlockChildType.BLOCKS,
+        )
+        canonical_block = Block(
+            items=[paragraph],
+            bounding_box=block_bbox,
+            block_category=BlockCategory.BLOCK,
+            child_type=BlockChildType.BLOCKS,
+        )
+        result: list[Block] = [canonical_block]
+        for artefact_data in block_data.get("artefacts", []):
+            result.append(cls._artefact_from_doctr(artefact_data))
+        return result
+
+    @classmethod
+    def _page_from_doctr(
+        cls,
+        page_data: dict,
+        page_idx: int,
+        ocr_provenance: OCRProvenance,
+        original_text: Sequence[str] | None,
+    ) -> Page:
+        """Build a single ``Page`` from a DocTR page dict."""
+        height, width = page_data.get("dimensions", (0, 0))
+        blocks: list[Block] = []
+        for block_data in page_data.get("blocks", []):
+            blocks.extend(cls._block_from_doctr(block_data))
+
+        original_ocr_tool_text = None
+        if original_text is not None and page_idx < len(original_text):
+            original_ocr_tool_text = original_text[page_idx]
+
+        return Page(
+            page_index=page_idx,
+            width=width,
+            height=height,
+            items=blocks,
+            original_ocr_tool_text=original_ocr_tool_text,
+            ocr_provenance=deepcopy(ocr_provenance),
+        )
+
     @classmethod
     def from_doctr_output(
         cls,
@@ -285,135 +407,14 @@ class Document:
         ocr_provenance = cls._build_ocr_provenance(engine="doctr", metadata=metadata)
 
         for page_idx, page_data in enumerate(doctr_output.get("pages", [])):
-            height, width = page_data.get("dimensions", (0, 0))
-            blocks = []
-            for block_data in page_data.get("blocks", []):
-                if block_data.get("geometry"):
-                    block_bounding_box = BoundingBox.from_nested_float(
-                        block_data["geometry"]
-                    )
-                else:
-                    block_bounding_box = None
-
-                lines = []
-                for line_data in block_data.get("lines", []):
-                    if line_data.get("geometry"):
-                        line_bounding_box = BoundingBox.from_nested_float(
-                            line_data["geometry"]
-                        )
-                    else:
-                        line_bounding_box = None
-
-                    words = []
-                    for word_data in line_data.get("words", []):
-                        # M-16: guard ``geometry`` access to mirror the
-                        # block / line / artefact branches above. DocTR
-                        # is not formally guaranteed to emit geometry on
-                        # every word in every release, and a partial
-                        # word should not raise ``KeyError`` and tear
-                        # down the whole page — emit ``bounding_box=None``
-                        # so the word still flows through (project
-                        # invariant: never silently drop OCR content).
-                        if word_data.get("geometry"):
-                            word_bounding_box = BoundingBox.from_nested_float(
-                                word_data["geometry"]
-                            )
-                        else:
-                            word_bounding_box = None
-                        word = Word(
-                            text=word_data.get("value", ""),
-                            bounding_box=word_bounding_box,
-                            # L-19: a missing ``confidence`` means
-                            # "unknown", not "0% confident". ``Word``
-                            # explicitly types this as ``float | None``;
-                            # defaulting to ``0.0`` poisoned downstream
-                            # confidence-based filters and quality
-                            # reports with phantom certain-error scores.
-                            ocr_confidence=word_data.get("confidence"),
-                        )
-                        words.append(word)
-
-                    line = Block(
-                        items=words,
-                        bounding_box=line_bounding_box,
-                        block_category=BlockCategory.LINE,
-                        child_type=BlockChildType.WORDS,
-                    )
-
-                    lines.append(line)
-
-                # M-14: DocTR's data model is `pages -> blocks -> lines ->
-                # words` (no paragraph layer). Tesseract produces
-                # `Page -> BLOCK -> PARAGRAPH -> LINE -> Word`. To give
-                # consumers a single canonical nesting depth across
-                # adapters, wrap DocTR's per-block grouping as
-                # `Block(BLOCK) -> Block(PARAGRAPH) -> Block(LINE) -> Word`.
-                # The synthetic PARAGRAPH carries the same geometry as its
-                # parent BLOCK because DocTR provides only one grouping
-                # level — there is exactly one paragraph per block.
-                paragraph = Block(
-                    items=lines,
-                    bounding_box=block_bounding_box,
-                    block_category=BlockCategory.PARAGRAPH,
-                    child_type=BlockChildType.BLOCKS,
+            result._pages.append(
+                cls._page_from_doctr(
+                    page_data=page_data,
+                    page_idx=page_idx,
+                    ocr_provenance=ocr_provenance,
+                    original_text=original_text,
                 )
-                block = Block(
-                    items=[paragraph],
-                    bounding_box=block_bounding_box,
-                    block_category=BlockCategory.BLOCK,
-                    child_type=BlockChildType.BLOCKS,
-                )
-                blocks.append(block)
-
-                # M-15: DocTR's block export carries both ``"lines"`` (text)
-                # and ``"artefacts"`` (non-text regions: stamps, barcodes,
-                # QR codes, figures, unclassified blobs). The adapter
-                # previously iterated only ``"lines"``, silently discarding
-                # every artefact. pd-book-tools' invariant is to never
-                # silently drop OCR-derived content, so preserve each
-                # artefact as a sibling top-level Block on the page,
-                # role-labelled ``"artefact"`` and carrying DocTR's
-                # ``type`` / ``confidence`` in additional_block_attributes.
-                # ``items`` is empty (artefacts are non-text), so
-                # ``page.words`` is unaffected; consumers can filter on the
-                # role label to keep, render, or strip them.
-                for artefact_data in block_data.get("artefacts", []):
-                    if artefact_data.get("geometry"):
-                        artefact_bounding_box = BoundingBox.from_nested_float(
-                            artefact_data["geometry"]
-                        )
-                    else:
-                        artefact_bounding_box = None
-                    artefact_attrs: dict = {}
-                    if "type" in artefact_data:
-                        artefact_attrs["artefact_type"] = artefact_data["type"]
-                    if "confidence" in artefact_data:
-                        artefact_attrs["artefact_confidence"] = artefact_data[
-                            "confidence"
-                        ]
-                    artefact_block = Block(
-                        items=[],
-                        bounding_box=artefact_bounding_box,
-                        block_category=BlockCategory.BLOCK,
-                        child_type=BlockChildType.WORDS,
-                        block_role_labels=["artefact"],
-                        additional_block_attributes=artefact_attrs or None,
-                    )
-                    blocks.append(artefact_block)
-
-            original_ocr_tool_text = None
-            if original_text is not None and page_idx < len(original_text):
-                original_ocr_tool_text = original_text[page_idx]
-
-            page = Page(
-                page_index=page_idx,
-                width=width,
-                height=height,
-                items=blocks,
-                original_ocr_tool_text=original_ocr_tool_text,
-                ocr_provenance=deepcopy(ocr_provenance),
             )
-            result._pages.append(page)
 
         result._sort_pages()
 
