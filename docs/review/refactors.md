@@ -488,7 +488,7 @@ rest of the codebase.
 
 ---
 
-## R-24 — `aspect_ratio` parameter in both `rescale` backends is accepted but never used
+## [FIXED — deprecation warning emitted on non-default values; behavior preserved] ~~R-24 — `aspect_ratio` parameter in both `rescale` backends is accepted but never used~~
 
 **Files:**
 
@@ -502,6 +502,16 @@ silently get the wrong behavior.
 
 **Direction:** either implement the clamping (cap long side at `target_short_side * aspect_ratio`),
 or remove the parameter from both signatures.
+
+Resolved by deprecating the parameter rather than implementing the
+clamping. `pd-prep-for-pgdp/core/pipeline/process_page.py:154` actively
+passes `aspect_ratio=cfg.page_h_w_ratio` thinking it does something —
+silently changing the math underneath that caller would risk
+regressions on production pipelines. Both backends now emit a
+`DeprecationWarning` only when a non-default value is passed (the
+existing `1.65` default is silent so existing default-using callers
+don't get spammed). The warning will be promoted to removal in a
+future major; downstream callers should drop the keyword argument.
 
 ---
 
