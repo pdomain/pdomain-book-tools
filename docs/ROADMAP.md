@@ -230,21 +230,24 @@ a pointer to `make upgrade-deps-local` when dev-local is detected;
 the `[gpu]` extra via `make sync-gpu`. Spec
 [`docs/planning/dev-local-upgrade-flow-spec.md`](planning/dev-local-upgrade-flow-spec.md).
 
+`make dev-local` recipe shipped: runs `sync-gpu` (which applies the
+`[gpu]` extra when an NVIDIA GPU is auto-detected) and writes the
+`.venv/.pd-dev-local` marker via `scripts/write_dev_local_marker.py`.
+Lifecycle is anchored to the venv — `make remove-venv` deletes the
+marker automatically. Downstream `pd-*` repos can now tell users
+"run `make dev-local` in pd-book-tools first" with a stable contract.
+
 Still open:
 
-- **`make dev-local` recipe.** No first-class entry point yet that
-  enters dev-local mode (e.g. installs sibling `pd-*` checkouts
-  editably + writes the `.venv/.pd-dev-local` marker). Today users
-  arrive at dev-local mode by running `make sync-gpu` on a GPU box
-  or layering manual `uv pip install -e ...` calls. The detection
-  catches both, but a one-shot recipe is still missing — its absence
-  means downstream `pd-*` repos can't tell users "run `make dev-local`
-  in pd-book-tools first."
-- **Doctr-from-git signal.** `python-doctr` installed from git is a
-  dev-local override (the layout-detector fork-pin work depends on
-  it), but the current detector only flags package-level signals it
-  can read from `uv pip list --format=json`. Adding a doctr-source
-  probe would catch this without a marker file.
+- **Doctr-from-git signal.** Whether `python-doctr` installed from a
+  non-canonical URL (a contributor's fork rather than
+  `mindee/doctr.git`) should auto-flag dev-local without a marker
+  file. The current detector only inspects `uv pip list --format=json`,
+  which doesn't expose the install URL — a probe would have to read
+  doctr's `direct_url.json` from dist-info. Design question: which
+  URLs count as "non-canonical" given pyproject already pins doctr
+  from `mindee/doctr.git` (so canonical installs leave a `vcs_info`
+  block too). Deferred until a concrete fork-pin workflow needs it.
 
 ## Done (archived from PLAN-layout-aware-ocr.md)
 

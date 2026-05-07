@@ -128,10 +128,12 @@ for every consumer.
 
 ## 4. In-repo dev-local mode
 
-This repo doesn't currently have a `make dev-local` recipe. The
-signals that would put *this* repo's venv into dev-local mode are
-narrower than for downstream repos (it has no pd-* siblings to
-install editably), but still real:
+This repo's `make dev-local` recipe runs `sync-gpu` (which applies
+the `[gpu]` extra when an NVIDIA GPU is auto-detected) and writes
+the `.venv/.pd-dev-local` marker via
+`scripts/write_dev_local_marker.py`. The signals that put *this*
+repo's venv into dev-local mode are narrower than for downstream
+repos (it has no pd-* siblings to install editably), but still real:
 
 - `[gpu]` extra active (`uv sync --group dev --extra gpu` —
   `make sync-gpu` does this conditionally on GPU autodetect).
