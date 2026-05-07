@@ -23,6 +23,21 @@ dependencies = [
     "numpy (>=2.2,<3)",
     "opencv-contrib-python>=4.12.0.88",
     "pandas>=2.2.3",
+    # Pillow was previously a transitive dep (via matplotlib / others). It is
+    # now declared directly because pd_book_tools owns its image-format
+    # contract: pillow-heif / pillow-avif-plugin both register decoders with
+    # Pillow at import time, so we need an explicit version contract.
+    "Pillow>=10.0",
+    # HEIF/HEIC decode via libheif (LGPL-3) + libde265 (LGPL-3). pillow-heif
+    # itself is BSD-3. We rely on Python's dynamic-loading model (LGPL §6 —
+    # explicitly permits dynamic linking with a non-LGPL caller) to remain
+    # compatible with this project's Unlicense terms; do not statically link
+    # or bundle libheif into a derived binary. We only ever decode
+    # (never encode HEVC), so the x265 GPL/patent path does not apply.
+    "pillow-heif>=0.18",
+    # AVIF decode via libaom (BSD-2) through pillow-avif-plugin (MIT) —
+    # fully permissive, no LGPL caveats.
+    "pillow-avif-plugin>=1.4",
     "pytesseract (>=0.3.13,<0.4.0)",
     "python-doctr",
     "regex (>=2024.11.6,<2025.0.0)",
