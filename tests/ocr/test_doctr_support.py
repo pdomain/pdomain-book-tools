@@ -520,3 +520,138 @@ class TestGetFinetunedTorchDoctrPredictor:
         # torch_load should have been called with map_location="cuda:0"
         load_kwargs = fake_torch.load.call_args.kwargs
         assert load_kwargs["map_location"] == "cuda:0"
+
+
+class TestR15ExtractedHelpers:
+    """Unit tests for the R-15 finishing extractions:
+
+    - ``_select_torch_device`` (CUDA > MPS > CPU)
+    - ``_build_doctr_arch`` (factory lookup with fallback)
+    - ``_assemble_doctr_predictor`` (det+reco -> wrapped OCRPredictor)
+    """
+
+    def test_select_torch_device_cuda(self, monkeypatch):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=True)
+        fake_torch.backends.mps.is_available = MagicMock(return_value=False)
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+
+        from pd_book_tools.ocr.doctr_support import _select_torch_device
+
+        assert _select_torch_device() == ("cuda", "cuda:0")
+
+    def test_select_torch_device_mps(self, monkeypatch):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+        fake_torch.backends.mps.is_available = MagicMock(return_value=True)
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+
+        from pd_book_tools.ocr.doctr_support import _select_torch_device
+
+        assert _select_torch_device() == ("mps", "mps")
+
+    def test_select_torch_device_cpu(self, monkeypatch):
+        fake_torch = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+        # No MPS attribute available
+        fake_torch.backends.mps = None
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+
+        from pd_book_tools.ocr.doctr_support import _select_torch_device
+
+        assert _select_torch_device() == ("cpu", "cpu")
+
+    def test_build_doctr_arch_known_name(self, monkeypatch):
+        fake_models_mod = MagicMock()
+        sentinel = object()
+        fake_models_mod.parseq = MagicMock(return_value=sentinel)
+
+        # _build_doctr_arch imports crnn_vgg16_bn / db_resnet50 from doctr.models
+        # for the fallback path. Stub the doctr.models module so the import
+        # inside the helper resolves.
+        fake_doctr_models = MagicMock()
+        fake_doctr_models.crnn_vgg16_bn = MagicMock()
+        fake_doctr_models.db_resnet50 = MagicMock()
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_doctr_models)
+
+        from pd_book_tools.ocr.doctr_support import _build_doctr_arch
+
+        result = _build_doctr_arch("parseq", fake_models_mod, vocab="abc")
+        assert result is sentinel
+        fake_models_mod.parseq.assert_called_once_with(vocab="abc")
+
+    def test_build_doctr_arch_unknown_falls_back_to_crnn(self, monkeypatch):
+        # Unknown recognition-style name should fall back to crnn_vgg16_bn
+        sentinel = object()
+        # Configure attribute fallback via __getattr__-style explicit attrs
+        fake_models_mod_dict = {"crnn_vgg16_bn": MagicMock(return_value=sentinel)}
+
+        class _Stub:
+            def __getattr__(self, name):
+                if name in fake_models_mod_dict:
+                    return fake_models_mod_dict[name]
+                raise AttributeError(name)
+
+        stub = _Stub()
+        # Module-level fallback factories also need to be importable
+        fake_doctr_models = MagicMock()
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_doctr_models)
+
+        from pd_book_tools.ocr.doctr_support import _build_doctr_arch
+
+        # 'mystery_arch' isn't a detection-style name → fallback to crnn_vgg16_bn
+        result = _build_doctr_arch("mystery_arch", stub, vocab="x")
+        assert result is sentinel
+
+    def test_build_doctr_arch_unknown_detection_style_falls_back_to_db_resnet50(
+        self, monkeypatch
+    ):
+        sentinel = object()
+        fake_models_mod_dict = {"db_resnet50": MagicMock(return_value=sentinel)}
+
+        class _Stub:
+            def __getattr__(self, name):
+                if name in fake_models_mod_dict:
+                    return fake_models_mod_dict[name]
+                raise AttributeError(name)
+
+        stub = _Stub()
+        fake_doctr_models = MagicMock()
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_doctr_models)
+
+        from pd_book_tools.ocr.doctr_support import _build_doctr_arch
+
+        # name contains 'resnet' → should fall back to db_resnet50
+        result = _build_doctr_arch("custom_resnet50_v2", stub)
+        assert result is sentinel
+
+    def test_assemble_doctr_predictor_attaches_det_and_reco_predictors(
+        self, monkeypatch
+    ):
+        fake_full = MagicMock()
+        fake_det_pred = MagicMock()
+        fake_reco_pred = MagicMock()
+
+        fake_models = MagicMock()
+        fake_models.ocr_predictor = MagicMock(return_value=fake_full)
+        fake_models.detection_predictor = MagicMock(return_value=fake_det_pred)
+        fake_models.recognition_predictor = MagicMock(return_value=fake_reco_pred)
+
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pd_book_tools.ocr.doctr_support import _assemble_doctr_predictor
+
+        det_model = MagicMock(name="det_model")
+        reco_model = MagicMock(name="reco_model")
+        result = _assemble_doctr_predictor(det_model, reco_model, pretrained=True)
+
+        assert result is fake_full
+        assert result.det_predictor is fake_det_pred
+        assert result.reco_predictor is fake_reco_pred
+        # Verify pretrained flag flowed through
+        assert fake_models.ocr_predictor.call_args.kwargs["pretrained"] is True
+        assert fake_models.detection_predictor.call_args.kwargs["pretrained"] is True
+        assert fake_models.recognition_predictor.call_args.kwargs["pretrained"] is True

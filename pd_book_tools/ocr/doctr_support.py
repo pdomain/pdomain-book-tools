@@ -128,6 +128,100 @@ def get_default_doctr_predictor():
     )
 
 
+def _select_torch_device() -> tuple[str, str]:
+    """Pick a torch device, preferring CUDA, then Apple MPS, else CPU.
+
+    Returns a ``(device, device_nbr)`` pair where ``device`` is the
+    short name used by ``model.to(...)`` and ``device_nbr`` is the
+    longer form used by ``torch.load(..., map_location=...)``. Lifted
+    out of :func:`get_finetuned_torch_doctr_predictor` as part of the
+    R-15 finishing extraction so device selection is independently
+    testable.
+    """
+    import torch as _torch
+    from torch.cuda import is_available as torch_cuda_is_available
+
+    if torch_cuda_is_available():
+        return "cuda", "cuda:0"
+    if getattr(_torch.backends, "mps", None) and _torch.backends.mps.is_available():
+        return "mps", "mps"
+    return "cpu", "cpu"
+
+
+def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):
+    """Resolve a DocTR model factory by name with a safe fallback.
+
+    Looks up ``arch_name`` on the (possibly mocked) ``doctr.models``
+    module passed in as ``doctr_models``. When the name is unknown,
+    falls back to the historical defaults so older checkpoints and
+    tests with mocked modules keep working: ``db_resnet50`` for
+    detection-flavored names, ``crnn_vgg16_bn`` for recognition.
+
+    Lifted from a closure inside
+    :func:`get_finetuned_torch_doctr_predictor` as part of the R-15
+    finishing extraction so the fallback policy is independently
+    testable.
+    """
+    from doctr.models import (
+        crnn_vgg16_bn,
+        db_resnet50,
+    )
+
+    factory = getattr(doctr_models, arch_name, None) if doctr_models else None
+    if factory is None:
+        fallback = (
+            "db_resnet50"
+            if "resnet" in arch_name
+            or "linknet" in arch_name
+            or arch_name.startswith("db_")
+            else "crnn_vgg16_bn"
+        )
+        factory = (
+            getattr(doctr_models, fallback)
+            if doctr_models
+            else (db_resnet50 if fallback == "db_resnet50" else crnn_vgg16_bn)
+        )
+    return factory(**kwargs)
+
+
+def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):
+    """Wrap loaded det/reco models into a DocTR ``OCRPredictor``.
+
+    Builds the full ``ocr_predictor`` plus the standalone
+    ``detection_predictor`` and ``recognition_predictor`` and attaches
+    the latter two onto the full predictor — matching the historical
+    contract that callers can reach into ``predictor.det_predictor`` /
+    ``predictor.reco_predictor``. Extracted from
+    :func:`get_finetuned_torch_doctr_predictor` as the final R-15
+    helper so predictor assembly is independent of model loading.
+    """
+    from doctr.models import (
+        detection_predictor,
+        ocr_predictor,
+        recognition_predictor,
+    )
+
+    full_predictor = ocr_predictor(
+        det_arch=det_model,
+        reco_arch=reco_model,
+        pretrained=pretrained,
+        assume_straight_pages=True,
+        disable_crop_orientation=True,
+    )
+    det_predictor = detection_predictor(
+        arch=det_model,
+        pretrained=pretrained,
+        assume_straight_pages=True,
+    )
+    reco_predictor = recognition_predictor(
+        arch=reco_model,
+        pretrained=pretrained,
+    )
+    full_predictor.det_predictor = det_predictor
+    full_predictor.reco_predictor = reco_predictor
+    return full_predictor
+
+
 def _load_det_model(
     *,
     det_path: Path,
@@ -210,9 +304,7 @@ def get_finetuned_torch_doctr_predictor(
     pretrained_backbone: bool = True,
 ):
     try:
-        import torch as _torch
         from torch import load as torch_load
-        from torch.cuda import is_available as torch_cuda_is_available
     except ImportError:
         raise ImportError("PyTorch is not available in this environment.")
 
@@ -222,32 +314,13 @@ def get_finetuned_torch_doctr_predictor(
     from doctr.models import (
         crnn_vgg16_bn,  # noqa: F401  (kept for back-compat / external imports)
         db_resnet50,  # noqa: F401
-        detection_predictor,
-        ocr_predictor,
-        recognition_predictor,
     )
 
     _doctr_models = _sys.modules.get("doctr.models")
 
     def _build_arch(arch_name: str, **kwargs):
-        """Resolve a doctr model factory by name with a safe fallback."""
-        factory = getattr(_doctr_models, arch_name, None) if _doctr_models else None
-        if factory is None:
-            # Unknown name — fall back to the historical defaults so that older
-            # checkpoints / tests with mocked modules keep working.
-            fallback = (
-                "db_resnet50"
-                if "resnet" in arch_name
-                or "linknet" in arch_name
-                or arch_name.startswith("db_")
-                else "crnn_vgg16_bn"
-            )
-            factory = (
-                getattr(_doctr_models, fallback)
-                if _doctr_models
-                else (db_resnet50 if fallback == "db_resnet50" else crnn_vgg16_bn)
-            )
-        return factory(**kwargs)
+        """Closure adapter: bind ``_doctr_models`` to the module-level helper."""
+        return _build_doctr_arch(arch_name, _doctr_models, **kwargs)
 
     # check if file exists — raise loudly on absence so callers don't get a
     # silent ``None`` and crash later with a confusing AttributeError on first
@@ -261,12 +334,7 @@ def get_finetuned_torch_doctr_predictor(
 
     logger.info("Loading pre-trained OCR models...")
     # Select compute device: CUDA > MPS (Apple Silicon) > CPU
-    if torch_cuda_is_available():
-        device, device_nbr = "cuda", "cuda:0"
-    elif getattr(_torch.backends, "mps", None) and _torch.backends.mps.is_available():
-        device, device_nbr = "mps", "mps"
-    else:
-        device, device_nbr = "cpu", "cpu"
+    device, device_nbr = _select_torch_device()
     logger.info("Using device: %s", device)
 
     # ---- Detection model -------------------------------------------------
@@ -300,26 +368,4 @@ def get_finetuned_torch_doctr_predictor(
         build_arch=_build_arch,
     )
 
-    full_predictor = ocr_predictor(
-        det_arch=det_model,
-        reco_arch=reco_model,
-        pretrained=pretrained,
-        assume_straight_pages=True,
-        disable_crop_orientation=True,
-    )
-
-    det_predictor = detection_predictor(
-        arch=det_model,
-        pretrained=pretrained,
-        assume_straight_pages=True,
-    )
-
-    reco_predictor = recognition_predictor(
-        arch=reco_model,
-        pretrained=pretrained,
-    )
-
-    full_predictor.det_predictor = det_predictor
-    full_predictor.reco_predictor = reco_predictor
-
-    return full_predictor
+    return _assemble_doctr_predictor(det_model, reco_model, pretrained=pretrained)
