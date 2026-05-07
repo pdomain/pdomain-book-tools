@@ -396,23 +396,26 @@ exactly 3 fallback calls (90/180/270 only).
 
 ---
 
-## [IN PROGRESS — modernized geometry/bounding_box, image_processing/{formats,cv2_processing/split,cupy_processing/split}; remaining sites tracked file-by-file] R-18 — Mixed old-style and new-style type annotations throughout
+## [FIXED] ~~R-18 — Mixed old-style and new-style type annotations throughout~~
 
 **Files:** throughout `pd_book_tools/ocr/`, `pd_book_tools/geometry/`
 
-The codebase mixes:
+The codebase mixed:
 
 - `Optional[List[str]]` (legacy `typing` forms, Python 3.5–3.8 style)
 - `list[str]`, `str | None` (modern Python 3.10+ forms)
 
-Within single files (e.g., `page.py` imports `List`, `Optional` from `typing` on
-line 10 but uses `list[str]` on line 68). This creates visual inconsistency and
-confuses tools that check annotation style.
+Within single files (e.g., `page.py` imported `List`, `Optional` from `typing`
+but used `list[str]` elsewhere). This created visual inconsistency and
+confused tools that check annotation style.
 
-**Direction:** standardize on modern forms (`list`, `dict`, `tuple`, `X | None`)
-throughout. Remove `from typing import List, Dict, Tuple, Optional, Union` imports
-in favor of `from __future__ import annotations` (for Python < 3.10 compat) or
-direct modernization.
+Resolved by standardizing on modern forms (`list`, `dict`, `tuple`,
+`X | None`) across `pd_book_tools/`. Files that previously imported
+`Optional`/`List`/`Dict`/`Tuple`/`Union` from `typing` either gained
+`from __future__ import annotations` (for runtime-evaluated annotation
+contexts such as dataclass fields) or were updated in place. A
+workspace-wide grep for `(Optional|Dict|List|Tuple|Union)\[` over files
+that import from `typing` returns zero hits.
 
 ---
 
