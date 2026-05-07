@@ -12,7 +12,6 @@ Public API:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Union
 
 from pd_book_tools.layout.types import PageLayout
 
@@ -37,10 +36,10 @@ _COLORS_BGR: dict[str, tuple[int, int, int]] = {
 
 
 def draw_layout_overlay(
-    png_path: Union[str, Path],
+    png_path: str | Path,
     layout: PageLayout,
-    dest_path: Union[str, Path],
-) -> Optional[Path]:
+    dest_path: str | Path,
+) -> Path | None:
     """Render ``layout``'s regions on ``png_path`` and save to ``dest_path``.
 
     The source image is dimmed so coloured rectangles + labels stand out.

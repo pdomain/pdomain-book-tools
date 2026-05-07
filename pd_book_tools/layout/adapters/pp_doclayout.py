@@ -12,9 +12,10 @@ map to ``None`` are dropped.
 
 """
 
+from __future__ import annotations
+
 from logging import getLogger
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 import torch
@@ -60,8 +61,8 @@ class PPDocLayoutPlusLDetector:
         self,
         device: str = "cpu",
         confidence: float = 0.5,
-        checkpoint_path: Optional[str] = None,
-        revision: Optional[str] = None,
+        checkpoint_path: str | None = None,
+        revision: str | None = None,
     ):
         repo = checkpoint_path or self.HF_REPO
         # When the user supplies their own ``checkpoint_path``, don't force
@@ -87,7 +88,7 @@ class PPDocLayoutPlusLDetector:
         self._conf = float(confidence)
 
     @torch.inference_mode()
-    def detect(self, source: Union[str, Path, np.ndarray]) -> PageLayout:
+    def detect(self, source: str | Path | np.ndarray) -> PageLayout:
         img = self._to_pil(source)
         inputs = self._processor(images=img, return_tensors="pt").to(self._device)
         outputs = self._model(**inputs)
@@ -136,7 +137,7 @@ class PPDocLayoutPlusLDetector:
         )
 
     @staticmethod
-    def _to_pil(source: Union[str, Path, np.ndarray]) -> Image.Image:
+    def _to_pil(source: str | Path | np.ndarray) -> Image.Image:
         if isinstance(source, np.ndarray):
             arr = source
             if arr.ndim == 2:

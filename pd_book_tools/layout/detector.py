@@ -10,9 +10,11 @@ without any ML dep; it's the stepping-stone the pd-prep-for-pgdp spec 05
 originally drafted.
 """
 
+from __future__ import annotations
+
 from logging import getLogger
 from pathlib import Path
-from typing import Protocol, Union, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 import cv2
 import numpy as np
@@ -21,7 +23,10 @@ from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
 
 logger = getLogger(__name__)
 
-ImageSource = Union[str, Path, np.ndarray]
+# Runtime alias (not a forward-reference) — Python 3.10+ supports PEP 604
+# ``X | Y`` at module top-level, so this evaluates to a ``types.UnionType``
+# usable with isinstance() in callers.
+ImageSource = str | Path | np.ndarray
 
 
 def _load_image(source: ImageSource) -> np.ndarray:

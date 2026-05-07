@@ -6,10 +6,12 @@ returns the cached one. This matters because the model adapter loads a
 ~132 MB checkpoint and we do not want to reload it per-page.
 """
 
+from __future__ import annotations
+
 import threading
 import time
 from logging import getLogger
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable
 
 from pd_book_tools.layout.detector import (
     ContourDetector,
@@ -36,7 +38,7 @@ _USER_DETECTORS: dict[str, _DetectorFactory] = {}
 # additional sorted (name, value) pairs at the end so different tunings
 # memoise to different instances. Kept as ``tuple`` rather than a strict
 # named alias because the trailing kwargs portion is variable-length.
-_CacheKey = Tuple[Any, ...]
+_CacheKey = tuple[Any, ...]
 _DETECTOR_CACHE: dict[_CacheKey, LayoutDetector] = {}
 # Guards _DETECTOR_CACHE under concurrent access. Without this, two threads
 # can both miss the cache and both call _build(); for PPDocLayoutPlusLDetector
@@ -73,7 +75,7 @@ def _build(
     key: str,
     device: str,
     confidence: float,
-    checkpoint_path: Optional[str],
+    checkpoint_path: str | None,
     extra_kwargs: dict,
 ) -> LayoutDetector:
     if key == "none":
@@ -113,7 +115,7 @@ def get_detector(
     key: str,
     device: str = "cpu",
     confidence: float = 0.5,
-    checkpoint_path: Optional[str] = None,
+    checkpoint_path: str | None = None,
     **detector_kwargs,
 ) -> LayoutDetector:
     """Return a memoised detector instance for ``key``.

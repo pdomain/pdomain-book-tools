@@ -6,7 +6,9 @@ normalize/scale operations. Keeping them here avoids cross-coupling and makes
 the helpers easy to reason about.
 """
 
-from typing import Iterable, Optional
+from __future__ import annotations
+
+from collections.abc import Iterable
 
 from pd_book_tools.layout.types import LayoutRegion, RegionType
 
@@ -81,7 +83,7 @@ def caption_for_figure(
     max_gap_px: int = 80,
     min_horizontal_overlap: float = 0.3,
     above: bool = False,
-) -> Optional[LayoutRegion]:
+) -> LayoutRegion | None:
     """Return the caption/text region directly below (or above) ``figure``, if any.
 
     Heuristic per the plan's "Caption association distance" question — choose
@@ -96,7 +98,7 @@ def caption_for_figure(
     below; the default below-only behaviour is preserved for back-compat
     (L-06).
     """
-    best: Optional[LayoutRegion] = None
+    best: LayoutRegion | None = None
     best_gap = max_gap_px + 1
     best_is_caption = False
     for r in regions:

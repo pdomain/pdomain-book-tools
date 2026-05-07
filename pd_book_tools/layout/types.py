@@ -6,9 +6,11 @@ over the source image, not a participant in the OCR coordinate-system gymnastics
 that ``Word`` / ``BoundingBox`` / ``Page`` perform.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any
 
 
 class RegionType(str, Enum):
@@ -110,7 +112,7 @@ class LayoutRegion:
     def contains_point(self, x: float, y: float) -> bool:
         return self.L <= x <= self.R and self.T <= y <= self.B
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "type": self.type.value,
             "L": int(self.L),
@@ -122,7 +124,7 @@ class LayoutRegion:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LayoutRegion":
+    def from_dict(cls, data: dict[str, Any]) -> LayoutRegion:
         return cls(
             type=RegionType(data["type"]),
             L=int(data["L"]),
@@ -142,7 +144,7 @@ class PageLayout:
     detector saw — coordinates in :class:`LayoutRegion` are in this frame.
     """
 
-    regions: List[LayoutRegion] = field(default_factory=list)
+    regions: list[LayoutRegion] = field(default_factory=list)
     image_width: int = 0
     image_height: int = 0
     detector: str = ""
@@ -154,7 +156,7 @@ class PageLayout:
     def __len__(self) -> int:
         return len(self.regions)
 
-    def of_type(self, *types: RegionType) -> List[LayoutRegion]:
+    def of_type(self, *types: RegionType) -> list[LayoutRegion]:
         # R-26: ``of_type()`` with no arguments previously returned ``[]``
         # because ``r.type in set()`` is always False — indistinguishable
         # at the call site from "no regions of these types found", and
@@ -169,7 +171,7 @@ class PageLayout:
         s = set(types)
         return [r for r in self.regions if r.type in s]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "regions": [r.to_dict() for r in self.regions],
             "image_width": int(self.image_width),
@@ -179,7 +181,7 @@ class PageLayout:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PageLayout":
+    def from_dict(cls, data: dict[str, Any]) -> PageLayout:
         return cls(
             regions=[LayoutRegion.from_dict(r) for r in data.get("regions", [])],
             image_width=int(data.get("image_width", 0)),
