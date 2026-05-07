@@ -1123,3 +1123,97 @@ def test_paragraph_allows_either_child_type():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
+
+
+# ---------------------------------------------------------------------------
+# Drop-cap rendering contract (Iteration B)
+#
+# A Word tagged ``word_components=["drop cap"]`` is the structural drop cap;
+# Block.text MUST join it to the immediately following Word in the same line
+# with the empty string instead of a single space, so that on-page reading
+# is preserved (e.g. cap "S" + body "tudies" renders as "Studies", not
+# "S tudies"). The ``"drop cap unrecovered"`` tag does NOT trigger the
+# empty-string join — those words have whatever text the OCR produced and
+# render normally.
+# ---------------------------------------------------------------------------
+
+
+def _make_word(
+    text: str,
+    *,
+    minX: float,
+    maxX: float,
+    minY: float = 0.0,
+    maxY: float = 0.1,
+    word_components: list[str] | None = None,
+) -> Word:
+    return Word(
+        text=text,
+        bounding_box=BoundingBox.from_ltrb(minX, minY, maxX, maxY, is_normalized=True),
+        ocr_confidence=None,
+        word_components=word_components,
+    )
+
+
+def test_block_text_drop_cap_joins_following_word_with_empty_string():
+    """Drop-cap-tagged Word + body Word render as fused text (no separator)."""
+    cap = _make_word("S", minX=0.05, maxX=0.10, word_components=["drop cap"])
+    body = _make_word("tudies", minX=0.11, maxX=0.20)
+    line = Block(
+        items=[cap, body],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    # Critical contract: cap is its own Word, but the rendered text is
+    # the on-page reading "Studies" — NOT "S tudies".
+    assert line.text == "Studies"
+
+
+def test_block_text_drop_cap_only_fuses_immediately_following_word():
+    """The empty-string join applies only to the word right after the cap;
+    subsequent words still get the default space separator."""
+    cap = _make_word("S", minX=0.05, maxX=0.10, word_components=["drop cap"])
+    body = _make_word("tudies", minX=0.11, maxX=0.20)
+    next_word = _make_word("in", minX=0.22, maxX=0.26)
+    line = Block(
+        items=[cap, body, next_word],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    assert line.text == "Studies in"
+
+
+def test_block_text_drop_cap_unrecovered_does_not_fuse():
+    """``drop cap unrecovered`` is a *failure* tag on the closest body word
+    (the OCR text was kept as-is). It must NOT trigger empty-string join."""
+    body = _make_word(
+        "BELIEF",
+        minX=0.07,
+        maxX=0.18,
+        word_components=["drop cap unrecovered"],
+    )
+    next_word = _make_word("in", minX=0.20, maxX=0.24)
+    line = Block(
+        items=[body, next_word],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    # Default join — space — between the unrecovered word and the next.
+    assert line.text == "BELIEF in"
+
+
+def test_block_text_two_drop_caps_in_one_line_each_fuse_their_neighbour():
+    """Two distinct drop caps adjacent to their own body words still each
+    fuse only to their immediate next word. Defensive — Block.text walks
+    word-by-word and the contract is per-pair, not whole-line."""
+    cap1 = _make_word("S", minX=0.05, maxX=0.08, word_components=["drop cap"])
+    body1 = _make_word("tudies", minX=0.09, maxX=0.16)
+    sep = _make_word("and", minX=0.18, maxX=0.22)
+    cap2 = _make_word("M", minX=0.24, maxX=0.27, word_components=["drop cap"])
+    body2 = _make_word("usings", minX=0.28, maxX=0.36)
+    line = Block(
+        items=[cap1, body1, sep, cap2, body2],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+    )
+    assert line.text == "Studies and Musings"
