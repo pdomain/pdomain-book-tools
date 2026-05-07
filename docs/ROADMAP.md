@@ -19,40 +19,6 @@ fine-tune workflow; they're independently useful and one of them
 (per-type confidence) becomes more relevant once a fine-tune lands
 because confidences will distribute differently.
 
-### Per-type confidence thresholds
-
-`drop_layout_regions` and `drop_figure_internal_words` use a single
-blanket threshold (`DEFAULT_DROP_CONFIDENCE = 0.7`,
-`pd_book_tools/ocr/layout_aware_reorg.py:50`). Two known cases where
-that's wrong:
-
-- `figure` regions tend to be confidently detected even when slightly
-  misframed; trusting them at 0.5 is fine.
-- `header` regions, by contrast, are the noisiest — the model
-  occasionally tags running headers that aren't really there. Want
-  ≥0.7 before dropping their words.
-
-Proposed shape:
-
-```python
-DEFAULT_DROP_CONFIDENCE_BY_TYPE: dict[RegionType, float] = {
-    RegionType.figure:    0.50,
-    RegionType.header:    0.70,
-    RegionType.footer:    0.65,
-    RegionType.footnote:  0.65,
-    RegionType.abandoned: 0.70,
-    # …
-}
-```
-
-Plumbing: extend `drop_layout_regions(confidence_threshold=…)` to
-accept either a `float` (current behaviour) or a `dict[RegionType,
-float]`. Same for `drop_figure_internal_words`. Backwards
-compatible — existing call sites keep working.
-
-Test surface: a fixture page with a low-confidence header that the
-new policy keeps but the old policy dropped, and vice versa.
-
 ### Decoration-vs-figure post-classification
 
 PP-DocLayout has no `decoration` class; the adapter maps `seal` →
@@ -338,7 +304,7 @@ the old plan:
 | Phase 3 — `pd-ocr-cli` flags (`--layout-model`, `--layout-checkpoint`, `--layout-confidence`, `--layout-debug`, `--extract-illustrations`) | ✅ Shipped. The CLI defaults to `pp-doclayout-plus-l`; `--layout-model none` opts out. The `-la` short flag from the original plan was dropped because the model selector subsumes it. |
 | Phase 4 — `pd-prep-for-pgdp` integration (specs reference `pd_book_tools.layout`, `ProjectConfig.layout_checkpoint` exists) | ✅ Shipped (spec-level). |
 | Page rotation detection follow-up | ✅ Shipped as `pd_book_tools/ocr/rotation.py`. |
-| Confidence-threshold-blanket-vs-per-type design question | 🟡 Listed above as an open item. |
+| Confidence-threshold-blanket-vs-per-type design question | ✅ Shipped via `drop_layout_regions(confidence_threshold=...)` / `drop_figure_internal_words(confidence_threshold=...)` accepting either a `float` (legacy single-bar) or a `dict[RegionType, float]` (per-type). `DEFAULT_DROP_CONFIDENCE_BY_TYPE` exposes a sensible default policy (figure 0.50, header 0.70, footer/footnote 0.65, abandoned 0.70). Types not listed in caller's dict fall back to `DEFAULT_DROP_CONFIDENCE`. |
 | Decoration-vs-figure post-classify heuristic | 🟡 Listed above as an open item. |
 | Multi-column reading order primitive | ✅ Shipped via `pd_book_tools/layout/geometry.py:region_reading_order`. Detects column gaps via a left-to-right sweep on `L`, sorts each column top-to-bottom, concatenates left-to-right. Falls back to legacy (T, L) for single-column input or layouts where a region spans across detected column boundaries (e.g. a full-width header). No silent drops. |
 | Detector-failure fallback hardening | ✅ Shipped via `get_detector(..., on_error="raise" \| "log_and_null")`. Default `"raise"` preserves CLI fail-fast; `"log_and_null"` memoises a `NullDetector` so batch callers (pd-prep-for-pgdp) survive transient build failures (network, OOM, missing weights, unknown key). Per-page `detect()` failures still propagate to the caller. |
