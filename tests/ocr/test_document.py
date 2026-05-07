@@ -718,3 +718,197 @@ def test_page_from_doctr_uses_dimensions_and_threads_original_text():
     assert page.width == 800
     assert page.original_ocr_tool_text == "original"
     assert [w.text for w in page.words] == ["Hi"]
+
+
+# ---------------------------------------------------------------------------
+# R-16: per-level Tesseract helper functions
+#
+# Tesseract's adapter is DataFrame-driven, so each level's helper takes the
+# full DataFrame plus the parent row's ``block_num`` / ``par_num`` /
+# ``line_num`` to filter children — H-18: Tesseract numbers are NOT
+# guaranteed contiguous, so the helpers must use the row's actual ids.
+# ---------------------------------------------------------------------------
+
+
+def _tesseract_minimal_df():
+    return DataFrame(
+        [
+            # Page (level 1)
+            {
+                "level": 1,
+                "page_num": 1,
+                "block_num": 0,
+                "par_num": 0,
+                "line_num": 0,
+                "word_num": 0,
+                "left": 0,
+                "top": 0,
+                "width": 800,
+                "height": 1000,
+                "conf": -1,
+                "text": "",
+            },
+            # Block (level 2)
+            {
+                "level": 2,
+                "page_num": 1,
+                "block_num": 1,
+                "par_num": 0,
+                "line_num": 0,
+                "word_num": 0,
+                "left": 10,
+                "top": 10,
+                "width": 300,
+                "height": 50,
+                "conf": -1,
+                "text": "",
+            },
+            # Paragraph (level 3)
+            {
+                "level": 3,
+                "page_num": 1,
+                "block_num": 1,
+                "par_num": 1,
+                "line_num": 0,
+                "word_num": 0,
+                "left": 10,
+                "top": 10,
+                "width": 300,
+                "height": 50,
+                "conf": -1,
+                "text": "",
+            },
+            # Line (level 4)
+            {
+                "level": 4,
+                "page_num": 1,
+                "block_num": 1,
+                "par_num": 1,
+                "line_num": 1,
+                "word_num": 0,
+                "left": 10,
+                "top": 10,
+                "width": 300,
+                "height": 25,
+                "conf": -1,
+                "text": "",
+            },
+            # Word (level 5)
+            {
+                "level": 5,
+                "page_num": 1,
+                "block_num": 1,
+                "par_num": 1,
+                "line_num": 1,
+                "word_num": 1,
+                "left": 10,
+                "top": 10,
+                "width": 80,
+                "height": 20,
+                "conf": 88,
+                "text": "Hello",
+            },
+        ]
+    )
+
+
+def test_tesseract_filter_level_applies_equality_filters():
+    df = _tesseract_minimal_df()
+    rows = Document._tesseract_filter_level(df, level=5.0, page_num=1, block_num=1)
+    assert len(rows) == 1
+    word = rows.iloc[0]
+    assert word["text"] == "Hello"
+
+
+def test_word_from_tesseract_drops_negative_conf_sentinel():
+    df = _tesseract_minimal_df()
+    word_row = next(Document._tesseract_filter_level(df, level=5.0).itertuples())
+    word = Document._word_from_tesseract(word_row)
+    assert word.text == "Hello"
+    # conf=88 > 0, so this is preserved (the sentinel-drop test is in
+    # ``_tesseract_confidence`` coverage; here we just pin that real
+    # confidences pass through and that the bbox/text plumbing works.)
+    assert word.ocr_confidence == 88.0
+
+
+def test_block_from_tesseract_handles_non_contiguous_ids():
+    """H-18 regression: filtering must use the row's actual ids."""
+    df = DataFrame(
+        [
+            {
+                "level": 1,
+                "page_num": 1,
+                "block_num": 0,
+                "par_num": 0,
+                "line_num": 0,
+                "word_num": 0,
+                "left": 0,
+                "top": 0,
+                "width": 100,
+                "height": 100,
+                "conf": -1,
+                "text": "",
+            },
+            # block 1, then block 5 (skipping 2-4)
+            {
+                "level": 2,
+                "page_num": 1,
+                "block_num": 5,
+                "par_num": 0,
+                "line_num": 0,
+                "word_num": 0,
+                "left": 0,
+                "top": 0,
+                "width": 100,
+                "height": 50,
+                "conf": -1,
+                "text": "",
+            },
+            {
+                "level": 3,
+                "page_num": 1,
+                "block_num": 5,
+                "par_num": 7,
+                "line_num": 0,
+                "word_num": 0,
+                "left": 0,
+                "top": 0,
+                "width": 100,
+                "height": 50,
+                "conf": -1,
+                "text": "",
+            },
+            {
+                "level": 4,
+                "page_num": 1,
+                "block_num": 5,
+                "par_num": 7,
+                "line_num": 3,
+                "word_num": 0,
+                "left": 0,
+                "top": 0,
+                "width": 100,
+                "height": 25,
+                "conf": -1,
+                "text": "",
+            },
+            {
+                "level": 5,
+                "page_num": 1,
+                "block_num": 5,
+                "par_num": 7,
+                "line_num": 3,
+                "word_num": 1,
+                "left": 0,
+                "top": 0,
+                "width": 50,
+                "height": 20,
+                "conf": 90,
+                "text": "non-contig",
+            },
+        ]
+    )
+    block_row = next(Document._tesseract_filter_level(df, level=2.0).itertuples())
+    block = Document._block_from_tesseract(block_row, df=df, page_num=1)
+    word_texts = [w.text for w in block.words]
+    assert word_texts == ["non-contig"]

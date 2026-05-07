@@ -580,6 +580,172 @@ class Document:
         return f
 
     @classmethod
+    def _tesseract_filter_level(
+        cls, df: "DataFrame", *, level: float, **eq: Any
+    ) -> "DataFrame":
+        """Return DataFrame rows matching ``level`` and any extra equality filters.
+
+        Tesseract emits a flat row-per-region DataFrame keyed by
+        ``level`` (1=page, 2=block, 3=paragraph, 4=line, 5=word) plus
+        ``page_num`` / ``block_num`` / ``par_num`` / ``line_num``. This
+        helper keeps the per-level adapter functions free of boolean-mask
+        gymnastics and mirrors the ``where(...).dropna(how="all")``
+        pattern used previously.
+        """
+        mask = df["level"] == level
+        for col, value in eq.items():
+            mask = mask & (df[col] == value)
+        return df.where(mask).dropna(how="all")
+
+    @classmethod
+    def _tesseract_bbox(cls, row: Any) -> BoundingBox:
+        """Build a ``BoundingBox`` from a Tesseract row's L/T/W/H columns."""
+        return BoundingBox.from_ltwh(
+            cls.safe_float(row.left),
+            cls.safe_float(row.top),
+            cls.safe_float(row.width),
+            cls.safe_float(row.height),
+        )
+
+    @classmethod
+    def _word_from_tesseract(cls, word_row: Any) -> Word:
+        """Build a ``Word`` from a Tesseract level-5 row.
+
+        ``_tesseract_text`` and ``_tesseract_confidence`` handle the NaN /
+        ``conf=-1`` sentinels Tesseract uses for rejected rows so the
+        word survives without poisoning downstream confidence aggregates.
+        """
+        return Word(
+            text=cls._tesseract_text(word_row.text),
+            bounding_box=cls._tesseract_bbox(word_row),
+            ocr_confidence=cls._tesseract_confidence(word_row.conf),
+        )
+
+    @classmethod
+    def _line_from_tesseract(
+        cls,
+        line_row: Any,
+        df: "DataFrame",
+        page_num: int,
+        block_num: Any,
+        par_num: Any,
+    ) -> Block:
+        """Build a ``Block(LINE)`` of ``Word`` children from a Tesseract level-4 row.
+
+        ``page_num`` / ``block_num`` / ``par_num`` are forwarded for the
+        level-5 word filter — H-18: Tesseract numbers can be
+        non-contiguous, so we must use the row's actual ids, not a
+        positional enumerate index, or whole hierarchy branches vanish.
+        """
+        word_rows = cls._tesseract_filter_level(
+            df,
+            level=5.0,
+            page_num=page_num,
+            block_num=block_num,
+            par_num=par_num,
+            line_num=line_row.line_num,
+        )
+        words = [cls._word_from_tesseract(w) for w in word_rows.itertuples()]
+        return Block(
+            items=words,
+            bounding_box=cls._tesseract_bbox(line_row),
+            child_type=BlockChildType.WORDS,
+            block_category=BlockCategory.LINE,
+        )
+
+    @classmethod
+    def _paragraph_from_tesseract(
+        cls,
+        paragraph_row: Any,
+        df: "DataFrame",
+        page_num: int,
+        block_num: Any,
+    ) -> Block:
+        """Build a ``Block(PARAGRAPH)`` of ``Block(LINE)`` children."""
+        line_rows = cls._tesseract_filter_level(
+            df,
+            level=4.0,
+            page_num=page_num,
+            block_num=block_num,
+            par_num=paragraph_row.par_num,
+        )
+        lines = [
+            cls._line_from_tesseract(
+                line_row=line_row,
+                df=df,
+                page_num=page_num,
+                block_num=block_num,
+                par_num=paragraph_row.par_num,
+            )
+            for line_row in line_rows.itertuples()
+        ]
+        return Block(
+            items=lines,
+            bounding_box=cls._tesseract_bbox(paragraph_row),
+            child_type=BlockChildType.BLOCKS,
+            block_category=BlockCategory.PARAGRAPH,
+        )
+
+    @classmethod
+    def _block_from_tesseract(
+        cls,
+        block_row: Any,
+        df: "DataFrame",
+        page_num: int,
+    ) -> Block:
+        """Build a ``Block(BLOCK)`` of ``Block(PARAGRAPH)`` children."""
+        paragraph_rows = cls._tesseract_filter_level(
+            df,
+            level=3.0,
+            page_num=page_num,
+            block_num=block_row.block_num,
+        )
+        paragraphs = [
+            cls._paragraph_from_tesseract(
+                paragraph_row=paragraph_row,
+                df=df,
+                page_num=page_num,
+                block_num=block_row.block_num,
+            )
+            for paragraph_row in paragraph_rows.itertuples()
+        ]
+        return Block(
+            items=paragraphs,
+            bounding_box=cls._tesseract_bbox(block_row),
+            child_type=BlockChildType.BLOCKS,
+            block_category=BlockCategory.BLOCK,
+        )
+
+    @classmethod
+    def _page_from_tesseract(
+        cls,
+        page_row: Any,
+        df: "DataFrame",
+        page_idx: int,
+        ocr_provenance: OCRProvenance,
+    ) -> Page:
+        """Build a single ``Page`` from a Tesseract level-1 row.
+
+        ``page_num`` in Tesseract's DataFrame is 1-indexed, while
+        ``page_idx`` is 0-indexed for downstream ``Document._pages``.
+        """
+        page_bbox = cls._tesseract_bbox(page_row)
+        page_num = page_idx + 1
+        block_rows = cls._tesseract_filter_level(df, level=2.0, page_num=page_num)
+        blocks = [
+            cls._block_from_tesseract(block_row=br, df=df, page_num=page_num)
+            for br in block_rows.itertuples()
+        ]
+        return Page(
+            page_index=page_idx,
+            width=int(page_bbox.width),
+            height=int(page_bbox.height),
+            items=blocks,
+            bounding_box=page_bbox,
+            ocr_provenance=deepcopy(ocr_provenance),
+        )
+
+    @classmethod
     def from_tesseract(
         cls,
         tesseract_output: "DataFrame",
@@ -642,144 +808,16 @@ class Document:
             tesseract_output["height"], errors="coerce"
         )
 
-        page_filter = tesseract_output["level"] == 1.0
-        page_filtered = tesseract_output.where(page_filter).dropna(how="all")
+        page_filtered = cls._tesseract_filter_level(tesseract_output, level=1.0)
         for page_idx, page_row in enumerate(page_filtered.itertuples()):
-            left, top, width, height = (
-                cls.safe_float(page_row.left),
-                cls.safe_float(page_row.top),
-                cls.safe_float(page_row.width),
-                cls.safe_float(page_row.height),
+            result._pages.append(
+                cls._page_from_tesseract(
+                    page_row=page_row,
+                    df=tesseract_output,
+                    page_idx=page_idx,
+                    ocr_provenance=ocr_provenance,
+                )
             )
-            page_bounding_box = BoundingBox.from_ltwh(left, top, width, height)
-
-            blocks = []
-            block_filter = (tesseract_output["level"] == 2.0) & (
-                tesseract_output["page_num"] == page_idx + 1
-            )
-            block_filtered = tesseract_output.where(block_filter).dropna(how="all")
-            # H-18: Tesseract's block_num / par_num / line_num are NOT
-            # guaranteed to be a contiguous 1..N sequence — Tesseract may
-            # skip numbers when intermediate regions are empty or dropped.
-            # Use the actual values from the DataFrame row (block_row.block_num
-            # etc.) rather than the positional ``enumerate`` index, otherwise
-            # child rows are filtered against the wrong parent and entire
-            # branches of the hierarchy silently disappear.
-            for block_row in block_filtered.itertuples():
-                left, top, width, height = (
-                    cls.safe_float(block_row.left),
-                    cls.safe_float(block_row.top),
-                    cls.safe_float(block_row.width),
-                    cls.safe_float(block_row.height),
-                )
-                block_bounding_box = BoundingBox.from_ltwh(left, top, width, height)
-                block_num_value = block_row.block_num
-
-                paragraphs = []
-                paragraph_filter = (
-                    (tesseract_output["level"] == 3.0)
-                    & (tesseract_output["page_num"] == page_idx + 1)
-                    & (tesseract_output["block_num"] == block_num_value)
-                )
-                paragraph_filtered = tesseract_output.where(paragraph_filter).dropna(
-                    how="all"
-                )
-                for paragraph_row in paragraph_filtered.itertuples():
-                    left, top, width, height = (
-                        cls.safe_float(paragraph_row.left),
-                        cls.safe_float(paragraph_row.top),
-                        cls.safe_float(paragraph_row.width),
-                        cls.safe_float(paragraph_row.height),
-                    )
-                    paragraph_bounding_box = BoundingBox.from_ltwh(
-                        left, top, width, height
-                    )
-                    par_num_value = paragraph_row.par_num
-
-                    lines = []
-                    line_filter = (
-                        (tesseract_output["level"] == 4.0)
-                        & (tesseract_output["page_num"] == page_idx + 1)
-                        & (tesseract_output["block_num"] == block_num_value)
-                        & (tesseract_output["par_num"] == par_num_value)
-                    )
-                    line_filtered = tesseract_output.where(line_filter).dropna(
-                        how="all"
-                    )
-                    for line_row in line_filtered.itertuples():
-                        left, top, width, height = (
-                            cls.safe_float(line_row.left),
-                            cls.safe_float(line_row.top),
-                            cls.safe_float(line_row.width),
-                            cls.safe_float(line_row.height),
-                        )
-                        line_bounding_box = BoundingBox.from_ltwh(
-                            left, top, width, height
-                        )
-                        line_num_value = line_row.line_num
-
-                        words = []
-                        word_filter = (
-                            (tesseract_output["level"] == 5.0)
-                            & (tesseract_output["page_num"] == page_idx + 1)
-                            & (tesseract_output["block_num"] == block_num_value)
-                            & (tesseract_output["par_num"] == par_num_value)
-                            & (tesseract_output["line_num"] == line_num_value)
-                        )
-                        word_filtered = tesseract_output.where(word_filter).dropna(
-                            how="all"
-                        )
-                        for word_row in word_filtered.itertuples():
-                            left, top, width, height = (
-                                cls.safe_float(word_row.left),
-                                cls.safe_float(word_row.top),
-                                cls.safe_float(word_row.width),
-                                cls.safe_float(word_row.height),
-                            )
-                            word_bounding_box = BoundingBox.from_ltwh(
-                                left, top, width, height
-                            )
-
-                            word = Word(
-                                text=cls._tesseract_text(word_row.text),
-                                bounding_box=word_bounding_box,
-                                ocr_confidence=cls._tesseract_confidence(word_row.conf),
-                            )
-                            words.append(word)
-
-                        line = Block(
-                            items=words,
-                            bounding_box=line_bounding_box,
-                            child_type=BlockChildType.WORDS,
-                            block_category=BlockCategory.LINE,
-                        )
-                        lines.append(line)
-
-                    paragraph = Block(
-                        items=lines,
-                        bounding_box=paragraph_bounding_box,
-                        child_type=BlockChildType.BLOCKS,
-                        block_category=BlockCategory.PARAGRAPH,
-                    )
-                    paragraphs.append(paragraph)
-
-                block = Block(
-                    items=paragraphs,
-                    bounding_box=block_bounding_box,
-                    child_type=BlockChildType.BLOCKS,
-                    block_category=BlockCategory.BLOCK,
-                )
-                blocks.append(block)
-
-            page = Page(
-                page_index=page_idx,
-                width=int(page_bounding_box.width),
-                height=int(page_bounding_box.height),
-                items=blocks,
-                bounding_box=page_bounding_box,
-                ocr_provenance=deepcopy(ocr_provenance),
-            )
-            result._pages.append(page)
 
         result._sort_pages()
 
