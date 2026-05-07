@@ -23,6 +23,14 @@ ALLOWED_COMPONENTS: Final[frozenset[str]] = frozenset(
         "subscript",
         "footnote marker",
         "drop cap",
+        # Iteration-A drop-cap recognition tags. ``drop cap inferred`` =
+        # the cap letter was recovered by the cursive-cap fallback (see
+        # ``pd_book_tools.ocr.dropcap``). ``drop cap unrecovered`` =
+        # geometric trigger fired but the letter couldn't be resolved;
+        # surfaced on the closest body word so downstream tooling /
+        # labelers can flag the case for human review.
+        "drop cap inferred",
+        "drop cap unrecovered",
     }
 )
 

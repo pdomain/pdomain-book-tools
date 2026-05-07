@@ -76,25 +76,64 @@ Still open:
   to estimate true x-height per word. Worth doing only if a fixture
   shows bbox-height alone misclassifying.
 
-### Drop-cap glyph recognition for cursive caps
+### Drop-cap glyph recognition for cursive / decorative caps
 
 The geometric drop-cap stitcher in `reorganize_page_utils.py` works
-on plain block caps (R-style) but fails on cursive caps (S/O/A
+on plain block caps (R-style) but fails on decorative caps (S/O/A
 glyphs in `chapter-head-credulities`, `chapter-head-filial-duty`,
 `footnotes-stacked-with-anchor`). The DocTR recogniser doesn't pick
-the cursive S as a letter; it ends up as gibberish or skipped.
+the oversized serif glyph as a letter; it ends up as gibberish (a
+stray ``"-"`` sitting where the cap should have been) or skipped.
 
-Approach: a small image-processing pass that **detects the oversized
-initial glyph** (large connected component at the start of the first
-body paragraph after a chapter heading) and **stitches its character
-into the next OCR word**. The character can be guessed from the
-chapter-title text (a chapter starting "STUDIES IN…" likely has an
-"S" drop cap) without needing OCR on the glyph.
+**Iteration A — shipped.** New module `pd_book_tools/ocr/dropcap.py`
+exposes `detect_and_stitch_cursive_dropcaps(blocks, image, metrics)`,
+called from `Page.reorganize_page` as a fallback after `stitch_drop_caps`
+when the geometric block-cap stitcher leaves the body region untouched.
+The fallback:
 
-Where it goes: `pd_book_tools/ocr/dropcap.py` (new module) called
-from `Page.reorganize_page` after the geometric drop-cap stitcher
-fails to find a hit. Tests against the three known regression
-fixtures listed above.
+1. Computes a per-page *indent signature* (the standard left margin and
+   typical first-line indent of normal body paragraphs).
+2. Looks at each body block's first paragraph: is the first line
+   abnormally indented vs. the indent signature, AND do lines 2–3 of
+   the same paragraph share that indent (real drop cap → multi-line
+   wrap; regular indent → only line 1)? That geometric trigger fires…
+3. …a `cv2.connectedComponentsWithStats` scan in the gap region. The
+   largest CC that's roughly N body-line-heights tall and sits left of
+   the first body word is the cap glyph.
+4. Letter inference is body-word-only (no peeking at the heading): try
+   prepending each ASCII uppercase letter to the post-cap body word
+   and accept the unique match against an embedded common-word
+   lexicon. ``"UPERSTITIONS"`` → ``"S"``, ``"NCE"`` → ``"O"``.
+5. OCR-state branching at the cap location:
+   - OCR returned a single-letter Word matching the inferred letter →
+     keep the OCR word + confidence, just tag it.
+   - OCR returned a single-letter Word with wrong/gibberish text →
+     replace the text with the inferred letter, set confidence
+     ``None``, tag ``"drop cap"`` + ``"drop cap inferred"``.
+   - OCR skipped the glyph entirely → synthesise a new Word at the
+     CC's bbox with the inferred letter, confidence ``None``, tag
+     ``"drop cap"`` + ``"drop cap inferred"``.
+6. On failure (geometric trigger fires but no CC found, or no unique
+   letter inference) — `logger.warning` + tag the closest body Word
+   with ``"drop cap unrecovered"``. Never silent.
+
+The output shape mirrors the existing block-cap stitcher: the cap is
+its own Word at the front of the body line, joined to the next word
+with no separator (`Block.text` rule keyed on ``"drop cap"``). So
+``"S" + "UPERSTITIONS"`` renders as ``"SUPERSTITIONS"``.
+
+**Iteration B (queued — not shipped).** Switch the data model from
+"prepend cap word into existing line" to "separate Word tagged as drop
+cap" so plain-text rendering can choose its own join policy (e.g. ``"A
+BELIEF"`` vs ``"ABELIEF"``); replace `stitch_drop_caps` entirely with
+the new module's pipeline; add the missing pair of word-component tags
+to the block-cap path; full fixture sweep across
+`tests/fixtures/layout_regression/`. Iteration A keeps the prepend
+shape to avoid a corpus-wide baseline rewrite.
+
+**Iteration C (queued).** Multi-letter heading-OCR cross-check (e.g.
+infer ``"S"`` from a chapter title ``"STUDIES IN…"``) when body-word
+inference is ambiguous.
 
 ### Multi-column body detection enhancements
 
