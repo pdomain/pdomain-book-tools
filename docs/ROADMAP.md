@@ -198,65 +198,6 @@ Resolve these before writing code:
 - `pd-prep-for-pgdp/specs/06-page-workbench.md:502` — downstream spec
   expecting aspect-ratio-aware rescale.
 
-## Open — documentation
-
-### Page-model / OCR JSON output format reference
-
-`Page.to_dict()` (`pd_book_tools/ocr/page.py:2663`) is the canonical
-serialised form of a processed page and is what every downstream consumer
-(pd-ocr-cli, pd-ocr-labeler, pd-prep-for-pgdp) reads back via
-`Page.from_dict`. Today the format is only documented by reading the
-source — fine while the consumers all live in this workspace, but not
-fine once pd-ocr-cli's own docs start redirecting users here for format
-questions (which is the immediate trigger for this item).
-
-Write a user-facing reference, likely `docs/architecture/page-model.md`,
-covering at minimum:
-
-- The top-level tree: `Page` → `items: list[Block]` →
-  `items: list[Block | Word]` (blocks nest) → `Word` leaves, plus
-  `BoundingBox` geometry on every level. Note that `Block` is recursive
-  (paragraph-of-lines-of-words, or paragraph-of-words depending on the
-  pipeline stage) and which `BlockChildType` / `BlockCategory` values
-  show up in practice.
-- `block_role_labels` semantics — the actual set in use today
-  (`paragraph`, `caption`, `illustration`, `decoration`, `header`,
-  `footer`, `footnote`, plus any others emitted by `layout_aware_reorg`
-  and `bubble_block_roles_from_layout`). Confirm the live set by
-  grepping `block_role_labels=` rather than guessing. Same treatment for
-  `line_role_labels` if any consumers depend on it.
-- Geometry-only placeholder blocks: how `_empty_illustration_block`
-  output appears in the JSON — `items: []`, `block_role_labels:
-  ["illustration"]` (or `"decoration"`), `bounding_box` present, no
-  text. Cross-link to the "Opt-in suppression of placeholder
-  illustration blocks" item above so readers know the placeholder
-  emission is configurable.
-- The library's role-label policy: pd-book-tools attaches role labels
-  but does **not** render them into `Page.text`. How those labels turn
-  into PGDP markup, `[Illustration: …]` strings, footnote anchors, etc.
-  is the consuming app's call (pd-prep-for-pgdp does the PGDP mapping;
-  pd-ocr-cli's `.txt` output is plain reading-order text that ignores
-  most role labels). Make this boundary explicit so downstream authors
-  don't expect the library to do their formatting for them.
-- Disambiguate from the layout-detector data model: `PageLayout` /
-  `LayoutRegion` (`pd_book_tools/layout/types.py`) is a *separate*
-  structure consumed by `Page.reorganize_page(layout=…)`; it is **not**
-  part of `Page.to_dict()` output. Readers landing here from "OCR JSON"
-  questions need to know which tree is which.
-- Stability commitments. The format is currently **informal** —
-  field-name additions are routine, removals/renames have happened
-  during reorg refactors. Document that explicitly rather than implying
-  a contract that doesn't exist; if/when fields stabilise (e.g. the
-  `block_role_labels` vocabulary), call them out individually.
-
-Out of scope for the doc itself: a JSON schema file, version negotiation,
-or any guarantee of round-trip stability across pd-book-tools versions.
-Those are separate efforts and shouldn't block the reference landing.
-
-Caller follow-on: once this lands, pd-ocr-cli's docs trim their own
-format section to a one-line redirect here. Tracked separately in the
-pd-ocr-cli roadmap.
-
 ## Open — page handling
 
 ### Page rotation — already shipped
@@ -313,6 +254,7 @@ the old plan:
 | Performance instrumentation (`PageLayout.inference_ms`) | ✅ Shipped via `_TimingDetector` wrapper in `registry.py`. |
 | Custom-detector extensibility for downstream fine-tunes | ✅ Shipped via `register_detector` / `unregister_detector` in `pd_book_tools/layout/registry.py` (R-25). Lets pd-ocr-trainer plug a custom adapter under its own key without modifying the built-in chain. |
 | Optional `[layout]` install extra | ❌ Not shipped — `transformers` was promoted to mandatory `dependencies`. The install footprint is ~40 MB on top of DocTR; users get layout out of the box. The original plan's `pd_book_tools[layout]` extra never shipped. Documented here so future readers don't go looking for it. |
+| Page-model / OCR JSON output format reference | ✅ Shipped at [`docs/architecture/page-model.md`](architecture/page-model.md). Doc-vs-code drift gated by `tests/test_page_model_doc.py` (vocabulary lists must match `Block.ALLOWED_*_LABELS` and `RegionType` enum). pd-ocr-cli docs can now redirect format questions here. |
 
 ## Out of scope (still)
 
