@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from copy import deepcopy
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import ClassVar, Dict, Optional
+from typing import ClassVar
 
 import cv2
 import numpy as np
@@ -65,8 +67,8 @@ class Word:
     text_style_label_scopes: dict[str, str] = field(default_factory=dict)
     word_components: list[str] = field(default_factory=list)
 
-    _ground_truth_text: Optional[str] = None
-    ground_truth_bounding_box: Optional[BoundingBox] = None
+    _ground_truth_text: str | None = None
+    ground_truth_bounding_box: BoundingBox | None = None
     ground_truth_match_keys: dict = field(default_factory=dict)
     baseline: dict[str, float | str] | None = None
 
@@ -74,15 +76,15 @@ class Word:
         self,
         text: str,
         bounding_box: BoundingBox,
-        ocr_confidence: Optional[float] = None,
-        word_labels: Optional[list[str]] = None,
-        text_style_labels: Optional[list[str]] = None,
-        text_style_label_scopes: Optional[dict[str, str]] = None,
-        word_components: Optional[list[str]] = None,
-        baseline: Optional[dict[str, float | str]] = None,
-        ground_truth_text: Optional[str] = None,
-        ground_truth_bounding_box: Optional[BoundingBox] = None,
-        ground_truth_match_keys: Optional[dict] = None,
+        ocr_confidence: float | None = None,
+        word_labels: list[str] | None = None,
+        text_style_labels: list[str] | None = None,
+        text_style_label_scopes: dict[str, str] | None = None,
+        word_components: list[str] | None = None,
+        baseline: dict[str, float | str] | None = None,
+        ground_truth_text: str | None = None,
+        ground_truth_bounding_box: BoundingBox | None = None,
+        ground_truth_match_keys: dict | None = None,
     ):
         self.text = text  # Use the setter for validation or processing
         self.bounding_box = bounding_box
@@ -110,14 +112,14 @@ class Word:
         return normalize_text_style_label(label)
 
     @classmethod
-    def _normalize_text_style_labels(cls, labels: Optional[list[str]]) -> list[str]:
+    def _normalize_text_style_labels(cls, labels: list[str] | None) -> list[str]:
         return normalize_text_style_labels(labels)
 
     @classmethod
     def _normalize_text_style_label_scopes(
         cls,
         labels: list[str],
-        scopes: Optional[dict[str, str]],
+        scopes: dict[str, str] | None,
     ) -> dict[str, str]:
         return normalize_text_style_label_scopes(labels, scopes)
 
@@ -126,7 +128,7 @@ class Word:
         return normalize_word_component(component)
 
     @classmethod
-    def _normalize_word_components(cls, components: Optional[list[str]]) -> list[str]:
+    def _normalize_word_components(cls, components: list[str] | None) -> list[str]:
         return normalize_word_components(components)
 
     @property
@@ -142,7 +144,7 @@ class Word:
         return self._ground_truth_text or ""
 
     @ground_truth_text.setter
-    def ground_truth_text(self, value: Optional[str]) -> None:
+    def ground_truth_text(self, value: str | None) -> None:
         # R-27: ``None`` is the canonical "no ground truth" value. Normalize
         # empty strings to ``None`` on assignment so the internal state is
         # consistent with what ``to_dict`` serializes (both round-trip as
@@ -670,7 +672,7 @@ class Word:
         }
 
     @classmethod
-    def from_dict(cls, dict: Dict) -> "Word":
+    def from_dict(cls, dict: dict) -> Word:
         """Create OCRWord from dictionary"""
         return Word(
             text=dict["text"],
