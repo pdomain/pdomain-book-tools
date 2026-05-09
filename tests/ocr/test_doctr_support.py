@@ -522,6 +522,104 @@ class TestGetFinetunedTorchDoctrPredictor:
         assert load_kwargs["map_location"] == "cuda:0"
 
 
+class TestGetFinetunedTorchDoctrPredictorDeviceParam:
+    """Tests for the ``device`` parameter added to get_finetuned_torch_doctr_predictor.
+
+    When ``device`` is supplied explicitly, ``_select_torch_device`` must NOT be
+    called. When omitted (default ``None``), it must be called as before.
+    """
+
+    def _make_stubs(self, monkeypatch, tmp_path):
+        """Create two real (empty) checkpoint files and patch all heavy imports."""
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value={})
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+
+        fake_models = MagicMock()
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        return det_path, reco_path, fake_torch
+
+    def test_explicit_device_skips_auto_detection(self, monkeypatch, tmp_path):
+        """Passing device='cpu' must bypass _select_torch_device entirely.
+
+        This matters for callers that need reproducible behaviour (e.g. tests
+        or benchmarks) and must not silently be steered onto a GPU.
+        """
+        det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        from pd_book_tools.ocr import doctr_support
+
+        with patch.object(doctr_support, "_select_torch_device") as mock_select:
+            doctr_support.get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+                device="cpu",
+            )
+
+        mock_select.assert_not_called()
+
+    def test_explicit_device_is_passed_to_torch_load(self, monkeypatch, tmp_path):
+        """When device='cpu', torch.load must receive map_location='cpu'."""
+        det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        from pd_book_tools.ocr import doctr_support
+
+        with patch.object(doctr_support, "_select_torch_device"):
+            doctr_support.get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+                device="cpu",
+            )
+
+        # Both the det and reco torch.load calls should use map_location="cpu".
+        for call in fake_torch.load.call_args_list:
+            assert call.kwargs.get("map_location") == "cpu", (
+                f"Expected map_location='cpu', got {call.kwargs.get('map_location')!r}"
+            )
+
+    def test_no_device_calls_auto_detection(self, monkeypatch, tmp_path):
+        """Omitting device= must call _select_torch_device (existing behaviour)."""
+        det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        from pd_book_tools.ocr import doctr_support
+
+        with patch.object(
+            doctr_support,
+            "_select_torch_device",
+            return_value=("cpu", "cpu"),
+        ) as mock_select:
+            doctr_support.get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+            )
+
+        mock_select.assert_called_once()
+
+
 class TestR15ExtractedHelpers:
     """Unit tests for the R-15 finishing extractions:
 

@@ -302,6 +302,7 @@ def get_finetuned_torch_doctr_predictor(
     vocab: str = "",
     pretrained: bool = True,
     pretrained_backbone: bool = True,
+    device: str | None = None,
 ):
     try:
         from torch import load as torch_load
@@ -333,8 +334,9 @@ def get_finetuned_torch_doctr_predictor(
         raise FileNotFoundError(f"DocTR recognition checkpoint not found: {reco_path}")
 
     logger.info("Loading pre-trained OCR models...")
-    # Select compute device: CUDA > MPS (Apple Silicon) > CPU
-    device, device_nbr = _select_torch_device()
+    # Select compute device: CUDA > MPS (Apple Silicon) > CPU, unless the
+    # caller has pinned a specific device (e.g. "cpu" for reproducible tests).
+    device, device_nbr = _select_torch_device() if device is None else (device, device)
     logger.info("Using device: %s", device)
 
     # ---- Detection model -------------------------------------------------
