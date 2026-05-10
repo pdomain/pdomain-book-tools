@@ -107,7 +107,7 @@ the glyph-size work, not standalone.
 The PLAN's "open follow-up" on page-rotation detection (sideways
 plates, upside-down scans, the Peutinger map fixture) shipped as
 `pd_book_tools/ocr/rotation.py`. Documented in
-`docs/architecture/rotation.md`. **No further work tracked here.**
+`docs/specs/02-rotation.md`. **No further work tracked here.**
 
 ## Open — developer tooling
 
@@ -121,7 +121,7 @@ mode for Makefile branching. `make upgrade-deps` now refuses with
 a pointer to `make upgrade-deps-local` when dev-local is detected;
 `make upgrade-deps-local` runs the canonical sync then re-applies
 the `[gpu]` extra via `make sync-gpu`. Spec
-[`docs/planning/dev-local-upgrade-flow-spec.md`](planning/dev-local-upgrade-flow-spec.md).
+[`docs/specs/07-dev-local-upgrade-flow.md`](specs/07-dev-local-upgrade-flow.md).
 
 `make dev-local` recipe shipped: runs `sync-gpu` (which applies the
 `[gpu]` extra when an NVIDIA GPU is auto-detected) and writes the

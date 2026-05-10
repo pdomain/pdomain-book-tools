@@ -91,7 +91,7 @@ otherwise to keep the JSON compact):
   audit trail across save/load cycles.
 - `rotation_applied` — present when `pd_book_tools/ocr/rotation.py`
   rotated the page during ingestion. See
-  [`rotation.md`](rotation.md) for the rotated-frame coordinate
+  [`02-rotation.md`](02-rotation.md) for the rotated-frame coordinate
   convention.
 
 ## Block fields
@@ -144,7 +144,7 @@ Allowed values:
 - `recovered` — words the reorg pipeline initially dropped but
   re-attached at the end so the OCR word multiset round-trips. Visible
   to consumers so they can flag, strip, or re-flow them. See
-  [`reorganize_pipeline.md`](reorganize_pipeline.md) for the recovery
+  [`03-reorganize-pipeline.md`](03-reorganize-pipeline.md) for the recovery
   step.
 - `illustration` — geometry-only block representing a figure region.
   Carries `bounding_box` but `items: []`. Emission is gated by
@@ -335,10 +335,10 @@ Those are separate efforts and are out of scope here.
 
 ## See also
 
-- [`reorganize_pipeline.md`](reorganize_pipeline.md) — what the reorg
+- [`03-reorganize-pipeline.md`](03-reorganize-pipeline.md) — what the reorg
   pipeline does between `Page.from_doctr_result` and the final tree
   this doc describes.
-- [`rotation.md`](rotation.md) — how `rotation_applied` interacts with
+- [`02-rotation.md`](02-rotation.md) — how `rotation_applied` interacts with
   the page coordinate frame.
 - `pd-prep-for-pgdp/specs/` — how `block_role_labels` map to PGDP
   markup downstream.

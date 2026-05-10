@@ -10,7 +10,7 @@ Lifecycle is anchored to the venv directory: a venv rebuild
 (``make remove-venv``) deletes the marker automatically — no
 stale-marker class of bug.
 
-Spec: ``docs/planning/dev-local-upgrade-flow-spec.md``.
+Spec: ``docs/specs/07-dev-local-upgrade-flow.md``.
 
 CLI usage::
 
@@ -63,7 +63,7 @@ def write_marker(venv_dir: Path) -> Path:
         "Lifecycle is tied to this venv — `make remove-venv` deletes\n"
         "this file along with everything else.\n"
         "\n"
-        "Spec: docs/planning/dev-local-upgrade-flow-spec.md\n"
+        "Spec: docs/specs/07-dev-local-upgrade-flow.md\n"
     )
     target.write_text(body)
     return target

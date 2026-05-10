@@ -1,4 +1,4 @@
-"""Drift gate for ``docs/architecture/page-model.md``.
+"""Drift gate for ``docs/specs/01-page-model.md``.
 
 The page-model doc is a user-facing reference for ``Page.to_dict()`` —
 the JSON form that every downstream pd-* consumer reads back via
@@ -25,7 +25,7 @@ from pd_book_tools.ocr.label_normalization import ALLOWED_COMPONENTS
 from pd_book_tools.ocr.page import Page
 
 DOC_PATH = (
-    Path(__file__).resolve().parent.parent / "docs" / "architecture" / "page-model.md"
+    Path(__file__).resolve().parent.parent / "docs" / "specs" / "01-page-model.md"
 )
 
 

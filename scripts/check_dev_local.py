@@ -7,7 +7,7 @@ that ``uv sync --group dev`` (the canonical sync) would silently
 revert. ``make upgrade-deps`` and any future recipe that rebuilds the
 venv invokes this script to refuse-rather-than-clobber.
 
-Spec: ``docs/planning/dev-local-upgrade-flow-spec.md``.
+Spec: ``docs/specs/07-dev-local-upgrade-flow.md``.
 
 Exit code:
 - 0 if canonical (Makefile recipe proceeds normally).

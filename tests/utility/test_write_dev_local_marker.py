@@ -6,7 +6,7 @@ The marker-write helper backs the `make dev-local` recipe (spec
 can pick up. Tests drive the pure helper so we don't have to spin up
 a real venv or run ``make``.
 
-Spec: ``docs/planning/dev-local-upgrade-flow-spec.md``.
+Spec: ``docs/specs/07-dev-local-upgrade-flow.md``.
 """
 
 from __future__ import annotations

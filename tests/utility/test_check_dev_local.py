@@ -6,7 +6,7 @@ editable, or any non-project editable install) that ``uv sync --group
 dev`` would silently revert. These tests exercise its pure-function
 core via importable helpers so we don't need to spin up a real venv.
 
-Spec: ``docs/planning/dev-local-upgrade-flow-spec.md``.
+Spec: ``docs/specs/07-dev-local-upgrade-flow.md``.
 """
 
 from __future__ import annotations

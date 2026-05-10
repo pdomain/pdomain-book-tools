@@ -192,7 +192,7 @@ doc = Document.from_image_ocr_via_doctr(
 )
 ```
 
-See [`docs/architecture/rotation.md`](docs/architecture/rotation.md) for
+See [`docs/specs/02-rotation.md`](docs/specs/02-rotation.md) for
 the threshold rationale, the rotated-frame coordinate convention, and
 what this is *not* (no arbitrary deskew, no separate orientation
 classifier).
@@ -203,7 +203,7 @@ classifier).
 pages plus their OCR / layout / reorganize artifacts; it's the contract
 that pins the layout pipeline to known-good output. Workflow for adding
 a fixture and regenerating after a pipeline change is in
-[`docs/architecture/layout_regression_fixtures.md`](docs/architecture/layout_regression_fixtures.md).
+[`docs/specs/04-layout-regression-fixtures.md`](docs/specs/04-layout-regression-fixtures.md).
 
 ## License
 
