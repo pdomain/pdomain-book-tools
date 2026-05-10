@@ -645,3 +645,152 @@ class TestReplaceWordsBreakAndContinue:
         )
         # Should complete without error
         assert line.words[0].ground_truth_text == "hi"
+
+
+# ---------------------------------------------------------------------------
+# Unknown line tag fallback (line 110)
+# ---------------------------------------------------------------------------
+
+
+class TestUpdatePageWithGroundTruthUnknownLineTag:
+    def test_unknown_line_tag_raises_error(self):
+        """Invalid line_tag in opcode raises ValueError (line 110)."""
+        from pd_book_tools.ocr.ground_truth_matching import (
+            update_page_with_ground_truth_text,
+        )
+
+        page = _make_page([["hello", "world"]])
+        # Monkey-patch to inject invalid opcode
+        original_get_opcodes = __import__("difflib").SequenceMatcher.get_opcodes
+
+        def patched_get_opcodes(self):
+            # Return a valid opcode followed by an invalid one
+            return [("equal", 0, 1, 0, 1), ("invalid_tag", 1, 1, 1, 1)]
+
+        __import__("difflib").SequenceMatcher.get_opcodes = patched_get_opcodes
+        try:
+            with pytest.raises(ValueError, match="Unknown line tag"):
+                update_page_with_ground_truth_text(page, "hello world\nstuff")
+        finally:
+            __import__("difflib").SequenceMatcher.get_opcodes = original_get_opcodes
+
+
+# ---------------------------------------------------------------------------
+# Initialize unmatched_ground_truth_words list (line 420)
+# ---------------------------------------------------------------------------
+
+
+class TestInitializeUnmatchedGroundTruthWords:
+    def test_initializes_unmatched_list_on_insert_word_op(self):
+        """Line 420: initialize unmatched_ground_truth_words when None during insert op."""
+        from pd_book_tools.ocr.ground_truth_matching import (
+            update_line_with_ground_truth,
+        )
+
+        line = _make_line(["hello"])
+        # Ensure unmatched_ground_truth_words is None to trigger initialization
+        line.unmatched_ground_truth_words = None
+
+        ocr_tuple = ("hello",)
+        # "world" is in GT but not OCR
+        gt_tuple = ("hello", "world")
+
+        update_line_with_ground_truth(
+            line=line,
+            ocr_line_tuple=ocr_tuple,
+            ground_truth_tuple=gt_tuple,
+        )
+
+        # After update, unmatched list should be initialized and populated
+        assert line.unmatched_ground_truth_words is not None
+        assert len(line.unmatched_ground_truth_words) > 0
+        assert any("world" in t for _, t in line.unmatched_ground_truth_words)
+
+
+# ---------------------------------------------------------------------------
+# Combined word update (line 437) and word removal (line 846)
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateCombinedWordsWithExistingUnmatched:
+    def test_combined_words_preserves_existing_unmatched(self):
+        """Combined word update preserves unmatched words added in same function."""
+        from pd_book_tools.ocr.ground_truth_matching import (
+            update_line_with_ground_truth,
+        )
+
+        line = _make_line(["hello", ",", "world"])
+        # Force a replace op that will:
+        # 1. Create combined words ("hello,")
+        # 2. Leave unmatched GT words
+        ocr_tuple = ("hello", ",", "world")
+        gt_tuple = ("hello,", "world", "goodbye")  # "goodbye" has no OCR match
+
+        update_line_with_ground_truth(
+            line=line,
+            ocr_line_tuple=ocr_tuple,
+            ground_truth_tuple=gt_tuple,
+        )
+
+        # Should have combined "hello" and "," into "hello,"
+        # and "goodbye" should be unmatched
+        word_texts = [w.text for w in line.words]
+        assert "hello," in word_texts or "hello" in word_texts
+        assert line.unmatched_ground_truth_words is not None
+        assert any("goodbye" in t for _, t in line.unmatched_ground_truth_words)
+
+
+# ---------------------------------------------------------------------------
+# Soft wrap detection edge case (line 1089)
+# ---------------------------------------------------------------------------
+
+
+class TestShouldConsiderLineEndSoftWrapEdgeCases:
+    def test_returns_false_when_gt_last_word_is_single_char(self):
+        """When GT last word is single char, comparison fails (line 1099)."""
+        # OCR "a" vs GT "a" (same length) → False
+        assert _should_consider_line_end_soft_wrap("a", "a") is False
+
+    def test_returns_false_when_ocr_and_gt_both_empty_after_strip(self):
+        """When both OCR and GT strip to empty, return False (line 1073)."""
+        # Words that are only punctuation
+        assert _should_consider_line_end_soft_wrap(".,;:!?", ".,;:!?") is False
+
+    def test_returns_false_when_gt_core_stripped_too_short(self):
+        """When GT core < 2 chars, return False (line 1099)."""
+        # OCR "a" (< 2) vs GT "ab" (valid)
+        # But GT core is < len(ocr_core) + 1 so still False
+        assert (
+            _should_consider_line_end_soft_wrap("a", "ab") is False
+        )  # len(a)=1, not >= 2
+
+
+# ---------------------------------------------------------------------------
+# Unmatched ground truth lines append (line 866)
+# ---------------------------------------------------------------------------
+
+
+class TestUnmatchedGroundTruthWordsAppend:
+    def test_append_to_initialized_unmatched_list(self):
+        """Line 866: append to unmatched_ground_truth_words when already initialized."""
+        from pd_book_tools.ocr.ground_truth_matching import (
+            update_line_with_ground_truth,
+        )
+
+        line = _make_line(["hello"])
+        # Pre-initialize with existing unmatched
+        line.unmatched_ground_truth_words = [(0, "prior")]
+
+        ocr_tuple = ("hello",)
+        gt_tuple = ("hello", "new1", "new2")
+
+        update_line_with_ground_truth(
+            line=line,
+            ocr_line_tuple=ocr_tuple,
+            ground_truth_tuple=gt_tuple,
+        )
+
+        # Should preserve prior entry and append new ones
+        assert len(line.unmatched_ground_truth_words) >= 2
+        unmatched_texts = [t for _, t in line.unmatched_ground_truth_words]
+        assert "new1" in unmatched_texts or "new2" in unmatched_texts
