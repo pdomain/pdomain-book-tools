@@ -9,10 +9,13 @@ from pd_book_tools.ocr.page import Page
 try:
     from pytesseract import Output as pytesseract_Output
     from pytesseract import image_to_data, image_to_string
+
+    _pytesseract_available = True
 except ImportError:
-    raise ImportError(
-        "pytesseract is not installed. Please install extra dependency [tesseract]"
-    )
+    _pytesseract_available = False
+    pytesseract_Output = None
+    image_to_data = None
+    image_to_string = None
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +46,11 @@ def tesseract_ocr_cv2_image(
             provenance records (L-18). Defaults to ``"eng"`` to preserve
             historical behavior.
     """
+    if not _pytesseract_available:
+        raise ImportError(
+            "pytesseract is not installed. Please install extra dependency [tesseract]"
+        )
+
     if image.ndim == 2:
         # If the image is already grayscale, no need to convert
         image_grayscale = image
