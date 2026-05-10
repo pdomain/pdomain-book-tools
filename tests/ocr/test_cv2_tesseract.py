@@ -1,5 +1,7 @@
 """Tests for cv2_tesseract OCR adapter module."""
 
+import importlib.util
+import shutil
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -11,6 +13,10 @@ from cv2 import imread
 from pd_book_tools.ocr.cv2_tesseract import tesseract_ocr_cv2_image
 from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.page import Page
+
+# Check if pytesseract is available for integration tests
+_pytesseract_available = importlib.util.find_spec("pytesseract") is not None
+_tesseract_binary_available = shutil.which("tesseract") is not None
 
 
 class TestTesseractOcrCv2Image:
@@ -477,7 +483,24 @@ class TestImportError:
         assert "pytesseract is not installed" in content
         assert "Please install extra dependency [tesseract]" in content
 
+    def test_tesseract_ocr_without_pytesseract_raises_clear_error(self):
+        """When pytesseract is not available, calling tesseract_ocr_cv2_image
+        raises a clear ImportError with helpful guidance."""
+        import numpy as np
 
+        with patch("pd_book_tools.ocr.cv2_tesseract._pytesseract_available", False):
+            image = np.zeros((10, 10), dtype=np.uint8)
+            with pytest.raises(
+                ImportError,
+                match=r"pytesseract is not installed.*Please install extra dependency \[tesseract\]",
+            ):
+                tesseract_ocr_cv2_image(image)
+
+
+@pytest.mark.skipif(
+    not (_pytesseract_available and _tesseract_binary_available),
+    reason="pytesseract not installed or tesseract binary not found in PATH (required for real image integration tests)",
+)
 class TestRealImageIntegration:
     """Integration tests with real images (requires pytesseract)."""
 
@@ -486,15 +509,8 @@ class TestRealImageIntegration:
         """Path to the test image."""
         return Path(__file__).parent.parent / "ocr-test-image.png"
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("pytesseract", reason="pytesseract not available"),
-        reason="Requires pytesseract for integration testing",
-    )
     def test_real_image_ocr(self, test_image_path):
         """Test OCR with real test image."""
-        pytest.importorskip("cv2")
-        pytest.importorskip("pytesseract")
-
         # Load the test image
         image = imread(str(test_image_path))
         assert image is not None, f"Could not load test image: {test_image_path}"
@@ -511,15 +527,8 @@ class TestRealImageIntegration:
         # We don't assert specific text since OCR results can vary
         assert hasattr(result_page, "items")
 
-    @pytest.mark.skipif(
-        not pytest.importorskip("pytesseract", reason="pytesseract not available"),
-        reason="Requires pytesseract for integration testing",
-    )
     def test_real_image_grayscale_vs_color(self, test_image_path):
         """Test that grayscale and color versions of same image produce similar results."""
-        pytest.importorskip("cv2")
-        pytest.importorskip("pytesseract")
-
         from cv2 import IMREAD_COLOR, IMREAD_GRAYSCALE, imread
 
         # Load as grayscale and color
