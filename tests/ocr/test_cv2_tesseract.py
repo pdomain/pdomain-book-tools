@@ -483,6 +483,19 @@ class TestImportError:
         assert "pytesseract is not installed" in content
         assert "Please install extra dependency [tesseract]" in content
 
+    def test_tesseract_ocr_without_pytesseract_raises_clear_error(self):
+        """When pytesseract is not available, calling tesseract_ocr_cv2_image
+        raises a clear ImportError with helpful guidance."""
+        import numpy as np
+
+        with patch("pd_book_tools.ocr.cv2_tesseract._pytesseract_available", False):
+            image = np.zeros((10, 10), dtype=np.uint8)
+            with pytest.raises(
+                ImportError,
+                match=r"pytesseract is not installed.*Please install extra dependency \[tesseract\]",
+            ):
+                tesseract_ocr_cv2_image(image)
+
 
 @pytest.mark.skipif(
     not (_pytesseract_available and _tesseract_binary_available),
