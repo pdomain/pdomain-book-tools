@@ -17,8 +17,15 @@ from pd_book_tools.ocr.word import Word
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"
 TEXT_BASELINE_DIR = FIXTURE_ROOT / "expected_text" / "baseline"
-TEXT_CURRENT_DIR = FIXTURE_ROOT / "expected_text" / "current"
-TEXT_DIFF_DIR = FIXTURE_ROOT / "expected_text" / "diff"
+_TEXT_CURRENT_ROOT = FIXTURE_ROOT / "expected_text" / "current"
+_TEXT_DIFF_ROOT = FIXTURE_ROOT / "expected_text" / "diff"
+# Per-worker subtree under each output root so xdist workers don't race on
+# the session-scoped rmtree (issue #14). When running serially (no xdist),
+# ``PYTEST_XDIST_WORKER`` is unset and the suffix is empty — output lands
+# directly under the canonical root, preserving legacy behaviour.
+_WORKER_ID = os.environ.get("PYTEST_XDIST_WORKER", "")
+TEXT_CURRENT_DIR = _TEXT_CURRENT_ROOT / _WORKER_ID if _WORKER_ID else _TEXT_CURRENT_ROOT
+TEXT_DIFF_DIR = _TEXT_DIFF_ROOT / _WORKER_ID if _WORKER_ID else _TEXT_DIFF_ROOT
 # Debug PNGs / text reports land under a per-run timestamped subfolder so old
 # runs accumulate and can be diffed across changes. The whole tree is
 # gitignored — `rm -rf debug/` to reclaim disk.
@@ -173,10 +180,17 @@ def _wipe_text_outputs():
     wiped here; ``run_dir`` gives each session its own subfolder so old
     runs are preserved.
 
-    ``ignore_errors=True`` makes this safe under ``pytest -n auto``:
-    multiple xdist workers each enter this session-scoped fixture and
-    race on the rmtree. We don't care which worker wins — only that the
-    dirs are gone before tests start writing into them.
+    Under ``pytest -n auto`` (xdist) each worker process runs its own
+    copy of this session-scoped fixture. To avoid a TOCTOU race where
+    worker A's session-start rmtree fires *after* worker B has already
+    mkdir'd ``TEXT_CURRENT_DIR`` and is about to ``write_text`` into it
+    (issue #14), each worker scopes its writes to a per-worker subtree
+    (``current/<worker_id>/...``) and only wipes its own subtree here.
+    Sequential runs (no xdist) keep the legacy behaviour: wipe the
+    canonical root.
+
+    ``ignore_errors=True`` keeps the wipe safe even if the dir is
+    already absent (first run after a clean checkout).
     """
     import shutil
 
