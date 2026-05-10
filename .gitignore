@@ -138,6 +138,10 @@ cython_debug/
 
 training-output/
 
+# ship-issue per-issue acceptance JSON written by workspace-level
+# scripts/ship-issue-pick.py; bot's CC sandbox reads from working tree.
+.ship-issue-tmp/
+
 # doctr package (git clone https://github.com/mindee/doctr.git doctr_package)
 doctr_package/**
 
