@@ -1,4 +1,4 @@
-# Feature-request lifecycle chain — end-to-end validation (smoke)
+# Lifecycle chain E2E validation (smoke)
 
 > **Status**: Draft
 > **Last updated**: 2026-05-10
