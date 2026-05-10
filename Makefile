@@ -23,7 +23,7 @@ else
 endif
 	uv sync --group dev $(GPU_EXTRA)
 	@echo "🪝 Setting up pre-commit hooks..."
-	uv run pre-commit install
+	@[ -f .git/hooks/pre-commit ] || uv run pre-commit install
 	@echo "✅ Installation complete!"
 
 setup: install ## Alias for install
