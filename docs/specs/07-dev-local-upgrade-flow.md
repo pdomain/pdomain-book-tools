@@ -1,5 +1,8 @@
 # Spec: dev-local-aware `upgrade-deps` flow
 
+> **Status**: Active
+> **Last updated**: 2026-05-10
+
 Status: **shipped** (2026-05). All required behavior in §2 landed across
 commits `ba267f3` (refuse-rather-than-clobber `upgrade-deps` +
 `upgrade-deps-local`) and `68c64e2` (`make dev-local` recipe + marker
@@ -199,3 +202,39 @@ final implementation.
   `/workspaces/ocr-container/.claude/agent-memory/pd-book-tools/release_strategy_self_hosted_index.md`
 - Current `upgrade-deps` recipe: `Makefile:97-102`.
 - Conditional GPU sync precedent: `Makefile:87-95` (`sync-gpu`).
+
+## TL;DR
+
+Not yet captured during the B3 mechanical migration.
+
+## Context
+
+Not yet captured during the B3 mechanical migration.
+
+## Constraints
+
+Not yet captured during the B3 mechanical migration.
+
+## Decision
+
+Not yet captured during the B3 mechanical migration.
+
+## Contract / Acceptance
+
+Not yet captured during the B3 mechanical migration.
+
+## Trade-offs considered
+
+Not yet captured during the B3 mechanical migration.
+
+## Consequences
+
+Not yet captured during the B3 mechanical migration.
+
+## Open questions
+
+Not yet captured during the B3 mechanical migration.
+
+## References
+
+Not yet captured during the B3 mechanical migration.

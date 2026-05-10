@@ -1,5 +1,8 @@
 # Spec: Word / Line Reference Lines (top, x-height, baseline, bottom)
 
+> **Status**: Active
+> **Last updated**: 2026-05-10
+
 Status: spec only — no implementation yet. Decision-oriented; intended
 to be green-lit, pushed back on, or revised before code is written.
 
@@ -872,3 +875,39 @@ posture (`fail_under = 0`), no new gate.
   immediate use cases).
 - Using DocTR's internal text-line geometry (we deliberately stay
   on raw pixels so this works for any OCR engine, not just DocTR).
+
+## TL;DR
+
+Not yet captured during the B3 mechanical migration.
+
+## Context
+
+Not yet captured during the B3 mechanical migration.
+
+## Constraints
+
+Not yet captured during the B3 mechanical migration.
+
+## Decision
+
+Not yet captured during the B3 mechanical migration.
+
+## Contract / Acceptance
+
+Not yet captured during the B3 mechanical migration.
+
+## Trade-offs considered
+
+Not yet captured during the B3 mechanical migration.
+
+## Consequences
+
+Not yet captured during the B3 mechanical migration.
+
+## Open questions
+
+Not yet captured during the B3 mechanical migration.
+
+## References
+
+Not yet captured during the B3 mechanical migration.

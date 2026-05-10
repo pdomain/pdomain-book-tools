@@ -1,5 +1,8 @@
 # Layout-Regression Fixture Corpus
 
+> **Status**: Active
+> **Last updated**: 2026-05-10
+
 How the fixture corpus under
 [`tests/fixtures/layout_regression/`](../../tests/fixtures/layout_regression/)
 is organised, how to add a new fixture, and what role each per-case file
@@ -237,3 +240,39 @@ a regression.
 The per-case manifest with full source paths and a description of what
 each fixture stresses lives in
 [`tests/fixtures/layout_regression/README.md`](../../tests/fixtures/layout_regression/README.md).
+
+## TL;DR
+
+Not yet captured during the B3 mechanical migration.
+
+## Context
+
+Not yet captured during the B3 mechanical migration.
+
+## Constraints
+
+Not yet captured during the B3 mechanical migration.
+
+## Decision
+
+Not yet captured during the B3 mechanical migration.
+
+## Contract / Acceptance
+
+Not yet captured during the B3 mechanical migration.
+
+## Trade-offs considered
+
+Not yet captured during the B3 mechanical migration.
+
+## Consequences
+
+Not yet captured during the B3 mechanical migration.
+
+## Open questions
+
+Not yet captured during the B3 mechanical migration.
+
+## References
+
+Not yet captured during the B3 mechanical migration.

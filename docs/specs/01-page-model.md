@@ -1,5 +1,8 @@
 # Page model — `Page.to_dict()` JSON reference
 
+> **Status**: Active
+> **Last updated**: 2026-05-10
+
 This document is the user-facing reference for the JSON form of a
 processed page produced by pd-book-tools. It describes what the keys
 mean, what the value vocabularies are, and where the format is and
@@ -342,3 +345,39 @@ Those are separate efforts and are out of scope here.
   the page coordinate frame.
 - `pd-prep-for-pgdp/specs/` — how `block_role_labels` map to PGDP
   markup downstream.
+
+## TL;DR
+
+Not yet captured during the B3 mechanical migration.
+
+## Context
+
+Not yet captured during the B3 mechanical migration.
+
+## Constraints
+
+Not yet captured during the B3 mechanical migration.
+
+## Decision
+
+Not yet captured during the B3 mechanical migration.
+
+## Contract / Acceptance
+
+Not yet captured during the B3 mechanical migration.
+
+## Trade-offs considered
+
+Not yet captured during the B3 mechanical migration.
+
+## Consequences
+
+Not yet captured during the B3 mechanical migration.
+
+## Open questions
+
+Not yet captured during the B3 mechanical migration.
+
+## References
+
+Not yet captured during the B3 mechanical migration.

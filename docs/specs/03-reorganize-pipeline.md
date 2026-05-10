@@ -1,5 +1,8 @@
 # Reorganize Page Pipeline
 
+> **Status**: Active
+> **Last updated**: 2026-05-10
+
 How `Page.reorganize_page` turns a page of OCR output (a tree of `Block` /
 `Line` / `Word` objects) into the ordered, classified block structure used by
 `page.text` and downstream consumers.
@@ -436,3 +439,39 @@ initial three-page fixture set:
   body_after` rather than reading by Y.
 - **test3** — `EARLY HERBALS 179` header where each piece OCR'd into a
   separate paragraph. Same Step E header-band peel handles it.
+
+## TL;DR
+
+Not yet captured during the B3 mechanical migration.
+
+## Context
+
+Not yet captured during the B3 mechanical migration.
+
+## Constraints
+
+Not yet captured during the B3 mechanical migration.
+
+## Decision
+
+Not yet captured during the B3 mechanical migration.
+
+## Contract / Acceptance
+
+Not yet captured during the B3 mechanical migration.
+
+## Trade-offs considered
+
+Not yet captured during the B3 mechanical migration.
+
+## Consequences
+
+Not yet captured during the B3 mechanical migration.
+
+## Open questions
+
+Not yet captured during the B3 mechanical migration.
+
+## References
+
+Not yet captured during the B3 mechanical migration.

@@ -1,5 +1,8 @@
 # Page-Orientation Detection
 
+> **Status**: Active
+> **Last updated**: 2026-05-10
+
 How `pd-book-tools` decides whether a page image needs to be rotated before
 OCR, and what the resulting `Page` records about that decision.
 
@@ -172,3 +175,39 @@ the source image.
   but-readable plate captions while rejecting the hallucinate-letters-
   out-of-stripes failure mode on heavily-decorated pages. Should be
   re-tuned if a fixture lands that's borderline.
+
+## TL;DR
+
+Not yet captured during the B3 mechanical migration.
+
+## Context
+
+Not yet captured during the B3 mechanical migration.
+
+## Constraints
+
+Not yet captured during the B3 mechanical migration.
+
+## Decision
+
+Not yet captured during the B3 mechanical migration.
+
+## Contract / Acceptance
+
+Not yet captured during the B3 mechanical migration.
+
+## Trade-offs considered
+
+Not yet captured during the B3 mechanical migration.
+
+## Consequences
+
+Not yet captured during the B3 mechanical migration.
+
+## Open questions
+
+Not yet captured during the B3 mechanical migration.
+
+## References
+
+Not yet captured during the B3 mechanical migration.
