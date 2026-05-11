@@ -503,9 +503,6 @@ def test_hash_dict_key_pixel():
     assert d[Point.pixel(5, 6)] == "value"
 
 
-# Representation ----------------------------------------------------------
-
-
 def test_repr_integer_coordinates():
     p = Point(3, 7)
     assert repr(p) == "Point(3, 7)"
