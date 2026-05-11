@@ -648,26 +648,22 @@ class TestReplaceWordsBreakAndContinue:
 
 
 class TestUpdatePageWithGroundTruthUnknownLineTag:
-    def test_unknown_line_tag_raises_error(self):
+    def test_unknown_line_tag_raises_error(self, monkeypatch):
         """Invalid line_tag in opcode raises ValueError (line 110)."""
+        import difflib
+
         from pd_book_tools.ocr.ground_truth_matching import (
             update_page_with_ground_truth_text,
         )
 
         page = _make_page([["hello", "world"]])
-        # Monkey-patch to inject invalid opcode
-        original_get_opcodes = __import__("difflib").SequenceMatcher.get_opcodes
 
         def patched_get_opcodes(self):
-            # Return a valid opcode followed by an invalid one
             return [("equal", 0, 1, 0, 1), ("invalid_tag", 1, 1, 1, 1)]
 
-        __import__("difflib").SequenceMatcher.get_opcodes = patched_get_opcodes
-        try:
-            with pytest.raises(ValueError, match="Unknown line tag"):
-                update_page_with_ground_truth_text(page, "hello world\nstuff")
-        finally:
-            __import__("difflib").SequenceMatcher.get_opcodes = original_get_opcodes
+        monkeypatch.setattr(difflib.SequenceMatcher, "get_opcodes", patched_get_opcodes)
+        with pytest.raises(ValueError, match="Unknown line tag"):
+            update_page_with_ground_truth_text(page, "hello world\nstuff")
 
 
 class TestInitializeUnmatchedGroundTruthWords:
