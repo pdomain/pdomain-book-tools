@@ -71,7 +71,7 @@ def _make_page_with_words(
         # Normalized coordinates: distribute words across [0.0, 1.0] range
         spacing = 0.2
         x_offset = 0.05
-        for i, text in enumerate(words_list):
+        for _i, text in enumerate(words_list):
             word = _make_word(
                 text,
                 x_offset,
@@ -86,7 +86,7 @@ def _make_page_with_words(
     else:
         # Pixel coordinates for backwards compatibility
         x_offset = 0
-        for i, text in enumerate(words_list):
+        for _i, text in enumerate(words_list):
             word = _make_word(
                 text,
                 x_offset,
