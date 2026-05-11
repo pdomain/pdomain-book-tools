@@ -81,8 +81,9 @@ test-k: sync-gpu ## Run tests by pytest -k expression (usage: make test-k K='pat
 
 coverage: sync-gpu ## Run tests with coverage report (parallelized)
 	@echo "🧪 Running tests with coverage (parallelized)..."
-	uv run pytest --cov=pd_book_tools --cov-report=html -n auto -v -ra
+	uv run pytest --cov=pd_book_tools --cov-report=html --cov-report=xml -n auto -v -ra
 	@echo "📊 Coverage report generated in htmlcov/index.html"
+	@uv run python scripts/coverage_reporter.py
 
 sync-gpu: ## Sync the [gpu] extra (CuPy) when an NVIDIA GPU is auto-detected; no-op otherwise / in CI
 	@if [ -z "$(strip $(GPU_EXTRA))" ]; then \
