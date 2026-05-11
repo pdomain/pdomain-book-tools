@@ -647,9 +647,6 @@ class TestReplaceWordsBreakAndContinue:
         assert line.words[0].ground_truth_text == "hi"
 
 
-# ---------------------------------------------------------------------------
-# Unknown line tag fallback (line 110)
-# ---------------------------------------------------------------------------
 
 
 class TestUpdatePageWithGroundTruthUnknownLineTag:
@@ -675,9 +672,6 @@ class TestUpdatePageWithGroundTruthUnknownLineTag:
             __import__("difflib").SequenceMatcher.get_opcodes = original_get_opcodes
 
 
-# ---------------------------------------------------------------------------
-# Initialize unmatched_ground_truth_words list (line 420)
-# ---------------------------------------------------------------------------
 
 
 class TestInitializeUnmatchedGroundTruthWords:
@@ -707,9 +701,6 @@ class TestInitializeUnmatchedGroundTruthWords:
         assert any("world" in t for _, t in line.unmatched_ground_truth_words)
 
 
-# ---------------------------------------------------------------------------
-# Combined word update (line 437) and word removal (line 846)
-# ---------------------------------------------------------------------------
 
 
 class TestUpdateCombinedWordsWithExistingUnmatched:
@@ -740,9 +731,6 @@ class TestUpdateCombinedWordsWithExistingUnmatched:
         assert any("goodbye" in t for _, t in line.unmatched_ground_truth_words)
 
 
-# ---------------------------------------------------------------------------
-# Soft wrap detection edge case (line 1089)
-# ---------------------------------------------------------------------------
 
 
 class TestShouldConsiderLineEndSoftWrapEdgeCases:
@@ -765,9 +753,6 @@ class TestShouldConsiderLineEndSoftWrapEdgeCases:
         )  # len(a)=1, not >= 2
 
 
-# ---------------------------------------------------------------------------
-# Unmatched ground truth lines append (line 866)
-# ---------------------------------------------------------------------------
 
 
 class TestUnmatchedGroundTruthWordsAppend:

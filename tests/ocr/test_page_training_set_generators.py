@@ -110,8 +110,6 @@ def _make_page_with_words(
     return page
 
 
-# Tests for generate_doctr_checks
-# ============================================================================
 
 
 class TestGenerateDoctrChecks:
@@ -146,8 +144,6 @@ class TestGenerateDoctrChecks:
         # Should complete without error
 
 
-# Tests for generate_doctr_detection_training_set
-# ============================================================================
 
 
 class TestGenerateDoctrDetectionTrainingSet:
@@ -315,8 +311,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert "test_1.png" in labels
 
 
-# Tests for generate_doctr_recognition_training_set
-# ============================================================================
 
 
 class TestGenerateDoctrRecognitionTrainingSet:
@@ -499,8 +493,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert len(labels) == 2
 
 
-# Tests for convert_to_training_set
-# ============================================================================
 
 
 class TestConvertToTrainingSet:
@@ -564,8 +556,6 @@ class TestConvertToTrainingSet:
         assert (output_path / "recognition" / "labels.json").exists()
 
 
-# Tests for error handling and edge cases
-# ============================================================================
 
 
 class TestTrainingSetGeneratorErrorHandling:

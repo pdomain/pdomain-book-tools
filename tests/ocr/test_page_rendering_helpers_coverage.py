@@ -34,8 +34,6 @@ def _make_paragraph(lines):
     )
 
 
-# Tests for rebox_word exception handling (lines 2123-2130)
-# ============================================================================
 
 
 class TestReboxWordExceptionHandling:
@@ -60,8 +58,6 @@ class TestReboxWordExceptionHandling:
             assert result is False
 
 
-# Tests for add_word_to_page exception handling (lines 2213-2215)
-# ============================================================================
 
 
 class TestAddWordToPageExceptionHandling:
@@ -87,8 +83,6 @@ class TestAddWordToPageExceptionHandling:
             assert result is False
 
 
-# Tests for split_line_with_selected_words edge cases
-# ============================================================================
 
 
 class TestSplitLineWithSelectedWordsEdgeCases:
@@ -174,8 +168,6 @@ class TestSplitLineWithSelectedWordsEdgeCases:
         assert len(page.paragraphs) >= paras_before
 
 
-# Tests for split_lines_into_selected_and_unselected_words
-# ============================================================================
 
 
 class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
@@ -215,8 +207,6 @@ class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
         assert len(multi_line_page.paragraphs) >= 1
 
 
-# Integration tests
-# ============================================================================
 
 
 class TestRenderingHelpersIntegration:
