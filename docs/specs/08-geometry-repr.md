@@ -1,6 +1,6 @@
 # Geometry Types `__repr__` Contract
 
-> **Status**: Approved
+> **Status**: Active
 > **Last updated**: 2026-05-11
 > **Spec-Issue**: ConcaveTrillion/pd-book-tools#36
 
