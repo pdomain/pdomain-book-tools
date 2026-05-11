@@ -14,6 +14,5 @@ def test_bounding_box_repr_eval_safe():
 
 
 def test_point_repr():
-    """repr(Point) returns Point(x, y) form."""
     assert repr(Point(3, 7)) == "Point(3, 7)"
     assert repr(Point(0.5, 0.5)) == "Point(0.5, 0.5)"
