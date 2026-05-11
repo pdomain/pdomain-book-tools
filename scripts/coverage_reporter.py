@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Display coverage report with soft-target indicator."""
 
+import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -21,8 +22,9 @@ def get_coverage_percentage() -> float | None:
         lines_covered = int(root.get("lines-covered", 0))
         if lines_valid > 0:
             return (lines_covered / lines_valid) * 100
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"coverage_reporter: failed to parse coverage.xml: {e}", file=sys.stderr)
+        return None
 
     return None
 
