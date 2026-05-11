@@ -1051,6 +1051,5 @@ def test_bounding_box_repr():
 
 
 def test_bounding_box_repr_floats():
-    """Test __repr__ with float coordinates"""
     bbox = BoundingBox(Point(0.5, 1.5), Point(2.5, 3.5))
     assert repr(bbox) == "BoundingBox.from_ltrb(0.5, 1.5, 2.5, 3.5)"
