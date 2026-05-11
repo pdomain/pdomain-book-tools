@@ -1,4 +1,4 @@
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local dev-local sync-gpu test test-verbose test-single test-k coverage lint format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local dev-local sync-gpu test test-verbose test-single test-k coverage lint lint-check format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -145,15 +145,20 @@ pre-commit-check: ## Run pre-commit on all files
 	@echo "🪝 Running pre-commit on all files..."
 	uv run pre-commit run --all-files
 
+lint-check: ## Read-only ruff format+check on all files (no auto-fix; matches GitHub CI exactly)
+	@echo "🔍 Checking format and lint (read-only, full repo)..."
+	uv run ruff format --check .
+	uv run ruff check .
 
 build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."
 	uv build
 
-ci: ## Run complete CI pipeline (install [idempotent], pre-commit, test, build, layout-fork-info)
+ci: ## Run complete CI pipeline (install [idempotent], pre-commit, lint-check, test, build, layout-fork-info)
 	@echo "🚀 Running complete CI pipeline..."
 	@$(MAKE) --no-print-directory install
 	@$(MAKE) --no-print-directory pre-commit-check
+	@$(MAKE) --no-print-directory lint-check
 	@$(MAKE) --no-print-directory test
 	@$(MAKE) --no-print-directory build
 	@echo ""
