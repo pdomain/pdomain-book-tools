@@ -1,11 +1,4 @@
-"""Coverage tests for page.py training-set generator helpers (lines ~2810-3234).
-
-Focus on:
-- generate_doctr_checks: output path validation (lines 3197-3210)
-- generate_doctr_detection_training_set: detection dataset creation (lines 3212-3317)
-- generate_doctr_recognition_training_set: recognition dataset creation (lines 3319-3435)
-- convert_to_training_set: unified training set export (lines 3437-3462)
-"""
+"""Coverage tests for page.py training-set generator helpers (lines ~2810-3234)."""
 
 import json
 

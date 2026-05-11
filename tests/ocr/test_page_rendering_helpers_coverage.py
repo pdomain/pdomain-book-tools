@@ -1,10 +1,4 @@
-"""Coverage tests for page.py rendering/editing helpers (lines 2068-2415).
-
-Focus on exception paths, edge cases, and geometry error handling in:
-- rebox_word: exception handling (lines 2123-2130)
-- add_word_to_page: exception handling (lines 2213-2215)
-- split_line_with_selected_words: geometry errors, edge cases (lines 2285-2433)
-"""
+"""Coverage tests for page.py rendering/editing helpers (lines 2068-2415)."""
 
 from unittest.mock import PropertyMock, patch
 
