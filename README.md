@@ -104,6 +104,22 @@ make lint    # Check and auto-fix linting issues
 make format  # Format code with ruff
 ```
 
+### Coverage Testing
+
+The project maintains test coverage thresholds to ensure code quality:
+
+```bash
+make coverage  # Run tests with coverage report (generates htmlcov/index.html)
+```
+
+**Coverage Thresholds:**
+
+- **Hard threshold:** 80% — CI fails if coverage drops below this level
+- **Soft target:** 88% — Goal for maintainability and code reliability
+
+The coverage report includes a threshold summary with the current coverage
+percentage and how it compares to the soft target.
+
 ### Pre-commit Checks
 
 ```bash
