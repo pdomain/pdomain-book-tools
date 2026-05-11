@@ -36,7 +36,7 @@ curly quotes, en-dashes, em-dashes, multiplication signs, non-breaking spaces,
 etc.) must be written as `\uXXXX` escape sequences in string and docstring
 literals. In comments, replace with the plain ASCII equivalent. In every case
 include a short inline comment naming the character, e.g.
-`"“"  # LEFT DOUBLE QUOTATION MARK`.
+`"""  # LEFT DOUBLE QUOTATION MARK`.
 
 **Why.** Literal curly quotes and dashes are visually indistinguishable from
 ASCII equivalents in most editors and diff views, making string comparisons and
@@ -58,6 +58,28 @@ all encodings. `# noqa: RUF00x` masks the problem instead of fixing it.
   OCR pipeline and must contain the literal character — keep the literal with an
   explicit `# noqa: RUF001  # intentional: testing curly-quote round-trip`
   comment that names the character and states the reason.
+
+## Rule: Use `uv run` for all Python and tool invocation
+
+**The rule.** Invoke Python, pytest, ruff, mypy/pyright, and any project-local
+CLI through `uv run`. Never call bare `python`, `python3`, `pytest`, or
+`pre-commit` from a Makefile target, CI step, or hook.
+
+**Why.** Direct invocation skips the project's `.venv` and the lockfile-pinned
+toolchain; tests pass locally and fail in CI (or vice versa) because the bare
+interpreter sees different installed package versions. `uv run` is uniformly
+fast (<200 ms warm) and always selects the project venv.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- `python -m pytest` or `python3 script.py` in any `Makefile`, `*.sh`,
+  `.github/workflows/*.yml`, or `.pre-commit-config.yaml` hook.
+- `pre-commit run` (bare) instead of `uv run pre-commit run` in CI or scripts.
+- `ruff check` or `pyright` (bare) in scripts that don't activate a venv first.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- One-off REPL commands typed in CT's interactive shell — out of scope for this rule.
 
 <!-- workspace-conventions:end -->
 
