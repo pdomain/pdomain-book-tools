@@ -101,7 +101,7 @@ concurrency = ["thread"]  # NiceGUI & timers may spawn threads
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
-fail_under = 0
+fail_under = 80
 precision = 1
 exclude_also = [
     "if __name__ == .__main__.:",
