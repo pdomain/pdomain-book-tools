@@ -2,6 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#28
 
 How the fixture corpus under
 [`tests/fixtures/layout_regression/`](../../tests/fixtures/layout_regression/)

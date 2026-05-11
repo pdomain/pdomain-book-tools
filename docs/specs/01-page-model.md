@@ -2,6 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#24
 
 This document is the user-facing reference for the JSON form of a
 processed page produced by pd-book-tools. It describes what the keys

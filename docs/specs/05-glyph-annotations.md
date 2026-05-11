@@ -2,6 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#29
 
 Status: spec only — no implementation yet. Decision-oriented; intended
 to be green-lit, pushed back on, or revised before code is written.

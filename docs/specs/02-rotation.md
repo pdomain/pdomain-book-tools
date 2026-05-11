@@ -2,6 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#26
 
 How `pd-book-tools` decides whether a page image needs to be rotated before
 OCR, and what the resulting `Page` records about that decision.

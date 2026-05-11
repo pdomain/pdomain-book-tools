@@ -2,6 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#27
 
 How `Page.reorganize_page` turns a page of OCR output (a tree of `Block` /
 `Line` / `Word` objects) into the ordered, classified block structure used by
