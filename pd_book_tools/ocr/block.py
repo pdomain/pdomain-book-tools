@@ -838,7 +838,7 @@ class Block:
             )
             return False
 
-        character_split_index = int(round(len(word_text) * split_fraction))
+        character_split_index = round(len(word_text) * split_fraction)
         character_split_index = max(1, min(len(word_text) - 1, character_split_index))
 
         epsilon = min(1e-6, bbox_width / 10) if bbox_width > 0 else 0.0

@@ -108,7 +108,7 @@ def get_cropped_block_image(
 #
 # For simple ops (refine, crop_top, crop_bottom) the implementation
 # lives here and the method delegates. For the more complex ops
-# (split_into_characters_from_whitespace, estimate_baseline_from_image)
+# (split_into_characters_from_whitespace, estimate_baseline_from_image)  # noqa: ERA001  # function name references, not dead code
 # the implementation continues to live on the method to limit blast
 # radius; these free-function entry points delegate to the method.
 # Callers see a uniform "free-function = canonical" surface either

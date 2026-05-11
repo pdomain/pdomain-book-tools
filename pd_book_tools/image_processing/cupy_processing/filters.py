@@ -34,10 +34,7 @@ def gaussian_filter_gpu(
     Returns the same dtype as the input.
     """
     require_cupy()
-    if img_cp.ndim == 3:
-        _sigma = (sigma, sigma, 0)
-    else:
-        _sigma = sigma
+    _sigma = (sigma, sigma, 0) if img_cp.ndim == 3 else sigma
 
     result = gaussian_filter(img_cp.astype(cp.float32), sigma=_sigma)
     return cp.rint(result).clip(0, 255).astype(img_cp.dtype)
@@ -56,10 +53,7 @@ def median_filter_gpu(
     Returns the same dtype as the input.
     """
     require_cupy()
-    if img_cp.ndim == 3:
-        _size = (size, size, 1)
-    else:
-        _size = size
+    _size = (size, size, 1) if img_cp.ndim == 3 else size
 
     return median_filter(img_cp, size=_size).astype(img_cp.dtype)
 
@@ -77,10 +71,7 @@ def uniform_filter_gpu(
     Returns the same dtype as the input.
     """
     require_cupy()
-    if img_cp.ndim == 3:
-        _size = (size, size, 1)
-    else:
-        _size = size
+    _size = (size, size, 1) if img_cp.ndim == 3 else size
 
     result = uniform_filter(img_cp.astype(cp.float32), size=_size)
     return cp.rint(result).clip(0, 255).astype(img_cp.dtype)

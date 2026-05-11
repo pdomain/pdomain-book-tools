@@ -67,7 +67,7 @@ def test_page_to_dict_includes_ocr_provenance():
 
 def test_page_from_dict(sample_page):
     page_dict = sample_page.to_dict()
-    print(page_dict)
+    print(page_dict)  # debug helper for test inspection
     new_page = Page.from_dict(page_dict)
     assert new_page.width == sample_page.width
     assert new_page.height == sample_page.height
@@ -183,7 +183,7 @@ def test_page_copy_preserves_ocr_provenance_without_shared_mutation():
     # mutation contract, construct a *new* OCRProvenance with an extended
     # tuple and assign it to the copy via ``object.__setattr__`` (the field
     # is frozen). The original's ``.models`` must be unchanged.
-    new_models = copied.ocr_provenance.models + (OCRModelProvenance(name="reco"),)
+    new_models = (*copied.ocr_provenance.models, OCRModelProvenance(name="reco"))
     object.__setattr__(
         copied,
         "ocr_provenance",
@@ -830,7 +830,7 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
 
         labels = json.load(f)
     assert len(labels) == 1
-    assert list(labels.values())[0] == "word"
+    assert next(iter(labels.values())) == "word"
 
 
 # ============================================================================
@@ -875,7 +875,7 @@ def test_page_detection_word_filter(tmp_path):
 
     with open(tmp_path / "detection" / "labels.json") as f:
         data = json.load(f)
-    entry = list(data.values())[0]
+    entry = next(iter(data.values()))
     assert len(entry["polygons"]) == 1  # only w1
 
 
@@ -917,7 +917,7 @@ def test_page_recognition_word_filter(tmp_path):
     with open(tmp_path / "recognition" / "labels.json") as f:
         labels = json.load(f)
     assert len(labels) == 1
-    assert list(labels.values())[0] == "keep"
+    assert next(iter(labels.values())) == "keep"
 
 
 def test_page_recognition_label_formatter(tmp_path):
@@ -952,7 +952,7 @@ def test_page_recognition_label_formatter(tmp_path):
 
     with open(tmp_path / "recognition" / "labels.json") as f:
         labels = json.load(f)
-    entry = list(labels.values())[0]
+    entry = next(iter(labels.values()))
     assert entry == {"text": "word", "italic": True}
 
 
@@ -1260,7 +1260,7 @@ def test_page_detection_on_empty_items(tmp_path):
 
     data = json.loads(labels_path.read_text())
     assert len(data) == 1
-    assert list(data.values())[0]["polygons"] == []
+    assert next(iter(data.values()))["polygons"] == []
 
 
 # ============================================================================

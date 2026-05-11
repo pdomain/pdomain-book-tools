@@ -21,7 +21,7 @@ class OCRModelProvenance:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "OCRModelProvenance":
+    def from_dict(cls, data: dict[str, Any]) -> OCRModelProvenance:
         return cls(
             name=str(data.get("name", UNKNOWN_METADATA_VALUE)),
             version=(str(data["version"]) if data.get("version") is not None else None),
@@ -65,7 +65,7 @@ class OCRProvenance:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "OCRProvenance":
+    def from_dict(cls, data: dict[str, Any]) -> OCRProvenance:
         raw_models = data.get("models", [])
         models: list[OCRModelProvenance] = []
         if isinstance(raw_models, list):
@@ -109,8 +109,8 @@ class OCRProvenance:
 
     @classmethod
     def coerce(
-        cls, value: "OCRProvenance | dict[str, Any] | None"
-    ) -> "OCRProvenance | None":
+        cls, value: OCRProvenance | dict[str, Any] | None
+    ) -> OCRProvenance | None:
         if value is None:
             return None
         if isinstance(value, OCRProvenance):

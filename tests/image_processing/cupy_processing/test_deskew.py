@@ -59,7 +59,7 @@ class TestAutoDeskewGpu:
         img = cp.zeros((100, 100), dtype=cp.uint8)
         result = auto_deskew_gpu(img)
         assert isinstance(result, tuple) and len(result) == 3
-        out, top, bottom = result
+        out, _top, _bottom = result
         assert isinstance(out, cp.ndarray)
 
     def test_zero_pct_returns_unchanged_image(self, cupy_module):
@@ -69,7 +69,7 @@ class TestAutoDeskewGpu:
         )
 
         img = cp.zeros((100, 100), dtype=cp.uint8)
-        out, top, bottom = auto_deskew_gpu(img, pct=0.0)
+        out, _top, _bottom = auto_deskew_gpu(img, pct=0.0)
         assert cp.array_equal(out, img)
 
     def test_straight_block_output_is_ndarray(self, cupy_module):
@@ -93,10 +93,10 @@ class TestAutoDeskewGpu:
         )
 
         img_np = np.zeros((200, 200), dtype=np.uint8)
-        for row, start_col in zip(range(40, 160), range(40, 160)):
+        for row, start_col in zip(range(40, 160), range(40, 160), strict=False):
             img_np[row, start_col : start_col + 40] = 255
         img = cp.asarray(img_np)
-        out, top, bottom = auto_deskew_gpu(img)
+        out, _top, _bottom = auto_deskew_gpu(img)
         assert isinstance(out, cp.ndarray)
 
     def test_skewed_block_ccw_produces_output(self, cupy_module):
@@ -107,11 +107,11 @@ class TestAutoDeskewGpu:
         )
 
         img_np = np.zeros((200, 200), dtype=np.uint8)
-        for row, start_col in zip(range(40, 160), range(160, 40, -1)):
+        for row, start_col in zip(range(40, 160), range(160, 40, -1), strict=False):
             if start_col + 30 <= 200:
                 img_np[row, start_col : start_col + 30] = 255
         img = cp.asarray(img_np)
-        out, top, bottom = auto_deskew_gpu(img)
+        out, _top, _bottom = auto_deskew_gpu(img)
         assert isinstance(out, cp.ndarray)
 
     def test_skewed_image_actually_rotates_canvas(self, cupy_module):
@@ -127,7 +127,7 @@ class TestAutoDeskewGpu:
         )
 
         img_np = np.zeros((200, 200), dtype=np.uint8)
-        for row, start_col in zip(range(40, 160), range(40, 160)):
+        for row, start_col in zip(range(40, 160), range(40, 160), strict=False):
             img_np[row, start_col : start_col + 40] = 255
         img = cp.asarray(img_np)
         out, _, _ = auto_deskew_gpu(img)

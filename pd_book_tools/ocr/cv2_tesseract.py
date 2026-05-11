@@ -13,7 +13,7 @@ try:
     _pytesseract_available = True
 except ImportError:
     _pytesseract_available = False
-    pytesseract_Output = None
+    pytesseract_Output = None  # mirrors the pytesseract module attribute name
     image_to_data = None
     image_to_string = None
 

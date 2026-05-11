@@ -48,7 +48,7 @@ def hello_world_words():
 
 
 ###############################################################################
-# Serialization (to_dict / from_dict)
+# Serialization (to_dict / from_dict)  # noqa: ERA001  # section header comment, not dead code
 ###############################################################################
 
 
@@ -470,7 +470,7 @@ def test_split_does_not_alias_mutable_state_between_words():
 
 
 ###############################################################################
-# Merging (concatenation of adjacent words) – order, confidence, labels
+# Merging (concatenation of adjacent words) -- order, confidence, labels
 ###############################################################################
 
 
@@ -1086,22 +1086,22 @@ def test_crop_bottom_is_normalized(crop_bottom_case):
 
 
 def test_crop_bottom_left_preserved(crop_bottom_case):
-    w, before, after = crop_bottom_case
+    _w, before, after = crop_bottom_case
     assert pytest.approx(before[0]) == after[0]
 
 
 def test_crop_bottom_top_preserved(crop_bottom_case):
-    w, before, after = crop_bottom_case
+    _w, before, after = crop_bottom_case
     assert pytest.approx(before[1]) == after[1]
 
 
 def test_crop_bottom_right_preserved(crop_bottom_case):
-    w, before, after = crop_bottom_case
+    _w, before, after = crop_bottom_case
     assert pytest.approx(before[2]) == after[2]
 
 
 def test_crop_bottom_bottom_within_bounds(crop_bottom_case):
-    w, _, after = crop_bottom_case
+    _w, _, after = crop_bottom_case
     assert 0 < after[3] <= 1
 
 
@@ -1123,12 +1123,12 @@ def test_crop_top_is_normalized(crop_top_case):
 
 
 def test_crop_top_left_preserved(crop_top_case):
-    w, before, after = crop_top_case
+    _w, before, after = crop_top_case
     assert pytest.approx(before[0]) == after[0]
 
 
 def test_crop_top_bottom_within_bounds(crop_top_case):
-    w, _, after = crop_top_case
+    _w, _, after = crop_top_case
     assert 0 < after[3] <= 1
 
 
@@ -1445,7 +1445,7 @@ def test_clear_ground_truth_canonicalizes_to_none(pixel_bbox):
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
     assert w.clear_ground_truth() is True
     assert w._ground_truth_text is None
-    # to_dict serializes both None and "" as None — verify round-trip.
+    # to_dict serializes both None and "" as None -- verify round-trip.
     d = w.to_dict()
     assert d["ground_truth_text"] is None
 

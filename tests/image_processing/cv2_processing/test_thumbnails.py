@@ -7,11 +7,11 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.io import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.io import (
     read_image,
     write_jpg,
 )
-from pd_book_tools.image_processing.cv2_processing.thumbnails import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.thumbnails import (
     create_file_thumbnail,
 )
 

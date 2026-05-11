@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import functools
+from collections.abc import Sequence
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Sequence
 
-import cv2  # noqa: F401  # historical import; kept for back-compat per R-03 wrapper-stays
-from cv2 import (  # noqa: F401  # historical re-exports; kept for back-compat
-    COLOR_BGR2GRAY,
+import cv2  # historical import; kept for back-compat per R-03 wrapper-stays
+from cv2 import (
+    COLOR_BGR2GRAY,  # historical re-exports; kept for back-compat
     THRESH_BINARY,
     THRESH_OTSU,
     cvtColor,
@@ -172,8 +172,8 @@ class BoundingBox:
 
     @staticmethod
     def _split_at_x(
-        box: "BoundingBox", x_value: float
-    ) -> tuple["BoundingBox", "BoundingBox"]:
+        box: BoundingBox, x_value: float
+    ) -> tuple[BoundingBox, BoundingBox]:
         """Internal helper to split at absolute x coordinate (may coincide with an edge)."""
         if x_value < box.minX or x_value > box.maxX:
             raise ValueError("split x is out of range for bounding box")
@@ -185,7 +185,7 @@ class BoundingBox:
         )
         return left, right
 
-    def split_x_offset(self, x_offset: float) -> tuple["BoundingBox", "BoundingBox"]:
+    def split_x_offset(self, x_offset: float) -> tuple[BoundingBox, BoundingBox]:
         """Split the bounding box into two boxes using the given x offset from left edge.
 
         Pure arithmetic implementation replaces earlier Shapely-based version
@@ -197,9 +197,7 @@ class BoundingBox:
         x_abs = self.minX + x_offset
         return self._split_at_x(self, x_abs)
 
-    def split_x_absolute(
-        self, x_absolute: float
-    ) -> tuple["BoundingBox", "BoundingBox"]:
+    def split_x_absolute(self, x_absolute: float) -> tuple[BoundingBox, BoundingBox]:
         """Split the bounding box into two boxes at absolute x coordinate.
 
         Arithmetic-only implementation (no Shapely).
@@ -247,7 +245,7 @@ class BoundingBox:
     @classmethod
     def from_points(
         cls,
-        points: Sequence[dict | "Point" | "ShapelyPoint" | Sequence[float]],
+        points: Sequence[dict | Point | ShapelyPoint | Sequence[float]],
         is_normalized: bool | None = None,
     ):
         """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats"""
@@ -350,7 +348,7 @@ class BoundingBox:
         bottom = top + height
         return cls._build(left, top, right, bottom, is_normalized)
 
-    def to_points(self) -> tuple["Point", "Point"]:
+    def to_points(self) -> tuple[Point, Point]:
         """Convert to (Point,Point) format (top left point, bottom right point)"""
         return (self.top_left, self.bottom_right)
 
@@ -379,7 +377,7 @@ class BoundingBox:
         scaled: BoundingBox = self.scale(width, height)
         return scaled.to_ltwh()
 
-    def scale(self, width: int, height: int) -> "BoundingBox":
+    def scale(self, width: int, height: int) -> BoundingBox:
         """
         Return a new BoundingBox with normalized coordinates converted
         to absolute pixel coordinates.
@@ -397,7 +395,7 @@ class BoundingBox:
             is_normalized=False,
         )
 
-    def normalize(self, width: int, height: int) -> "BoundingBox":
+    def normalize(self, width: int, height: int) -> BoundingBox:
         """
         Return a new BoundingBox with absolute (pixel) coordinates converted
         to normalized coordinates in the unit square.
@@ -443,11 +441,11 @@ class BoundingBox:
         return wrapper
 
     @_require_same_coords
-    def intersects(self, other: "BoundingBox") -> bool:  # type: ignore
+    def intersects(self, other: BoundingBox) -> bool:  # type: ignore
         return self.as_shapely().intersects(other.as_shapely())  # type: ignore
 
     @_require_same_coords
-    def intersection(self, other: "BoundingBox") -> "BoundingBox | None":  # type: ignore
+    def intersection(self, other: BoundingBox) -> BoundingBox | None:  # type: ignore
         inter = self.as_shapely().intersection(other.as_shapely())  # type: ignore
         if inter.is_empty:  # type: ignore
             return None
@@ -460,17 +458,17 @@ class BoundingBox:
         return BoundingBox.from_ltrb(minx, miny, maxx, maxy, is_normalized=is_norm)
 
     @_require_same_coords  # type: ignore
-    def overlap_y_amount(self, other: "BoundingBox"):
+    def overlap_y_amount(self, other: BoundingBox):
         """Return the amount of overlap on the y-axis (projection overlap)."""
         return self._interval_overlap(self.minY, self.maxY, other.minY, other.maxY)
 
     @_require_same_coords  # type: ignore
-    def overlap_x_amount(self, other: "BoundingBox"):
+    def overlap_x_amount(self, other: BoundingBox):
         """Return the amount of overlap on the x-axis (projection overlap)."""
         return self._interval_overlap(self.minX, self.maxX, other.minX, other.maxX)
 
     @classmethod
-    def union(cls, bounding_boxes: Sequence["BoundingBox"]) -> "BoundingBox":
+    def union(cls, bounding_boxes: Sequence[BoundingBox]) -> BoundingBox:
         """Return the minimal box covering all provided boxes.
 
         When shapely is available we leverage unary_union to support future
@@ -520,7 +518,7 @@ class BoundingBox:
         return {"top_left": tl, "bottom_right": br, "is_normalized": self.is_normalized}
 
     @classmethod
-    def from_dict(cls, dict: dict) -> "BoundingBox":
+    def from_dict(cls, dict: dict) -> BoundingBox:
         """Create BoundingBox from dictionary"""
         tl = dict["top_left"]
         br = dict["bottom_right"]
@@ -536,7 +534,7 @@ class BoundingBox:
         image: ndarray,
         padding_px: int = 0,
         expand_beyond_original: bool = False,
-    ) -> "BoundingBox":
+    ) -> BoundingBox:
         """Tighten this bbox around its image content (OTSU threshold).
 
         The implementation lives in
@@ -554,7 +552,7 @@ class BoundingBox:
             expand_beyond_original=expand_beyond_original,
         )
 
-    def crop_bottom(self, image: ndarray) -> "BoundingBox":
+    def crop_bottom(self, image: ndarray) -> BoundingBox:
         """Return a new bbox cropped to the bottom half of its image content.
 
         The implementation lives in
@@ -566,7 +564,7 @@ class BoundingBox:
 
         return crop_bottom_bbox(self, image)
 
-    def crop_top(self, image: ndarray) -> "BoundingBox":
+    def crop_top(self, image: ndarray) -> BoundingBox:
         """Return a new bbox cropped to the top half of its image content.
 
         The implementation lives in
@@ -578,7 +576,7 @@ class BoundingBox:
 
         return crop_top_bbox(self, image)
 
-    def clamp_to_image(self, width: int, height: int) -> "BoundingBox | None":
+    def clamp_to_image(self, width: int, height: int) -> BoundingBox | None:
         """Return new box clamped to [0,width]x[0,height] in pixel or [0,1] if normalized.
 
         If normalized, simply clamps to [0,1].
@@ -618,10 +616,7 @@ class BoundingBox:
         """
         height, width = image.shape[:2]
 
-        if self.is_normalized:
-            pixel_bbox = self.scale(width, height)
-        else:
-            pixel_bbox = self
+        pixel_bbox = self.scale(width, height) if self.is_normalized else self
 
         x1 = int(pixel_bbox.minX)
         y1 = int(pixel_bbox.minY)
@@ -644,7 +639,7 @@ class BoundingBox:
 
     # Shapely integration methods
     @classmethod
-    def from_shapely(cls, shapely_box: "ShapelyPolygon") -> "BoundingBox":
+    def from_shapely(cls, shapely_box: ShapelyPolygon) -> BoundingBox:
         """
         Create a BoundingBox from a Shapely geometry.
 
@@ -667,12 +662,12 @@ class BoundingBox:
                 Point(maxx, maxy, is_normalized=is_norm),
                 is_normalized=is_norm,
             )
-        except AttributeError:
+        except AttributeError as err:
             raise ValueError(
                 "Input must be a valid Shapely geometry with a bounds property"
-            )
+            ) from err
 
-    def as_shapely(self) -> "ShapelyPolygon":
+    def as_shapely(self) -> ShapelyPolygon:
         """Return a shapely geometry for the box.
 
         Raises ImportError if shapely is missing.
@@ -682,16 +677,16 @@ class BoundingBox:
         )
 
     @property
-    def shapely(self) -> "ShapelyPolygon":
+    def shapely(self) -> ShapelyPolygon:
         return self.as_shapely()
 
     # Additional shapely-powered helpers ---------------------------------
-    def union_with(self, other: "BoundingBox") -> "BoundingBox":
+    def union_with(self, other: BoundingBox) -> BoundingBox:
         """Return the minimal box containing this and other."""
         return self.union([self, other])
 
     @_require_same_coords
-    def iou(self, other: "BoundingBox") -> float:  # type: ignore
+    def iou(self, other: BoundingBox) -> float:  # type: ignore
         a = self.as_shapely()
         b = other.as_shapely()
         inter = a.intersection(b)  # type: ignore
@@ -702,7 +697,7 @@ class BoundingBox:
             return 0.0
         return float(inter.area / union_area)  # type: ignore
 
-    def expand(self, dx: float = 0.0, dy: float = 0.0) -> "BoundingBox":
+    def expand(self, dx: float = 0.0, dy: float = 0.0) -> BoundingBox:
         """Expand (or shrink) the box by dx, dy on each side.
 
         Uniform case (dx == dy) uses Shapely buffer with square corners.
@@ -774,7 +769,7 @@ class BoundingBox:
         return json.dumps(self.to_dict())
 
     @classmethod
-    def from_json(cls, s: str) -> "BoundingBox":
+    def from_json(cls, s: str) -> BoundingBox:
         import json
 
         return cls.from_dict(json.loads(s))

@@ -18,9 +18,10 @@ That keeps it composable with non-DocTR OCR backends down the line.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, Callable, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy import ndarray
@@ -74,7 +75,7 @@ def rotate_image(image: ndarray, degrees: int) -> ndarray:
     raise ValueError(f"degrees must be one of 0/90/180/270, got {degrees}")
 
 
-def _mean_confidence(doc: "Document") -> tuple[float, int]:
+def _mean_confidence(doc: Document) -> tuple[float, int]:
     """Mean per-word confidence across every page in ``doc``.
 
     Returns ``(mean_confidence, word_count)``. ``mean_confidence`` is 0.0
@@ -94,11 +95,11 @@ def _mean_confidence(doc: "Document") -> tuple[float, int]:
 def detect_best_rotation(
     image: ndarray,
     *,
-    ocr_fn: Callable[[ndarray], "Document"],
+    ocr_fn: Callable[[ndarray], Document],
     confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
     rotations: Sequence[int] = DEFAULT_ROTATIONS,
-    upright_result: "Document | None" = None,
-) -> tuple[int, "Document", list[RotationProbe]]:
+    upright_result: Document | None = None,
+) -> tuple[int, Document, list[RotationProbe]]:
     """Find the rotation that maximises OCR confidence on ``image``.
 
     Tries 0° first (fast path: returns immediately if confidence is at or

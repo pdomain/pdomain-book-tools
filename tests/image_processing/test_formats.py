@@ -203,7 +203,7 @@ class TestBundledPluginRoundTrip:
         # Importing the formats module is what registers the plugins with
         # Pillow. The test module already imports it at the top, but be
         # explicit so this test documents its dependency.
-        import pd_book_tools.image_processing.formats  # noqa: F401
+        import pd_book_tools.image_processing.formats  # imported for side-effect (plugin registration)
 
     def test_avif_round_trip_via_pillow(self, tmp_path):
         self._ensure_formats_imported()

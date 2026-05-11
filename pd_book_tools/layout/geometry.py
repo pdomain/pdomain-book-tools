@@ -157,14 +157,14 @@ def _detect_columns(regions: list[LayoutRegion]) -> list[list[LayoutRegion]] | N
     columns: list[list[LayoutRegion]] = [[by_left[0]]]
     column_R = by_left[0].R
     for r in by_left[1:]:
-        if r.L >= column_R:
+        if column_R <= r.L:
             # Clean horizontal gap — start a new column.
             columns.append([r])
             column_R = r.R
         else:
             # Horizontal overlap with the running column — same column.
             columns[-1].append(r)
-            if r.R > column_R:
+            if column_R < r.R:
                 column_R = r.R
     if len(columns) < 2:
         return None

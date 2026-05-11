@@ -46,7 +46,7 @@ from __future__ import annotations
 import string
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr._dropcap_lexicon import WORDS as _LEXICON
@@ -92,7 +92,7 @@ _MIN_INDENT_DELTA = 0.025  # body word's minX must exceed body-left by this
 _MAX_INDENT_DELTA = 0.10  # body word's minX must NOT exceed body-left by more
 # than this (centered chapter titles can sit ≥0.20 past body-left; not a cap)
 _MULTI_LINE_INDENT_TOLERANCE = 0.02  # lines 2-3 indented within this of cap line
-_CAP_HEIGHT_RATIO_MIN = 1.5  # cap CC's height ≥ this × median_word_h
+_CAP_HEIGHT_RATIO_MIN = 1.5  # cap CC's height >= this x median_word_h
 
 
 @dataclass(frozen=True)
@@ -155,7 +155,7 @@ def _all_lines(block: Block) -> list[tuple[Block, Block]]:
     return out
 
 
-def _compute_indent_signature(blocks: list[Block]) -> Optional[_IndentSignature]:
+def _compute_indent_signature(blocks: list[Block]) -> _IndentSignature | None:
     """Compute the page's body-left margin + typical paragraph indent.
 
     ``body_left`` = modal minX across non-skipped body lines (the
@@ -277,7 +277,7 @@ def _geometric_gap_candidates(
             # cap CC will eventually replace. Skip such tokens when
             # measuring the gap. Real short words like "to" / "of" /
             # "is" are kept (they're alphabetic).
-            first_body_word: Optional[Word] = None
+            first_body_word: Word | None = None
             for w in words_sorted:
                 if w.bounding_box is None:
                     continue
@@ -308,7 +308,7 @@ def _geometric_gap_candidates(
             # positives at the bottom of a paragraph).
             if idx + 1 >= len(all_lines):
                 continue
-            next_para, next_line = all_lines[idx + 1]
+            _next_para, next_line = all_lines[idx + 1]
             if next_line.bounding_box is None:
                 continue
             line_h = line.bounding_box.height
@@ -359,15 +359,15 @@ def _geometric_gap_candidates(
 def _scan_dropcap_cc(
     image,
     candidate: _GapCandidate,
-    metrics: "PageMetrics",
-) -> Optional[BoundingBox]:
+    metrics: PageMetrics,
+) -> BoundingBox | None:
     """Connected-components scan in the gap region; return the cap CC bbox.
 
     Threshold the page image, run ``cv2.connectedComponentsWithStats``
     on the cropped gap region, pick the CC that's:
 
-    * at least ``_CAP_HEIGHT_RATIO_MIN × median_word_h`` tall (drop
-      caps are 2-3× body height; we set the floor low to admit smaller
+    * at least ``_CAP_HEIGHT_RATIO_MIN \u00d7 median_word_h`` tall (drop
+      caps are 2-3\u00d7 body height; we set the floor low to admit smaller
       decorated caps),
     * spans more vertical extent than the body line itself (so we
       don't pick up the body word's ascender),
@@ -405,10 +405,7 @@ def _scan_dropcap_cc(
     if sub.size == 0:
         return None
 
-    if sub.ndim == 3:
-        gray = cv2.cvtColor(sub, cv2.COLOR_BGR2GRAY)
-    else:
-        gray = sub
+    gray = cv2.cvtColor(sub, cv2.COLOR_BGR2GRAY) if sub.ndim == 3 else sub
     # Otsu threshold with inversion so glyph pixels are foreground.
     _, bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     n_labels, _, stats, _ = cv2.connectedComponentsWithStats(bw, connectivity=8)
@@ -417,7 +414,7 @@ def _scan_dropcap_cc(
     median_h_px = median_word_h * H if metrics.coord_h <= 2.0 else median_word_h
     min_cap_h_px = _CAP_HEIGHT_RATIO_MIN * median_h_px
 
-    best: Optional[tuple[int, int, int, int, int]] = None  # (x, y, w, h, area)
+    best: tuple[int, int, int, int, int] | None = None  # (x, y, w, h, area)
     for i in range(1, n_labels):
         x, y, w, h, area = (
             stats[i, cv2.CC_STAT_LEFT],
@@ -459,7 +456,7 @@ def _scan_dropcap_cc(
     return BoundingBox.from_ltrb(abs_x1, abs_y1, abs_x2, abs_y2, is_normalized=True)
 
 
-def _resolve_cap_letter(body_word_text: str) -> Optional[str]:
+def _resolve_cap_letter(body_word_text: str) -> str | None:
     """Try every uppercase ASCII letter as a prefix; accept unique match.
 
     The body word is uppercased before lookup so the function works on
@@ -488,9 +485,7 @@ def _bboxes_overlap(a: BoundingBox, b: BoundingBox) -> bool:
     """Axis-aligned overlap test."""
     if a.maxX < b.minX or b.maxX < a.minX:
         return False
-    if a.maxY < b.minY or b.maxY < a.minY:
-        return False
-    return True
+    return not (a.maxY < b.minY or b.maxY < a.minY)
 
 
 def _is_cc_overlapping_word(cc_bbox: BoundingBox, word: Word) -> bool:
@@ -500,14 +495,12 @@ def _is_cc_overlapping_word(cc_bbox: BoundingBox, word: Word) -> bool:
     wb = word.bounding_box
     if wb.maxX < cc_bbox.minX or wb.minX > cc_bbox.maxX:
         return False
-    if wb.maxY < cc_bbox.minY or wb.minY > cc_bbox.maxY:
-        return False
-    return True
+    return not (wb.maxY < cc_bbox.minY or wb.minY > cc_bbox.maxY)
 
 
 def _find_existing_cap_word(
     candidate: _GapCandidate, cc_bbox: BoundingBox
-) -> Optional[Word]:
+) -> Word | None:
     """Return the OCR word that the recogniser placed at the cap CC, if any.
 
     Matches "single visible character" tokens whose bbox sits within /
@@ -566,7 +559,7 @@ def _attach_cap_to_line(
 ) -> None:
     """Prepend ``cap_word`` to the target line + recompute bboxes upward."""
     line = candidate.target_line
-    line.items = [cap_word] + list(line.items)
+    line.items = [cap_word, *list(line.items)]
     line.recompute_bounding_box()
     candidate.paragraph.recompute_bounding_box()
     candidate.block.recompute_bounding_box()
@@ -574,8 +567,8 @@ def _attach_cap_to_line(
 
 def detect_and_stitch_cursive_dropcaps(
     blocks: list[Block],
-    image: "Optional[np.ndarray]",
-    metrics: "PageMetrics",
+    image: np.ndarray | None,
+    metrics: PageMetrics,
 ) -> list[Block]:
     """Iteration-A cursive-cap fallback. See module docstring for design.
 
@@ -664,7 +657,7 @@ def detect_and_stitch_cursive_dropcaps(
                     components.append("drop cap")
                 existing.word_components = components
                 # Move it to the front of the line if it's not already.
-                if list(candidate.target_line.words)[0] is not existing:
+                if next(iter(candidate.target_line.words)) is not existing:
                     line_items = [existing] + [
                         w for w in candidate.target_line.items if w is not existing
                     ]
@@ -691,7 +684,7 @@ def detect_and_stitch_cursive_dropcaps(
                 if "drop cap" not in components:
                     components.append("drop cap")
                 existing.word_components = components
-                if list(candidate.target_line.words)[0] is not existing:
+                if next(iter(candidate.target_line.words)) is not existing:
                     line_items = [existing] + [
                         w for w in candidate.target_line.items if w is not existing
                     ]
@@ -716,7 +709,7 @@ def detect_and_stitch_cursive_dropcaps(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _is_single_visible_word_paragraph(paragraph: Block) -> Optional[Word]:
+def _is_single_visible_word_paragraph(paragraph: Block) -> Word | None:
     """Return the lone meaningful Word in a paragraph, or None.
 
     A drop-cap paragraph is structurally trivial: one LINE child holding one
@@ -736,11 +729,11 @@ def _is_single_visible_word_paragraph(paragraph: Block) -> Optional[Word]:
     return visible_words[0]
 
 
-def _looks_like_drop_cap_word(word: Word, metrics: "PageMetrics") -> bool:
+def _looks_like_drop_cap_word(word: Word, metrics: PageMetrics) -> bool:
     """Drop-cap candidates: very tall, very short text.
 
-    Drop caps are typically rendered ~2.5× the body cap-height. We use a
-    1.8× threshold against ``median_word_h`` to pick up shorter caps too.
+    Drop caps are typically rendered ~2.5\u00d7 the body cap-height. We use a
+    1.8\u00d7 threshold against ``median_word_h`` to pick up shorter caps too.
     Text length must be small (1 visible character common; allow up to 2 to
     handle OCR oddities like ``R'`` where the apostrophe is part of the
     same OCR word).
@@ -753,16 +746,14 @@ def _looks_like_drop_cap_word(word: Word, metrics: "PageMetrics") -> bool:
     if bb.height < 1.8 * metrics.median_word_h:
         return False
     text = (word.text or "").strip()
-    if not text or len(text) > 2:
-        return False
-    return True
+    return not (not text or len(text) > 2)
 
 
 def _next_word_attached_to_drop_cap(
     drop_cap: Word,
     candidates: list[Word],
-    metrics: "PageMetrics",
-) -> Optional[Word]:
+    metrics: PageMetrics,
+) -> Word | None:
     """Return the body-text word immediately to the right of ``drop_cap``.
 
     A drop cap visually flows into the first body word with no real gap. We
@@ -852,11 +843,11 @@ def _attach_drop_cap_to_target_line(
         )
     if target_line.block_category != BlockCategory.LINE:
         return
-    target_line.items = [drop_cap_word] + list(target_line.items)
+    target_line.items = [drop_cap_word, *list(target_line.items)]
     target_line.recompute_bounding_box()
 
 
-def stitch_block_drop_caps(blocks: list[Block], metrics: "PageMetrics") -> list[Block]:
+def stitch_block_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
     """Detect drop caps inside body BLOCKs and merge them into the next line.
 
     Walks each body block's paragraphs in order. Whenever the *current*
@@ -920,8 +911,8 @@ def stitch_block_drop_caps(blocks: list[Block], metrics: "PageMetrics") -> list[
 
 def detect_and_stitch_drop_caps(
     blocks: list[Block],
-    image: "Optional[np.ndarray]",
-    metrics: "PageMetrics",
+    image: np.ndarray | None,
+    metrics: PageMetrics,
 ) -> list[Block]:
     """Unified Step DC entry point: block-cap path then cursive fallback.
 

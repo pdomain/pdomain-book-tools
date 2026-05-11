@@ -48,7 +48,7 @@ class TestRemoveSmallContoursGpu:
         )
 
         img = cp.zeros((200, 200), dtype=cp.uint8)
-        img[50:150, 50:150] = 255  # 100×100 blob — far above any threshold
+        img[50:150, 50:150] = 255  # 100x100 blob -- far above any threshold
         out = remove_small_contours_gpu(img)
         assert int(out[100, 100]) == 255
 
@@ -59,10 +59,10 @@ class TestRemoveSmallContoursGpu:
             remove_small_contours_gpu,
         )
 
-        # 200×200 image: pixels_w=max(8,5)=8, pixels_h=max(6,5)=6
+        # 200x200 image: pixels_w=max(8,5)=8, pixels_h=max(6,5)=6
         img = cp.zeros((200, 200), dtype=cp.uint8)
         img[50:150, 50:150] = 255  # large blob (rows 50-149)
-        # 5×5 contour one row below the blob (row 151).
+        # 5x5 contour one row below the blob (row 151).
         # Search area rows: [max(0,151-3):min(200,151+5+3)] = [148:159]
         # Rows 148-149 are inside the blob → search_sum >> threshold → kept.
         img[151:156, 98:103] = 255
@@ -78,7 +78,7 @@ class TestRemoveSmallContoursGpu:
         )
 
         img = cp.zeros((200, 200), dtype=cp.uint8)
-        img[100:105, 100:105] = 255  # 5×5 blob, totally isolated
+        img[100:105, 100:105] = 255  # 5x5 blob, totally isolated
         out = remove_small_contours_gpu(img)
         assert int(out[102, 102]) == 0
 
@@ -128,7 +128,7 @@ class TestContourSizeStatsGpu:
         )
 
         img = cp.zeros((100, 100), dtype=cp.uint8)
-        img[20:30, 30:45] = 255  # 10h × 15w blob
+        img[20:30, 30:45] = 255  # 10h \u00d7 15w blob
         stats = contour_size_stats_gpu(img)
         assert stats["count"] == 1
         assert stats["median_w"] == 15.0
@@ -142,7 +142,7 @@ class TestContourSizeStatsGpu:
         )
 
         img = cp.zeros((200, 200), dtype=cp.uint8)
-        # 9 medium blobs (10×8) spread across the image
+        # 9 medium blobs (10x8) spread across the image
         positions = [
             (10, 10),
             (10, 40),
@@ -156,7 +156,7 @@ class TestContourSizeStatsGpu:
         ]
         for r, c in positions:
             img[r : r + 8, c : c + 10] = 255
-        # 1 large outlier blob — should not pull median up
+        # 1 large outlier blob -- should not pull median up
         img[150:180, 150:180] = 255
 
         stats = contour_size_stats_gpu(img)
@@ -188,7 +188,7 @@ class TestContourSizeStatsGpu:
 @pytest.mark.cupy
 class TestRemoveSmallContoursAdaptiveGpu:
     def _make_text_page(self, cp):
-        """20 character-sized (8×6) blobs + 5 noise dots (1×1)."""
+        """20 character-sized (8\u00d76) blobs + 5 noise dots (1\u00d71)."""  # MULTIPLICATION SIGN
         img = cp.zeros((200, 200), dtype=cp.uint8)
         positions = [
             (10, 10),
@@ -251,11 +251,11 @@ class TestRemoveSmallContoursAdaptiveGpu:
         )
 
         img = cp.zeros((200, 200), dtype=cp.uint8)
-        # Body text — 12 character blobs
+        # Body text -- 12 character blobs
         for r in range(20, 100, 20):
             for c in range(10, 100, 20):
                 img[r : r + 6, c : c + 8] = 255
-        # Page number in the corner — same character size, isolated
+        # Page number in the corner -- same character size, isolated
         img[180:186, 90:98] = 255
 
         out = remove_small_contours_adaptive_gpu(img)
@@ -273,11 +273,11 @@ class TestRemoveSmallContoursAdaptiveGpu:
         )
 
         img = cp.zeros((200, 200), dtype=cp.uint8)
-        # Body text: 12 character blobs (8×6) — establishes the median
+        # Body text: 12 character blobs (8x6) -- establishes the median
         for r in range(20, 80, 20):
             for c in range(10, 100, 20):
                 img[r : r + 6, c : c + 8] = 255
-        # TOC leader row: 6 dots (2×2) spaced 12px apart — isolated but in a row
+        # TOC leader row: 6 dots (2x2) spaced 12px apart -- isolated but in a row
         dot_cols = [10, 22, 34, 46, 58, 70]
         for c in dot_cols:
             img[110:112, c : c + 2] = 255

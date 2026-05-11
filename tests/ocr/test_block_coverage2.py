@@ -188,11 +188,11 @@ class TestMergeWordsErrors:
         result = line.merge_adjacent_words(word_index=0, direction="right")
         assert result is True
         assert len(list(line.words)) == 1
-        assert "hello" in list(line.words)[0].text
+        assert "hello" in next(iter(line.words)).text
 
 
 # ---------------------------------------------------------------------------
-# split_word_at_fraction – zero bbox
+# split_word_at_fraction -- zero bbox
 # ---------------------------------------------------------------------------
 
 

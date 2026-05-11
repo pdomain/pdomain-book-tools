@@ -165,7 +165,7 @@ class TestUniformFilterGpu:
         assert cp.all(out == 50)
 
     def test_averages_neighbourhood(self, cupy_module):
-        """A 3×3 box filter over a step edge should produce intermediate values."""
+        """A 3\u00d73 box filter over a step edge should produce intermediate values."""
         cp = cupy_module
         from pd_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,

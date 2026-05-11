@@ -19,9 +19,6 @@ def create_file_thumbnail(
 
     if target_file_path.suffix == ".png":
         raise NotImplementedError("PNG not yet implemented")
-        # quant = quantize(thumb, 4)
-        # write_png(img=quant, f=target_file_path)
-        # return
     elif target_file_path.suffix == ".jpg":
         write_jpg(
             img=thumb,

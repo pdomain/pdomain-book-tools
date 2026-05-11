@@ -7,7 +7,7 @@ class Point:
 
     Classification:
         * Normalized (``is_normalized=True``): both coordinates lie in [0,1].
-        * Pixel (``is_normalized=False``): any other non‑negative coordinates.
+        * Pixel (``is_normalized=False``): any other non\u2011negative coordinates.
 
     The flag is inferred on construction and after x/y mutation, unless explicitly
     overridden via the constructor argument or the ``is_normalized`` property.
@@ -18,7 +18,7 @@ class Point:
     points whose normalization flags differ raises TypeError. Equality is otherwise
     exact on (x, y). Use a helper for approximate comparison if needed.
 
-    Serialization: ``to_dict()`` / ``from_dict()`` round‑trip x, y and
+    Serialization: ``to_dict()`` / ``from_dict()`` round\u2011trip x, y and
     ``is_normalized`` (older dicts without the flag still infer it).
     """
 
@@ -48,10 +48,10 @@ class Point:
     def _coerce_number(self, value: float | int | str) -> float | int:
         try:
             f = float(value)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError) as err:
             raise ValueError(
                 "Point coordinates must be able to be coerced to real numbers"
-            )
+            ) from err
         # Preserve int type when exact
         return int(f) if f.is_integer() else f
 
@@ -114,7 +114,7 @@ class Point:
         """
         if not self.is_normalized:
             raise ValueError("scale() expected a normalized point (values in [0,1])")
-        return Point.pixel(int(round(self.x * width)), int(round(self.y * height)))
+        return Point.pixel(round(self.x * width), round(self.y * height))
 
     def normalize(self, width: int, height: int) -> "Point":
         """
@@ -142,7 +142,7 @@ class Point:
         return cls(x, y, is_normalized=False)
 
     def to_dict(self) -> dict:
-        # Include normalization state for round‑trip serialization
+        # Include normalization state for round-trip serialization
         return {"x": self.x, "y": self.y, "is_normalized": self.is_normalized}
 
     @classmethod

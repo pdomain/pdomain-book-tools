@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def split_x_columns_gpu(img_cp: cp.ndarray, x: int) -> tuple[cp.ndarray, cp.ndarray]:
     """Split img_cp into two parts at column index x."""
     require_cupy()
-    h, w = img_cp.shape[:2]
+    _h, w = img_cp.shape[:2]
     if not (0 <= x <= w):
         raise ValueError(f"Column index x={x} is out of bounds for width={w}")
     return img_cp[:, :x], img_cp[:, x:]
@@ -21,7 +21,7 @@ def split_x_columns_gpu(img_cp: cp.ndarray, x: int) -> tuple[cp.ndarray, cp.ndar
 def split_y_rows_gpu(img_cp: cp.ndarray, y: int) -> tuple[cp.ndarray, cp.ndarray]:
     """Split img_cp into two parts at row index y."""
     require_cupy()
-    h, w = img_cp.shape[:2]
+    h, _w = img_cp.shape[:2]
     if not (0 <= y <= h):
         raise ValueError(f"Row index y={y} is out of bounds for height={h}")
     return img_cp[:y, :], img_cp[y:, :]

@@ -13,8 +13,8 @@ class PGDPResults:
     # runs ``process()`` to populate the ``processed_*`` and ``original_lines``
     # fields from ``page_text``. Dataclass-with-__post_init__ would express
     # the same shape, but the public constructor takes only
-    # ``(png_file, page_text)`` — the other attributes are computed, not
-    # injected — so a custom __init__ is the honest representation. The
+    # ``(png_file, page_text)`` -- the other attributes are computed, not
+    # injected -- so a custom __init__ is the honest representation. The
     # bare class-level annotations (R-19) were misleading because they
     # looked like class variables; they have been removed, and instance
     # attribute types are now declared inline in __init__.
@@ -80,7 +80,7 @@ class PGDPResults:
     def convert_pgdp_dashes(text):
         logger.debug("Converting PGDP dashes to Unicode dashes")
         s = regex.sub(r"----", "⸺", text, flags=regex.DOTALL)
-        s = regex.sub(r"--", "—", s, flags=regex.DOTALL)
+        s = regex.sub(r"--", "\u2014", s, flags=regex.DOTALL)  # EM DASH
         if s == text:
             logger.debug("No PGDP dashes found")
         else:
@@ -126,40 +126,60 @@ class PGDPResults:
 
         # 1. Leading elisions
         elisions_pattern = (
-            r"(?<=^|\s|[\"“])'(" + "|".join(elision_remainders) + r")(?=\b)"
+            r"(?<=^|\s|[\"\u201c])'("
+            + "|".join(elision_remainders)
+            + r")(?=\b)"  # LEFT DOUBLE QUOTATION MARK
         )
-        s = regex.sub(elisions_pattern, lambda m: "’" + m.group(1), s)
+        s = regex.sub(
+            elisions_pattern, lambda m: "\u2019" + m.group(1), s
+        )  # RIGHT SINGLE QUOTATION MARK
 
         # 2. Decade / year abbreviations
-        s = regex.sub(r"(?<=^|\s|[\"“])'(?=\d{2}s?\b)", "’", s)
+        s = regex.sub(
+            r"(?<=^|\s|[\"\u201c])'(?=\d{2}s?\b)", "\u2019", s
+        )  # RIGHT SINGLE QUOTATION MARK, LEFT DOUBLE QUOTATION MARK
 
         # 3. Contractions / possessives
-        s = regex.sub(r"(?<=\w)'(?=\w)", "’", s)
+        s = regex.sub(r"(?<=\w)'(?=\w)", "\u2019", s)  # RIGHT SINGLE QUOTATION MARK
 
         # 4. Double quotes
-        s = regex.sub(r'(^|[—⸺\s(\[{<])"', r"\1“", s)
-        s = regex.sub(r'"', "”", s)
+        s = regex.sub(
+            r'(^|[\u2014⸺\s(\[{<])"', r"\1\u201c", s
+        )  # LEFT DOUBLE QUOTATION MARK, EM DASH
+        s = regex.sub(r'"', "\u201d", s)  # RIGHT DOUBLE QUOTATION MARK
 
         # 5. Opening single quotes excluding elisions & decades
         negative_lookahead = r"(?!\d{2}s?\b|" + "|".join(elision_remainders) + r"\b)"
-        s = regex.sub(r"(^|[\s(\[{<])'" + negative_lookahead, r"\1‘", s)
+        s = regex.sub(
+            r"(^|[\s(\[{<])'" + negative_lookahead, r"\1\u2018", s
+        )  # LEFT SINGLE QUOTATION MARK
 
         # 6. Opening single after em/long dash
-        s = regex.sub(r"(?<=[—⸺])'(?=\w)", "‘", s)
-        s = regex.sub(r"(?<=[—⸺]\s)'(?=\w)", "‘", s)
+        s = regex.sub(
+            r"(?<=[\u2014⸺])'(?=\w)", "\u2018", s
+        )  # LEFT SINGLE QUOTATION MARK, EM DASH
+        s = regex.sub(
+            r"(?<=[\u2014⸺]\s)'(?=\w)", "\u2018", s
+        )  # LEFT SINGLE QUOTATION MARK, EM DASH
 
         # 7. Closing single quotes
-        s = regex.sub(r"(?<=[\w.,!?;:])'(?=\s|$|[\"”.,!?;:)\]}>])", "’", s)
-        s = regex.sub(r"(?<=[—⸺])'(?=\s|$)", "’", s)
-        s = regex.sub(r"(?<=\w)'(?=\b)", "’", s)  # fallback
+        s = regex.sub(
+            r"(?<=[\w.,!?;:])'(?=\s|$|[\"\u201d.,!?;:)\]}>])", "\u2019", s
+        )  # RIGHT SINGLE QUOTATION MARK, RIGHT DOUBLE QUOTATION MARK
+        s = regex.sub(
+            r"(?<=[\u2014⸺])'(?=\s|$)", "\u2019", s
+        )  # RIGHT SINGLE QUOTATION MARK, EM DASH
+        s = regex.sub(r"(?<=\w)'(?=\b)", "\u2019", s)  # fallback
 
         # 8. Correct mis-assigned openings before elision remainders
         s = regex.sub(
-            r"‘(" + "|".join(elision_remainders) + r")\b", lambda m: "’" + m.group(1), s
+            r"\u2018(" + "|".join(elision_remainders) + r")\b",
+            lambda m: "\u2019" + m.group(1),
+            s,  # LEFT SINGLE QUOTATION MARK, RIGHT SINGLE QUOTATION MARK
         )
 
         # 9. Remaining leading straight single quotes before lowercase word => opening curly
-        s = regex.sub(r"(?<=^|\s)'(?=[a-z])", "‘", s)
+        s = regex.sub(r"(?<=^|\s)'(?=[a-z])", "\u2018", s)  # LEFT SINGLE QUOTATION MARK
 
         return s
 
@@ -279,7 +299,7 @@ class PGDPExport:
             raise FileNotFoundError(f"File not found: {input_file_path}")
         if not input_file_path.is_file():
             raise FileNotFoundError(f"Not a file: {input_file_path}")
-        with open(input_file_path.resolve(), "r", encoding="utf-8") as json_file:
+        with open(input_file_path.resolve(), encoding="utf-8") as json_file:
             return cls.from_json(json_file.read(), input_file_path.parent)
 
     @classmethod

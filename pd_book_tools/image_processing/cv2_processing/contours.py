@@ -17,10 +17,7 @@ def find_and_draw_contours(img: np.ndarray) -> tuple[np.ndarray, tuple]:
     """
     contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Always promote to 3-channel BGR so the return type is consistent.
-    if img.ndim == 2:
-        out = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-    else:
-        out = img.copy()
+    out = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) if img.ndim == 2 else img.copy()
     # TODO: Optimize the rectangle drawing by using Numpy
     if contours:
         for c in contours:
@@ -46,7 +43,7 @@ def remove_small_contours(
 
     For each contour:
       - If both width and height are extremely small
-        (< ``small_contour_w`` × ``small_contour_h``, default 10×10), remove
+        (< ``small_contour_w`` \u00d7 ``small_contour_h``, default 10\u00d710), remove
         it unconditionally — no neighborhood check.
       - Otherwise, if the contour is below a size threshold (relative to the image),
         compute a search area around it. If the sum of the surrounding pixels (after

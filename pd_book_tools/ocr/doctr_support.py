@@ -1,14 +1,14 @@
+from collections.abc import Mapping
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
-from typing import Mapping
 
 logger = getLogger(__name__)
 
 # Default vocabulary used when training and loading models.
 # Trainers and predictors should both reference these so the vocab stays in sync.
 DEFAULT_VOCAB_LIBRARY: list[str] = ["multilingual", "currency"]
-DEFAULT_VOCAB_EXTRA_CHARS: str = "⸺¡¿—‘’“”′″⁄"
+DEFAULT_VOCAB_EXTRA_CHARS: str = "⸺¡¿—\u2018\u2019“”\u2032″\u2044"  # LEFT/RIGHT SINGLE QUOTATION MARK, PRIME, FRACTION SLASH
 
 
 def _read_arch_sidecar(pt_file: PathLike) -> str | None:
@@ -306,15 +306,15 @@ def get_finetuned_torch_doctr_predictor(
 ):
     try:
         from torch import load as torch_load
-    except ImportError:
-        raise ImportError("PyTorch is not available in this environment.")
+    except ImportError as err:
+        raise ImportError("PyTorch is not available in this environment.") from err
 
     import sys as _sys
 
     from doctr.datasets.vocabs import VOCABS
-    from doctr.models import (
-        crnn_vgg16_bn,  # noqa: F401  (kept for back-compat / external imports)
-        db_resnet50,  # noqa: F401
+    from doctr.models import (  # imported to ensure doctr.models is loaded before _doctr_models lookup
+        crnn_vgg16_bn,
+        db_resnet50,
     )
 
     _doctr_models = _sys.modules.get("doctr.models")

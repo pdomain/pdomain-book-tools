@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.perspective_adjustment import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.perspective_adjustment import (
     auto_deskew,
 )
 
@@ -64,7 +64,7 @@ class TestAutoDeskew:
         # Image where bottom-left starts further right than top-left
         # (positive slope) -> auto_deskew should rotate clockwise
         img = np.zeros((200, 200), dtype=np.uint8)
-        for row, start_col in zip(range(40, 160), range(40, 160)):
+        for row, start_col in zip(range(40, 160), range(40, 160), strict=False):
             img[row, start_col : start_col + 100] = 255
         result = auto_deskew(img)
         assert isinstance(result, tuple)
@@ -75,7 +75,7 @@ class TestAutoDeskew:
         # Image where bottom-left starts further left than top-left
         # (negative slope) -> auto_deskew should rotate counter-clockwise
         img = np.zeros((200, 200), dtype=np.uint8)
-        for row, start_col in zip(range(40, 160), range(160, 40, -1)):
+        for row, start_col in zip(range(40, 160), range(160, 40, -1), strict=False):
             img[row, start_col : start_col + 30] = 255
         result = auto_deskew(img)
         assert isinstance(result, tuple)

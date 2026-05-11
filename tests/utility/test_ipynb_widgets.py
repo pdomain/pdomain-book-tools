@@ -7,8 +7,10 @@ import pytest
 
 ipywidgets = pytest.importorskip("ipywidgets")
 
-from pd_book_tools.geometry.bounding_box import BoundingBox  # noqa: E402
-from pd_book_tools.utility.ipynb_widgets import (  # noqa: E402
+from pd_book_tools.geometry.bounding_box import (
+    BoundingBox,  # after importorskip guard
+)
+from pd_book_tools.utility.ipynb_widgets import (
     get_formatted_text_html_span,
     get_hbox_widget_for_colored_text,
     get_hbox_widget_for_cropped_image,

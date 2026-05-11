@@ -809,9 +809,7 @@ def test_vertical_crop_branch_coverage():
 
     h, w = 40, 60
     img = np.full((h, w), 255, dtype=np.uint8)
-    # center row index
-    center = h // 2  # noqa: F841
-    # Setup rows for crop_top logic:
+    # Setup rows for crop_top logic (center row index = h // 2 = 20):
     # row 20 (center) empty -> prev empty triggers first continue when y=19
     # row 19 has pixels at x 5,6 -> current
     img[19, 5:7] = 0
@@ -977,11 +975,16 @@ def test_has_usable_coordinates_propagates_real_errors():
     from pd_book_tools.geometry.bounding_box import BoundingBox
 
     bb = BoundingBox.from_ltrb(0, 0, 10, 10)
-    with patch.object(
-        type(bb), "minX", new_callable=PropertyMock, side_effect=RuntimeError("fail")
+    with (
+        patch.object(
+            type(bb),
+            "minX",
+            new_callable=PropertyMock,
+            side_effect=RuntimeError("fail"),
+        ),
+        pytest.raises(RuntimeError, match="fail"),
     ):
-        with pytest.raises(RuntimeError, match="fail"):
-            bb.has_usable_coordinates
+        _ = bb.has_usable_coordinates
 
 
 def test_has_usable_coordinates_rejects_nan_and_inf():

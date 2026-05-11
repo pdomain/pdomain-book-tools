@@ -29,6 +29,36 @@ docstrings and no multi-line comment blocks.
 - Comments that reference the PR, issue, or task that introduced the code — belongs in commit message, not source.
 - Multi-line preamble that mixes WHY (worth keeping) with WHAT (worth removing).
 
+## Rule: Unicode escape sequences for ruff-flagged ambiguous characters
+
+**The rule.** Characters ruff flags under RUF001/002/003 (ambiguous Unicode —
+curly quotes, en-dashes, em-dashes, multiplication signs, non-breaking spaces,
+etc.) must be written as `\uXXXX` escape sequences in string and docstring
+literals. In comments, replace with the plain ASCII equivalent. In every case
+include a short inline comment naming the character, e.g.
+`"“"  # LEFT DOUBLE QUOTATION MARK`.
+
+**Why.** Literal curly quotes and dashes are visually indistinguishable from
+ASCII equivalents in most editors and diff views, making string comparisons and
+grep silently fragile. Escape sequences make intent explicit and are safe across
+all encodings. `# noqa: RUF00x` masks the problem instead of fixing it.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- A string literal containing `"hello – world"` written with the literal
+  `–` character instead of the escape sequence.
+- `# noqa: RUF001`, `# noqa: RUF002`, or `# noqa: RUF003` suppressions instead
+  of escape sequences.
+- `RUF002` or `RUF003` added to `[tool.ruff.lint] ignore` in `pyproject.toml`
+  to paper over ambiguous characters.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Test strings that intentionally exercise curly-quote round-trip through the
+  OCR pipeline and must contain the literal character — keep the literal with an
+  explicit `# noqa: RUF001  # intentional: testing curly-quote round-trip`
+  comment that names the character and states the reason.
+
 <!-- workspace-conventions:end -->
 
 ## Rule: Never silently drop OCR words

@@ -159,7 +159,7 @@ def test_to_dict_minimal_roundtrip_omits_defaults():
     assert d["bounding_box"] is None
     assert d["ocr_provenance"] is None
 
-    # Defaults: omitted
+    # Defaults: omitted  # noqa: ERA001  # section label, not dead code
     for omitted in (
         "image_path",
         "name",

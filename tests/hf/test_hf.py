@@ -155,7 +155,7 @@ def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
     fake_main = tmp_path / "weights.pt"
     fake_main.write_bytes(b"x")
 
-    class _NotFound(Exception):
+    class _NotFound(Exception):  # test-internal sentinel, not a public exception
         pass
 
     calls: list[str] = []
@@ -164,7 +164,7 @@ def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
         calls.append(filename)
         if filename.endswith(".vocab"):
             raise _NotFound("missing")
-        return str(fake_main if filename.endswith(".pt") else fake_main)
+        return str(fake_main)
 
     fake_hub = mock.MagicMock(
         hf_hub_download=mock.MagicMock(side_effect=_hub_download),
@@ -194,7 +194,7 @@ def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path):
     fake_main = tmp_path / "weights"
     fake_main.write_bytes(b"x")
 
-    class _NotFound(Exception):
+    class _NotFound(Exception):  # test-internal sentinel, not a public exception
         pass
 
     calls: list[str] = []

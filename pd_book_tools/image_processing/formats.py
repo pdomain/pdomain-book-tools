@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 # magic-byte sniff continues to work even if decode would later fail.
 
 try:
-    import pillow_heif as _pillow_heif  # noqa: F401
+    import pillow_heif as _pillow_heif
 
     _pillow_heif.register_heif_opener()
 except Exception as _heif_exc:  # pragma: no cover - import-time guard
@@ -62,7 +62,7 @@ except Exception as _heif_exc:  # pragma: no cover - import-time guard
     )
 
 try:
-    import pillow_avif as _pillow_avif  # noqa: F401  -- registers AVIF on import
+    import pillow_avif as _pillow_avif  # import for side-effect (plugin registration)
 except Exception as _avif_exc:  # pragma: no cover - import-time guard
     logger.debug(
         "pillow-avif-plugin not available; AVIF decode will fail. (%s)",

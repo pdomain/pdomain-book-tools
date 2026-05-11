@@ -6,7 +6,7 @@ callables, so they're fast and don't require the DocTR predictor.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 from unittest.mock import MagicMock
 
 import numpy as np

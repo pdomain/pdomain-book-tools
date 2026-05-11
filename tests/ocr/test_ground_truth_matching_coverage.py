@@ -68,7 +68,7 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
 
         class FakeLine:
             text = "hello world"
-            words = []
+            words: list = []  # noqa: RUF012  # test stub; mutable default is intentional here
 
         with pytest.raises(ValueError, match="block_category"):
             update_line_match_difflib_lines_equal(FakeLine(), ("hello", "world"))
@@ -107,7 +107,7 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
 
     def test_no_dead_word_idx_out_of_range_guard(self):
         """L-20: the inner ``word_idx >= len(ground_truth_line)`` guard is
-        dead — the length-equality check before the loop already raises if
+        dead \u2014 the length-equality check before the loop already raises if  # EM DASH
         the lengths differ, and ``word_idx`` comes from
         ``enumerate(line.words)`` so it can never exceed
         ``len(ground_truth_line) - 1`` once that check passes. Property
@@ -230,7 +230,7 @@ class TestUpdatePageMatchUnmatchedLinesBestEffort:
 
 
 # ---------------------------------------------------------------------------
-# update_line_with_ground_truth – "delete" and "insert" word ops
+# update_line_with_ground_truth -- "delete" and "insert" word ops
 # ---------------------------------------------------------------------------
 
 
@@ -339,7 +339,7 @@ class TestBuildCurrentWorkGtLineFromPrev:
         """M-25: When the char at prev boundary is a space, fall back to the
         unmodified ground_truth_text instead of returning '' (which inserted a
         dead zero-score variant). The intent was to skip prepending."""
-        # previous_ground_truth_text[-1] == ' '
+        # previous_ground_truth_text[-1] == ' '  # noqa: ERA001  # code-expression illustrating the boundary condition, not dead code
         result = _build_current_work_gt_line_from_prev(
             prev_char_count=1,
             previous_ground_truth_text="word ",
@@ -365,7 +365,7 @@ class TestBuildCurrentWorkGtLineFromPrev:
         ground_truth_text appears among the variants and the scorer can pick
         it; pre-fix the variant at that prev_char_count was '' and the only
         non-empty candidate came from prev_char_count=0 (still present here,
-        so the bug was scoring-harmless — but the invariant is that no
+        so the bug was scoring-harmless \u2014 but the invariant is that no  # EM DASH
         OCR/GT content is silently elided in any candidate path)."""
         result, score = generate_best_matched_ground_truth_line(
             ocr_text="hello world",
@@ -460,7 +460,7 @@ class TestShouldConsiderLineEndSoftWrap:
 
 
 # ---------------------------------------------------------------------------
-# generate_best_matched_ground_truth_line – no variants path
+# generate_best_matched_ground_truth_line -- no variants path
 # ---------------------------------------------------------------------------
 
 
@@ -499,7 +499,7 @@ class TestGenerateBestMatchedGroundTruthLine:
 
 
 # ---------------------------------------------------------------------------
-# update_page_with_ground_truth_text – "delete" opcode exists
+# update_page_with_ground_truth_text -- "delete" opcode exists
 # ---------------------------------------------------------------------------
 
 
@@ -556,9 +556,9 @@ class TestMatchDifferentLineCountsDedup:
             ("foo", "bar"),
         ]
         ground_truth_tuples = [
-            ("hello", "world"),  # GT 0 — perfect match for OCR 0
-            ("hello", "world", "again"),  # GT 1 — partial match for OCR 0 (79%)
-            ("foo", "bar"),  # GT 2 — perfect match for OCR 1
+            ("hello", "world"),  # GT 0 \u2014 perfect match for OCR 0
+            ("hello", "world", "again"),  # GT 1 \u2014 partial match for OCR 0 (79%)
+            ("foo", "bar"),  # GT 2 \u2014 perfect match for OCR 1
         ]
         op = LineDiffOpCodes(
             line_tag="replace",
@@ -579,7 +579,7 @@ class TestMatchDifferentLineCountsDedup:
 
 
 # ---------------------------------------------------------------------------
-# try_matching_combined_words – quote/prime skip (line 484) and split flag (line 494)
+# try_matching_combined_words -- quote/prime skip (line 484) and split flag (line 494)
 # ---------------------------------------------------------------------------
 
 
@@ -610,7 +610,7 @@ class TestTryMatchingCombinedWordsEdgeCases:
 
 
 # ---------------------------------------------------------------------------
-# update_line_with_ground_truth_replace_words – break and continue paths (lines 831, 835)
+# update_line_with_ground_truth_replace_words -- break and continue paths (lines 831, 835)
 # ---------------------------------------------------------------------------
 
 
@@ -636,7 +636,7 @@ class TestReplaceWordsBreakAndContinue:
             gt_word_1=0,
             gt_word_2=1,  # only 1 GT word → exhausted after first OCR word → break
         )
-        combined, new_words = update_line_with_ground_truth_replace_words(
+        _combined, _new_words = update_line_with_ground_truth_replace_words(
             line=line,
             op=op,
             ocr_line_tuple=("hello", "world", "extra"),

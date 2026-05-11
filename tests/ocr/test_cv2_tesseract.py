@@ -233,7 +233,9 @@ class TestTesseractOcrCv2Image:
 
         # This should not crash but may behave unexpectedly
         # The actual behavior depends on how opencv handles it
-        with pytest.raises(Exception):
+        with pytest.raises(
+            Exception
+        ):  # intentionally broad: behavior depends on opencv version
             tesseract_ocr_cv2_image(invalid_image)
 
     def test_tesseract_config_string_format(self):

@@ -20,7 +20,7 @@ def split_x_columns(img: np.ndarray, x: int) -> tuple[np.ndarray, np.ndarray]:
     Raises:
         ValueError: If x is out of bounds.
     """
-    h, w = img.shape[:2]
+    _h, w = img.shape[:2]
 
     if not (0 <= x <= w):
         raise ValueError(f"Column index x={x} is out of bounds for width={w}")
@@ -42,7 +42,7 @@ def split_y_rows(img: np.ndarray, y: int) -> tuple[np.ndarray, np.ndarray]:
     Raises:
         ValueError: If y is out of bounds.
     """
-    h, w = img.shape[:2]
+    h, _w = img.shape[:2]
 
     if not (0 <= y <= h):
         raise ValueError(f"Row index y={y} is out of bounds for height={h}")

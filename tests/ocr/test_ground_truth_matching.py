@@ -91,7 +91,7 @@ class TestGroundTruthMatching:
         ground_truth_tuple = ("hi", "there", "extra")
 
         # Call the function
-        combined_ocr_word_nbrs, new_combined_words = (
+        _combined_ocr_word_nbrs, _new_combined_words = (
             update_line_with_ground_truth_replace_words(
                 line=line,
                 op=op,
@@ -146,7 +146,7 @@ class TestGroundTruthMatching:
         ground_truth_tuple = ("hi", "extra_from_replace")
 
         # Call the function - this should preserve the inserted_word and add extra_from_replace
-        combined_ocr_word_nbrs, new_combined_words = (
+        _combined_ocr_word_nbrs, _new_combined_words = (
             update_line_with_ground_truth_replace_words(
                 line=line,
                 op=op,
@@ -200,7 +200,7 @@ class TestGroundTruthMatching:
         ocr_line_tuple = ("hello",)
         ground_truth_tuple = ("hi", "extra")
 
-        combined_ocr_word_nbrs, new_combined_words = (
+        _combined_ocr_word_nbrs, _new_combined_words = (
             update_line_with_ground_truth_replace_words(
                 line=line,
                 op=op,
@@ -358,7 +358,7 @@ class TestGroundTruthMatching:
         - the GT word ends in a quote/prime,
         - the trailing OCR token is short (<= 2 chars), and
         - the trailing OCR token visually floats above its predecessor
-          (smaller maxY = higher on the page) — the geometric signature
+          (smaller maxY = higher on the page) \u2014 the geometric signature  # EM DASH
           of a stray quote mark misread as its own word.
 
         The flag must be driven by the *current span* length, not the
@@ -367,7 +367,7 @@ class TestGroundTruthMatching:
         ``(combination_end - combination_start) > 1`` (always true for
         these combinations, span >= 2), so ``include_ending_quote`` can
         flip True when its other conditions are met. That promotes a
-        sub-threshold fuzz match into a kept combination — without it,
+        sub-threshold fuzz match into a kept combination \u2014 without it,  # EM DASH
         the trailing quote is silently dropped from the merged word.
 
         Scenario tuned so that:
@@ -425,25 +425,25 @@ class TestCharacterGroups:
 
     def test_character_groups_endash_contains(self):
         """Test that en-dash group contains expected characters."""
-        assert "–" in CharacterGroups.ENDASH
+        assert "\u2013" in CharacterGroups.ENDASH  # EN DASH
         assert "-" not in CharacterGroups.ENDASH
 
     def test_character_groups_emdash_contains(self):
         """Test that em-dash group contains expected characters."""
-        assert "—" in CharacterGroups.EMDASH
+        assert "\u2014" in CharacterGroups.EMDASH  # EM DASH
         assert "-" not in CharacterGroups.EMDASH
 
     def test_character_groups_all_dashes(self):
         """Test that DASHES contains all dash types."""
         assert "-" in CharacterGroups.DASHES  # hyphen
-        assert "–" in CharacterGroups.DASHES  # en-dash
-        assert "—" in CharacterGroups.DASHES  # em-dash
-        assert "‒" in CharacterGroups.DASHES  # figure dash
+        assert "\u2013" in CharacterGroups.DASHES  # en-dash
+        assert "\u2014" in CharacterGroups.DASHES  # em-dash
+        assert "\u2012" in CharacterGroups.DASHES  # figure dash
         assert "⸺" in CharacterGroups.DASHES  # two-em dash
         assert "⸻" in CharacterGroups.DASHES  # three-em dash
         assert "―" in CharacterGroups.DASHES  # horizontal bar
-        assert "‑" in CharacterGroups.DASHES  # non-break hyphen
-        assert "−" in CharacterGroups.DASHES  # minus
+        assert "\u2011" in CharacterGroups.DASHES  # non-break hyphen
+        assert "\u2212" in CharacterGroups.DASHES  # minus
         assert "a" not in CharacterGroups.DASHES
 
     def test_character_groups_single_quote_contains(self):
@@ -471,10 +471,10 @@ class TestCharacterGroups:
 
     def test_character_groups_primes_contains(self):
         """Test that primes group contains expected characters."""
-        assert "′" in CharacterGroups.SINGLE_PRIME
-        assert "″" in CharacterGroups.DOUBLE_PRIME
-        assert "′" in CharacterGroups.PRIMES
-        assert "″" in CharacterGroups.PRIMES
+        assert "\u2032" in CharacterGroups.SINGLE_PRIME  # PRIME
+        assert "\u2033" in CharacterGroups.DOUBLE_PRIME  # DOUBLE PRIME
+        assert "\u2032" in CharacterGroups.PRIMES  # PRIME
+        assert "\u2033" in CharacterGroups.PRIMES  # DOUBLE PRIME
         assert "a" not in CharacterGroups.PRIMES
 
     def test_character_groups_quotes_and_primes(self):
@@ -483,8 +483,8 @@ class TestCharacterGroups:
         assert "'" in CharacterGroups.QUOTES_AND_PRIMES
         assert '"' in CharacterGroups.QUOTES_AND_PRIMES
         assert '"' in CharacterGroups.QUOTES_AND_PRIMES  # left double quote
-        assert "′" in CharacterGroups.QUOTES_AND_PRIMES
-        assert "″" in CharacterGroups.QUOTES_AND_PRIMES
+        assert "\u2032" in CharacterGroups.QUOTES_AND_PRIMES  # PRIME
+        assert "\u2033" in CharacterGroups.QUOTES_AND_PRIMES  # DOUBLE PRIME
         assert "a" not in CharacterGroups.QUOTES_AND_PRIMES
 
 
@@ -632,6 +632,7 @@ class TestUpdatePageWithGroundTruthText:
         for line, expected in zip(
             page.lines,
             ["The quick brown fox", "jumps over the lazy dog", "and runs away"],
+            strict=False,
         ):
             for word in line.words:
                 assert word.ground_truth_text is not None

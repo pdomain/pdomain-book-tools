@@ -19,7 +19,9 @@ from dataclasses import dataclass
 from logging import getLogger
 
 import numpy as np
-from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
+from cv2 import (
+    FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX,  # cv2_ prefix is the project's namespacing convention
+)
 from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
@@ -116,7 +118,7 @@ def compute_page_metrics(page) -> PageMetrics:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Heuristic figure-noise drop — pure-geometry fallback to layout-aware drops
+# Heuristic figure-noise drop -- pure-geometry fallback to layout-aware drops
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Plates and figures often produce OCR fragments that the engine emits as their
@@ -125,7 +127,7 @@ def compute_page_metrics(page) -> PageMetrics:
 # those via :func:`layout_aware_reorg.drop_figure_internal_words`. This
 # pure-geometry pass catches the same shape of garbage when no layout is
 # supplied, at the cost of false-positive risk on tiny, isolated, *real*
-# tokens — see the conservative cluster / isolation rules below.
+# tokens -- see the conservative cluster / isolation rules below.
 
 
 def _line_alphanumeric_count(line: Block) -> int:
@@ -145,11 +147,11 @@ def _is_weak_noise_line(
     """Classify a LINE block as figure-internal-noise candidate.
 
     Conservative: a line is "weak" only if it carries at most two short
-    words (≤3 chars each) summing to ≤2 alphanumeric characters.
+    words (\u22643 chars each) summing to \u22642 alphanumeric characters.  # LESS-THAN OR EQUAL TO
 
     ``protect_drop_caps`` exempts drop-cap-tall single-letter lines from
     the weak set so :func:`stitch_drop_caps` can find them later. Set
-    False on plate / frontispiece pages — those don't contain body
+    False on plate / frontispiece pages \u2014 those don't contain body  # EM DASH
     paragraphs and therefore can't host a drop cap, so a tall single
     letter there is just oversized engraving noise.
     """
@@ -178,7 +180,7 @@ def _is_weak_noise_line(
     return True
 
 
-def _purge_words_from_blocks(blocks: list[Block], targets: "set[int]") -> None:
+def _purge_words_from_blocks(blocks: list[Block], targets: set[int]) -> None:
     """R-05: thin module-private alias around ``block.purge_words_from_blocks``.
 
     Pre-R-05 this module carried its own near-identical copy of the
@@ -193,23 +195,23 @@ def _purge_words_from_blocks(blocks: list[Block], targets: "set[int]") -> None:
 
 
 def _is_gibberish_line(line: Block) -> bool:
-    """Classify a 3–5-char LINE as plate-page-noise gibberish.
+    """Classify a 3\u20135-char LINE as plate-page-noise gibberish.  # EN DASH
 
     Patterns we catch:
-      * **No vowels** in a multi-letter alphabetic token — printed words
+      * **No vowels** in a multi-letter alphabetic token \u2014 printed words  # EM DASH
         in this fixture set always carry at least one vowel, so an
         all-consonant token like ``AMV`` is OCR noise from a figure
         interior, not a real abbreviation.
-      * **Mixed letters and digits** — ``II1s1`` style splatter where
+      * **Mixed letters and digits** \u2014 ``II1s1`` style splatter where  # EM DASH
         the OCR confused glyph shapes from a halftone or engraving for
         a digit-letter mix that no body-text token would produce.
-      * **Mixed casing inside a token** — runs that don't match the
+      * **Mixed casing inside a token** \u2014 runs that don't match the  # EM DASH
         usual capitalization shapes (``Title``, ``UPPER``, ``lower``).
         ``TEor`` (two caps then two lowers) fits this pattern; real
         body words don't.
 
     Stricter than :func:`_is_weak_noise_line`: only valid on plate /
-    frontispiece pages — a body page can legitimately contain weird
+    frontispiece pages \u2014 a body page can legitimately contain weird  # EM DASH
     short tokens (variable names in code samples, monogrammed marks,
     abbreviations) so this is not a general-purpose noise classifier.
     """
@@ -238,9 +240,7 @@ def _is_gibberish_line(line: Block) -> bool:
         "L" * len(text),
         "U" + "L" * (len(text) - 1),
     }
-    if case_pattern not in standard_patterns:
-        return True
-    return False
+    return case_pattern not in standard_patterns
 
 
 def _line_is_pure_punctuation(line: Block) -> bool:
@@ -252,31 +252,31 @@ def _line_is_pure_punctuation(line: Block) -> bool:
 
 
 def drop_heuristic_figure_noise(page) -> int:
-    """Drop OCR lines that look like figure-internal noise — pure heuristic.
+    """Drop OCR lines that look like figure-internal noise \u2014 pure heuristic.  # EM DASH
 
     Pure-text/geometry fallback for pages reorganized without a layout
     model. Identifies clusters of "weak" lines (so short and so isolated
-    that they cannot represent meaningful body text — typically the
+    that they cannot represent meaningful body text \u2014 typically the  # EM DASH
     1-2-character splatter that engravings, plates and photographic
     halftones produce when fed through OCR) and drops them.
 
-    Drop rules (deliberately conservative — favour false negatives over
+    Drop rules (deliberately conservative \u2014 favour false negatives over  # EM DASH
     eating real content):
 
-    * **Multi-line cluster** — two or more weak lines, vertically
+    * **Multi-line cluster** \u2014 two or more weak lines, vertically  # EM DASH
       reachable through a chain of weak-only neighbours each within
-      ``8 × median_word_h`` of the next, with no strong line breaking
+      ``8 \u00d7 median_word_h`` of the next, with no strong line breaking  # MULTIPLICATION SIGN
       the chain. Real text never produces back-to-back single-character
       lines, so multi-line clusters are the safe case to drop wholesale.
-    * **Solo, pure-punctuation, isolated** — a single weak line whose
+    * **Solo, pure-punctuation, isolated** \u2014 a single weak line whose  # EM DASH
       visible text is *only* punctuation/symbols (e.g. ``-``, ``:``,
-      ``/``) AND has at least ``3 × median_word_h`` of empty vertical
+      ``/``) AND has at least ``3 \u00d7 median_word_h`` of empty vertical  # MULTIPLICATION SIGN
       space to the nearest strong line on both sides. Pure-punctuation
       content never appears standalone in body text; this catches the
       lone-dash-above-a-portrait pattern without endangering page
       numbers (digit-only) or short chapter labels (alphanumeric).
 
-    Solo *alphanumeric* weak lines are NEVER dropped — too risky against
+    Solo *alphanumeric* weak lines are NEVER dropped \u2014 too risky against  # EM DASH
     page numbers, sidenote markers, chapter heads, and labels.
 
     Drop caps are protected because they are excluded from the
@@ -309,12 +309,12 @@ def drop_heuristic_figure_noise(page) -> int:
     ]
     if not any(weak_flags):
         return 0
-    strong_lines = [l for l, w in zip(all_lines, weak_flags) if not w]
+    strong_lines = [l for l, w in zip(all_lines, weak_flags, strict=False) if not w]
     if not strong_lines:
         return 0
 
     # Plate-page guard. Only fire on pages whose strong (real) lines look
-    # like a small caption block — at most a handful of lines, clustered
+    # like a small caption block -- at most a handful of lines, clustered
     # into one or two groups (top / bottom or a single block). Pages
     # dominated by body text, or pages with strong text spread across
     # many independent groups (maps, diagrams, contents pages with column
@@ -338,12 +338,15 @@ def drop_heuristic_figure_noise(page) -> int:
     if not plate_like:
         return 0
 
-    # Plate-page extension: also flag 3–5-char gibberish tokens (no
+    # Plate-page extension: also flag 3--5-char gibberish tokens (no
     # vowels, digit/letter mix, weird capitalization) as weak. These
-    # land in the noise set together with the ≤2-alphanum lines so the
+    # land in the noise set together with the <=2-alphanum lines so the
     # cluster / solo logic below operates on the full noise picture.
-    weak_flags = [wf or _is_gibberish_line(l) for wf, l in zip(weak_flags, all_lines)]
-    strong_lines = [l for l, w in zip(all_lines, weak_flags) if not w]
+    weak_flags = [
+        wf or _is_gibberish_line(l)
+        for wf, l in zip(weak_flags, all_lines, strict=False)
+    ]
+    strong_lines = [l for l, w in zip(all_lines, weak_flags, strict=False) if not w]
     if not strong_lines:
         return 0
 
@@ -371,7 +374,7 @@ def drop_heuristic_figure_noise(page) -> int:
     if cur:
         clusters.append(cur)
 
-    targets: "set[int]" = set()
+    targets: set[int] = set()
     for cluster in clusters:
         cluster_y_min = min(all_lines[i].bounding_box.minY for i in cluster)
         cluster_y_max = max(all_lines[i].bounding_box.maxY for i in cluster)
@@ -397,13 +400,13 @@ def drop_heuristic_figure_noise(page) -> int:
                 drop = up_gap >= solo_isolation_gap and down_gap >= solo_isolation_gap
             elif up_gap >= figure_gap and down_gap >= figure_gap:
                 # Solo alphanumeric weak line surrounded by large empty
-                # bands on both sides — that's a figure interior even on
+                # bands on both sides -- that's a figure interior even on
                 # a plate page, drop it. (Plate guard above ensures we
                 # only do this for plate-shaped pages.)
                 # Page-number guard: digit-only solo lines might be a
                 # standalone page number that Step E failed to catch
                 # (e.g. ``5`` at the foot of a contents page). Leave them
-                # alone — losing a page number is worse than keeping a
+                # alone -- losing a page number is worse than keeping a
                 # rare stray digit on a plate.
                 text = (line.text or "").strip()
                 stripped = text.replace(".", "").replace(",", "").replace(" ", "")
@@ -425,7 +428,7 @@ def drop_heuristic_figure_noise(page) -> int:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Pipeline Step E — page header / page footer band extraction
+# Pipeline Step E -- page header / page footer band extraction
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Many printed book pages have a running header (chapter title or section name,
@@ -462,7 +465,7 @@ def extract_top_header_lines(
     2. The line's bbox fits inside a band of height ``band_factor *
        median_word_h`` starting at the topmost line's ``minY``.
     3. The vertical gap from the band's bottom to the next non-header line is
-       at least ``min_gap_factor * median_word_h`` — confirming a *visible*
+       at least ``min_gap_factor * median_word_h`` \u2014 confirming a *visible*  # EM DASH
        blank line separates the header from the body.
     """
     valid = [l for l in lines if l.bounding_box]
@@ -600,7 +603,7 @@ def build_page_footer_block(footer_lines: list[Block]) -> Block | None:
     return _build_band_block(footer_lines, role="page footer", position="bottom")
 
 
-# Pipeline Step L — wrap a row block's lines in a paragraph + outer block with
+# Pipeline Step L -- wrap a row block's lines in a paragraph + outer block with
 # the appropriate role and position labels.
 _SPECIAL_BLOCK_LABELS = {
     "page header": ("page header", "top"),
@@ -700,7 +703,7 @@ def collect_word_signatures(
     rounded to 4 decimal places so float equality is robust.
 
     Empty-text and bbox-less words are filtered via :func:`_meaningful_words`
-    — those are routinely dropped by intent and shouldn't trigger validator
+    \u2014 those are routinely dropped by intent and shouldn't trigger validator  # EM DASH
     warnings.
     """
     sigs: list[tuple[str, float, float, float, float]] = []
@@ -725,7 +728,7 @@ def validate_word_preservation(
 ) -> list[str]:
     """Report words present in ``pre_words`` but missing from ``post_words``.
 
-    The reorganize pipeline must never *drop* OCR words — it may move them
+    The reorganize pipeline must never *drop* OCR words \u2014 it may move them  # EM DASH
     between blocks, merge OCR-fragmented lines, or reclassify them, but the
     raw word multiset must round-trip. This helper diffs the two word sets by
     (text, bbox) signature and returns a list of human-readable error lines
@@ -754,7 +757,7 @@ def find_dropped_words(
     """Return ``Word`` objects that appear in ``pre_words`` but not in
     ``post_words`` (compared by text + bbox signature).
 
-    Sister to :func:`validate_word_preservation` — same diff, but returns the
+    Sister to :func:`validate_word_preservation` \u2014 same diff, but returns the  # EM DASH
     actual ``Word`` instances so callers can splice them back into the output.
     """
     post_sig_set = set(collect_word_signatures(post_words))
@@ -802,7 +805,7 @@ class ReorganizeDroppedWordsError(RuntimeError):
         self.errors = errors
 
 
-def build_recovered_words_block(dropped: list[Word]) -> "Block | None":
+def build_recovered_words_block(dropped: list[Word]) -> Block | None:
     """Wrap dropped-but-rescued words in a tagged BLOCK so they survive in
     the final ``page.text`` output.
 
@@ -863,7 +866,7 @@ def reconcile_dropped_words(
          append a ``block_role_labels=["recovered"]`` block to
          ``final_blocks`` containing them. The recovered block sorts to the
          end via ``override_page_sort_order`` so it doesn't interleave with
-         the rest of the reading order — its primary purpose is to keep the
+         the rest of the reading order \u2014 its primary purpose is to keep the  # EM DASH
          word multiset round-tripping while making the loss obvious.
     """
     import sys  # local import: avoids polluting module top-level
@@ -872,9 +875,9 @@ def reconcile_dropped_words(
     # depth. Earlier this was a hardcoded 3-level comprehension
     # ``outer.items -> paragraph.items -> line.words`` (with a
     # ``hasattr(line, "words")`` fallback) that assumed exactly
-    # ``BLOCK -> PARAGRAPH -> LINE -> WORDS``. Any other shape — e.g. a
+    # ``BLOCK -> PARAGRAPH -> LINE -> WORDS``. Any other shape -- e.g. a
     # recovered/floated branch lacking the PARAGRAPH wrapper, or a
-    # multi-column block with extra BLOCK nesting — bottomed out at a
+    # multi-column block with extra BLOCK nesting -- bottomed out at a
     # ``Word`` in the place ``line`` was expected; ``hasattr(Word,
     # "words")`` is False, so the comprehension yielded an empty list and
     # ``reconcile_dropped_words`` reported every word as "dropped". M-13.
@@ -884,7 +887,7 @@ def reconcile_dropped_words(
     # leaf ``WORDS`` child_type, so it covers every shape the reorganize
     # pipeline can emit. We must NOT rely on ``page.words`` here because
     # ``page.items`` is the LIVE tree, not the candidate ``final_blocks``
-    # we're validating — collect from each top-level block instead.
+    # we're validating -- collect from each top-level block instead.
     post_words: list[Word] = []
     for outer in final_blocks:
         post_words.extend(outer.words)
@@ -912,12 +915,12 @@ def reconcile_dropped_words(
     recovered = build_recovered_words_block(dropped)
     if recovered is None:
         return final_blocks
-    return list(final_blocks) + [recovered]
+    return [*list(final_blocks), recovered]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Drop-cap detection — Step DC of reorganize_page. The implementation lives
-# in :mod:`pd_book_tools.ocr.dropcap` (Iteration B unification — that module
+# Drop-cap detection -- Step DC of reorganize_page. The implementation lives
+# in :mod:`pd_book_tools.ocr.dropcap` (Iteration B unification -- that module
 # owns BOTH the block-cap geometric stitcher and the cursive-cap CC fallback).
 # ``stitch_drop_caps`` is preserved as a thin shim for the historical name.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -934,7 +937,7 @@ def stitch_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
     and the now-empty paragraph is dropped from the block.
 
     Special blocks (page header, footer, sidenote, poetry, blockquote,
-    recovered) are skipped — drop caps only appear in body text.
+    recovered) are skipped \u2014 drop caps only appear in body text.  # EM DASH
 
     Iteration B: implementation hoisted into
     :func:`pd_book_tools.ocr.dropcap.stitch_block_drop_caps`. This shim
@@ -982,7 +985,7 @@ def assemble_final_blocks(
     body_blocks: list[Block],
     page_footer_block: Block | None,
 ) -> list[Block]:
-    """Pipeline assembly — weave header/footer bands around body blocks and
+    """Pipeline assembly \u2014 weave header/footer bands around body blocks and  # EM DASH
     stamp ``override_page_sort_order`` so re-sorts keep the order stable.
     """
     final_blocks: list[Block] = []
@@ -1031,7 +1034,7 @@ class _LooseBBox:
     """Tiny bbox-like adapter for ad-hoc rectangles passed to ``_bbox_to_px_rect``.
 
     The real ``BoundingBox`` carries far more metadata than the projection
-    helper needs — only minX/minY/maxX/maxY plus width/height are used. This
+    helper needs \u2014 only minX/minY/maxX/maxY plus width/height are used. This  # EM DASH
     adapter keeps the helper's contract narrow.
     """
 
@@ -1073,7 +1076,7 @@ def _bbox_to_px_rect(bb, image_w: int, image_h: int):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Per-step debug PNG writers — render each pipeline stage's output as an
+# Per-step debug PNG writers -- render each pipeline stage's output as an
 # overlay on the page image. All wrap _bbox_to_px_rect for projection.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1083,7 +1086,7 @@ def write_step_e_debug_overlay_png(
     header_lines: list[Block],
     footer_lines: list[Block],
     suffix: str = "stepE",
-) -> "pathlib.Path | None":
+) -> pathlib.Path | None:
     """Write a debug PNG showing the detected page-header / page-footer bands.
 
     Header lines are framed in orange; footer lines in purple. Other detected
@@ -1134,7 +1137,7 @@ def write_step_row_blocks_debug_overlay_png(
     page,
     row_blocks_block,
     suffix: str,
-) -> "pathlib.Path | None":
+) -> pathlib.Path | None:
     """Write a debug PNG framing each row block in a distinct color.
 
     Row blocks are the output of vertical region grouping (Step F). Each
@@ -1184,7 +1187,7 @@ def write_step_d_debug_overlay_png(
     pre_split_paragraphs: list[Block],
     post_split_paragraphs: list[Block],
     suffix: str = "stepD",
-) -> "pathlib.Path | None":
+) -> pathlib.Path | None:
     """Write a debug PNG showing the result of mixed-content line splitting.
 
     Lines that already existed before Step D are framed in light gray. Lines
@@ -1243,7 +1246,7 @@ def write_step_h_debug_overlay_png(
     page,
     row_block_decisions: list[dict],
     suffix: str = "stepH",
-) -> "pathlib.Path | None":
+) -> pathlib.Path | None:
     """Write a debug PNG showing column-split decisions per row block.
 
     Each entry in ``row_block_decisions`` describes one row block:
@@ -1353,7 +1356,7 @@ def write_step_k_debug_overlay_png(
     page,
     body_paragraph_blocks: list[Block],
     suffix: str = "stepK",
-) -> "pathlib.Path | None":
+) -> pathlib.Path | None:
     """Write a debug PNG showing paragraph splits within body blocks.
 
     Each paragraph inside a body BLOCK is framed in a unique color from a
@@ -1379,7 +1382,7 @@ def write_step_k_debug_overlay_png(
 
     p_idx = 0
     for outer in body_paragraph_blocks:
-        # Outer is BLOCK — its items are PARAGRAPH blocks (or a single PARAGRAPH
+        # Outer is BLOCK -- its items are PARAGRAPH blocks (or a single PARAGRAPH
         # for special roles wrapped via wrap_special_role_block).
         roles = outer.block_role_labels or []
         is_special = any(
@@ -1420,7 +1423,7 @@ def write_step_l_debug_overlay_png(
     page,
     final_blocks: list[Block],
     suffix: str = "stepL",
-) -> "pathlib.Path | None":
+) -> pathlib.Path | None:
     """Write a debug PNG showing the final classified blocks in reading order.
 
     Each top-level emitted block is framed by its role color and labeled
@@ -1494,7 +1497,7 @@ def layout_debug_output_path(page) -> pathlib.Path:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Geometry primitives — pure, no Page state. interval_gap, line_vertical_gaps,
+# Geometry primitives -- pure, no Page state. interval_gap, line_vertical_gaps,
 # gaps_are_consistent and similar small helpers used by every step.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -1564,7 +1567,7 @@ def write_layout_debug_index_html(
     parts: list[str] = [
         "<!doctype html>",
         '<html><head><meta charset="utf-8">',
-        f"<title>Layout debug — {page_label}</title>",
+        f"<title>Layout debug \u2014 {page_label}</title>",  # EM DASH
         "<style>",
         "body{font-family:system-ui,sans-serif;max-width:1200px;margin:1.5em auto;padding:0 1em;}",
         "h1{font-size:1.4em;}h2{font-size:1.1em;border-top:1px solid #ddd;padding-top:1em;}",
@@ -1572,7 +1575,7 @@ def write_layout_debug_index_html(
         ".step{margin-bottom:2em;}",
         ".meta{color:#666;font-size:0.85em;}",
         "</style></head><body>",
-        f"<h1>Layout debug — {page_label}</h1>",
+        f"<h1>Layout debug \u2014 {page_label}</h1>",  # EM DASH
         f'<p class="meta">Generated from {debug_txt_path.name}. Read top-to-bottom in pipeline order.</p>',
     ]
     for png in pngs:
@@ -1600,13 +1603,13 @@ def _cache_bbox_arrays(
     """Materialize bbox attributes for ``words`` into NumPy arrays.
 
     Reading ``bb.minX`` etc. routes through pydantic property accessors
-    (with validator wrappers) and is ~5× slower than reading a NumPy
+    (with validator wrappers) and is ~5\u00d7 slower than reading a NumPy  # MULTIPLICATION SIGN
     scalar. The reorg pipeline's row-block step has tight O(N²) inner
     loops over word pairs; calling those accessors millions of times
     dominates wall time on word-rich pages. Cache once, read many.
 
     Returns the (filtered) words list paired with float64 arrays of
-    minX, maxX, minY, maxY, mid_y (vertical midpoint), height — all
+    minX, maxX, minY, maxY, mid_y (vertical midpoint), height \u2014 all  # EM DASH
     aligned on the same index. Words without a bounding box are
     dropped.
     """
@@ -1676,9 +1679,8 @@ def estimate_average_word_distance(words: list[Word], page_width: int) -> float:
             gap = minX_s[j] - bb_maxX
             if gap < 0.0:
                 gap = 0.0
-            if gap <= max_horizontal_gap:
-                if nearest_gap is None or gap < nearest_gap:
-                    nearest_gap = gap
+            if gap <= max_horizontal_gap and (nearest_gap is None or gap < nearest_gap):
+                nearest_gap = gap
         if nearest_gap is not None:
             gaps.append(nearest_gap)
 
@@ -1750,7 +1752,7 @@ def build_word_seeded_row_blocks(
             # by minY, j's minY must be <= bb_maxY + y_expand. The lower
             # bound is set by maxY_s[j] >= bb_minY - y_expand, but maxY
             # isn't sorted; the cheap correct lower-bound is just 0
-            # (a few extra checks are fine — the inner gap test rejects
+            # (a few extra checks are fine -- the inner gap test rejects
             # them). Empirically the upper bound alone gives most of
             # the win.
             hi = int(np.searchsorted(minY_s, bb_maxY + y_expand, side="right"))
@@ -1778,7 +1780,7 @@ def build_word_seeded_row_blocks(
 
         components.append([words_with_bbox[y_order[k]] for k in comp_indices])
 
-    # Single-word components must NOT be dropped — that loses real content
+    # Single-word components must NOT be dropped -- that loses real content
     # like a centered chapter heading ("PREFACE.") which sits in its own
     # vertical band far from any other text. Drop only truly empty components.
     components = [comp for comp in components if len(comp) >= 1]
@@ -1927,7 +1929,7 @@ def row_block_quality(row_blocks: Block | None) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step D — split mixed-content (caption + body) OCR lines by gap + height shift.
+# Step D -- split mixed-content (caption + body) OCR lines by gap + height shift.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -2115,7 +2117,7 @@ def split_mixed_content_lines(paragraphs: list[Block], page_width: int) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step K — split a row block's lines into paragraphs using indent / narrow-line
+# Step K -- split a row block's lines into paragraphs using indent / narrow-line
 # / wrapped-line rules.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -2236,7 +2238,7 @@ def compute_text_paragraph_blocks(lines: list[Block]) -> Block:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Pipeline orchestration helpers — consume a Page and produce structured
+# Pipeline orchestration helpers -- consume a Page and produce structured
 # intermediates. Page only needs to call these in order; all the heavy lifting
 # lives here. Full per-step heuristic specs in
 # docs/specs/03-reorganize-pipeline.md.
@@ -2374,7 +2376,7 @@ def expand_floated_flow_row_block(
     debug_squeezed_lines: list[str],
     step_h_decisions: list[dict],
 ) -> list[Block]:
-    """Pipeline Step I — expand a row block that contains a floated figure."""
+    """Pipeline Step I \u2014 expand a row block that contains a floated figure."""  # EM DASH
     pre_lines, left_flow, right_flow, band_body, post_lines = floated_flow
 
     step_h_decisions.append(
@@ -2453,7 +2455,7 @@ def expand_mixed_column_row_block(
     row_idx: int,
     step_h_decisions: list[dict],
 ) -> list[Block]:
-    """Pipeline Step H — expand a row block whose lines split into two narrow
+    """Pipeline Step H \u2014 expand a row block whose lines split into two narrow  # EM DASH
     columns plus optional spanning lines."""
     left_lines, right_lines, spanning_lines = mixed_col_split
     left_median_x = float(
@@ -2579,7 +2581,7 @@ def expand_multi_column_row_block(
     row_idx: int,
     step_h_decisions: list[dict],
 ) -> Block:
-    """Pipeline Step H — collapse a multi-column row block into a single flow."""
+    """Pipeline Step H \u2014 collapse a multi-column row block into a single flow."""  # EM DASH
     column_groups, spanning_lines = multi_col_split
     logger.debug(
         "Detected multi-column row block; splitting into %d column groups and %d spanning lines",
@@ -2606,7 +2608,7 @@ def expand_simple_two_column_row_block(
     row_idx: int,
     step_h_decisions: list[dict],
 ) -> Block:
-    """Pipeline Step H — collapse a simple two-column row block into a single
+    """Pipeline Step H \u2014 collapse a simple two-column row block into a single  # EM DASH
     flow paragraph (left then right)."""
     left_lines, right_lines = col_split
     left_median_x = float(
@@ -2641,7 +2643,7 @@ def expand_row_blocks(
     row_blocks: Block,
     debug_squeezed_lines: list[str],
 ) -> tuple[list[Block], list[dict]]:
-    """Pipeline Step H — dispatch each row block to the right expander."""
+    """Pipeline Step H \u2014 dispatch each row block to the right expander."""  # EM DASH
     expanded_row_blocks: list[Block] = []
     step_h_decisions: list[dict] = []
     for row_idx, b in enumerate(row_blocks.items, start=1):
@@ -2714,7 +2716,7 @@ def classify_and_paragraphize_blocks(
     page,
     expanded_row_blocks: list[Block],
 ) -> list[Block]:
-    """Pipeline Step L — classify each row block (page header/footer, sidenote,
+    """Pipeline Step L \u2014 classify each row block (page header/footer, sidenote,  # EM DASH
     poetry, blockquote, body) and paragraphize body blocks via Step K."""
     all_lines = list(
         itertools.chain.from_iterable([b.lines for b in expanded_row_blocks])
@@ -2804,12 +2806,12 @@ def _reorganize_lines_check_overlap(line: Block, next_line: Block) -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step B — re-merge OCR-fragmented lines inside a block.
+# Step B -- re-merge OCR-fragmented lines inside a block.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def reorganize_lines(block: Block) -> None:
-    """Step B — re-merge OCR-fragmented lines inside ``block``."""
+    """Step B \u2014 re-merge OCR-fragmented lines inside ``block``."""  # EM DASH
     if not block.items:
         return
     lines: list[Block] = block.items
@@ -2893,14 +2895,14 @@ def reorganize_lines(block: Block) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step F — group lines into row blocks by dynamic vertical spacing.
+# Step F -- group lines into row blocks by dynamic vertical spacing.
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def compute_text_row_blocks(lines: list[Block], tolerance=None) -> "Block | None":
-    """Step F — group lines into row blocks by dynamic vertical spacing.
+def compute_text_row_blocks(lines: list[Block], tolerance=None) -> Block | None:
+    """Step F \u2014 group lines into row blocks by dynamic vertical spacing.  # EM DASH
 
-    Does not mutate the caller's ``lines`` list — sorts a local copy.
+    Does not mutate the caller's ``lines`` list \u2014 sorts a local copy.  # EM DASH
     """
     logger.debug("Computing text row blocks")
     if len(lines) == 0:
@@ -2960,7 +2962,7 @@ def compute_text_row_blocks(lines: list[Block], tolerance=None) -> "Block | None
             curr_bb = lines[i].bounding_box
             if prev_bb and curr_bb and prev_bb.overlap_x_amount(curr_bb) <= 0:
                 logger.debug(
-                    "Lines have no X overlap — side-by-side columns, "
+                    "Lines have no X overlap \u2014 side-by-side columns, "  # EM DASH
                     "suppressing paragraph break"
                 )
                 current_block.append(lines[i])
@@ -3007,7 +3009,7 @@ def run_step_d_split_mixed_content(
     page,
     debug_sections: list[tuple],
 ) -> None:
-    """Step D — split OCR-merged caption/body lines and emit debug PNG."""
+    """Step D \u2014 split OCR-merged caption/body lines and emit debug PNG."""  # EM DASH
     debug = layout_debug_enabled()
     pre_split_line_ids: set[int] = set()
     if debug:
@@ -3045,7 +3047,7 @@ def run_step_e_extract_header_footer(
     page,
     debug_sections: list[tuple],
 ):
-    """Step E — peel page header/footer bands and split body words."""
+    """Step E \u2014 peel page header/footer bands and split body words."""  # EM DASH
     page_metrics = compute_page_metrics(page)
     all_lines = list(page.lines)
     header_lines, after_header_lines = extract_top_header_lines(all_lines, page_metrics)
@@ -3100,7 +3102,7 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
     Belt-and-braces invariant: a single OCR ``Word`` instance must appear
     in at most one row block. The seeded grouping path can violate this
     when the BFS splits a wide-gap line (e.g. a centred caption with a
-    big inter-word gap) into two components — comp 1 claims the full
+    big inter-word gap) into two components \u2014 comp 1 claims the full  # EM DASH
     source line, comp 2 falls through and emits a fresh LINE holding the
     *same word instances*. Duplicates would survive into ``page.text``
     (rendering the right half of the caption twice). Walking row blocks
@@ -3134,7 +3136,7 @@ def run_step_f_row_blocks(
     body_words: list[Word],
     debug_sections: list[tuple],
 ) -> Block | None:
-    """Step F — pick between legacy and seeded row-block grouping."""
+    """Step F \u2014 pick between legacy and seeded row-block grouping."""  # EM DASH
     legacy_row_blocks = compute_text_row_blocks(body_lines)
     seeded_row_blocks = build_word_seeded_row_blocks(
         body_words, page.width, page.height, source_lines=body_lines
@@ -3168,7 +3170,7 @@ def run_step_f_row_blocks(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Layout detection primitives — pure functions, no Page state. Each takes the
+# Layout detection primitives -- pure functions, no Page state. Each takes the
 # row block lines and the page coordinate width / height where needed.
 # Migrated from Page class methods.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -3194,11 +3196,11 @@ def _detect_column_split(
 
     Two strategies are tried in order:
 
-    **Strategy 1 — line-level minX clustering**: in a two-column layout the left
+    **Strategy 1 \u2014 line-level minX clustering**: in a two-column layout the left  # EM DASH
     edges of lines cluster around two distinct values separated by the gutter.
     Works when the OCR engine correctly assigns each line to one column.
 
-    **Strategy 2 — word-level gap detection** (fallback): some OCR engines scan
+    **Strategy 2 \u2014 word-level gap detection** (fallback): some OCR engines scan  # EM DASH
     left-to-right across the full page and stitch words from both columns into a
     single "line". In that case all lines share roughly the same minX and
     strategy 1 sees no gap. Instead we collect all words, sort by center X, and
@@ -3309,7 +3311,7 @@ def _detect_column_split(
         ]
 
         if left_words and right_words:
-            # Line straddles the gutter — create two new LINE blocks.
+            # Line straddles the gutter -- create two new LINE blocks.
             left_lines_out.append(
                 Block(
                     items=left_words,
@@ -3464,11 +3466,12 @@ def _detect_mixed_column_split(
         very_wide = bb.width >= wide_threshold
         in_flow_band = flow_band_start <= bb.vertical_midpoint <= flow_band_end
 
-        if not in_flow_band:
-            spanning_lines.append(line)
-        elif very_wide or is_tiny_artifact:
-            spanning_lines.append(line)
-        elif bb.width < min_column_line_width:
+        if (
+            not in_flow_band
+            or very_wide
+            or is_tiny_artifact
+            or bb.width < min_column_line_width
+        ):
             spanning_lines.append(line)
         elif bb.horizontal_midpoint <= split_x:
             left_lines.append(line)
@@ -3769,7 +3772,9 @@ def _detect_multi_column_split(
         float(np_median([l.bounding_box.minX for l in c if l.bounding_box]))
         for c in valid_clusters
     ]
-    center_pairs = sorted(zip(centers, valid_clusters), key=lambda t: t[0])
+    center_pairs = sorted(
+        zip(centers, valid_clusters, strict=False), key=lambda t: t[0]
+    )
     centers = [c for c, _ in center_pairs]
 
     # Require at least one clearly separated anchor gap; if all centers are
@@ -3964,7 +3969,7 @@ def _split_caption_like_prefix(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Step L — classify a row block as page header / footer / sidenote / poetry /
+# Step L -- classify a row block as page header / footer / sidenote / poetry /
 # blockquote / body. Geometry-first; falls back on no-classification (body).
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -3994,7 +3999,7 @@ def _classify_row_block(
 
     # Page header: must be near the top of BOTH the image and the OCR content.
     # Checking both prevents chapter headings and title-page text from being
-    # misidentified — those are near the top of the OCR extent but not always
+    # misidentified -- those are near the top of the OCR extent but not always
     # near the top of the image, or vice-versa.
     near_top_of_image = block.bounding_box.minY < 0.12 * page_height
     near_top_of_ocr = block.bounding_box.minY <= ocr_minY + 1.5 * avg_line_height

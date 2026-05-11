@@ -25,25 +25,32 @@ def test_dashes_deterministic_order():
     # exist among these literals so dedup is a no-op, only ordering matters.
     assert CharacterGroups.DASHES.value == [
         "-",
-        "–",
+        "\u2013",  # EN DASH
         "—",
-        "‒",
+        "\u2012",  # FIGURE DASH
         "⸺",
         "⸻",
         "―",
-        "‑",
-        "−",
+        "\u2011",  # NON-BREAKING HYPHEN
+        "\u2212",  # MINUS SIGN
     ]
 
 
 def test_quotes_deterministic_order():
     # SINGLE_QUOTE then DOUBLE_QUOTE; no overlap.
-    assert CharacterGroups.QUOTES.value == ["'", "‘", "’", '"', "“", "”"]
+    assert CharacterGroups.QUOTES.value == [
+        "'",
+        "\u2018",
+        "\u2019",
+        '"',
+        "“",
+        "”",
+    ]  # LEFT/RIGHT SINGLE QUOTATION MARK
 
 
 def test_primes_deterministic_order():
     # SINGLE_PRIME then DOUBLE_PRIME; no overlap.
-    assert CharacterGroups.PRIMES.value == ["'", "′", '"', "″"]
+    assert CharacterGroups.PRIMES.value == ["'", "\u2032", '"', "″"]  # PRIME
 
 
 def test_quotes_and_primes_deterministic_order():
@@ -53,11 +60,11 @@ def test_quotes_and_primes_deterministic_order():
     # occurrence.
     assert CharacterGroups.QUOTES_AND_PRIMES.value == [
         "'",
-        "‘",
-        "’",
+        "\u2018",  # LEFT SINGLE QUOTATION MARK
+        "\u2019",  # RIGHT SINGLE QUOTATION MARK
         '"',
         "“",
         "”",
-        "′",
+        "\u2032",  # PRIME
         "″",
     ]
