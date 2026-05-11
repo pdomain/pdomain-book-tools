@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Display coverage report with soft-target indicator."""
 
 import xml.etree.ElementTree as ET

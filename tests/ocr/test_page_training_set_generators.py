@@ -20,11 +20,7 @@ def _make_word(
     ground_truth: str | None = None,
     is_normalized: bool = True,
 ) -> Word:
-    """Create a Word with optional ground truth.
-
-    By default uses normalized coordinates (0.0-1.0) for compatibility with
-    recognition training set methods that use scale().
-    """
+    """Create a Word with optional ground truth."""
     word = Word(
         text=text,
         bounding_box=BoundingBox.from_ltrb(x1, y1, x2, y2, is_normalized=is_normalized),
@@ -61,11 +57,7 @@ def _make_test_image(height: int = 100, width: int = 100) -> np.ndarray:
 def _make_page_with_words(
     words_list: list[str], image=None, normalized: bool = True
 ) -> Page:
-    """Create a page with words positioned horizontally.
-
-    Words are created with normalized coordinates (0.0-1.0) by default for
-    compatibility with training set methods. Use normalized=False for pixel coords.
-    """
+    """Create a page with words positioned horizontally."""
     words = []
     if normalized:
         # Normalized coordinates: distribute words across [0.0, 1.0] range
@@ -119,7 +111,6 @@ class TestGenerateDoctrChecks:
         output_path.mkdir(parents=True, exist_ok=True)
 
         page = _make_page_with_words(["hello", "world"])
-        # Should not raise an error
         page.generate_doctr_checks(output_path)
 
     def test_checks_raises_on_nonexistent_parent(self, tmp_path):
@@ -139,7 +130,6 @@ class TestGenerateDoctrChecks:
         page.cv2_numpy_page_image = _make_test_image()
 
         page.generate_doctr_checks(output_path)
-        # Should complete without error
 
 
 class TestGenerateDoctrDetectionTrainingSet:
@@ -155,7 +145,6 @@ class TestGenerateDoctrDetectionTrainingSet:
             output_path=output_path, prefix="test"
         )
 
-        # Verify directory structure
         detection_path = output_path / "detection"
         assert detection_path.exists()
         assert (detection_path / "images").exists()
@@ -171,7 +160,6 @@ class TestGenerateDoctrDetectionTrainingSet:
             output_path=output_path, prefix="test"
         )
 
-        # Check that image file exists
         image_files = list((output_path / "detection" / "images").glob("*.png"))
         assert len(image_files) == 1
         assert image_files[0].name == "test_0.png"
@@ -193,8 +181,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert "img_dimensions" in labels["test_0.png"]
         assert "img_hash" in labels["test_0.png"]
         assert "polygons" in labels["test_0.png"]
-
-        # Should have 2 polygons (2 words)
         assert len(labels["test_0.png"]["polygons"]) == 2
 
     def test_detection_image_hash_in_labels(self, tmp_path):
@@ -211,7 +197,6 @@ class TestGenerateDoctrDetectionTrainingSet:
             labels = json.load(f)
 
         img_hash = labels["test_0.png"]["img_hash"]
-        # Hash should be a valid hex string of length 64 (SHA256)
         assert len(img_hash) == 64
         assert all(c in "0123456789abcdef" for c in img_hash)
 
@@ -233,7 +218,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         with open(output_path / "detection" / "labels.json") as f:
             labels = json.load(f)
 
-        # Should have 1 polygon (only "world")
         assert len(labels["test_0.png"]["polygons"]) == 1
 
     def test_detection_empty_page(self, tmp_path):
@@ -259,7 +243,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
 
-        # First export
         page1 = _make_page_with_words(["hello", "world"])
         page1.generate_doctr_detection_training_set(
             output_path=output_path, prefix="test"
@@ -269,7 +252,6 @@ class TestGenerateDoctrDetectionTrainingSet:
             labels_v1 = json.load(f)
         assert len(labels_v1["test_0.png"]["polygons"]) == 2
 
-        # Second export with same prefix+page_index but different words
         page2 = _make_page_with_words(["foo"])
         page2.generate_doctr_detection_training_set(
             output_path=output_path, prefix="test"
@@ -278,7 +260,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         with open(output_path / "detection" / "labels.json") as f:
             labels_v2 = json.load(f)
 
-        # Should have overwritten: now only 1 polygon
         assert len(labels_v2["test_0.png"]["polygons"]) == 1
 
     def test_detection_multiple_pages_accumulate(self, tmp_path):
@@ -286,13 +267,11 @@ class TestGenerateDoctrDetectionTrainingSet:
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
 
-        # Page 0
         page0 = _make_page_with_words(["hello"])
         page0.generate_doctr_detection_training_set(
             output_path=output_path, prefix="test"
         )
 
-        # Page 1
         page1 = _make_page_with_words(["world"])
         page1.page_index = 1
         page1.generate_doctr_detection_training_set(
@@ -302,7 +281,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         with open(output_path / "detection" / "labels.json") as f:
             labels = json.load(f)
 
-        # Should have both test_0.png and test_1.png
         assert "test_0.png" in labels
         assert "test_1.png" in labels
 
@@ -320,7 +298,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
             output_path=output_path, prefix="test"
         )
 
-        # Verify directory structure
         recognition_path = output_path / "recognition"
         assert recognition_path.exists()
         assert (recognition_path / "images").exists()
@@ -336,7 +313,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
             output_path=output_path, prefix="test"
         )
 
-        # Check that cropped images exist
         image_files = list((output_path / "recognition" / "images").glob("*.png"))
         assert len(image_files) == 2
 
@@ -353,10 +329,8 @@ class TestGenerateDoctrRecognitionTrainingSet:
         with open(output_path / "recognition" / "labels.json") as f:
             labels = json.load(f)
 
-        # Should have 2 entries (2 words with ground truth)
         assert len(labels) == 2
 
-        # Check that labels contain the ground truth text
         label_values = list(labels.values())
         assert "hello" in label_values
         assert "world" in label_values
@@ -368,7 +342,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
 
         page = _make_page_with_words(["hello", "world"])
 
-        # Filter to only include words starting with 'w'
         def word_filter(w: Word) -> bool:
             return w.text.startswith("w")
 
@@ -379,7 +352,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         with open(output_path / "recognition" / "labels.json") as f:
             labels = json.load(f)
 
-        # Should have 1 entry (only "world")
         assert len(labels) == 1
         assert "world" in labels.values()
 
@@ -390,7 +362,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
 
         page = _make_page_with_words(["hello", "world"])
 
-        # Custom formatter: uppercase the text
         def label_formatter(w: Word) -> str:
             return w.text.upper()
 
@@ -401,7 +372,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         with open(output_path / "recognition" / "labels.json") as f:
             labels = json.load(f)
 
-        # Labels should be uppercase
         label_values = list(labels.values())
         assert "HELLO" in label_values
         assert "WORLD" in label_values
@@ -434,7 +404,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         with open(output_path / "recognition" / "labels.json") as f:
             labels = json.load(f)
 
-        # Should only have 1 entry
         assert len(labels) == 1
         assert "hello" in labels.values()
 
@@ -443,7 +412,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
 
-        # First export with 2 words
         page1 = _make_page_with_words(["hello", "world"])
         page1.generate_doctr_recognition_training_set(
             output_path=output_path, prefix="test"
@@ -452,14 +420,12 @@ class TestGenerateDoctrRecognitionTrainingSet:
         image_files_v1 = list((output_path / "recognition" / "images").glob("*.png"))
         assert len(image_files_v1) == 2
 
-        # Second export with 1 word
         page2 = _make_page_with_words(["foo"])
         page2.generate_doctr_recognition_training_set(
             output_path=output_path, prefix="test"
         )
 
         image_files_v2 = list((output_path / "recognition" / "images").glob("*.png"))
-        # Should have only 1 image (old ones deleted)
         assert len(image_files_v2) == 1
 
     def test_recognition_accumulates_across_pages(self, tmp_path):
@@ -467,13 +433,11 @@ class TestGenerateDoctrRecognitionTrainingSet:
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
 
-        # Page 0
         page0 = _make_page_with_words(["hello"])
         page0.generate_doctr_recognition_training_set(
             output_path=output_path, prefix="test"
         )
 
-        # Page 1
         page1 = _make_page_with_words(["world"])
         page1.page_index = 1
         page1.generate_doctr_recognition_training_set(
@@ -483,7 +447,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         with open(output_path / "recognition" / "labels.json") as f:
             labels = json.load(f)
 
-        # Should have 2 total entries
         assert len(labels) == 2
 
 
@@ -498,7 +461,6 @@ class TestConvertToTrainingSet:
         page = _make_page_with_words(["hello", "world"])
         page.convert_to_training_set(output_path=output_path, prefix="test")
 
-        # Verify both subdirectories exist
         assert (output_path / "detection").exists()
         assert (output_path / "detection" / "images").exists()
         assert (output_path / "detection" / "labels.json").exists()
@@ -514,7 +476,6 @@ class TestConvertToTrainingSet:
 
         page = _make_page_with_words(["hello", "world"])
 
-        # Filter to only include words starting with 'h'
         def word_filter(w: Word) -> bool:
             return w.text.startswith("h")
 
@@ -522,12 +483,10 @@ class TestConvertToTrainingSet:
             output_path=output_path, prefix="test", word_filter=word_filter
         )
 
-        # Check detection labels
         with open(output_path / "detection" / "labels.json") as f:
             detection_labels = json.load(f)
         assert len(detection_labels["test_0.png"]["polygons"]) == 1
 
-        # Check recognition labels
         with open(output_path / "recognition" / "labels.json") as f:
             recognition_labels = json.load(f)
         assert len(recognition_labels) == 1
@@ -543,7 +502,6 @@ class TestConvertToTrainingSet:
 
         page.convert_to_training_set(output_path=output_path, prefix="test")
 
-        # Both should exist even with empty page
         assert (output_path / "detection" / "labels.json").exists()
         assert (output_path / "recognition" / "labels.json").exists()
 

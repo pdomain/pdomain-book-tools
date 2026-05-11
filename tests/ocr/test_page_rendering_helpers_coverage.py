@@ -39,7 +39,6 @@ class TestReboxWordExceptionHandling:
 
     @pytest.fixture
     def simple_page(self):
-        """Page with one paragraph and one line containing one word."""
         line = _make_line([_make_word("hello", 0, 0, 50, 20)])
         para = _make_paragraph([line])
         return Page(width=1000, height=1000, page_index=0, blocks=[para])
@@ -61,7 +60,6 @@ class TestAddWordToPageExceptionHandling:
 
     @pytest.fixture
     def simple_page(self):
-        """Page with one paragraph and one line containing one word."""
         line = _make_line([_make_word("hello", 0, 0, 50, 20)])
         para = _make_paragraph([line])
         return Page(width=1000, height=1000, page_index=0, blocks=[para])
@@ -84,7 +82,6 @@ class TestSplitLineWithSelectedWordsEdgeCases:
 
     @pytest.fixture
     def multi_line_page(self):
-        """Page with three lines and multiple words."""
         line1 = _make_line(
             [
                 _make_word("word1", 0, 0, 20, 10),
@@ -125,7 +122,6 @@ class TestSplitLineWithSelectedWordsEdgeCases:
         # Select words from line 0 and line 1 (same paragraph)
         result = multi_line_page.split_line_with_selected_words([(0, 0), (1, 0)])
         assert result is True
-        # Verify that a new line was created
         assert len(multi_line_page.paragraphs) >= 1
 
     def test_split_single_paragraph_same_paragraph(self, multi_line_page):
@@ -158,7 +154,6 @@ class TestSplitLineWithSelectedWordsEdgeCases:
         paras_before = len(page.paragraphs)
         result = page.split_line_with_selected_words([(0, 0), (1, 1)])
         assert result is True
-        # A new paragraph should be created
         assert len(page.paragraphs) >= paras_before
 
 
@@ -167,7 +162,6 @@ class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
 
     @pytest.fixture
     def multi_line_page(self):
-        """Page with three lines and multiple words."""
         line1 = _make_line(
             [
                 _make_word("word1", 0, 0, 20, 10),
@@ -195,7 +189,6 @@ class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
             [(0, 0)]
         )
         assert result is True
-        # Verify structure is as expected
         assert len(multi_line_page.paragraphs) >= 1
 
 
@@ -213,11 +206,9 @@ class TestRenderingHelpersIntegration:
         para = _make_paragraph([line])
         page = Page(width=100, height=100, page_index=0, blocks=[para])
 
-        # First rebox word
         result = page.rebox_word(0, 0, 5, 5, 25, 15, refine_after=False)
         assert result is True
 
-        # Then split the line
         result = page.split_line_with_selected_words([(0, 0)])
         assert result is True
 
@@ -232,10 +223,8 @@ class TestRenderingHelpersIntegration:
         para = _make_paragraph([line])
         page = Page(width=100, height=100, page_index=0, blocks=[para])
 
-        # Add a word
         result = page.add_word_to_page(50, 0, 70, 10, text="new")
         assert result is True
 
-        # Split the line (now has 3 words)
         result = page.split_line_with_selected_words([(0, 2)])
         assert result is True

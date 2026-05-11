@@ -64,7 +64,7 @@ def _make_page(lines_of_words):
 
 class TestUpdateLineMatchDifflibLinesEqualErrors:
     def test_raises_when_no_block_category(self):
-        """Line object without block_category raises ValueError (line 215)."""
+        """Line object without block_category raises ValueError."""
 
         class FakeLine:
             text = "hello world"
@@ -74,7 +74,7 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
             update_line_match_difflib_lines_equal(FakeLine(), ("hello", "world"))
 
     def test_raises_when_not_line_category(self):
-        """Block with non-LINE category raises ValueError (line 218)."""
+        """Block with non-LINE category raises ValueError."""
         line = _make_line(["hello", "world"])
         line.block_category = BlockCategory.PARAGRAPH
 
@@ -82,7 +82,7 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
             update_line_match_difflib_lines_equal(line, ("hello", "world"))
 
     def test_raises_when_no_words_attribute(self):
-        """Object with block_category=LINE but no words attr raises ValueError (line 221)."""
+        """Object with block_category=LINE but no words attr raises ValueError."""
 
         class FakeLineWithCategory:
             block_category = BlockCategory.LINE
@@ -94,13 +94,13 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
             )
 
     def test_raises_on_word_count_mismatch(self):
-        """Mismatched word count between line and gt raises ValueError (line 224)."""
+        """Mismatched word count between line and gt raises ValueError."""
         line = _make_line(["hello", "world"])
         with pytest.raises(ValueError, match="word count mismatch"):
             update_line_match_difflib_lines_equal(line, ("hello",))
 
     def test_raises_on_word_text_mismatch(self):
-        """Mismatched word text raises ValueError (line 234)."""
+        """Mismatched word text raises ValueError."""
         line = _make_line(["hello", "world"])
         with pytest.raises(ValueError, match="Word mismatch"):
             update_line_match_difflib_lines_equal(line, ("hello", "DIFFERENT"))
@@ -129,7 +129,7 @@ class TestUpdateLineMatchDifflibLinesEqualErrors:
 
 class TestUpdatePageMatchDifflibLinesEqualErrors:
     def test_raises_on_line_count_mismatch(self):
-        """op with mismatched line/gt count raises ValueError (line 196)."""
+        """op with mismatched line/gt count raises ValueError."""
         # Page has 2 lines; op maps 2 OCR lines to 1 GT line → mismatch
         page = _make_page([["hello", "world"], ["another", "line"]])
         op = LineDiffOpCodes(
@@ -151,7 +151,7 @@ class TestUpdatePageMatchDifflibLinesEqualErrors:
 
 class TestUpdatePageMatchDifflibLinesInsert:
     def test_insert_populates_unmatched_when_initially_empty(self):
-        """First GT insert sets unmatched_ground_truth_lines (line 271->274)."""
+        """First GT insert sets unmatched_ground_truth_lines."""
         page = _make_page([["hello"]])
         page.unmatched_ground_truth_lines = None  # ensure initially None/empty
 
@@ -171,7 +171,7 @@ class TestUpdatePageMatchDifflibLinesInsert:
         assert page.unmatched_ground_truth_lines[0][1] == "missing line"
 
     def test_insert_appends_to_existing_unmatched_list(self):
-        """When unmatched list already has entries, append (line 271->274 False branch)."""
+        """When unmatched list already has entries, append."""
         page = _make_page([["hello"]])
         page.unmatched_ground_truth_lines = [(0, "existing line")]
 
@@ -197,15 +197,14 @@ class TestUpdatePageMatchDifflibLinesInsert:
 
 class TestUpdatePageMatchUnmatchedLinesBestEffort:
     def test_skips_empty_ocr_text_lines(self):
-        """Lines with empty text are skipped (line 136)."""
+        """Lines with empty text are skipped."""
         # Create a page with a line whose word text is empty → line.text = ""
         page = _make_page([[""], ["hello", "world"]])
         page.unmatched_ground_truth_lines = [(0, "something")]
-        # Should not raise; the empty-text line is skipped
         update_page_match_unmatched_lines_best_effort(page)
 
     def test_handles_duplicate_candidates_with_skip(self):
-        """When same OCR line matches multiple GT lines, second is skipped (line 157)."""
+        """When same OCR line matches multiple GT lines, second is skipped."""
         page = _make_page([["the", "quick", "brown", "fox"]])
         # Two GT lines that both match the same OCR line
         page.unmatched_ground_truth_lines = [
@@ -213,10 +212,9 @@ class TestUpdatePageMatchUnmatchedLinesBestEffort:
             (0, "the quick brown fox"),  # duplicate
         ]
         update_page_match_unmatched_lines_best_effort(page)
-        # Should not raise; duplicates are deduped via used sets
 
     def test_removes_matched_gt_from_unmatched_list(self):
-        """After successful match, removes matched GT from unmatched list (line 168)."""
+        """After successful match, removes matched GT from unmatched list."""
         page = _make_page([["hello", "world"]])
         # Give the OCR line GT text that matches the unmatched GT
         for word in page.lines[0].words:
@@ -225,7 +223,6 @@ class TestUpdatePageMatchUnmatchedLinesBestEffort:
 
         update_page_match_unmatched_lines_best_effort(page)
 
-        # The matched GT should be removed from the unmatched list
         assert page.unmatched_ground_truth_lines == []
 
 
@@ -236,7 +233,7 @@ class TestUpdatePageMatchUnmatchedLinesBestEffort:
 
 class TestUpdateLineWithGroundTruth:
     def test_delete_word_op_does_nothing(self):
-        """'delete' op logs and does nothing to words (line 399)."""
+        """'delete' op logs and does nothing to words."""
         line = _make_line(["hello", "world", "extra"])
         ocr_tuple = ("hello", "world", "extra")
         gt_tuple = ("hello", "world")
@@ -250,7 +247,7 @@ class TestUpdateLineWithGroundTruth:
         assert line.words[1].ground_truth_text == "world"
 
     def test_insert_word_op_adds_unmatched(self):
-        """'insert' op adds GT words to unmatched list (lines 413-420)."""
+        """'insert' op adds GT words to unmatched list."""
         line = _make_line(["hello"])
         ocr_tuple = ("hello",)
         gt_tuple = ("hello", "inserted")
@@ -271,7 +268,7 @@ class TestUpdateLineWithGroundTruth:
 
 class TestUpdateCombinedWordsInLine:
     def test_replaces_words_in_line(self):
-        """update_combined_words_in_line removes old words and adds new ones (lines 882-889)."""
+        """update_combined_words_in_line removes old words and adds new ones."""
         line = _make_line(["hello", ","])
         new_word = _make_word("hello,")
         new_word.ground_truth_text = "hello,"
@@ -302,7 +299,7 @@ class TestUpdateCombinedWordsInLine:
 
 class TestTryMatchingCombinedWords:
     def test_skips_when_first_char_is_quote_and_short(self):
-        """Both OCR and GT starting with quote/prime and short word → skip (lines 484-485)."""
+        """Both OCR and GT starting with quote/prime and short word → skip."""
         line = _make_line(["'t", "is"])
         word_0 = line.words[0]
         word_0.ground_truth_match_keys = {}
@@ -316,7 +313,7 @@ class TestTryMatchingCombinedWords:
         assert result == []
 
     def test_skips_when_word_marked_as_split(self):
-        """Word with split=True in ground_truth_match_keys → skip (lines 494-497)."""
+        """Word with split=True in ground_truth_match_keys → skip."""
         line = _make_line(["op-", "posed"])
         word_0 = line.words[0]
         word_0.ground_truth_match_keys = {"split": True}
@@ -383,7 +380,7 @@ class TestBuildCurrentWorkGtLineFromPrev:
 
 class TestBuildCurrentWorkGtLineRemoveSuffix:
     def test_raises_when_remove_count_exceeds_length(self):
-        """Raises ValueError when remove_count > len(ground_truth_text) (line 1043)."""
+        """Raises ValueError when remove_count > len(ground_truth_text)."""
         with pytest.raises(ValueError, match="Cannot remove more characters"):
             _build_current_work_gt_line_remove_suffix(
                 remove_count=100,
@@ -406,11 +403,10 @@ class TestBuildCurrentWorkGtLineRemoveSuffix:
 
 class TestGenerateWorkVariants:
     def test_uses_default_dash_chars_when_none(self):
-        """When dash_chars is None, uses CharacterGroups.DASHES (line 1053)."""
+        """When dash_chars is None, uses CharacterGroups.DASHES."""
         result = _generate_work_variants("word", include_plain=True, dash_chars=None)
         assert "word" in result
         assert "word--" in result
-        # Should include at least some dash variants
         assert len(result) > 2
 
     def test_custom_dash_chars(self):
@@ -434,15 +430,15 @@ class TestGenerateWorkVariants:
 
 class TestShouldConsiderLineEndSoftWrap:
     def test_returns_false_for_empty_ocr_text(self):
-        """Empty OCR text → returns False (line 1068)."""
+        """Empty OCR text → returns False."""
         assert _should_consider_line_end_soft_wrap("", "some text") is False
 
     def test_returns_false_for_empty_gt_text(self):
-        """Empty GT text → returns False (line 1068)."""
+        """Empty GT text → returns False."""
         assert _should_consider_line_end_soft_wrap("some text", "") is False
 
     def test_returns_false_when_ocr_core_is_empty(self):
-        """When OCR last word strips to nothing → returns False (line 1073)."""
+        """When OCR last word strips to nothing → returns False."""
         # A word that is purely punctuation
         assert _should_consider_line_end_soft_wrap(".,;:", "text words") is False
 
@@ -472,7 +468,7 @@ class TestGenerateBestMatchedGroundTruthLine:
         assert score == 0
 
     def test_returns_gt_with_zero_score_when_no_variants(self):
-        """Variants are all empty → return (ground_truth_text, 0) (line 1148).
+        """Variants are all empty → return (ground_truth_text, 0).
 
         A single-char GT like 'a' combined with a dash-ending OCR means
         every remove_suffix(j, 'a') yields '' for j in [0,1], and the
@@ -505,7 +501,7 @@ class TestGenerateBestMatchedGroundTruthLine:
 
 class TestUpdatePageWithGroundTruthText:
     def test_delete_op_occurs_for_extra_ocr_lines(self):
-        """Extra OCR lines (not in GT) result in delete op (line 399 in word level)."""
+        """Extra OCR lines (not in GT) result in delete op."""
         page = _make_page(
             [
                 ["hello", "world"],
@@ -514,9 +510,7 @@ class TestUpdatePageWithGroundTruthText:
         )
         gt_text = "hello world"
         update_page_with_ground_truth_text(page, gt_text)
-        # First line should be matched
         assert page.lines[0].words[0].ground_truth_text == "hello"
-        # Second line is OCR-only; no GT assigned
         assert all(w.ground_truth_text == "" for w in page.lines[1].words)
 
     def test_replace_op_with_insert_word(self):
@@ -524,7 +518,6 @@ class TestUpdatePageWithGroundTruthText:
         page = _make_page([["hello"]])
         gt_text = "hello world"
         update_page_with_ground_truth_text(page, gt_text)
-        # The line word "hello" should be matched
         assert page.lines[0].words[0].ground_truth_text in ("hello", "")
 
 
@@ -535,7 +528,7 @@ class TestUpdatePageWithGroundTruthText:
 
 class TestMatchDifferentLineCountsDedup:
     def test_deduplication_in_replace_op(self):
-        """When multiple GT lines map to the same OCR line, duplicates are skipped (line 979).
+        """When multiple GT lines map to the same OCR line, duplicates are skipped.
 
         Two OCR lines, three GT lines where OCR line 0 matches both GT 0 and GT 1.
         After GT 0 is matched to OCR 0, GT 1 share the same OCR line so is skipped.
@@ -567,14 +560,12 @@ class TestMatchDifferentLineCountsDedup:
             gt_line_1=0,
             gt_line_2=3,
         )
-        # This should complete without error; line 979 is hit when GT 1 is skipped
         update_page_match_difflib_lines_replace_different_line_count(
             page=page,
             op=op,
             ocr_tuples=ocr_tuples,
             ground_truth_tuples=ground_truth_tuples,
         )
-        # OCR lines should be matched to their best GT
         assert page.lines[0].words[0].ground_truth_text == "hello"
 
 
@@ -643,13 +634,12 @@ class TestReplaceWordsBreakAndContinue:
             ground_truth_tuple=("hi",),
             auto_combine=False,
         )
-        # Should complete without error
         assert line.words[0].ground_truth_text == "hi"
 
 
 class TestUpdatePageWithGroundTruthUnknownLineTag:
     def test_unknown_line_tag_raises_error(self, monkeypatch):
-        """Invalid line_tag in opcode raises ValueError (line 110)."""
+        """Invalid line_tag in opcode raises ValueError."""
         import difflib
 
         from pd_book_tools.ocr.ground_truth_matching import (
@@ -687,7 +677,6 @@ class TestInitializeUnmatchedGroundTruthWords:
             ground_truth_tuple=gt_tuple,
         )
 
-        # After update, unmatched list should be initialized and populated
         assert line.unmatched_ground_truth_words is not None
         assert len(line.unmatched_ground_truth_words) > 0
         assert any("world" in t for _, t in line.unmatched_ground_truth_words)
@@ -713,8 +702,6 @@ class TestUpdateCombinedWordsWithExistingUnmatched:
             ground_truth_tuple=gt_tuple,
         )
 
-        # Should have combined "hello" and "," into "hello,"
-        # and "goodbye" should be unmatched
         word_texts = [w.text for w in line.words]
         assert "hello," in word_texts or "hello" in word_texts
         assert line.unmatched_ground_truth_words is not None
@@ -723,17 +710,17 @@ class TestUpdateCombinedWordsWithExistingUnmatched:
 
 class TestShouldConsiderLineEndSoftWrapEdgeCases:
     def test_returns_false_when_gt_last_word_is_single_char(self):
-        """When GT last word is single char, comparison fails (line 1099)."""
+        """When GT last word is single char, comparison fails."""
         # OCR "a" vs GT "a" (same length) → False
         assert _should_consider_line_end_soft_wrap("a", "a") is False
 
     def test_returns_false_when_ocr_and_gt_both_empty_after_strip(self):
-        """When both OCR and GT strip to empty, return False (line 1073)."""
+        """When both OCR and GT strip to empty, return False."""
         # Words that are only punctuation
         assert _should_consider_line_end_soft_wrap(".,;:!?", ".,;:!?") is False
 
     def test_returns_false_when_gt_core_stripped_too_short(self):
-        """When GT core < 2 chars, return False (line 1099)."""
+        """When GT core < 2 chars, return False."""
         # OCR "a" (< 2) vs GT "ab" (valid)
         # But GT core is < len(ocr_core) + 1 so still False
         assert (
@@ -761,7 +748,6 @@ class TestUnmatchedGroundTruthWordsAppend:
             ground_truth_tuple=gt_tuple,
         )
 
-        # Should preserve prior entry and append new ones
         assert len(line.unmatched_ground_truth_words) >= 2
         unmatched_texts = [t for _, t in line.unmatched_ground_truth_words]
         assert "new1" in unmatched_texts or "new2" in unmatched_texts
