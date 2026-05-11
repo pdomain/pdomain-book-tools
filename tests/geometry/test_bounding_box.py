@@ -1043,3 +1043,15 @@ def test_require_same_coords_preserves_metadata():
     assert (BoundingBox.overlap_y_amount.__doc__ or "").startswith(
         "Return the amount of overlap on the y-axis"
     )
+
+
+def test_bounding_box_repr():
+    """Test __repr__ returns compact form: BoundingBox(x0, y0, x1, y1)"""
+    bbox = BoundingBox(Point(0, 0), Point(10, 10))
+    assert repr(bbox) == "BoundingBox(0, 0, 10, 10)"
+
+
+def test_bounding_box_repr_floats():
+    """Test __repr__ with float coordinates"""
+    bbox = BoundingBox(Point(0.5, 1.5), Point(2.5, 3.5))
+    assert repr(bbox) == "BoundingBox(0.5, 1.5, 2.5, 3.5)"

@@ -204,6 +204,9 @@ class BoundingBox:
         """
         return self._split_at_x(self, x_absolute)
 
+    def __repr__(self) -> str:
+        return f"BoundingBox({self.minX}, {self.minY}, {self.maxX}, {self.maxY})"
+
     # Initialization Checks
     def __post_init__(self):
         """Validate the bounding box coordinates"""
