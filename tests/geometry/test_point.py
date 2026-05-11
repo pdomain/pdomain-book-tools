@@ -501,3 +501,13 @@ def test_hash_dict_key_pixel():
     k = Point.pixel(5, 6)
     d = {k: "value"}
     assert d[Point.pixel(5, 6)] == "value"
+
+
+def test_repr_integer_coordinates():
+    p = Point(3, 7)
+    assert repr(p) == "Point(3, 7)"
+
+
+def test_repr_float_coordinates():
+    p = Point(0.5, 0.5)
+    assert repr(p) == "Point(0.5, 0.5)"

@@ -103,8 +103,8 @@ class Point:
     # method members defined on this class; for raw Shapely access use
     # ``as_shapely()``.
 
-    def __repr__(self) -> str:  # pragma: no cover - trivial representation
-        return f"Point(x={self.x}, y={self.y}, normalized={self.is_normalized})"
+    def __repr__(self) -> str:
+        return f"Point({self.x}, {self.y})"
 
     # (to_x_y removed; use (p.x, p.y) directly)
 
