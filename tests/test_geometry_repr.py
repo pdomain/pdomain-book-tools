@@ -7,7 +7,6 @@ def test_bounding_box_repr_format():
 
 
 def test_bounding_box_repr_eval_safe():
-    """eval(repr(bb)) == bb for bb constructed without is_normalized."""
     bb = BoundingBox(Point(0, 0), Point(10, 10))
     restored = eval(repr(bb))
     assert restored == bb
