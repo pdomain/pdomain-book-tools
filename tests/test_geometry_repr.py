@@ -2,7 +2,6 @@ from pd_book_tools.geometry import BoundingBox, Point
 
 
 def test_bounding_box_repr_format():
-    """repr(BoundingBox) returns BoundingBox.from_ltrb(x0, y0, x1, y1) form."""
     bb = BoundingBox(Point(0, 0), Point(10, 10))
     assert repr(bb) == "BoundingBox.from_ltrb(0, 0, 10, 10)"
 
