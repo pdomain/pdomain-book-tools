@@ -1,5 +1,2 @@
-from .low_coverage import always_called
-
-
-def test_always_called():
-    assert always_called() == "yes"
+"""Fixture data (not a pytest test)."""
+# This file is not a test - it's fixture data for coverage testing examples
