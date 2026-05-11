@@ -134,6 +134,8 @@ lint: ## Run linting checks
 	uv run ruff check --select I --fix
 	uv run ruff check --fix
 
+fast-check: lint ## Quick lint check used by style-review-apply.py to verify auto-fix patches
+
 format: ## Format code
 	@echo "✨ Formatting code..."
 	uv run ruff format

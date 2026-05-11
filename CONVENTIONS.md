@@ -1,0 +1,158 @@
+# Conventions — pd-book-tools
+
+<!-- workspace-conventions:start -->
+
+## Rule: No comments explaining what code does
+
+**The rule.** Don't add comments that restate what the code does;
+well-named identifiers already do that. Only add a comment when the
+WHY is non-obvious: a hidden constraint, a subtle invariant, or a
+workaround for a specific bug.
+
+**Why.** Comments rot when code changes and become misleading. The rule
+also applies to docstrings — one short line max; no multi-paragraph
+docstrings and no multi-line comment blocks.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- One-line summary comment immediately above a function that restates its name.
+- `# returns the X` or `# sets the Y` before a return/assignment statement.
+- Multi-line docstrings that explain every parameter with no non-obvious WHY.
+- Section divider blocks: `# ---…---` / `# ===…===` multi-line banners used as
+  navigation headers in test files — class names and blank lines already
+  provide structure; remove the banner, keep the blank lines.
+- Multi-paragraph module or class docstrings with a "Focus on:" / "Covers:"
+  section — collapse to a single-line summary.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Comments that reference the PR, issue, or task that introduced the code — belongs in commit message, not source.
+- Multi-line preamble that mixes WHY (worth keeping) with WHAT (worth removing).
+
+<!-- workspace-conventions:end -->
+
+## Rule: Never silently drop OCR words
+
+**The rule.** Word objects classified as footnote, header, footer, or
+abandoned must receive a `role` label and stay in the output. They must
+never be deleted from the OCR word list, even under opt-in flags.
+
+**Why.** Silent drops are unrecoverable at review time; mislabels can be
+corrected. The role-label approach lets downstream tools (trainer, labeler)
+filter by role rather than losing data permanently.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- `del page.words[i]` or `words.pop(i)` calls inside a role-classifier or filter code path.
+- List comprehension that re-assigns `page.words` filtering on role/confidence without preserving the full list elsewhere.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Rendering loops that skip role-labeled words — may be intentional for display but should be explicit and documented.
+- Confidence-based filtering that incidentally removes role-labeled words as a side effect.
+
+## Rule: Never silently coerce coordinate systems
+
+**The rule.** Functions that merge, split, or union `BoundingBox` or
+`Point` objects must fail explicitly when the `is_normalized` flag
+differs between operands. Do not silently coerce one to match the other.
+
+**Why.** Silent coercions have caused incorrect region calculations that
+pass all tests because both coordinates happened to round to the same
+bucket. The only safe path is to surface the mismatch and let the caller
+decide which coordinate system is authoritative.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- `bbox_a | bbox_b` or `BoundingBox.union(...)` implementations that
+  ignore `is_normalized` on one operand.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Utility wrappers that normalize before operating — acceptable if
+  the wrapper name makes the coercion explicit (e.g., `normalized_union`).
+
+## Rule: Use `to_dict` / `from_dict` for OCR entity transformations
+
+**The rule.** Deep-copy-safe transformations of `Page`, `Block`, `Word`,
+and related OCR entities must go through `to_dict` / `from_dict`. Do not
+reach into another entity's private fields or construct entities from
+raw field access across module boundaries.
+
+**Why.** The dataclass refactor (R-02) made `Page` a full `@dataclass`;
+`to_dict`/`from_dict` is the stable serialization contract that absorbs
+field renames without requiring callers to change.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- `Page(blocks=other_page.blocks, ...)` construction copying internals
+  without going through `from_dict(other_page.to_dict())`.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Test code that constructs minimal Page/Block/Word stubs from scratch —
+  acceptable as long as it doesn't reach into private fields of production objects.
+
+## Rule: `l` is a valid loop variable for layout lines
+
+**The rule.** The name `l` (lowercase L) is accepted as a loop variable
+throughout the layout and OCR code and must not be renamed. Ruff E741
+is suppressed project-wide in `pyproject.toml`.
+
+**Why.** The variable `l` universally means "line" in this codebase and
+is always paired with `.bounding_box`, `.text`, or `.minX/minY/...`.
+Renaming to `ln` or `line_` throughout would be invasive churn with no
+readability benefit given the established convention.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- Renaming `l` to `ln` or `line_` in a layout loop without CT review.
+- Adding `# noqa: E741` on an `l` loop variable (the project-wide ignore already covers it).
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Using `l` as a variable name outside a layout/line-iteration context
+  where "line" is not the obvious meaning.
+
+## Rule: Drop-cap Words are training data, not noise
+
+**The rule.** Words tagged as drop-cap (including `ocr_confidence=None`
+entries from the cursive-cap fallback) must be included in trainer
+output. `ocr_confidence=None` is a weight signal, not a filter. Only
+"drop cap unrecovered" entries should be excluded from training ground truth.
+
+**Why.** Excluding drop-cap Words inflates the gap between training and
+real-world page data. The cursive-cap fallback explicitly sets
+`ocr_confidence=None` to signal low certainty — downstream weighting
+handles this; the trainer must not silently suppress the entry.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- `if word.ocr_confidence is None: continue` inside a trainer data-export loop.
+- Filtering on `word.role == "drop cap"` to exclude rather than downweight.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Aggregate statistics that exclude `ocr_confidence=None` words from mean
+  calculations — may be intentional if clearly scoped to "confidence reporting."
+
+## Rule: GPU code paths are opt-in; never assume GPU in CPU test paths
+
+**The rule.** The `[gpu]` install extra (CuPy, opencv-cuda) is optional.
+All code paths that use GPU-specific libraries must be guarded by an
+availability check or placed behind the `[gpu]` extra. Test code must
+not import CuPy or CUDA-specific helpers unconditionally.
+
+**Why.** CI runs CPU-only. The `make sync-gpu` / `make dev-local` workflow
+exists precisely to add GPU extras locally without polluting the canonical
+lockfile. Unconditional GPU imports break CI silently.
+
+**Common high-confidence violations** (bot auto-fix candidates)
+
+- `import cupy` or `import cv2.cuda` at module top-level outside a `try/except ImportError` guard.
+- Test files that unconditionally use CuPy helpers without `@pytest.mark.cupy`.
+
+**Common judgment-call violations** (bot flags, CT decides)
+
+- Feature-detection blocks that fall back to CPU silently rather than
+  logging — acceptable if the fallback is correct, but may mask misconfigured environments.
