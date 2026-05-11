@@ -1046,12 +1046,12 @@ def test_require_same_coords_preserves_metadata():
 
 
 def test_bounding_box_repr():
-    """Test __repr__ returns compact form: BoundingBox(x0, y0, x1, y1)"""
+    """Test __repr__ returns eval-safe form: BoundingBox.from_ltrb(x0, y0, x1, y1)"""
     bbox = BoundingBox(Point(0, 0), Point(10, 10))
-    assert repr(bbox) == "BoundingBox(0, 0, 10, 10)"
+    assert repr(bbox) == "BoundingBox.from_ltrb(0, 0, 10, 10)"
 
 
 def test_bounding_box_repr_floats():
     """Test __repr__ with float coordinates"""
     bbox = BoundingBox(Point(0.5, 1.5), Point(2.5, 3.5))
-    assert repr(bbox) == "BoundingBox(0.5, 1.5, 2.5, 3.5)"
+    assert repr(bbox) == "BoundingBox.from_ltrb(0.5, 1.5, 2.5, 3.5)"
