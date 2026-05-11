@@ -44,7 +44,7 @@ class TestAddWhitespacePercentage:
         out = add_whitespace_percentage(
             img, left_pct=0.1, right_pct=0.1, top_pct=0.05, bottom_pct=0.05
         )
-        # Expected: (100 + 5 + 5, 200 + 20 + 20) = (110, 240)
+        # Expected: (100 + 5 + 5, 200 + 20 + 20) = (110, 240)  # noqa: ERA001  # arithmetic comment, not dead code
         assert out.shape == (110, 240)
 
     def test_pct_zero_no_change(self):

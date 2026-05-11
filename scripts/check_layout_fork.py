@@ -8,6 +8,7 @@ not be flagged.
 
 Always exits 0; warnings go to stderr so CI logs stay readable.
 """
+# CLI script — print is the output mechanism
 
 from __future__ import annotations
 
@@ -57,7 +58,7 @@ def main() -> int:
     except (HfHubHTTPError, OSError) as e:
         print(f"pinned (in {ADAPTER}): {pinned}")
         print(
-            f"ℹ️  Skipping divergence check — could not reach Hugging Face: {e}",
+            f"\u2139\ufe0f  Skipping divergence check — could not reach Hugging Face: {e}",  # INFORMATION SOURCE
             file=sys.stderr,
         )
         return 0

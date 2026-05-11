@@ -42,9 +42,9 @@ class TestLayoutRegion:
     def test_inverted_coordinates_rejected(self):
         # L-31: silently accepting L > R / T > B caused width to go negative
         # and contains_point to return wrong results.
-        with pytest.raises(ValueError, match="L .* R"):
+        with pytest.raises(ValueError, match=r"L .* R"):
             _region(L=110, R=10, T=20, B=220)
-        with pytest.raises(ValueError, match="T .* B"):
+        with pytest.raises(ValueError, match=r"T .* B"):
             _region(L=10, R=110, T=220, B=20)
 
     def test_contains_point(self):

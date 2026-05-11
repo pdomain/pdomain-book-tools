@@ -50,7 +50,7 @@ class TestMapContentOntoScaledCanvasGpu:
         img = cp.full((100, 60), 42, dtype=cp.uint8)
         out = map_content_onto_scaled_canvas_gpu(img, force_align=Alignment.TOP)
         canvas_h, canvas_w = out.shape
-        top_offset = int(math.ceil(0.051 * canvas_h))
+        top_offset = math.ceil(0.051 * canvas_h)
         left_offset = canvas_w // 2 - 30
         # Spot check a pixel inside the placed content
         assert int(out[top_offset + 5, left_offset + 5]) == 42

@@ -17,13 +17,14 @@ from .whitespace import add_whitespace_percentage, add_whitespace_pixels
 
 # Get all available modules in this package
 __all__ = [
+    "Alignment",
     "add_whitespace_percentage",
     "add_whitespace_pixels",
     "auto_deskew",
     "binary_thresh",
+    "create_file_thumbnail",
     "crop_edges",
     "crop_to_rectangle",
-    "create_file_thumbnail",
     "cv2_convert_to_grayscale",
     "encode_bgr_image_as_png",
     "find_and_draw_contours",
@@ -39,5 +40,4 @@ __all__ = [
     "split_y_rows",
     "write_jpg",
     "write_png",
-    "Alignment",
 ]

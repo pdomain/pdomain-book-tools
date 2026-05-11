@@ -54,4 +54,4 @@ def cupy_available() -> bool:
     return _CUPY_AVAILABLE
 
 
-__all__ = ["cp", "require_cupy", "cupy_available", "GPU_EXTRA_INSTALL_HINT"]
+__all__ = ["GPU_EXTRA_INSTALL_HINT", "cp", "cupy_available", "require_cupy"]

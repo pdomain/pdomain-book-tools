@@ -30,9 +30,9 @@ def auto_deskew_gpu(
     early-exit path is taken (pct=0 or degenerate image).
     """
     require_cupy()
-    img_h, img_w = img_cp.shape[:2]
+    _img_h, img_w = img_cp.shape[:2]
 
-    minX, maxX, minY, maxY = find_edges_gpu(
+    _minX, _maxX, minY, maxY = find_edges_gpu(
         img_cp, fuzzy_pct=0, pixel_count_columns=1, pixel_count_rows=1
     )
 

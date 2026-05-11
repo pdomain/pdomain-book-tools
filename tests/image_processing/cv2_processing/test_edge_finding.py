@@ -68,7 +68,7 @@ class TestFindEdges:
     def test_fuzzy_overrides_apply(self):
         img = np.zeros((100, 100), dtype=np.uint8)
         img[40:60, 40:60] = 255
-        minX, maxX, minY, maxY = find_edges(
+        minX, maxX, _minY, _maxY = find_edges(
             img,
             pixel_count_columns=1,
             pixel_count_rows=1,

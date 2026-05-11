@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Callable
 from logging import getLogger
-from typing import Any, Callable
+from typing import Any
 
 from pd_book_tools.layout.detector import (
     ContourDetector,
@@ -152,12 +153,7 @@ def get_detector(
         # key so distinct confidence values don't create distinct cache
         # entries for behaviorally identical instances. The detector's
         # own tunables are what matter, so include them.
-        cache_key = (
-            key,
-            device,
-            0.0,
-            None,
-        ) + tuple(sorted(detector_kwargs.items()))
+        cache_key = (key, device, 0.0, None, *tuple(sorted(detector_kwargs.items())))
     elif key in _USER_DETECTORS:
         # User-registered detectors may take extra kwargs; fold them into
         # the cache key the same way ``contour`` does so distinct tunings
@@ -167,7 +163,8 @@ def get_detector(
             device,
             confidence,
             checkpoint_path,
-        ) + tuple(sorted(detector_kwargs.items()))
+            *tuple(sorted(detector_kwargs.items())),
+        )
     else:
         if detector_kwargs:
             raise TypeError(

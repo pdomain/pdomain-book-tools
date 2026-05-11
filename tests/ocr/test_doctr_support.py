@@ -569,7 +569,7 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
         This matters for callers that need reproducible behaviour (e.g. tests
         or benchmarks) and must not silently be steered onto a GPU.
         """
-        det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
+        det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
         from pd_book_tools.ocr import doctr_support
 
@@ -603,7 +603,7 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
 
     def test_no_device_calls_auto_detection(self, monkeypatch, tmp_path):
         """Omitting device= must call _select_torch_device (existing behaviour)."""
-        det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
+        det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
         from pd_book_tools.ocr import doctr_support
 

@@ -439,13 +439,15 @@ class TestFinalizePageStructureExceptions:
 
         page = Page(width=1000, height=1000, page_index=0, blocks=[])
 
-        with patch.object(
-            Page,
-            "_recompute_nested_bounding_boxes",
-            side_effect=RuntimeError("not geometry"),
+        with (
+            patch.object(
+                Page,
+                "_recompute_nested_bounding_boxes",
+                side_effect=RuntimeError("not geometry"),
+            ),
+            pytest.raises(RuntimeError, match="not geometry"),
         ):
-            with pytest.raises(RuntimeError, match="not geometry"):
-                page.finalize_page_structure()
+            page.finalize_page_structure()
 
     def test_non_geometry_error_in_recompute_bbox_is_reraised(self):
         """Lines 652-655: Non-geometry exceptions from recompute_bounding_box are re-raised."""
@@ -457,11 +459,13 @@ class TestFinalizePageStructureExceptions:
 
         page = Page(width=1000, height=1000, page_index=0, blocks=[])
 
-        with patch.object(
-            page, "recompute_bounding_box", side_effect=RuntimeError("bbox fail")
+        with (
+            patch.object(
+                page, "recompute_bounding_box", side_effect=RuntimeError("bbox fail")
+            ),
+            pytest.raises(RuntimeError, match="bbox fail"),
         ):
-            with pytest.raises(RuntimeError, match="bbox fail"):
-                page.finalize_page_structure()
+            page.finalize_page_structure()
 
 
 class TestRecomputeParagraphBboxes:

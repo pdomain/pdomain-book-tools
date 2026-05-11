@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.colors import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.colors import (
     cv2_convert_to_grayscale,
 )
 

@@ -20,7 +20,7 @@ import BoundingBox``) — but be aware that even that path imports
 # In an editable / source-tree checkout where _version.py hasn't been
 # generated yet, fall back to importlib.metadata (works once installed).
 try:
-    from pd_book_tools._version import __version__, version  # noqa: F401
+    from pd_book_tools._version import __version__, version
 except ImportError:  # pragma: no cover - fallback for unbuilt source trees
     try:
         from importlib.metadata import PackageNotFoundError
@@ -47,9 +47,9 @@ __all__ = [
     "Block",
     "BlockCategory",
     "BoundingBox",
-    "Page",
     "PGDPExport",
     "PGDPResults",
+    "Page",
     "Point",
     "RegionType",
     "Word",

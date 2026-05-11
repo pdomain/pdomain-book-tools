@@ -17,6 +17,7 @@ Exit code:
 The detection logic is split into pure helpers so unit tests can drive
 it without spinning up real venvs.
 """
+# CLI script — print is the output mechanism
 
 from __future__ import annotations
 
@@ -25,9 +26,9 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 # Packages whose presence in the venv signals an active extra/override
 # that ``uv sync --group dev`` (no extras) would remove. Names are

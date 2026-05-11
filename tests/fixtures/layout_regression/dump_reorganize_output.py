@@ -12,6 +12,7 @@ Inputs read from ``tests/fixtures/layout_regression/inputs/<case>.{json,png}``.
 This is intentionally a thin script — it does not write files, lint, or run
 tests; it only invokes the reorganize pipeline and prints the output.
 """
+# standalone CLI script — print is the output mechanism
 
 from __future__ import annotations
 
@@ -37,9 +38,9 @@ def dump_case(case_name: str) -> str:
     if not png_path.exists():
         raise SystemExit(f"missing fixture PNG: {png_path}")
 
-    import cv2  # noqa: PLC0415 — script tool, defer import
+    import cv2
 
-    from pd_book_tools.ocr.document import Document  # noqa: PLC0415
+    from pd_book_tools.ocr.document import Document
 
     doc = Document.from_dict(json.loads(json_path.read_text(encoding="utf-8")))
     page = doc.pages[0]

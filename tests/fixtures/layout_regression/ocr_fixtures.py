@@ -22,6 +22,7 @@ Usage:
     # OCR everything, regenerating existing JSONs too
     python tests/fixtures/layout_regression/ocr_fixtures.py --force
 """
+# standalone CLI fixture script — print is progress reporting
 
 from __future__ import annotations
 

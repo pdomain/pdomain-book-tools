@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 def auto_deskew(img, pct=0.30):
     logger.debug("auto deskewing")
 
-    img_h, img_w = img.shape[:2]
+    _img_h, img_w = img.shape[:2]
 
-    minX, maxX, minY, maxY = find_edges(
+    _minX, _maxX, minY, maxY = find_edges(
         img=img,
         fuzzy_pct=0,
         pixel_count_columns=1,
@@ -24,7 +24,7 @@ def auto_deskew(img, pct=0.30):
 
     h_percent = int((maxY - minY) * pct)
 
-    logger.debug("h % = {}".format(h_percent))
+    logger.debug(f"h % = {h_percent}")
 
     w_ten_percent = int((maxY - minY) * 0.10)
 
@@ -46,7 +46,7 @@ def auto_deskew(img, pct=0.30):
     Y1 = minY
     Y2 = min(maxY, (minY + h_percent))
     top_of_img: np.ndarray = img[Y1:Y2, X1:X2]
-    logger.debug("Top of Img: {}:{},{}:{}".format(X1, X2, Y1, Y2))
+    logger.debug(f"Top of Img: {X1}:{X2},{Y1}:{Y2}")
     columns: np.ndarray = np.sum(top_of_img, axis=0)
 
     top_left_column = 0
@@ -56,7 +56,7 @@ def auto_deskew(img, pct=0.30):
             top_left_column = idx
             break
 
-    logger.debug("Top Left Col = {}".format(top_left_column))
+    logger.debug(f"Top Left Col = {top_left_column}")
 
     # Find Bottom Left first Column pixel, starting at bottom row and going up by 10%
     X1 = 0
@@ -64,7 +64,7 @@ def auto_deskew(img, pct=0.30):
     Y1 = min(maxY, (maxY - h_percent))
     Y2 = maxY
     bottom_of_img: np.ndarray = img[Y1:Y2, X1:X2]
-    logger.debug("Bottom of Img: {}:{},{}:{}".format(X1, X2, Y1, Y2))
+    logger.debug(f"Bottom of Img: {X1}:{X2},{Y1}:{Y2}")
 
     columns2: np.ndarray = np.sum(bottom_of_img, axis=0)
 
@@ -75,17 +75,17 @@ def auto_deskew(img, pct=0.30):
             bottom_left_column = idx2
             break
 
-    logger.debug("Bottom Left Col = {}".format(bottom_left_column))
+    logger.debug(f"Bottom Left Col = {bottom_left_column}")
 
     # Find the angle between the two
     top_point_x_y = (top_left_column, minY)
-    logger.debug("Top Point = {}".format(top_point_x_y))
+    logger.debug(f"Top Point = {top_point_x_y}")
 
     perpendicular_line_bottom_x_y = (top_left_column, maxY)
-    logger.debug("B Bottom Point = {}".format(perpendicular_line_bottom_x_y))
+    logger.debug(f"B Bottom Point = {perpendicular_line_bottom_x_y}")
 
     bottom_left_bottom_x_y = (bottom_left_column, maxY)
-    logger.debug("C Bottom Point = {}".format(bottom_left_bottom_x_y))
+    logger.debug(f"C Bottom Point = {bottom_left_bottom_x_y}")
 
     # Right Triangle formulas. a^2 + b^2 = c^2, angle between b and c = arccos (b / c)
 
@@ -94,20 +94,20 @@ def auto_deskew(img, pct=0.30):
         math.pow((perpendicular_line_bottom_x_y[0] - top_point_x_y[0]), 2)
         + math.pow((perpendicular_line_bottom_x_y[1] - top_point_x_y[1]), 2)
     )
-    logger.debug("Dist B = {}".format(dist_b))
+    logger.debug(f"Dist B = {dist_b}")
 
     dist_c = math.sqrt(
         math.pow((bottom_left_bottom_x_y[0] - top_point_x_y[0]), 2)
         + math.pow((bottom_left_bottom_x_y[1] - top_point_x_y[1]), 2)
     )
-    logger.debug("Dist C = {}".format(dist_c))
+    logger.debug(f"Dist C = {dist_c}")
 
     if dist_b != dist_c:
         angle = math.acos(dist_b / dist_c) * (180 / math.pi)
-        logger.debug("Angle = {}".format(angle))
+        logger.debug(f"Angle = {angle}")
 
         rotate = angle
-        logger.debug("Dist C = {}".format(rotate))
+        logger.debug(f"Dist C = {rotate}")
 
         if bottom_left_bottom_x_y[0] > perpendicular_line_bottom_x_y[0]:
             # Rotate Clockwise

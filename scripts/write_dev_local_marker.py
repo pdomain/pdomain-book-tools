@@ -19,6 +19,7 @@ CLI usage::
 Exits 0 on success, non-zero (with a message on stderr) when the venv
 directory is missing.
 """
+# CLI script — print is the output mechanism
 
 from __future__ import annotations
 

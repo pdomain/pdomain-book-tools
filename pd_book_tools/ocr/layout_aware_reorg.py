@@ -425,9 +425,7 @@ def _word_x_extents(word: Word) -> tuple[float, float, float] | None:
 def _percentile(sorted_values: Sequence[float], pct: float) -> float:
     if not sorted_values:
         return 0.0
-    idx = max(
-        0, min(len(sorted_values) - 1, int(round(pct * (len(sorted_values) - 1))))
-    )
+    idx = max(0, min(len(sorted_values) - 1, round(pct * (len(sorted_values) - 1))))
     return float(sorted_values[idx])
 
 
@@ -487,7 +485,7 @@ def detect_geometric_sidenotes(
             page_w = max(float(w.bounding_box.maxX) for w in words)
 
     extents = [_word_x_extents(w) for w in words]
-    extents = [(e, w) for e, w in zip(extents, words) if e is not None]
+    extents = [(e, w) for e, w in zip(extents, words, strict=False) if e is not None]
 
     rights = sorted(e[1] for e, _ in extents)
     lefts = sorted(e[0] for e, _ in extents)
@@ -503,7 +501,7 @@ def detect_geometric_sidenotes(
 
     right_candidates: list[Word] = []
     left_candidates: list[Word] = []
-    for (l, r, cx), w in extents:
+    for (_l, _r, cx), w in extents:
         if cx > body_right + gap:
             right_candidates.append(w)
         elif cx < body_left - gap:

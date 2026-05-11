@@ -151,7 +151,7 @@ def test_ordering_c_greater_b(point_factory):
 def test_ordering_b_not_equal_c(point_factory):
     b = point_factory(0.3, 0.1)
     c = point_factory(0.3, 0.5)
-    assert not (b == c)
+    assert b != c
 
 
 def test_ordering_mismatch_normalization_raises(point_factory):

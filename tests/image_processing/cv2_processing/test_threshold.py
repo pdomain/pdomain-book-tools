@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.threshold import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.threshold import (
     binary_thresh,
     otsu_binary_thresh,
 )

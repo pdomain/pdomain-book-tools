@@ -41,7 +41,7 @@ class TestCupyColorToGray:
         from `height, width, _ = img.shape` deep inside the helper."""
         mod, cp = cupy_color_to_gray
         img = cp.full((20, 20), 0.5, dtype=cp.float32)
-        with pytest.raises(ValueError, match="2-D grayscale|3-channel|ndim"):
+        with pytest.raises(ValueError, match=r"2-D grayscale|3-channel|ndim"):
             mod.cupy_color_to_gray(
                 img, radius=5, samples=2, iterations=2, batch_size=10
             )
@@ -77,7 +77,7 @@ class TestCupyColorToGray:
         channels) and must raise rather than silently produce garbage."""
         mod, cp = cupy_color_to_gray
         img = cp.full((20, 20, 1), 0.5, dtype=cp.float32)
-        with pytest.raises(ValueError, match="3 channels|channel"):
+        with pytest.raises(ValueError, match=r"3 channels|channel"):
             mod.cupy_color_to_gray(
                 img, radius=5, samples=2, iterations=2, batch_size=10
             )

@@ -9,7 +9,7 @@ from ._cupy_compat import cp, require_cupy
 logger = logging.getLogger(__name__)
 
 # ITU-R BT.601 weights, matching cv2.COLOR_BGR2GRAY:
-#   Y = 0.114*B + 0.587*G + 0.299*R
+#   Y = 0.114*B + 0.587*G + 0.299*R  # noqa: ERA001  # mathematical formula, not dead code
 #
 # Built lazily on first use so this module imports cleanly when CuPy isn't
 # installed (the `gpu` extra is opt-in). require_cupy() inside the helper

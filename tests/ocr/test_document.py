@@ -54,7 +54,7 @@ def sample_tesseract_output():
             "conf": [0, 0, 0, 0, 95],
         }
     )
-    print(df)
+    print(df)  # debug helper — visible when fixture is regenerated
     return df
 
 
@@ -120,7 +120,7 @@ def test_document_to_json_file(tmp_path):
     doc._pages.append(page)
     file_path = tmp_path / "test.json"
     doc.to_json_file(file_path)
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(file_path, encoding="utf-8") as f:
         data = json.load(f)
     assert data["source_lib"] == "test_lib"
     assert data["source_path"] == "test_path"
@@ -428,7 +428,7 @@ def test_document_from_tesseract(sample_tesseract_output):
     assert doc.source_lib == "tesseract"
     assert doc.source_path == Path("test_path")
     assert len(doc.pages) == 1
-    print(doc.to_dict())
+    print(doc.to_dict())  # debug helper for test inspection
     assert doc.pages[0].width == 100
     assert doc.pages[0].height == 200
     assert doc.pages[0].ocr_provenance is not None

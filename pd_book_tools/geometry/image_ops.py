@@ -31,9 +31,9 @@ from numpy import ndarray
 from pd_book_tools.geometry.bounding_box import BoundingBox
 
 __all__ = [
-    "refine_bbox",
-    "crop_top_bbox",
     "crop_bottom_bbox",
+    "crop_top_bbox",
+    "refine_bbox",
 ]
 
 
@@ -60,10 +60,7 @@ def _threshold_inverted(roi: ndarray) -> tuple[ndarray, ndarray]:
 
     Returns ``(thresh, grayscale_roi)``.
     """
-    if len(roi.shape) == 3:
-        roi_gray = cvtColor(roi, COLOR_BGR2GRAY)
-    else:
-        roi_gray = roi
+    roi_gray = cvtColor(roi, COLOR_BGR2GRAY) if len(roi.shape) == 3 else roi
     inverted = cv2.bitwise_not(roi_gray)
     _, thresh = threshold(inverted, 0, 255, THRESH_BINARY + THRESH_OTSU)
     return thresh, roi_gray
@@ -132,10 +129,10 @@ def _finalize_pixel_bbox(
     out = BoundingBox.from_ltrb(x_min, y_min, x_max, y_max)
     if original_is_normalized:
         out = BoundingBox.from_ltrb(
-            int(round(x_min)),
-            int(round(y_min)),
-            int(round(x_max)),
-            int(round(y_max)),
+            round(x_min),
+            round(y_min),
+            round(x_max),
+            round(y_max),
         ).normalize(img_w, img_h)
     return out
 

@@ -789,10 +789,7 @@ class Word:
             raise ValueError("Word bounding box is out of image bounds")
 
         roi = image[min_y:max_y, min_x:max_x]
-        if roi.ndim == 3:
-            gray = roi.mean(axis=2)
-        else:
-            gray = roi
+        gray = roi.mean(axis=2) if roi.ndim == 3 else roi
 
         min_ink = max(1, int(min_ink_pixels_per_column))
         dark_as_ink = gray < 128
@@ -873,8 +870,8 @@ class Word:
             per_char = roi_width / len(self.text)
             runs = []
             for i in range(len(self.text)):
-                left = int(round(i * per_char))
-                right = int(round((i + 1) * per_char))
+                left = round(i * per_char)
+                right = round((i + 1) * per_char)
                 runs.append((left, right))
             # Keep using last selected mask for vertical bounds when possible.
 
@@ -991,7 +988,7 @@ class Word:
         }
         return self.baseline
 
-    def merge(self, word_to_merge: "Word"):
+    def merge(self, word_to_merge: Word):
         """Merge this word with another word"""
         if not isinstance(word_to_merge, Word):
             raise TypeError("word_to_merge must be an instance of Word")
@@ -1001,14 +998,15 @@ class Word:
             raise ValueError(
                 "Cannot merge Words: bounding boxes use different coordinate systems (pixel vs normalized)"
             )
-        if self.ground_truth_bounding_box and word_to_merge.ground_truth_bounding_box:
-            if (
-                self.ground_truth_bounding_box.is_normalized
-                != word_to_merge.ground_truth_bounding_box.is_normalized
-            ):
-                raise ValueError(
-                    "Cannot merge Words: ground truth bounding boxes use different coordinate systems"
-                )
+        if (
+            self.ground_truth_bounding_box
+            and word_to_merge.ground_truth_bounding_box
+            and self.ground_truth_bounding_box.is_normalized
+            != word_to_merge.ground_truth_bounding_box.is_normalized
+        ):
+            raise ValueError(
+                "Cannot merge Words: ground truth bounding boxes use different coordinate systems"
+            )
         # Also ensure if only one word has ground truth bbox it matches its own main bbox category
         for w in (self, word_to_merge):
             if w.ground_truth_bounding_box and (

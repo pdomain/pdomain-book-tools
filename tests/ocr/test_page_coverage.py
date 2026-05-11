@@ -652,7 +652,7 @@ class TestRecomputeBoundingBox:
         assert simple_page.bounding_box is not None
         # Should still be a bbox spanning items
         assert isinstance(simple_page.bounding_box, BoundingBox)
-        del old_bbox  # noqa: F841
+        del old_bbox
 
     def test_recompute_empty_page(self):
         page = Page(width=10, height=10, page_index=0, blocks=[])

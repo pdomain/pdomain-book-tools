@@ -1091,7 +1091,7 @@ def test_line_must_have_child_type_words():
         child_type=BlockChildType.WORDS,
         block_category=BlockCategory.LINE,
     )
-    with pytest.raises(ValueError, match="LINE.*child_type=WORDS"):
+    with pytest.raises(ValueError, match=r"LINE.*child_type=WORDS"):
         Block(
             items=[inner_block],
             child_type=BlockChildType.BLOCKS,

@@ -1,6 +1,7 @@
 from collections import namedtuple
+from collections.abc import Sequence
 from difflib import SequenceMatcher
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 from numpy import mean as np_mean
 from thefuzz.fuzz import ratio as fuzz_ratio
@@ -61,10 +62,9 @@ def update_page_with_ground_truth_text(
     """
 
     page.remove_ground_truth()
-    # clear_page_ground_truth_text(page)
 
     # Sequence Matcher needs ordered tuples, so convert lists + dicts into tuples of tuples of strings
-    #   example: ( ( "line1word1", "line1word2" ), ("line2word1", "line2word2") )
+    #   example: ( ( "line1word1", "line1word2" ), ("line2word1", "line2word2") )  # noqa: ERA001
     ocr_tuples = [tuple([word.text for word in line.words]) for line in page.lines]
 
     ground_truth_lines_text = [
@@ -196,7 +196,7 @@ def update_page_match_difflib_lines_equal(
         raise ValueError(
             f"Line count mismatch: {len(lines)} vs {len(ground_truth_lines)}"
         )
-    for line, ground_truth_line in zip(lines, ground_truth_lines):
+    for line, ground_truth_line in zip(lines, ground_truth_lines, strict=False):
         update_line_match_difflib_lines_equal(line, ground_truth_line)
 
 
@@ -764,7 +764,7 @@ def try_matching_combined_words(
 
     logger.debug("Combined words found: ")
     for c in combined_words:
-        logger.debug(f"{str(c[0:2])} {c[3].text}")
+        logger.debug(f"{c[0:2]!s} {c[3].text}")
 
     return combined_words
 
@@ -1170,7 +1170,8 @@ def generate_best_matched_ground_truth_line(
     ]
 
     logger.debug(
-        "Ratios & Text Variants" + str(list(zip(variants, ratios, lowercase_ratios)))
+        "Ratios & Text Variants"
+        + str(list(zip(variants, ratios, lowercase_ratios, strict=False)))
     )
 
     best_ratio = max(ratios)

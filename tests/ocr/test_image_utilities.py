@@ -342,7 +342,7 @@ class TestGetCroppedEncodedImage:
         self, mock_get_encoded, sample_image, normalized_bbox
     ):
         """Test cropping with normalized bounding box."""
-        h, w = sample_image.shape[:2]  # h=100, w=200
+        _h, _w = sample_image.shape[:2]  # _h=100, _w=200
 
         mock_encoded = (b"norm_png", "norm_b64", "norm_data_src")
         mock_get_encoded.return_value = mock_encoded

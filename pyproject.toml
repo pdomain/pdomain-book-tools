@@ -118,11 +118,75 @@ directory = "htmlcov"
 output = "coverage.xml"
 
 [tool.ruff.lint]
-# `l` is widely used as the loop-variable name for "line" in the OCR layout
-# code. Renaming everywhere is invasive and the meaning is always
-# unambiguous from context (always paired with `.bounding_box`, `.text`,
-# `.minX/minY/...`). Suppressing E741 keeps the convention consistent.
-ignore = ["E741"]
+select = ["E", "F", "W", "I", "N", "B", "SIM", "UP", "RUF", "ERA", "T20"]
+ignore = [
+    # `l` is widely used as the loop-variable name for "line" in the OCR layout
+    # code. Renaming everywhere is invasive and the meaning is always
+    # unambiguous from context (always paired with `.bounding_box`, `.text`,
+    # `.minX/minY/...`). Suppressing E741 keeps the convention consistent.
+    "E741",
+    # Line length: many long docstrings, error messages, and URLs; enforcing
+    # 88-char wrapping everywhere adds noise without improving readability.
+    "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Files that use the project's camelCase coordinate API (minX/maxX/minY/maxY).
+# Renaming these names everywhere would be an invasive API-breaking change.
+"pd_book_tools/geometry/bounding_box.py" = ["N802", "F401"]  # N802: coord props; F401: back-compat re-exports
+"pd_book_tools/geometry/point.py" = ["N806"]
+"pd_book_tools/hf/download.py" = ["N806"]
+"pd_book_tools/image_processing/cupy_processing/color_to_gray.py" = ["N806"]
+"pd_book_tools/image_processing/cupy_processing/contours.py" = ["N806"]
+"pd_book_tools/image_processing/cupy_processing/crop.py" = ["N803", "N806"]
+"pd_book_tools/image_processing/cupy_processing/deskew.py" = ["N806"]
+"pd_book_tools/image_processing/cupy_processing/edge_finding.py" = ["N806"]
+"pd_book_tools/image_processing/cv2_processing/contours.py" = ["N806"]
+"pd_book_tools/image_processing/cv2_processing/crop.py" = ["N803", "N806"]
+"pd_book_tools/image_processing/cv2_processing/edge_finding.py" = ["N806"]
+"pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py" = ["N806"]
+"pd_book_tools/image_processing/cv2_processing/rotate.py" = ["N803", "N806"]
+"pd_book_tools/image_processing/external_tools.py" = ["N803"]
+"pd_book_tools/image_processing/formats.py" = ["F401"]  # pillow_avif import is for side-effect (plugin registration)
+"pd_book_tools/layout/geometry.py" = ["N806"]
+"pd_book_tools/ocr/cv2_tesseract.py" = ["N816"]  # pytesseract_Output mirrors the module attribute name
+"pd_book_tools/ocr/doctr_support.py" = ["F401"]  # doctr models imported to force module load
+"pd_book_tools/ocr/document.py" = ["N806"]
+"pd_book_tools/ocr/dropcap.py" = ["N806", "N815"]
+"pd_book_tools/ocr/layout_aware_reorg.py" = ["N806"]
+"pd_book_tools/ocr/page.py" = ["N811", "E402"]  # N811: cv2_ prefix convention; E402: deferred inspect import
+"pd_book_tools/ocr/reorganize_page_utils.py" = ["N803", "N806", "N811", "N815"]  # N811: cv2_ prefix convention
+"pd_book_tools/utility/timing.py" = ["N803"]
+"tests/hf/test_hf.py" = ["N818"]  # _NotFound: test-internal sentinel, not a public API
+"tests/image_processing/cupy_processing/test_edge_finding.py" = ["N806"]
+"tests/image_processing/cupy_processing/test_rotate.py" = ["N806"]
+"tests/image_processing/cv2_processing/test_edge_finding.py" = ["N806"]
+"tests/image_processing/test_formats.py" = ["F401"]  # import for side-effect (plugin registration)
+"tests/layout/test_detector.py" = ["N806"]
+"tests/layout/test_geometry.py" = ["N802", "N803"]
+"tests/layout/test_layout_aware_reorg.py" = ["N803"]
+"tests/ocr/test_block.py" = ["N803", "N806"]
+"tests/ocr/test_cv2_tesseract.py" = ["B017", "N803"]  # B017: broad Exception is intentional (cv2 version varies)
+"tests/ocr/test_document.py" = ["T201"]  # debug print helpers for fixture development
+"tests/ocr/test_dropcap.py" = ["N802"]
+"tests/ocr/test_page.py" = ["T201"]  # debug print helper for test inspection
+"tests/ocr/test_reorganize_diagnostic_snapshots.py" = ["N803"]
+"tests/test_public_api.py" = ["N814"]  # _BB alias: underscore-prefixed for identity tests
+"tests/utility/test_ipynb_widgets.py" = ["E402"]  # imports after pytest.importorskip guard
+"tests/utility/test_timing.py" = ["N802"]
+# Enum members are list-typed values; RUF012 incorrectly treats them as mutable class attributes
+"pd_book_tools/ocr/ground_truth_matching_helpers/character_groups.py" = ["RUF012"]
+# CLI scripts and fixture scripts — print() is the output mechanism
+"scripts/*.py" = ["T201"]
+"tests/fixtures/layout_regression/*.py" = ["T201"]
+
+[tool.pyright]
+include = ["src", "tests", "scripts"]
+typeCheckingMode = "basic"
+
+[[tool.pyright.executionEnvironments]]
+root = "src"
+typeCheckingMode = "strict"
 
 # Pytest configuration
 [tool.pytest.ini_options]

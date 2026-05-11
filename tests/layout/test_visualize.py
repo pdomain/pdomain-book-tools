@@ -106,5 +106,5 @@ def test_draw_layout_overlay_raises_oserror_on_write_failure(tmp_path, monkeypat
     _write_dummy_png(src)
 
     monkeypatch.setattr(cv2, "imwrite", lambda _path, _img: False)
-    with pytest.raises(OSError, match="cv2.imwrite failed"):
+    with pytest.raises(OSError, match=r"cv2.imwrite failed"):
         draw_layout_overlay(src, _layout_one_text_region(), dest)

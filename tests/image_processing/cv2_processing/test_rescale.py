@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.rescale import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.rescale import (
     rescale_image,
 )
 

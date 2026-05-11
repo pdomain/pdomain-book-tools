@@ -401,8 +401,8 @@ class TestImageGenerators:
     def test_generate_doctr_checks_no_op_no_image(self, multi_paragraph_page, tmp_path):
         # Without an image, should not crash. If it requires image, we just
         # invoke and accept the failure as expected.
-        try:
-            multi_paragraph_page.generate_doctr_checks(tmp_path / "out.json")
-        except Exception:
+        import contextlib
+
+        with contextlib.suppress(Exception):
             # Acceptable if it throws because no image
-            pass
+            multi_paragraph_page.generate_doctr_checks(tmp_path / "out.json")

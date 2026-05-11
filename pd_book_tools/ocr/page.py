@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import pathlib
 import warnings
+from collections.abc import Callable, Collection
 from dataclasses import InitVar, dataclass, field
 from enum import Enum
 from hashlib import sha256
@@ -12,15 +13,14 @@ from logging import getLogger
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Collection,
 )
 
 if TYPE_CHECKING:
     from pd_book_tools.layout.types import PageLayout
 
-# from cv2 import IMWRITE_JPEG_QUALITY as cv2_IMWRITE_JPEG_QUALITY
-from cv2 import COLOR_BGR2RGB as cv2_COLOR_BGR2RGB
+from cv2 import (
+    COLOR_BGR2RGB as cv2_COLOR_BGR2RGB,  # cv2_ prefix is the project's namespacing convention
+)
 from cv2 import FONT_HERSHEY_SIMPLEX as cv2_FONT_HERSHEY_SIMPLEX
 from cv2 import IMWRITE_PNG_COMPRESSION as cv2_IMWRITE_PNG_COMPRESSION
 from cv2 import cvtColor as cv2_cvtColor
@@ -151,10 +151,10 @@ class Page:
     # and remain ``None`` for any page that has not been reorganized.
     # See ``Page.reorganize_page`` for the capture points and the
     # ``docs/specs/03-reorganize-pipeline.md`` notes.
-    diagnostic_pure_ocr: "Page | None" = field(
+    diagnostic_pure_ocr: Page | None = field(
         default=None, init=False, repr=False, compare=False
     )
-    diagnostic_post_noise_removal: "Page | None" = field(
+    diagnostic_post_noise_removal: Page | None = field(
         default=None, init=False, repr=False, compare=False
     )
     # Words deleted by the noise-removal steps (Step Layout-2b and
@@ -613,12 +613,12 @@ class Page:
         return list(itertools.chain.from_iterable([item.words for item in self.items]))
 
     @property
-    def lines(self) -> list["Block"]:
+    def lines(self) -> list[Block]:
         """Get flat list of all 'lines' in the page"""
         return list(itertools.chain.from_iterable([item.lines for item in self.items]))
 
     @property
-    def paragraphs(self) -> list["Block"]:
+    def paragraphs(self) -> list[Block]:
         """Get flat list of all 'paragraphs' in the page"""
         return list(
             itertools.chain.from_iterable([item.paragraphs for item in self.items])
@@ -813,7 +813,7 @@ class Page:
 
     @staticmethod
     def _recompute_nested_bounding_boxes(
-        container: "Page | Block",
+        container: Page | Block,
     ) -> None:
         """Recursively recompute bounding boxes bottom-up for nested blocks."""
         for child in container.items:
@@ -824,15 +824,15 @@ class Page:
     def find_parent_block(
         self,
         target: Block,
-    ) -> "Page | Block | None":
+    ) -> Page | Block | None:
         """Find parent block/page that directly contains target in its child items."""
         return Page._find_parent_block_recursive(self, target)
 
     @staticmethod
     def _find_parent_block_recursive(
-        container: "Page | Block",
+        container: Page | Block,
         target: Block,
-    ) -> "Page | Block | None":
+    ) -> Page | Block | None:
         if target in container.items:
             return container
         for child in container.items:
@@ -849,7 +849,7 @@ class Page:
     @classmethod
     def _remove_nested_block_recursive(
         cls,
-        container: "Page | Block",
+        container: Page | Block,
         target: Block,
     ) -> bool:
         if target in container.items:
@@ -875,8 +875,8 @@ class Page:
 
     @staticmethod
     def _remove_item_without_recompute(
-        container: "Page | Block",
-        target: "Block | Word",
+        container: Page | Block,
+        target: Block | Word,
     ) -> bool:
         """Best-effort item removal when remove_item triggers malformed bbox
         recompute errors."""
@@ -904,7 +904,7 @@ class Page:
 
     @staticmethod
     def _prune_empty_blocks_fallback(
-        container: "Page | Block",
+        container: Page | Block,
     ) -> None:
         """Recursively remove empty line/paragraph blocks from nested items
         lists."""
@@ -912,7 +912,7 @@ class Page:
         if not child_items:
             return
 
-        kept_items: list["Block | Word"] = []
+        kept_items: list[Block | Word] = []
         changed = False
         for child in child_items:
             if isinstance(child, Block):
@@ -1539,7 +1539,7 @@ class Page:
             )
 
             page_items = list(self.items)
-            self.items = page_items + [new_paragraph]
+            self.items = [*page_items, new_paragraph]
 
             self.finalize_page_structure()
 
@@ -1808,7 +1808,7 @@ class Page:
                 )
                 return False
 
-            character_split_index = int(round(len(word_text) * split_fraction))
+            character_split_index = round(len(word_text) * split_fraction)
             character_split_index = max(
                 1, min(len(word_text) - 1, character_split_index)
             )
@@ -2018,11 +2018,11 @@ class Page:
                 block_category=BlockCategory.LINE,
             )
 
-            target_paragraph.items = (
-                paragraph_items[: line_item_index + 1]
-                + [split_line]
-                + paragraph_items[line_item_index + 1 :]
-            )
+            target_paragraph.items = [
+                *paragraph_items[: line_item_index + 1],
+                split_line,
+                *paragraph_items[line_item_index + 1 :],
+            ]
             target_paragraph.recompute_bounding_box()
             parent.recompute_bounding_box()
 
@@ -2401,11 +2401,11 @@ class Page:
                     for idx, item in enumerate(original_paragraph_items)
                     if idx <= insert_after and id(item) not in emptied_line_ids
                 )
-                target_paragraph.items = (
-                    paragraph_items[:insert_at]
-                    + [new_line]
-                    + paragraph_items[insert_at:]
-                )
+                target_paragraph.items = [
+                    *paragraph_items[:insert_at],
+                    new_line,
+                    *paragraph_items[insert_at:],
+                ]
             else:
                 new_paragraph = Block(
                     items=[new_line],
@@ -2416,7 +2416,7 @@ class Page:
                     child_type=BlockChildType.BLOCKS,
                     block_category=BlockCategory.PARAGRAPH,
                 )
-                self.items = list(self.items) + [new_paragraph]
+                self.items = [*list(self.items), new_paragraph]
 
             self.finalize_page_structure()
             logger.info(
@@ -2537,11 +2537,11 @@ class Page:
                     block_category=BlockCategory.LINE,
                 )
 
-                target_paragraph.items = (
-                    paragraph_items[: line_item_index + 1]
-                    + [new_line]
-                    + paragraph_items[line_item_index + 1 :]
-                )
+                target_paragraph.items = [
+                    *paragraph_items[: line_item_index + 1],
+                    new_line,
+                    *paragraph_items[line_item_index + 1 :],
+                ]
                 target_paragraph.recompute_bounding_box()
 
                 parent = self.find_parent_block(target_paragraph)
@@ -2667,7 +2667,7 @@ class Page:
             )
             raise
 
-    def scale(self, width: int, height: int) -> "Page":
+    def scale(self, width: int, height: int) -> Page:
         """
         Return new page with scaled bounding box
         to absolute pixel coordinates
@@ -2718,13 +2718,13 @@ class Page:
             result["rotation_applied"] = self.rotation_applied
         return result
 
-    def copy(self) -> "Page":
+    def copy(self) -> Page:
         # Copy the page to a new object via serialization/deserialization
         return self.from_dict(self.to_dict())
 
     def reorganize_page(
         self,
-        layout: "PageLayout" | None = None,
+        layout: PageLayout | None = None,
         *,
         drop_figure_internal_text: bool = True,
         drop_layout_words: bool = False,
@@ -3139,7 +3139,7 @@ class Page:
         self.refresh_page_images()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Page":
+    def from_dict(cls, data: dict[str, Any]) -> Page:
         """Create OCRPage from dictionary"""
         # Resolve source from either "source" or legacy "page_source" key
         source = data.get("source", data.get("page_source", "ocr"))
@@ -3210,10 +3210,10 @@ class Page:
         output_path.mkdir(parents=True, exist_ok=True)
 
     def generate_doctr_detection_training_set(
-        self: "Page",
+        self: Page,
         output_path: pathlib.Path,
         prefix: str = "",
-        word_filter: Callable[["Word"], bool] | None = None,
+        word_filter: Callable[[Word], bool] | None = None,
     ) -> None:
         """
         Create a DocTR text detection training or validation set from a page
@@ -3265,7 +3265,7 @@ class Page:
 
         detection_labels = {}
 
-        image_name = "{}_{}.png".format(prefix, self.page_index)
+        image_name = f"{prefix}_{self.page_index}.png"
         logger.debug("Writing image: " + str(image_name))
         cv2_imwrite(
             str(pathlib.Path(detection_image_path, image_name).resolve()),
@@ -3296,7 +3296,7 @@ class Page:
 
         # Read in the JSON file and add the new labels
         try:
-            with open(pathlib.Path(detection_path, "labels.json"), "r") as f:
+            with open(pathlib.Path(detection_path, "labels.json")) as f:
                 existing_detection_labels = json_load(f)
         except FileNotFoundError:
             # If the file doesn't exist, create an empty dictionary
@@ -3317,11 +3317,11 @@ class Page:
             json_dump(detection_labels, f, indent=4, ensure_ascii=False)
 
     def generate_doctr_recognition_training_set(
-        self: "Page",
+        self: Page,
         output_path: pathlib.Path,
         prefix: str = "",
-        word_filter: Callable[["Word"], bool] | None = None,
-        label_formatter: Callable[["Word"], Any] | None = None,
+        word_filter: Callable[[Word], bool] | None = None,
+        label_formatter: Callable[[Word], Any] | None = None,
     ) -> None:
         """
         Create a text recognition training or validation set from a page
@@ -3396,14 +3396,7 @@ class Page:
 
             bb = word.bounding_box.scale(width=img_width, height=img_height)
             cropped_image = image[bb.minY : bb.maxY, bb.minX : bb.maxX]
-            cropped_image_name = "{}_{}_{}_{}_{}_{}.png".format(
-                prefix,
-                self.page_index,
-                bb.minX,
-                bb.maxX,
-                bb.minY,
-                bb.maxY,
-            )
+            cropped_image_name = f"{prefix}_{self.page_index}_{bb.minX}_{bb.maxX}_{bb.minY}_{bb.maxY}.png"
             logger.debug("Writing image: " + str(cropped_image_name))
             cv2_imwrite(
                 str(pathlib.Path(recognition_image_path, cropped_image_name).resolve()),
@@ -3414,7 +3407,7 @@ class Page:
 
         # Read in the JSON file and add the new labels
         try:
-            with open(pathlib.Path(recognition_path, "labels.json"), "r") as f:
+            with open(pathlib.Path(recognition_path, "labels.json")) as f:
                 existing_labels = json_load(f)
         except FileNotFoundError:
             # If the file doesn't exist, create an empty dictionary
@@ -3435,10 +3428,10 @@ class Page:
             json_dump(recognition_labels, f, indent=4, ensure_ascii=False)
 
     def convert_to_training_set(
-        self: "Page",
+        self: Page,
         output_path: pathlib.Path,
         prefix: str = "",
-        word_filter: Callable[["Word"], bool] | None = None,
+        word_filter: Callable[[Word], bool] | None = None,
     ) -> None:
         """
         Create recognition and detection training sets from a page image
@@ -3529,7 +3522,7 @@ def _page_init_with_deprecation_shim(
 # Preserve the dataclass-generated signature for the canonical kwargs
 # while exposing the legacy aliases at the end. The behavior-pin test
 # inspects this signature.
-import inspect as _inspect  # noqa: E402  (local import keeps top-of-file tidy)
+import inspect as _inspect  # deferred import: must come after _dataclass_generated_page_init is defined
 
 _dc_sig = _inspect.signature(_dataclass_generated_page_init)
 _dc_params = list(_dc_sig.parameters.values())

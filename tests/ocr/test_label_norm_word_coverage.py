@@ -39,7 +39,7 @@ class TestLabelNormalizationCoverage:
 
 
 # ---------------------------------------------------------------------------
-# word.py – apply_style_scope with new style
+# word.py -- apply_style_scope with new style
 # ---------------------------------------------------------------------------
 
 
@@ -64,7 +64,7 @@ class TestWordApplyStyleScope:
 
 
 # ---------------------------------------------------------------------------
-# word.py – _normalized_style_labels with invalid label (line 365)
+# word.py -- _normalized_style_labels with invalid label (line 365)
 # ---------------------------------------------------------------------------
 
 
@@ -85,7 +85,7 @@ class TestWordNormalizedStyleLabels:
 
 
 # ---------------------------------------------------------------------------
-# word.py – _resolve_style_label alias loop (lines 404-406)
+# word.py -- _resolve_style_label alias loop (lines 404-406)
 # ---------------------------------------------------------------------------
 
 
@@ -108,7 +108,7 @@ class TestWordResolveStyleLabelAliasLoop:
 
 
 # ---------------------------------------------------------------------------
-# word.py – _resolve_word_component alias loop (lines 420-422)
+# word.py -- _resolve_word_component alias loop (lines 420-422)
 # ---------------------------------------------------------------------------
 
 
@@ -130,7 +130,7 @@ class TestWordResolveWordComponentAliasLoop:
 
 
 # ---------------------------------------------------------------------------
-# word.py – expand_bbox branches (lines 519->521, 521->524)
+# word.py -- expand_bbox branches (lines 519->521, 521->524)
 # ---------------------------------------------------------------------------
 
 

@@ -107,10 +107,10 @@ def remove_small_contours_gpu(
       - its bounding box is below the size threshold
         (width  < max(img_w * min_w_pct, min_w_pixels)  AND
          height < max(img_h * min_h_pct, min_h_pixels))
-      - its neighbourhood contains fewer than nearby_pixel_count × 255 pixels.
+      - its neighbourhood contains fewer than nearby_pixel_count \u00d7 255 pixels.
 
     search_w_pixels / search_h_pixels: optional explicit search-area half-widths.
-    When omitted the search area defaults to pixels_w × 0.75 / pixels_h × 0.5,
+    When omitted the search area defaults to pixels_w \u00d7 0.75 / pixels_h \u00d7 0.5,
     which is appropriate when the threshold itself is large (non-adaptive use).
     Pass a larger value when the threshold is small (e.g. from the adaptive
     path) so that neighbour detection spans a full character width and avoids
@@ -150,7 +150,7 @@ def remove_small_contours_gpu(
     result = img_cp.copy()
     objects = find_objects(labeled)
 
-    for i, slices in enumerate(objects):
+    for _i, slices in enumerate(objects):
         if slices is None:
             continue
 
@@ -186,7 +186,7 @@ def remove_small_contours_adaptive_gpu(
     """
     Remove small, isolated components using thresholds derived from the image itself.
 
-    The removal threshold is set to size_fraction × median bounding-box size of
+    The removal threshold is set to size_fraction \u00d7 median bounding-box size of
     all connected components.  Because page numbers and footnotes use characters
     of the same size as body text, the median is dominated by real content and
     the adaptive threshold will never rise high enough to threaten legitimate text.
@@ -210,7 +210,7 @@ def remove_small_contours_adaptive_gpu(
     if stats["count"] == 0:
         return img_cp.copy()
 
-    # Minimum of 2: a 1×1 pixel is always noise; real characters are ≥ 2px.
+    # Minimum of 2: a 1x1 pixel is always noise; real characters are >= 2px.
     pixels_w = max(2, int(stats["median_w"] * size_fraction))
     pixels_h = max(2, int(stats["median_h"] * size_fraction))
 

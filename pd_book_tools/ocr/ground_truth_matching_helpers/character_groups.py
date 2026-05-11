@@ -3,14 +3,14 @@ from enum import Enum
 
 class CharacterGroups(Enum):
     HYPHEN = ["-"]
-    ENDASH = ["–"]
+    ENDASH = ["\u2013"]  # EN DASH
     EMDASH = ["—"]
-    FIGUREDASH = ["‒"]
+    FIGUREDASH = ["\u2012"]  # FIGURE DASH
     TWOEMDASH = ["⸺"]
     THREEEMDASH = ["⸻"]
     HORIZONTAL_BAR = ["―"]
-    NOBREAK_HYPHEN = ["‑"]
-    MINUS = ["−"]
+    NOBREAK_HYPHEN = ["\u2011"]  # NON-BREAKING HYPHEN
+    MINUS = ["\u2212"]  # MINUS SIGN
     # NOTE: dict.fromkeys (not set) so iteration order is stable across
     # Python interpreter runs. Tied-variant matching in
     # ground_truth_matching is sensitive to ordering, and set() has
@@ -28,10 +28,10 @@ class CharacterGroups(Enum):
             + MINUS
         )
     )
-    SINGLE_QUOTE = ["'", "‘", "’"]
+    SINGLE_QUOTE = ["'", "\u2018", "\u2019"]  # LEFT/RIGHT SINGLE QUOTATION MARK
     DOUBLE_QUOTE = ['"', "“", "”"]
     QUOTES = list(dict.fromkeys(SINGLE_QUOTE + DOUBLE_QUOTE))
-    SINGLE_PRIME = ["'", "′"]
+    SINGLE_PRIME = ["'", "\u2032"]  # PRIME
     DOUBLE_PRIME = ['"', "″"]
     PRIMES = list(dict.fromkeys(SINGLE_PRIME + DOUBLE_PRIME))
     QUOTES_AND_PRIMES = list(dict.fromkeys(QUOTES + PRIMES))

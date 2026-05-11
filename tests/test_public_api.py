@@ -28,7 +28,9 @@ def test_top_level_reexports():
 
     # Identity check: the top-level name must be the same object as the
     # canonical class in its submodule.
-    from pd_book_tools.geometry.bounding_box import BoundingBox as _BB
+    from pd_book_tools.geometry.bounding_box import (
+        BoundingBox as _BB,  # underscore-prefixed alias for identity tests
+    )
     from pd_book_tools.geometry.point import Point as _Point
     from pd_book_tools.layout.types import RegionType as _RegionType
     from pd_book_tools.ocr.block import Block as _Block
@@ -51,7 +53,9 @@ def test_top_level_reexports():
 
 def test_geometry_reexports():
     from pd_book_tools.geometry import BoundingBox, Point
-    from pd_book_tools.geometry.bounding_box import BoundingBox as _BB
+    from pd_book_tools.geometry.bounding_box import (
+        BoundingBox as _BB,  # underscore-prefixed alias for identity tests
+    )
     from pd_book_tools.geometry.point import Point as _Point
 
     assert BoundingBox is _BB

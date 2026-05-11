@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.contours import (  # noqa: E402
+from pd_book_tools.image_processing.cv2_processing.contours import (
     find_and_draw_contours,
     remove_small_contours,
 )
@@ -170,7 +170,7 @@ class TestRemoveSmallContours:
         img[60:75, 60:80] = 255
 
         contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
-        cleaned, vis = remove_small_contours(img.copy(), contours)
+        _cleaned, vis = remove_small_contours(img.copy(), contours)
         # Visualization should be a 3-channel image
         assert vis.ndim == 3
         assert vis.shape[2] == 3
@@ -235,12 +235,12 @@ class TestRemoveSmallContours:
         )
 
         img = np.zeros((200, 200), dtype=np.uint8)
-        # Isolated medium contour: 12x12 – above tiny (5) but below size threshold (40)
+        # Isolated medium contour: 12x12 -- above tiny (5) but below size threshold (40)
         img[50:62, 50:62] = 255
         contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
 
         # nearby_pixel_count=100 → threshold_sum = 25500, search_sum < 25500 → removed
-        out_removed, vis_removed = remove_small_contours(
+        out_removed, _vis_removed = remove_small_contours(
             img.copy(),
             contours,
             min_w_pct=0.20,
@@ -255,7 +255,7 @@ class TestRemoveSmallContours:
         img2 = np.zeros((200, 200), dtype=np.uint8)
         img2[50:62, 50:62] = 255
         contours2, _ = findContours(img2.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
-        out_kept, vis_kept = remove_small_contours(
+        out_kept, _vis_kept = remove_small_contours(
             img2.copy(),
             contours2,
             min_w_pct=0.20,

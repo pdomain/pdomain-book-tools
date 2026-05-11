@@ -5,6 +5,8 @@ end-to-end smoke test there is gated behind ``pytest.mark.slow`` because
 the first run downloads ~132 MB of weights.
 """
 
+import contextlib
+
 import numpy as np
 import pytest
 
@@ -196,10 +198,8 @@ class TestDetectorFailureHardening:
 
     def teardown_method(self, method):
         for key in ("failing-x",):
-            try:
+            with contextlib.suppress(ValueError):
                 unregister_detector(key)
-            except ValueError:
-                pass
 
     def _failing_factory(self):
         def factory(*, device, confidence, checkpoint_path, **kwargs):
@@ -276,10 +276,8 @@ class TestRegisterDetector:
     def teardown_method(self, method):
         # Each test registers its own keys; clean up so they don't leak.
         for key in ("custom-x", "custom-y"):
-            try:
+            with contextlib.suppress(ValueError):
                 unregister_detector(key)
-            except ValueError:
-                pass
 
     def _make_factory(self, calls):
         def factory(*, device, confidence, checkpoint_path, **kwargs):

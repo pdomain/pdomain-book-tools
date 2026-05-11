@@ -322,7 +322,7 @@ class TestDeleteWordsErrors:
         """
         page = _make_page([["hello", "world", "foo"]])
         words_before = len(page.words)
-        # Delete words at (line 0, word 0) and (line 0, word 1) – same line
+        # Delete words at (line 0, word 0) and (line 0, word 1) -- same line
         result = page.delete_words([(0, 0), (0, 1)])
         assert result is True
         assert len(page.words) == words_before - 2
@@ -494,7 +494,7 @@ class TestAddWordToPage:
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         assert page.is_content_normalized
         words_before = len(page.words)
-        # pixel coords on a normalized page – function normalizes them internally
+        # pixel coords on a normalized page -- function normalizes them internally
         result = page.add_word_to_page(10.0, 10.0, 50.0, 30.0, text="new")
         assert result is True
         assert len(page.words) > words_before
@@ -581,7 +581,7 @@ class TestSplitLineAfterWordErrors:
         exercise this path without triggering the AttributeError path.
         """
         page = _make_page([["word1", "word2"]])
-        # Patch paragraphs to return empty list – the target line is not in any paragraph
+        # Patch paragraphs to return empty list -- the target line is not in any paragraph
         monkeypatch.setattr(type(page), "paragraphs", property(lambda self: []))
         result = page.split_line_after_word(0, 0)
         assert result is False
@@ -1051,7 +1051,7 @@ class TestIsContentNormalizedBranches:
 
     def test_raises_on_mixed_normalized_and_pixel_words(self):
         """L-14: a page with both normalized and pixel-space word bboxes
-        is a logic error upstream — surface it loudly instead of silently
+        is a logic error upstream \u2014 surface it loudly instead of silently  # EM DASH
         returning whichever convention the first word happens to use.
 
         The Page constructor itself rejects mixed-coord bboxes via the
@@ -1081,7 +1081,7 @@ class TestIsContentNormalizedBranches:
             0.1, 0.1, 0.2, 0.12, is_normalized=True
         )
         with pytest.raises(ValueError, match="mix of normalized and pixel"):
-            page.is_content_normalized
+            _ = page.is_content_normalized
 
     def test_homogeneous_normalized_returns_true(self):
         """L-14: when every word agrees on normalized=True, return True

@@ -89,7 +89,7 @@ class TestFindEdgesGpu:
 
         img = cp.zeros((100, 100), dtype=cp.uint8)
         img[40:60, 40:60] = 255
-        minX, maxX, minY, maxY = find_edges_gpu(
+        minX, maxX, _minY, _maxY = find_edges_gpu(
             img,
             pixel_count_columns=1,
             pixel_count_rows=1,
@@ -117,7 +117,7 @@ class TestFindEdgesGpu:
         cpu = find_edges(img_np, **kwargs)
         gpu = find_edges_gpu(cp.asarray(img_np), **kwargs)
 
-        for cpu_val, gpu_val in zip(cpu, gpu):
+        for cpu_val, gpu_val in zip(cpu, gpu, strict=False):
             assert abs(cpu_val - gpu_val) <= 2, f"CPU={cpu} GPU={gpu}"
 
     def test_np_uint8_find_edges_wrapper(self, cupy_module):

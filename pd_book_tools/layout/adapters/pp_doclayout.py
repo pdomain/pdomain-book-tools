@@ -100,7 +100,7 @@ class PPDocLayoutPlusLDetector:
         regions: list[LayoutRegion] = []
         id2label = self._model.config.id2label
         for score, label, box in zip(
-            results["scores"], results["labels"], results["boxes"]
+            results["scores"], results["labels"], results["boxes"], strict=False
         ):
             raw_label = id2label[int(label.item())]
             mapped = PP_DOCLAYOUT_TO_PGDP.get(raw_label)
@@ -119,10 +119,10 @@ class PPDocLayoutPlusLDetector:
             regions.append(
                 LayoutRegion(
                     type=region_type,
-                    L=int(round(x1)),
-                    R=int(round(x2)),
-                    T=int(round(y1)),
-                    B=int(round(y2)),
+                    L=round(x1),
+                    R=round(x2),
+                    T=round(y1),
+                    B=round(y2),
                     confidence=float(score.item()),
                     raw_label=raw_label,
                 )

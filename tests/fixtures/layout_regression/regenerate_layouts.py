@@ -23,6 +23,7 @@ Usage:
     # Pick a different detector (e.g. for comparison)
     LAYOUT_DETECTOR=contour python tests/fixtures/layout_regression/regenerate_layouts.py
 """
+# standalone CLI fixture script — print is progress reporting
 
 from __future__ import annotations
 
@@ -75,7 +76,7 @@ def _draw_overlay(png_path: Path, layout, dest: Path) -> None:
     Kept as a local name for backwards-compat with anyone shelling out to
     this script directly; new callers should import the public helper.
     """
-    from pd_book_tools.layout.visualize import (  # noqa: PLC0415
+    from pd_book_tools.layout.visualize import (
         draw_layout_overlay,
     )
 
@@ -84,7 +85,7 @@ def _draw_overlay(png_path: Path, layout, dest: Path) -> None:
 
 
 def regenerate(case_name: str, detector_key: str, run_dir: Path) -> Path:
-    from pd_book_tools.layout import get_detector  # noqa: PLC0415
+    from pd_book_tools.layout import get_detector
 
     png_path = INPUT_DIR / f"{case_name}.png"
     if not png_path.exists():

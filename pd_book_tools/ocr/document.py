@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Collection, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
@@ -8,7 +9,7 @@ from importlib.metadata import version as package_version
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Collection, Sequence
+from typing import TYPE_CHECKING, Any
 
 from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
 from numpy import array, ndarray
@@ -16,6 +17,8 @@ from numpy import array, ndarray
 if TYPE_CHECKING:
     from pandas import DataFrame
     from PIL.Image import Image as PILImage
+
+import contextlib
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
@@ -77,7 +80,7 @@ class Document:
         self._pages = list(value)
         self._sort_pages()
 
-    def scale(self, width: int, height: int) -> "Document":
+    def scale(self, width: int, height: int) -> Document:
         """Return new document with scaled bounding boxes to absolute pixel coordinates"""
         return Document(
             source_lib=self.source_lib,
@@ -102,7 +105,7 @@ class Document:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
 
     @classmethod
-    def from_dict(cls, data) -> "Document":
+    def from_dict(cls, data) -> Document:
         """Create Document from dictionary"""
         return cls(
             source_lib=data.get("source_lib", ""),
@@ -122,7 +125,7 @@ class Document:
         *,
         auto_rotate: bool = True,
         auto_rotate_threshold: float | None = None,
-    ) -> "Document":
+    ) -> Document:
         """
         Perform OCR on a single cv2 image using the doctr library.
         :param image: The input image as:
@@ -178,7 +181,9 @@ class Document:
                 if image_ndarray is None:
                     raise ValueError(f"Could not load image from path: {image}")
             except Exception as e:
-                raise ValueError(f"Failed to load image from path '{image}': {e}")
+                raise ValueError(
+                    f"Failed to load image from path '{image}': {e}"
+                ) from e
 
         # Convert to RGB format for doctr processing
         if len(image_ndarray.shape) == 2:
@@ -195,7 +200,7 @@ class Document:
             # Already in RGB or unsupported format - use as is
             image_rgb = image_ndarray
 
-        def _ocr_one(rgb: ndarray) -> "Document":
+        def _ocr_one(rgb: ndarray) -> Document:
             doctr_result = predictor([rgb])
             return cls.from_doctr_result(
                 doctr_result=doctr_result,
@@ -205,7 +210,7 @@ class Document:
 
         if auto_rotate:
             # Lazy import: avoid the small overhead when callers opt out.
-            from pd_book_tools.ocr.rotation import (  # noqa: PLC0415
+            from pd_book_tools.ocr.rotation import (
                 DEFAULT_CONFIDENCE_THRESHOLD,
                 detect_best_rotation,
                 rotate_image,
@@ -242,7 +247,7 @@ class Document:
         doctr_result,
         source_path: str | Path | None = None,
         source_identifier: str = "",
-    ) -> "Document":
+    ) -> Document:
         """Create Document from docTR result object"""
         # NOTE (H-12): ``doctr_result.render()`` returns a single ``str`` for
         # the whole document. ``from_doctr_output`` indexes ``original_text``
@@ -388,7 +393,7 @@ class Document:
         original_text: Sequence[str] | None = None,
         source_path: str | Path | None = None,
         source_identifier: str = "",
-    ) -> "Document":
+    ) -> Document:
         """Create Document from docTR dictionary"""
         if isinstance(source_path, str):
             source_path = Path(source_path)
@@ -509,7 +514,7 @@ class Document:
     def from_json_file(cls, file_path: str | Path) -> Document:
         """Load OCR from JSON file"""
         d: dict
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             d = json.load(f)
         return cls.from_dict(d)
 
@@ -542,10 +547,8 @@ class Document:
         if val is None:
             return ""
         if hasattr(val, "item"):
-            try:
+            with contextlib.suppress(Exception):
                 val = val.item()
-            except Exception:
-                pass
         if isinstance(val, float) and val != val:  # NaN
             return ""
         return str(val)
@@ -581,8 +584,8 @@ class Document:
 
     @classmethod
     def _tesseract_filter_level(
-        cls, df: "DataFrame", *, level: float, **eq: Any
-    ) -> "DataFrame":
+        cls, df: DataFrame, *, level: float, **eq: Any
+    ) -> DataFrame:
         """Return DataFrame rows matching ``level`` and any extra equality filters.
 
         Tesseract emits a flat row-per-region DataFrame keyed by
@@ -625,7 +628,7 @@ class Document:
     def _line_from_tesseract(
         cls,
         line_row: Any,
-        df: "DataFrame",
+        df: DataFrame,
         page_num: int,
         block_num: Any,
         par_num: Any,
@@ -657,7 +660,7 @@ class Document:
     def _paragraph_from_tesseract(
         cls,
         paragraph_row: Any,
-        df: "DataFrame",
+        df: DataFrame,
         page_num: int,
         block_num: Any,
     ) -> Block:
@@ -690,7 +693,7 @@ class Document:
     def _block_from_tesseract(
         cls,
         block_row: Any,
-        df: "DataFrame",
+        df: DataFrame,
         page_num: int,
     ) -> Block:
         """Build a ``Block(BLOCK)`` of ``Block(PARAGRAPH)`` children."""
@@ -720,7 +723,7 @@ class Document:
     def _page_from_tesseract(
         cls,
         page_row: Any,
-        df: "DataFrame",
+        df: DataFrame,
         page_idx: int,
         ocr_provenance: OCRProvenance,
     ) -> Page:
@@ -748,18 +751,18 @@ class Document:
     @classmethod
     def from_tesseract(
         cls,
-        tesseract_output: "DataFrame",
+        tesseract_output: DataFrame,
         tesseract_string: str | None = None,
         source_path: str | Path | None = None,
         lang: str = "eng",
         tesseract_config: str | None = None,
-    ) -> "Document":
+    ) -> Document:
         try:
             from pandas import to_numeric as pd_to_numeric
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "pandas library is required for from_tesseract function. Please install pandas."
-            )
+            ) from err
 
         """Create Document from PyTesseract output (pandas dataframe)"""
         if isinstance(source_path, str):
@@ -821,9 +824,8 @@ class Document:
 
         result._sort_pages()
 
-        if tesseract_string is not None:
+        if tesseract_string is not None and result.pages:
             # If a string is provided, we can add it to the first page
-            if result.pages:
-                result.pages[0].original_ocr_tool_text = tesseract_string
+            result.pages[0].original_ocr_tool_text = tesseract_string
 
         return result

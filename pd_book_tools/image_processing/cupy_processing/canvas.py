@@ -33,20 +33,20 @@ def map_content_onto_scaled_canvas_gpu(
     current_ratio = float(height) / float(width)
 
     if current_ratio >= height_width_ratio:
-        new_height = int(math.ceil(height / (1 - (whitespace_add * 2))))
-        new_width = int(math.ceil(new_height / height_width_ratio))
+        new_height = math.ceil(height / (1 - (whitespace_add * 2)))
+        new_width = math.ceil(new_height / height_width_ratio)
     else:
-        new_width = int(math.ceil(width / (1 - (whitespace_add * 2))))
-        new_height = int(math.ceil(new_width * height_width_ratio))
+        new_width = math.ceil(width / (1 - (whitespace_add * 2)))
+        new_height = math.ceil(new_width * height_width_ratio)
 
     canvas = cp.full((new_height, new_width), 255, dtype=cp.uint8)
 
     if force_align == Alignment.BOTTOM:
-        y_offset = new_height - (height + int(math.ceil(whitespace_add * new_height)))
+        y_offset = new_height - (height + math.ceil(whitespace_add * new_height))
     elif force_align == Alignment.CENTER:
         y_offset = int(new_height / 2) - int(height / 2)
     else:
-        y_offset = int(math.ceil(whitespace_add * new_height))
+        y_offset = math.ceil(whitespace_add * new_height)
 
     x_offset = int(new_width / 2) - int(width / 2)
 
