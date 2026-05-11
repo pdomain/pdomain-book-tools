@@ -647,8 +647,6 @@ class TestReplaceWordsBreakAndContinue:
         assert line.words[0].ground_truth_text == "hi"
 
 
-
-
 class TestUpdatePageWithGroundTruthUnknownLineTag:
     def test_unknown_line_tag_raises_error(self):
         """Invalid line_tag in opcode raises ValueError (line 110)."""
@@ -670,8 +668,6 @@ class TestUpdatePageWithGroundTruthUnknownLineTag:
                 update_page_with_ground_truth_text(page, "hello world\nstuff")
         finally:
             __import__("difflib").SequenceMatcher.get_opcodes = original_get_opcodes
-
-
 
 
 class TestInitializeUnmatchedGroundTruthWords:
@@ -699,8 +695,6 @@ class TestInitializeUnmatchedGroundTruthWords:
         assert line.unmatched_ground_truth_words is not None
         assert len(line.unmatched_ground_truth_words) > 0
         assert any("world" in t for _, t in line.unmatched_ground_truth_words)
-
-
 
 
 class TestUpdateCombinedWordsWithExistingUnmatched:
@@ -731,8 +725,6 @@ class TestUpdateCombinedWordsWithExistingUnmatched:
         assert any("goodbye" in t for _, t in line.unmatched_ground_truth_words)
 
 
-
-
 class TestShouldConsiderLineEndSoftWrapEdgeCases:
     def test_returns_false_when_gt_last_word_is_single_char(self):
         """When GT last word is single char, comparison fails (line 1099)."""
@@ -751,8 +743,6 @@ class TestShouldConsiderLineEndSoftWrapEdgeCases:
         assert (
             _should_consider_line_end_soft_wrap("a", "ab") is False
         )  # len(a)=1, not >= 2
-
-
 
 
 class TestUnmatchedGroundTruthWordsAppend:

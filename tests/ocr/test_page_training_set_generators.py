@@ -110,8 +110,6 @@ def _make_page_with_words(
     return page
 
 
-
-
 class TestGenerateDoctrChecks:
     """Test the generate_doctr_checks helper method."""
 
@@ -142,8 +140,6 @@ class TestGenerateDoctrChecks:
 
         page.generate_doctr_checks(output_path)
         # Should complete without error
-
-
 
 
 class TestGenerateDoctrDetectionTrainingSet:
@@ -309,8 +305,6 @@ class TestGenerateDoctrDetectionTrainingSet:
         # Should have both test_0.png and test_1.png
         assert "test_0.png" in labels
         assert "test_1.png" in labels
-
-
 
 
 class TestGenerateDoctrRecognitionTrainingSet:
@@ -493,8 +487,6 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert len(labels) == 2
 
 
-
-
 class TestConvertToTrainingSet:
     """Test the unified convert_to_training_set method."""
 
@@ -554,8 +546,6 @@ class TestConvertToTrainingSet:
         # Both should exist even with empty page
         assert (output_path / "detection" / "labels.json").exists()
         assert (output_path / "recognition" / "labels.json").exists()
-
-
 
 
 class TestTrainingSetGeneratorErrorHandling:
