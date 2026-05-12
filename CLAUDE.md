@@ -32,3 +32,9 @@ projects depend on it, so public API changes ripple downstream.
 - 2024: `[layout]` install extra never shipped — `transformers` promoted to mandatory dep.
 - 0.11.0: `cupy-cuda12x`/`opencv-cuda` moved to `[project.optional-dependencies].gpu`.
 - `aspect_ratio` param removed from `rescale_image` family; aspect shaping done downstream via `map_content_onto_scaled_canvas`.
+
+## Spec lifecycle
+
+Design spec files (`docs/specs/<date>-<topic>-design.md`) live in `docs/specs/` while the
+milestone's chore issues are open. When the last chore closes and the implementation ships,
+move the file to `docs/architecture/` and commit. See workspace `docs/conventions.md`.
