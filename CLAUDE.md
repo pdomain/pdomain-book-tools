@@ -1,8 +1,8 @@
 # CLAUDE — pd-book-tools
 
-Foundation Python library for working with public domain book scans: OCR
-(Tesseract + DocTR), layout analysis, and image processing. All other `pd-*`
-projects depend on it, so public API changes ripple downstream.
+Foundation Python library for public domain book scans: OCR (Tesseract +
+DocTR), layout analysis, image processing. All other `pd-*` projects depend
+on it, so public API changes ripple downstream.
 
 ## Commands
 
@@ -11,8 +11,7 @@ projects depend on it, so public API changes ripple downstream.
 | `make install` | install all deps via uv |
 | `make test` | `uv run pytest -n auto` |
 | `make test-k K='pattern'` | targeted test run |
-| `make lint` | ruff check |
-| `make format` | ruff format |
+| `make lint` / `make format` | ruff check / ruff format |
 | `make build` | `uv build` (hatchling) |
 | `make ci` | full check including layout-fork-info |
 | `make coverage` | HTML report under `htmlcov/` |
@@ -20,7 +19,7 @@ projects depend on it, so public API changes ripple downstream.
 ## Rules
 
 - Make targets first; fall back to `uv run …` only when no target exists.
-- Never `python -m pytest` or `python3 -m pytest`. Always `uv run pytest -n auto` or `make test`.
+- Never `python -m pytest` / `python3 -m pytest`. Always `uv run pytest -n auto` or `make test`. Bare `python`/`python3`/`.venv/bin/python` miss the venv.
 - Preserve `is_normalized` semantics across `Point`, `BoundingBox`, and OCR model types.
 - Never silently coerce coordinate systems in merge/split/union; fail explicitly on mismatch.
 - Use `to_dict`/`from_dict` for deep-copy-safe transformations of OCR entities.
