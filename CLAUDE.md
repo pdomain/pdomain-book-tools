@@ -8,7 +8,7 @@ on it, so public API changes ripple downstream.
 
 | target | does |
 |---|---|
-| `make install` | install all deps via uv |
+| `make setup` | install all deps via uv + pre-commit hooks |
 | `make test` | `uv run pytest -n auto` |
 | `make test-k K='pattern'` | targeted test run |
 | `make lint` / `make format` | ruff check / ruff format |

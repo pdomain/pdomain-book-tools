@@ -14,7 +14,7 @@ help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install dependencies and set up development environment (auto-detects [gpu] extra)
+setup: ## Set up development environment (auto-detects [gpu] extra)
 	@echo "📦 Installing dependencies..."
 ifeq ($(strip $(GPU_EXTRA)),)
 	@echo "ℹ️  No usable NVIDIA GPU detected (or CI=$$CI); installing CPU-only."
@@ -24,9 +24,9 @@ endif
 	uv sync --group dev $(GPU_EXTRA)
 	@echo "🪝 Setting up pre-commit hooks..."
 	@[ -f .git/hooks/pre-commit ] || [ -f .git ] || uv run pre-commit install
-	@echo "✅ Installation complete!"
+	@echo "✅ Setup complete!"
 
-setup: install ## Alias for install
+install: setup ## Alias for setup (library — no CLI to install)
 
 reinstall: reset-venv ## Alias for reset-venv (backward compatibility)
 
@@ -155,9 +155,9 @@ build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."
 	uv build
 
-ci: ## Run complete CI pipeline (install [idempotent], pre-commit, lint-check, test, build, layout-fork-info)
+ci: ## Run complete CI pipeline (setup [idempotent], pre-commit, lint-check, test, build, layout-fork-info)
 	@echo "🚀 Running complete CI pipeline..."
-	@$(MAKE) --no-print-directory install
+	@$(MAKE) --no-print-directory setup
 	@$(MAKE) --no-print-directory pre-commit-check
 	@$(MAKE) --no-print-directory lint-check
 	@$(MAKE) --no-print-directory test
