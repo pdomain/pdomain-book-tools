@@ -16,10 +16,10 @@ on it, so public API changes ripple downstream.
 | `make ci` | full check including layout-fork-info |
 | `make coverage` | HTML report under `htmlcov/` |
 
-Append `AI=1` to any target for agent-friendly output — verbose output is
-captured to `.ci-ai.log`; stdout shows `✅ <target> passed` on success or
-filtered failure sections on error. Works for every target: `make ci AI=1`,
-`make test AI=1`, etc.
+AI output capture is **on by default** — verbose output goes to `.ci-ai.log`;
+stdout shows `✅ <target> passed` on success or filtered failure sections on
+error. Pass `AI=` explicitly only if you need full verbose output for
+debugging: `make ci AI=`.
 
 ## Rules
 
