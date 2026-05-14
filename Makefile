@@ -1,3 +1,17 @@
+AI ?=
+LOG := .ci-ai.log
+
+ifdef AI
+_goals := $(or $(MAKECMDGOALS),ci)
+.PHONY: $(_goals)
+$(_goals):
+	@rm -f $(LOG)
+	@$(MAKE) --no-print-directory AI= $@ > $(LOG) 2>&1 \
+		&& echo "✅ $@ passed (log: $(LOG))" \
+		|| (echo "❌ $@ failed:"; uv run scripts/ai-filter-log.py $(LOG); echo "(full log: $(LOG))"; exit 1)
+
+else
+
 .PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local dev-local sync-gpu test test-verbose test-single test-k coverage lint lint-check format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
@@ -253,3 +267,5 @@ layout-fork-pin: ## Pin a SHA into pp_doclayout.py (usage: make layout-fork-pin 
 # Pass RELEASE_BRANCH=main if/when the default branch is renamed.
 _do-release:
 	@BUMP=$(or $(BUMP),minor) ./scripts/do-release.sh
+
+endif
