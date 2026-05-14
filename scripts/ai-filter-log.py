@@ -15,7 +15,8 @@ FALLBACK_TAIL_LINES = 50
 def extract_pytest_sections(text: str) -> list[str]:
     sections = []
     for header in ("FAILURES", "ERRORS", "short test summary info"):
-        pattern = rf"(={(3,)} {re.escape(header)} ={(3,)}.*?)(?=\n={(3,)}|\Z)"
+        # Match lines like "===== FAILURES ====="
+        pattern = r"(=+\s+" + re.escape(header) + r"\s+=+.*?)(?=\n=+|\Z)"
         m = re.search(pattern, text, re.DOTALL)
         if m:
             sections.append(m.group(1).rstrip())
