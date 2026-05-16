@@ -22,6 +22,8 @@ the workspace's fixing-specs guide).
 | 05 | [glyph-annotations](05-glyph-annotations.md) | Glyph-level annotation data model (planning) | Designing annotation surfaces above the Word level — drop caps, small caps, italics, ligatures, accents |
 | 06 | [word-reference-lines](06-word-reference-lines.md) | Per-word baseline / x-height / cap-height / ascender / descender reference geometry (planning) | Anything depending on within-line vertical reference lines: drop caps, footnote anchors, small caps detection, bottom-crop |
 | 07 | [dev-local-upgrade-flow](07-dev-local-upgrade-flow.md) | dev-local mode detection + `make upgrade-deps` guard | Touching the dev-local detection logic, the `[gpu]` extra reapply path, or the `.venv/.pd-dev-local` marker lifecycle |
+| 08 | [geometry-repr](08-geometry-repr.md) | `BoundingBox.__repr__` / `Point.__repr__` contract | Ensuring pytest diffs are readable; authoring new geometry types that need a self-evaluating repr |
+| 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pd-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
 
 ## Anchor stability
 
