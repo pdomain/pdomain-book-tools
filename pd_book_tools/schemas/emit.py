@@ -4,23 +4,14 @@ Invocation: ``python -m pd_book_tools.schemas.emit``
 
 Emits a single JSON document on stdout, keyed by model class name, with
 each value being a JSON-Schema document produced by
-``pydantic.TypeAdapter(<dataclass>).json_schema()``.
+``pydantic.TypeAdapter(<cls>).json_schema()``.
 
 Adding a new public model: import it below and add it to ``PUBLIC_MODELS``.
-
-NOTE — models excluded from the current PUBLIC_MODELS list due to
-non-pydantic-serializable field types:
-  - BoundingBox: contains Point, which has no pydantic core schema
-    (Point uses custom __slots__ and no Pydantic annotations)
-  - Word: contains BoundingBox (depends on Point); also has
-    ndarray/cv2-typed fields via Character
-  - Block: is a plain class (not @dataclass), which pydantic cannot
-    introspect for JSON schema
-  - Page: contains InitVar[Collection] and ndarray cache fields
-
-A follow-up plan should add `__get_pydantic_core_schema__` to Point
-and BoundingBox (or introduce separate Pydantic-friendly view models),
-at which point BoundingBox / Word / Block / Page can be re-added here.
+Classes that are not natively pydantic-introspectable (plain classes,
+__slots__ types, dataclasses with InitVar / ndarray fields) declare a
+``__get_pydantic_core_schema__`` classmethod that mirrors their
+``to_dict()`` wire shape — see ``pd_book_tools/geometry/point.py`` for
+the canonical pattern.
 """
 
 from __future__ import annotations
@@ -31,16 +22,28 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
+from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.geometry.point import Point
+from pd_book_tools.ocr.block import Block
+from pd_book_tools.ocr.character import Character
+from pd_book_tools.ocr.page import Page
+from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pd_book_tools.ocr.review import ReviewMetadata
+from pd_book_tools.ocr.word import Word
 
 # The single source of truth for what counts as a "public" model.
-# Order is intentional: simple leaf types first, composite types after.
+# Order is intentional: leaf geometry types first, OCR review/provenance
+# next, then composite OCR models.
 PUBLIC_MODELS: tuple[type, ...] = (
+    Point,
+    BoundingBox,
     ReviewMetadata,
-    # BoundingBox excluded: Point has no pydantic core schema
-    # Word excluded: depends on BoundingBox (Point)
-    # Block excluded: plain class, not @dataclass
-    # Page excluded: InitVar[Collection] not pydantic-serializable
+    OCRModelProvenance,
+    OCRProvenance,
+    Character,
+    Word,
+    Block,
+    Page,
 )
 
 
