@@ -26,7 +26,7 @@ def _compute_envelopes(
     dy = cp.round(radii * cp.sin(angles)).astype(cp.int32)
 
     # Create meshgrid for batch processing
-    X, Y = cp.meshgrid(cp.arange(width), y_range)
+    X, Y = cp.meshgrid(cp.arange(width), y_range)  # type: ignore[reportAssignmentType]  # cp.meshgrid returns list[ndarray]; unpacking is always 2 items for 2 inputs
 
     # Compute sampled coordinates in a single batch operation
     nx = cp.clip(X[None, None, :, :] + dx, 0, width - 1)

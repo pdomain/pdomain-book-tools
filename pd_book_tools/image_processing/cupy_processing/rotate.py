@@ -72,7 +72,7 @@ def rotate_image_gpu(
         return affine_transform(  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
             img_cp,
             matrix_3d,
-            offset=[offset[0], offset[1], 0],
+            offset=[offset[0], offset[1], 0],  # type: ignore[reportArgumentType]  # cupyx stubs type offset as float but list[float] is valid at runtime
             output_shape=(new_h, new_w, n_ch),
             order=1,
             mode="constant",
@@ -82,7 +82,7 @@ def rotate_image_gpu(
     return affine_transform(  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
         img_cp,
         cp.array(matrix, dtype=cp.float64),
-        offset=offset,
+        offset=offset,  # type: ignore[reportArgumentType]  # cupyx stubs type offset as float but list[float] is valid at runtime
         output_shape=(new_h, new_w),
         order=1,
         mode="constant",

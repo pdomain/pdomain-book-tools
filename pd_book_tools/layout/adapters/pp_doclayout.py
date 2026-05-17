@@ -95,8 +95,8 @@ class PPDocLayoutPlusLDetector:
         target = torch.tensor([img.size[::-1]]).to(self._device)  # type: ignore[reportPrivateImportUsage]  # torch.tensor is public API; stubs mark it private
         raw_results = self._processor.post_process_object_detection(
             outputs,
-            target_sizes=target,
-            threshold=self._conf,  # type: ignore[reportArgumentType]  # transformers stubs require TensorType; Tensor is accepted at runtime
+            target_sizes=target,  # type: ignore[reportArgumentType]  # transformers stubs require TensorType; torch.Tensor is accepted at runtime
+            threshold=self._conf,
         )
         results = cast(list[dict], raw_results)[0]
 
