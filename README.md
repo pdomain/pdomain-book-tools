@@ -221,6 +221,22 @@ that pins the layout pipeline to known-good output. Workflow for adding
 a fixture and regenerating after a pipeline change is in
 [`docs/specs/04-layout-regression-fixtures.md`](docs/specs/04-layout-regression-fixtures.md).
 
+## Emitting JSON Schema for downstream codegen
+
+```sh
+uv run python -m pd_book_tools.schemas.emit > schemas.json
+```
+
+The output is a single JSON document, keyed by public model class name
+(`ReviewMetadata`, ...), whose values are JSON-Schema documents produced
+by `pydantic.TypeAdapter`. Downstream consumers (`pd-ocr-ops`, `pd-ui`
+codegen) re-run this command against a pinned wheel and feed the output
+to `openapi-typescript` or equivalent to keep TypeScript types in sync
+with the Python source of truth.
+
+The set of public models lives in
+`pd_book_tools/schemas/emit.py::PUBLIC_MODELS`. Add new models there.
+
 ## License
 
 See LICENSE file.
