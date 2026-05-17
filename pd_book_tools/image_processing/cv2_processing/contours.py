@@ -24,7 +24,7 @@ def find_and_draw_contours(img: np.ndarray) -> tuple[np.ndarray, tuple]:
             x, y, w, h = cv2.boundingRect(c)
             cv2.rectangle(out, (x, y), (x + w, y + h), (125, 255, 0), 4)
 
-    return out, contours
+    return out, contours  # type: ignore[return-value]  # cv2.findContours returns Sequence[MatLike]; tuple return type is intentional for API compatibility
 
 
 def remove_small_contours(

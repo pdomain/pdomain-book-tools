@@ -9,7 +9,7 @@ from importlib.metadata import version as package_version
 from logging import getLogger
 from os import PathLike
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
 from numpy import array, ndarray
@@ -176,10 +176,11 @@ class Document:
         else:
             # Handle path-like objects (str, Path, or any PathLike)
             try:
-                image_ndarray = imread(str(image))
+                _loaded = imread(str(image))
                 source_path = Path(str(image))
-                if image_ndarray is None:
+                if _loaded is None:
                     raise ValueError(f"Could not load image from path: {image}")
+                image_ndarray = _loaded
             except Exception as e:
                 raise ValueError(
                     f"Failed to load image from path '{image}': {e}"
@@ -287,7 +288,9 @@ class Document:
         """
         return Word(
             text=word_data.get("value", ""),
-            bounding_box=cls._doctr_bbox(word_data.get("geometry")),
+            bounding_box=cast(
+                "BoundingBox", cls._doctr_bbox(word_data.get("geometry"))
+            ),  # type: ignore[reportArgumentType]  # DocTR may return None bbox; Word checks it defensively
             ocr_confidence=word_data.get("confidence"),
         )
 
@@ -448,7 +451,7 @@ class Document:
 
         return OCRProvenance(
             engine=engine,
-            models=models,
+            models=tuple(models),
             engine_version=str(metadata.get("engine_version", "unknown")),
             config_fingerprint=config_fingerprint,
         )

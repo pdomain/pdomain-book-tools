@@ -108,5 +108,5 @@ def get_hbox_widget_for_cropped_image(
         )
         img, bounding_box = bounding_box, img
     image_hbox = HBox()
-    image_hbox.children = [get_html_widget_from_cropped_image(img, bounding_box)]
+    image_hbox.children = [get_html_widget_from_cropped_image(img, bounding_box)]  # type: ignore[reportArgumentType]  # swap of (bounding_box, img) → (img, bounding_box) is handled by isinstance guard above
     return image_hbox

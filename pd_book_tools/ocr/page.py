@@ -937,7 +937,7 @@ class Page:
         if not changed:
             return
 
-        container._items = kept_items
+        container._items = kept_items  # type: ignore[assignment]  # Block._items can hold Block|Word depending on block_category; mypy can't narrow here
 
     def replace_block_with_split_paragraphs(
         self,
@@ -1441,7 +1441,7 @@ class Page:
                 return False
 
             selected_lines_for_new_paragraph: list[Block] = []
-            selected_line_bbox_fallbacks: list[object] = []
+            selected_line_bbox_fallbacks: list[BoundingBox | None] = []
             for line_index in sorted(line_to_selected_word_indices):
                 selected_word_indices = line_to_selected_word_indices[line_index]
                 source_line = lines[line_index]
@@ -1896,7 +1896,7 @@ class Page:
 
             split_words = [source_words[word_index], source_words[word_index + 1]]
 
-            touched_lines: dict[int, object] = {id(source_line): source_line}
+            touched_lines: dict[int, Block] = {id(source_line): source_line}
             for split_piece in split_words:
                 piece_bbox = split_piece.bounding_box
                 midpoint_y = (
@@ -2704,7 +2704,7 @@ class Page:
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
             "ocr_provenance": (
-                self.ocr_provenance.to_dict()
+                self.ocr_provenance.to_dict()  # type: ignore[reportAttributeAccessIssue]  # declared as union for deserialization; coerce() normalizes to OCRProvenance|None at init
                 if self.ocr_provenance is not None
                 else None
             ),

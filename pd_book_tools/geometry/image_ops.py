@@ -76,10 +76,10 @@ def _tight_bbox_from_thresh(thresh: ndarray):
 
 def _connected_content_bbox_from_image_thresh(
     thresh: ndarray,
-    x1: int,
-    y1: int,
-    x2: int,
-    y2: int,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
 ):
     """Return bbox for connected components that intersect the original ROI.
 

@@ -22,7 +22,7 @@ class RegionType(str, Enum):
     """
 
     text = "text"
-    title = "title"
+    title = "title"  # type: ignore[assignment]  # str.title() method clash; harmless in practice
     section = "section"
     list = "list"
     table = "table"

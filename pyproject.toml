@@ -60,6 +60,7 @@ gpu = [
 
 [dependency-groups]
 dev = [
+    "basedpyright>=1.39.4",
     "isort>=6.0",
     "pre-commit (>=4.2.0,<5.0.0)",
     "pylint>=3.3.7",
@@ -181,13 +182,28 @@ ignore = [
 "scripts/*.py" = ["T201"]
 "tests/fixtures/layout_regression/*.py" = ["T201"]
 
-[tool.pyright]
-include = ["src", "tests", "scripts"]
-typeCheckingMode = "basic"
+[tool.basedpyright]
+# Include source, tests, and scripts. Match the layout this repo uses.
+include = ["pd_book_tools", "tests", "scripts"]
+exclude = ["**/__pycache__", "**/.venv", "**/node_modules"]
 
-[[tool.pyright.executionEnvironments]]
-root = "src"
-typeCheckingMode = "strict"
+# Start at "standard" — Task 8 upgrades to "recommended" after the easy wins land.
+# "standard" gives us most basedpyright value without the unannotated-function
+# avalanche. "recommended" mode is the workspace target per the strict-linting
+# decisions doc.
+typeCheckingMode = "standard"
+
+# Tell basedpyright where the venv is so it finds third-party stubs.
+venvPath = "."
+venv = ".venv"
+
+# Per-execution-environment overrides: tests get more leniency for now.
+# Note: typeCheckingMode is not valid per-environment; use the root-level setting.
+[[tool.basedpyright.executionEnvironments]]
+root = "tests"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "scripts"
 
 # Pytest configuration
 [tool.pytest.ini_options]

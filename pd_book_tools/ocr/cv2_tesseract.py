@@ -13,9 +13,9 @@ try:
     _pytesseract_available = True
 except ImportError:
     _pytesseract_available = False
-    pytesseract_Output = None  # mirrors the pytesseract module attribute name
-    image_to_data = None
-    image_to_string = None
+    pytesseract_Output = None  # type: ignore[assignment]  # mirrors the pytesseract module attribute name; None when not installed
+    image_to_data = None  # type: ignore[assignment]  # None when pytesseract is not installed
+    image_to_string = None  # type: ignore[assignment]  # None when pytesseract is not installed
 
 logger = logging.getLogger(__name__)
 
@@ -91,17 +91,17 @@ def tesseract_ocr_cv2_image(
     ]
     config_str = " ".join(config)
 
-    dataframe = image_to_data(
+    dataframe = image_to_data(  # type: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
         image_grayscale,
         lang=lang,
         config=config_str,
-        output_type=pytesseract_Output.DATAFRAME,
+        output_type=pytesseract_Output.DATAFRAME,  # type: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
     )
-    result_string = image_to_string(
+    result_string = image_to_string(  # type: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
         image_grayscale,
         lang=lang,
         config=config_str,
-        output_type=pytesseract_Output.STRING,
+        output_type=pytesseract_Output.STRING,  # type: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
     )
 
     ocr_doc = Document.from_tesseract(

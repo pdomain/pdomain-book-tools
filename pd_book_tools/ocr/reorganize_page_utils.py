@@ -472,8 +472,8 @@ def extract_top_header_lines(
     if len(valid) < 1:
         return [], list(lines)
 
-    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.minY)
-    top_min_y = valid_sorted[0].bounding_box.minY
+    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.minY)  # type: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box above
+    top_min_y = valid_sorted[0].bounding_box.minY  # type: ignore[reportOptionalMemberAccess]  # same filter
     if top_min_y > near_top_factor * metrics.coord_h:
         return [], list(lines)
 
@@ -483,8 +483,8 @@ def extract_top_header_lines(
     header_lines = [
         l
         for l in valid_sorted
-        if l.bounding_box.minY <= band_bottom
-        and l.bounding_box.maxY <= band_bottom + slack
+        if l.bounding_box.minY <= band_bottom  # type: ignore[reportOptionalMemberAccess]  # same filter
+        and l.bounding_box.maxY <= band_bottom + slack  # type: ignore[reportOptionalMemberAccess]  # same filter
     ]
     if not header_lines:
         return [], list(lines)
@@ -492,8 +492,8 @@ def extract_top_header_lines(
     header_ids = {id(l) for l in header_lines}
     remaining = [l for l in valid_sorted if id(l) not in header_ids]
     if remaining:
-        header_max_y = max(l.bounding_box.maxY for l in header_lines)
-        next_min_y = min(l.bounding_box.minY for l in remaining)
+        header_max_y = max(l.bounding_box.maxY for l in header_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
+        next_min_y = min(l.bounding_box.minY for l in remaining)  # type: ignore[reportOptionalMemberAccess]  # same filter
         gap = next_min_y - header_max_y
         if gap < min_gap_factor * metrics.median_word_h:
             return [], list(lines)
@@ -520,8 +520,8 @@ def extract_bottom_footer_lines(
     if len(valid) < 1:
         return [], list(lines)
 
-    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.maxY, reverse=True)
-    bottom_max_y = valid_sorted[0].bounding_box.maxY
+    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.maxY, reverse=True)  # type: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box above
+    bottom_max_y = valid_sorted[0].bounding_box.maxY  # type: ignore[reportOptionalMemberAccess]  # same filter
     if bottom_max_y < (1.0 - near_bottom_factor) * metrics.coord_h:
         return [], list(lines)
 
@@ -531,7 +531,7 @@ def extract_bottom_footer_lines(
     footer_lines = [
         l
         for l in valid_sorted
-        if l.bounding_box.maxY >= band_top and l.bounding_box.minY >= band_top - slack
+        if l.bounding_box.maxY >= band_top and l.bounding_box.minY >= band_top - slack  # type: ignore[reportOptionalMemberAccess]  # same filter
     ]
     if not footer_lines:
         return [], list(lines)
@@ -539,8 +539,8 @@ def extract_bottom_footer_lines(
     footer_ids = {id(l) for l in footer_lines}
     remaining = [l for l in valid_sorted if id(l) not in footer_ids]
     if remaining:
-        footer_min_y = min(l.bounding_box.minY for l in footer_lines)
-        prev_max_y = max(l.bounding_box.maxY for l in remaining)
+        footer_min_y = min(l.bounding_box.minY for l in footer_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
+        prev_max_y = max(l.bounding_box.maxY for l in remaining)  # type: ignore[reportOptionalMemberAccess]  # same filter
         gap = footer_min_y - prev_max_y
         if gap < min_gap_factor * metrics.median_word_h:
             return [], list(lines)
@@ -1505,7 +1505,7 @@ def layout_debug_output_path(page) -> pathlib.Path:
 def line_vertical_gaps(lines: list[Block]) -> list[float]:
     sorted_lines = sorted(
         [l for l in lines if l.bounding_box],
-        key=lambda l: (l.bounding_box.minY, l.bounding_box.minX),
+        key=lambda l: (l.bounding_box.minY, l.bounding_box.minX),  # type: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box
     )
     if len(sorted_lines) < 2:
         return []
@@ -1964,8 +1964,8 @@ def split_line_by_gap_and_word_height(
     if not gaps:
         return None
 
-    split_gap = None
-    split_idx = None
+    split_gap: float = 0.0
+    split_idx: int | None = None
     preferred_is_close = False
     if preferred_split_x is not None:
         nearest_gap, nearest_idx, nearest_mid = min(
@@ -2308,10 +2308,10 @@ def absorb_caption_tails_into_caption(
     if not seed_bbox_lines:
         return flow_rest
 
-    seed_x = float(np_median([l.bounding_box.minX for l in seed_bbox_lines]))
-    seed_y0 = min(l.bounding_box.minY for l in seed_bbox_lines)
-    seed_y1 = max(l.bounding_box.maxY for l in seed_bbox_lines)
-    seed_h = float(np_mean([l.bounding_box.height for l in seed_bbox_lines] or [1]))
+    seed_x = float(np_median([l.bounding_box.minX for l in seed_bbox_lines]))  # type: ignore[reportOptionalMemberAccess]  # filtered to non-None above
+    seed_y0 = min(l.bounding_box.minY for l in seed_bbox_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
+    seed_y1 = max(l.bounding_box.maxY for l in seed_bbox_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
+    seed_h = float(np_mean([l.bounding_box.height for l in seed_bbox_lines] or [1]))  # type: ignore[reportOptionalMemberAccess]  # same filter
     block_median_w = float(
         np_median(
             [l.bounding_box.width for l in row_block.lines if l.bounding_box]
@@ -3012,6 +3012,7 @@ def run_step_d_split_mixed_content(
     """Step D \u2014 split OCR-merged caption/body lines and emit debug PNG."""  # EM DASH
     debug = layout_debug_enabled()
     pre_split_line_ids: set[int] = set()
+    pre_split_line_count: int = 0
     if debug:
         pre_split_line_ids = {id(line) for line in page.lines}
         pre_split_line_count = len(pre_split_line_ids)
@@ -3513,8 +3514,8 @@ def _detect_mixed_column_split(
             return None
 
     # Ensure deterministic left/right assignment even if split_x is noisy.
-    left_median_x = float(np_median([l.bounding_box.minX for l in left_lines]))
-    right_median_x = float(np_median([l.bounding_box.minX for l in right_lines]))
+    left_median_x = float(np_median([l.bounding_box.minX for l in left_lines]))  # type: ignore[reportOptionalMemberAccess]  # left_lines built from bb-filtered source
+    right_median_x = float(np_median([l.bounding_box.minX for l in right_lines]))  # type: ignore[reportOptionalMemberAccess]  # right_lines built from bb-filtered source
     if left_median_x > right_median_x:
         left_lines, right_lines = right_lines, left_lines
 

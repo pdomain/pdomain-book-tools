@@ -69,7 +69,7 @@ def rotate_image_gpu(
             ],
             dtype=cp.float64,
         )
-        return affine_transform(
+        return affine_transform(  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
             img_cp,
             matrix_3d,
             offset=[offset[0], offset[1], 0],
@@ -79,7 +79,7 @@ def rotate_image_gpu(
             cval=cval,
         )
 
-    return affine_transform(
+    return affine_transform(  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
         img_cp,
         cp.array(matrix, dtype=cp.float64),
         offset=offset,

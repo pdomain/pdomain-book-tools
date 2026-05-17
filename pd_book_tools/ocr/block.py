@@ -246,11 +246,8 @@ class Block:
     def __repr__(self) -> str:  # pragma: no cover (representation convenience)
         cls = self.__class__.__name__
         n_items = len(getattr(self, "_items", []))
-        bbox = (
-            None
-            if getattr(self, "bounding_box", None) is None
-            else f"{self.bounding_box.to_ltrb()}"
-        )
+        _bb = getattr(self, "bounding_box", None)
+        bbox = None if _bb is None else f"{_bb.to_ltrb()}"
         return (
             f"{cls}(items={n_items}, child_type={self.child_type}, "
             f"block_category={self.block_category}, bbox={bbox}, "

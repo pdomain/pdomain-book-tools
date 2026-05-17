@@ -31,7 +31,7 @@ def dilate(img: cp.ndarray, kernel: cp.ndarray):
     img_padded = cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect")
 
     # Create sliding windows over the image
-    windows = sliding_window_view(img_padded, (kh, kw))
+    windows = sliding_window_view(img_padded, (kh, kw))  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     # Apply max operation over the windows.
     # NOTE: the only call site (`morph_fill`) builds `kernel` as
@@ -60,7 +60,7 @@ def erode(img: cp.ndarray, kernel: cp.ndarray):
     img_padded = cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect")
 
     # Create sliding windows over the image
-    windows = sliding_window_view(img_padded, (kh, kw))
+    windows = sliding_window_view(img_padded, (kh, kw))  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     # Apply min operation over the windows.
     # Same M-09 optimization as in `dilate`: the only call site builds an

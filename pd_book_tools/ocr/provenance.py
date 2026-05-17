@@ -99,7 +99,7 @@ class OCRProvenance:
                 if data.get("engine_version") is not None
                 else None
             ),
-            models=models,
+            models=tuple(models),
             config_fingerprint=(
                 str(data["config_fingerprint"])
                 if data.get("config_fingerprint") is not None

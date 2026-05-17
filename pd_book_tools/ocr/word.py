@@ -458,7 +458,7 @@ class Word:
     # ------------------------------------------------------------------
 
     @property
-    def bbox_signature(self) -> tuple[float, float, float, float, bool] | None:
+    def bbox_signature(self) -> tuple[float, float, float, float, bool | None] | None:
         """Return a stable bbox signature for convergence checks."""
         bbox = self.bounding_box
         if bbox is None:
@@ -552,7 +552,7 @@ class Word:
         refined = False
 
         previous_signature = self.bbox_signature
-        seen_signatures: set[tuple[float, float, float, float, bool] | None] = {
+        seen_signatures: set[tuple[float, float, float, float, bool | None] | None] = {
             previous_signature
         }
         for _ in range(8):

@@ -314,5 +314,5 @@ class PGDPExport:
         new_pages = []
         for png_file, page_text in pages.items():
             png_full_file_path = pathlib.Path(path_prefix, png_file)
-            new_pages.append(PGDPResults(png_full_file_path, page_text))
+            new_pages.append(PGDPResults(str(png_full_file_path), page_text))
         return cls(pages=new_pages, project_id=path_prefix.stem)

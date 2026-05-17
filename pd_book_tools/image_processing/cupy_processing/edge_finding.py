@@ -47,8 +47,8 @@ def find_edges_gpu(
 
     # convolve1d is the 1-D equivalent of np.convolve(..., mode='same').
     # mode='nearest' extends borders with the nearest edge value.
-    fuzzy_columns = convolve1d(columns, kernel_w, mode="nearest")
-    fuzzy_rows = convolve1d(rows, kernel_h, mode="nearest")
+    fuzzy_columns = convolve1d(columns, kernel_w, mode="nearest")  # type: ignore[reportOptionalCall]  # guarded by require_cupy() in callers
+    fuzzy_rows = convolve1d(rows, kernel_h, mode="nearest")  # type: ignore[reportOptionalCall]  # guarded by require_cupy() in callers
 
     x_indices = cp.where(fuzzy_columns >= pixel_value_col_min)[0]
     y_indices = cp.where(fuzzy_rows >= pixel_value_row_min)[0]

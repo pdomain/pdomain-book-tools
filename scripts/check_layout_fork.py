@@ -17,7 +17,13 @@ import sys
 from pathlib import Path
 
 from huggingface_hub import HfApi
-from huggingface_hub.utils import HfHubHTTPError
+
+try:
+    from huggingface_hub.errors import HfHubHTTPError  # huggingface_hub>=0.22
+except ImportError:
+    from huggingface_hub.utils import (
+        HfHubHTTPError,  # type: ignore[reportPrivateImportUsage,no-redef]  # older versions
+    )
 
 UPSTREAM = "PaddlePaddle/PP-DocLayout_plus-L_safetensors"
 FORK = "CT2534/PP-DocLayout_plus-L"
@@ -53,8 +59,8 @@ def main() -> int:
     api = HfApi()
 
     try:
-        fork_head = api.repo_info(FORK).sha
-        up_head = api.repo_info(UPSTREAM).sha
+        fork_head: str | None = api.repo_info(FORK).sha
+        up_head: str | None = api.repo_info(UPSTREAM).sha
     except (HfHubHTTPError, OSError) as e:
         print(f"pinned (in {ADAPTER}): {pinned}")
         print(
@@ -64,8 +70,8 @@ def main() -> int:
         return 0
 
     print(f"pinned (in {ADAPTER.relative_to(ADAPTER.parents[3])}): {pinned}")
-    print(f"fork  ({FORK}): {fork_head}")
-    print(f"upstream ({UPSTREAM}): {up_head}")
+    print(f"fork  ({FORK}): {fork_head or 'unknown'}")
+    print(f"upstream ({UPSTREAM}): {up_head or 'unknown'}")
 
     if pinned != fork_head:
         print(
@@ -79,13 +85,13 @@ def main() -> int:
         print("✅ pinned == fork == upstream")
         return 0
 
-    fork_files = file_hashes(api, FORK, fork_head)
-    up_files = file_hashes(api, UPSTREAM, up_head)
+    fork_files = file_hashes(api, FORK, fork_head or pinned)
+    up_files = file_hashes(api, UPSTREAM, up_head or pinned)
     changed = changed_files(fork_files, up_files)
 
     if not changed:
         print(
-            f"✅ pinned == fork; upstream is at {up_head[:12]} but every "
+            f"✅ pinned == fork; upstream is at {(up_head or '')[:12]} but every "
             f"file matches the fork (metadata-only upstream commit)"
         )
         return 0

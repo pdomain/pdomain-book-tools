@@ -90,9 +90,17 @@ def hf_download(
 
     if sidecars:
         try:
-            from huggingface_hub.utils import EntryNotFoundError as _HFNotFound
+            # huggingface_hub>=0.22 moved exceptions to .errors; fall back for older
+            from huggingface_hub.errors import (
+                EntryNotFoundError as _HFNotFound,  # type: ignore[reportPrivateImportUsage]
+            )
         except ImportError:
-            _HFNotFound = Exception  # type: ignore[assignment,misc]
+            try:
+                from huggingface_hub.utils import (
+                    EntryNotFoundError as _HFNotFound,  # type: ignore[reportPrivateImportUsage]
+                )
+            except ImportError:
+                _HFNotFound = Exception  # type: ignore[assignment,misc]
         for ext in sidecars:
             # Use PurePosixPath because HF Hub filenames are POSIX-style
             # repo paths regardless of host OS. The previous

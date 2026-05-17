@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from logging import getLogger
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import torch
@@ -79,10 +80,9 @@ class PPDocLayoutPlusLDetector:
             device,
         )
         load_kwargs = {"revision": rev} if rev else {}
-        self._processor = RTDetrImageProcessor.from_pretrained(repo, **load_kwargs)
-        self._model = RTDetrForObjectDetection.from_pretrained(repo, **load_kwargs).to(
-            device
-        )
+        self._processor = RTDetrImageProcessor.from_pretrained(repo, **load_kwargs)  # type: ignore[reportArgumentType]  # transformers stubs don't match **kwargs spread
+        _loaded_model = RTDetrForObjectDetection.from_pretrained(repo, **load_kwargs)  # type: ignore[reportArgumentType]  # transformers stubs don't match **kwargs spread
+        self._model = _loaded_model.to(device)  # type: ignore[reportAttributeAccessIssue]  # from_pretrained stubs incorrectly type result as str; .to() is valid on RTDetrForObjectDetection
         self._model.eval()
         self._device = device
         self._conf = float(confidence)
@@ -92,17 +92,20 @@ class PPDocLayoutPlusLDetector:
         img = self._to_pil(source)
         inputs = self._processor(images=img, return_tensors="pt").to(self._device)
         outputs = self._model(**inputs)
-        target = torch.tensor([img.size[::-1]]).to(self._device)
-        results = self._processor.post_process_object_detection(
-            outputs, target_sizes=target, threshold=self._conf
-        )[0]
+        target = torch.tensor([img.size[::-1]]).to(self._device)  # type: ignore[reportPrivateImportUsage]  # torch.tensor is public API; stubs mark it private
+        raw_results = self._processor.post_process_object_detection(
+            outputs,
+            target_sizes=target,
+            threshold=self._conf,  # type: ignore[reportArgumentType]  # transformers stubs require TensorType; Tensor is accepted at runtime
+        )
+        results = cast(list[dict], raw_results)[0]
 
         regions: list[LayoutRegion] = []
-        id2label = self._model.config.id2label
+        id2label = self._model.config.id2label  # type: ignore[reportAttributeAccessIssue]  # transformers stubs type config as generic PretrainedConfig; id2label is always set
         for score, label, box in zip(
             results["scores"], results["labels"], results["boxes"], strict=False
         ):
-            raw_label = id2label[int(label.item())]
+            raw_label = id2label[int(label.item())]  # type: ignore[reportOptionalSubscript]  # id2label is always populated for object detection models
             mapped = PP_DOCLAYOUT_TO_PGDP.get(raw_label)
             if mapped is None:
                 continue

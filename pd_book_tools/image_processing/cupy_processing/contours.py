@@ -11,8 +11,8 @@ from ._cupy_compat import cp, require_cupy
 # actionable error before these names are ever dereferenced.
 try:
     from cupyx.scipy.ndimage import find_objects  # type: ignore[import-not-found]
-    from cupyx.scipy.ndimage import (
-        label as ndimage_label,  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+        label as ndimage_label,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs
     find_objects = None
@@ -44,7 +44,7 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict:
     all use characters of a similar or identical size to the body text.
     """
     require_cupy()
-    labeled, n_labels = ndimage_label(img_cp > 0)
+    labeled, n_labels = ndimage_label(img_cp > 0)  # type: ignore[reportOptionalCall]  # guarded by require_cupy(); None only on CPU-only installs
     if n_labels == 0:
         return {
             "count": 0,
@@ -56,7 +56,7 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict:
             "p10_h": 0,
         }
 
-    objects = find_objects(labeled)
+    objects = find_objects(labeled)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
     widths = []
     heights = []
     for slices in objects:
@@ -133,7 +133,7 @@ def remove_small_contours_gpu(
     Returns a copy with isolated small components zeroed out.
     """
     require_cupy()
-    labeled, n_labels = ndimage_label(img_cp > 0)
+    labeled, n_labels = ndimage_label(img_cp > 0)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
     if n_labels == 0:
         return img_cp.copy()
 
@@ -148,7 +148,7 @@ def remove_small_contours_gpu(
     sh = search_h_pixels if search_h_pixels is not None else int(pixels_h * 0.5)
 
     result = img_cp.copy()
-    objects = find_objects(labeled)
+    objects = find_objects(labeled)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     for _i, slices in enumerate(objects):
         if slices is None:
