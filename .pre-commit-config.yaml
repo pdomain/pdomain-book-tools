@@ -52,7 +52,7 @@ repos:
         files: ^(pyproject\.toml|uv\.lock)$
 
     -   id: basedpyright
-        name: basedpyright type check (standard mode for now; Task 8 upgrades)
+        name: basedpyright type check (recommended mode; workspace canonical)
         entry: uv run basedpyright pd_book_tools
         language: system
         stages: [pre-commit]
