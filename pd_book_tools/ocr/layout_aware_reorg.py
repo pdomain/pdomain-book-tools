@@ -45,11 +45,10 @@ from pd_book_tools.ocr.block import (
     BlockChildType,
     purge_words_from_blocks,
 )
+from pd_book_tools.ocr.word import Word
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-
-    from pd_book_tools.ocr.word import Word
 
 logger = getLogger(__name__)
 
@@ -341,7 +340,9 @@ def _iter_line_blocks(blocks: Iterable[Block]) -> Iterable[Block]:
         if b.child_type == BlockChildType.WORDS:
             yield b
         else:
-            yield from _iter_line_blocks(list(b._items))
+            yield from _iter_line_blocks(
+                [item for item in b._items if isinstance(item, Block)]
+            )
 
 
 def _word_has_only_layout_tag(word: Word, tag: str) -> bool:
@@ -394,7 +395,7 @@ def drop_figure_internal_words(
 
     targets: set[int] = set()
     for line_block in _iter_line_blocks(list(page._items)):
-        words = list(line_block._items)
+        words = [item for item in line_block._items if isinstance(item, Word)]
         if not words:
             continue
         # Drop only when EVERY word in the line is purely figure-tagged.
@@ -577,7 +578,7 @@ def detect_geometric_sidenotes(
 
 def _all_words_in_block(block: Block) -> list[Word]:
     if block.child_type == BlockChildType.WORDS:
-        return list(block._items)
+        return [item for item in block._items if isinstance(item, Word)]
     out: list[Word] = []
     for child in block._items:
         if isinstance(child, Block):

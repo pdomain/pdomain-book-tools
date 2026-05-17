@@ -59,10 +59,10 @@ def auto_deskew(img, pct=0.30):
     logger.debug(f"Top Left Col = {top_left_column}")
 
     # Find Bottom Left first Column pixel, starting at bottom row and going up by 10%
-    X1 = 0
-    X2 = img_w - 1
-    Y1 = min(maxY, (maxY - h_percent))
-    Y2 = maxY
+    X1 = 0  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
+    X2 = img_w - 1  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
+    Y1 = min(maxY, (maxY - h_percent))  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
+    Y2 = maxY  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
     bottom_of_img: np.ndarray = img[Y1:Y2, X1:X2]
     logger.debug(f"Bottom of Img: {X1}:{X2},{Y1}:{Y2}")
 

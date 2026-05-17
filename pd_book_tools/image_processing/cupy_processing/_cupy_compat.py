@@ -35,8 +35,8 @@ try:
     _CUPY_IMPORT_ERROR: ImportError | None = None
 except ImportError as _exc:  # pragma: no cover - exercised only on CPU-only installs
     cp = None  # type: ignore[assignment]
-    _CUPY_AVAILABLE = False
-    _CUPY_IMPORT_ERROR = _exc
+    _CUPY_AVAILABLE = False  # pyright: ignore[reportConstantRedefinition]  # reassigned in except; not a true constant
+    _CUPY_IMPORT_ERROR = _exc  # pyright: ignore[reportConstantRedefinition]  # reassigned in except; not a true constant
 
 
 def require_cupy() -> None:

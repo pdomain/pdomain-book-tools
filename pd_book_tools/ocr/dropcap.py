@@ -718,7 +718,9 @@ def _is_single_visible_word_paragraph(paragraph: Block) -> Word | None:
     if paragraph.block_category != BlockCategory.PARAGRAPH:
         return None
     line_children = [
-        l for l in paragraph.items if l.block_category == BlockCategory.LINE
+        l
+        for l in paragraph.items
+        if isinstance(l, Block) and l.block_category == BlockCategory.LINE
     ]
     if len(line_children) != 1:
         return None
@@ -872,6 +874,8 @@ def stitch_block_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Bl
         for i, paragraph in enumerate(paragraphs):
             if i in skip_idx:
                 continue
+            if not isinstance(paragraph, Block):
+                continue
             cap_word = _is_single_visible_word_paragraph(paragraph)
             if cap_word is None or not _looks_like_drop_cap_word(cap_word, metrics):
                 kept_paragraphs.append(paragraph)
@@ -881,8 +885,13 @@ def stitch_block_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Bl
                 kept_paragraphs.append(paragraph)
                 continue
             next_para = paragraphs[i + 1]
+            if not isinstance(next_para, Block):
+                kept_paragraphs.append(paragraph)
+                continue
             next_line_children = [
-                l for l in next_para.items if l.block_category == BlockCategory.LINE
+                l
+                for l in next_para.items
+                if isinstance(l, Block) and l.block_category == BlockCategory.LINE
             ]
             if not next_line_children:
                 kept_paragraphs.append(paragraph)

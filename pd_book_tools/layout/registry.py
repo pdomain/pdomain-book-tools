@@ -79,7 +79,7 @@ def _build(
     device: str,
     confidence: float,
     checkpoint_path: str | None,
-    extra_kwargs: dict,
+    extra_kwargs: dict[str, Any],
 ) -> LayoutDetector:
     if key == "none":
         return NullDetector()

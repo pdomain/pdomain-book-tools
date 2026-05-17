@@ -11,7 +11,7 @@ DEFAULT_VOCAB_LIBRARY: list[str] = ["multilingual", "currency"]
 DEFAULT_VOCAB_EXTRA_CHARS: str = "⸺¡¿—\u2018\u2019“”\u2032″\u2044"  # LEFT/RIGHT SINGLE QUOTATION MARK, PRIME, FRACTION SLASH
 
 
-def _read_arch_sidecar(pt_file: PathLike) -> str | None:
+def _read_arch_sidecar(pt_file: PathLike[str]) -> str | None:
     """Return the architecture name written in a ``<stem>.arch`` sidecar, if any.
 
     The trainer writes a one-line text file alongside each ``.pt`` checkpoint
@@ -29,7 +29,7 @@ def _read_arch_sidecar(pt_file: PathLike) -> str | None:
     return None
 
 
-def _read_vocab_sidecar(pt_file: PathLike) -> str | None:
+def _read_vocab_sidecar(pt_file: PathLike[str]) -> str | None:
     """Return the vocab string written in a ``<stem>.vocab`` sidecar, if any."""
     try:
         sidecar = Path(pt_file).with_suffix(".vocab")
@@ -297,8 +297,8 @@ def _load_reco_model(
 
 
 def get_finetuned_torch_doctr_predictor(
-    dectection_pt_file: PathLike,
-    recognition_pt_file: PathLike,
+    dectection_pt_file: PathLike[str],
+    recognition_pt_file: PathLike[str],
     vocab: str = "",
     pretrained: bool = True,
     pretrained_backbone: bool = True,

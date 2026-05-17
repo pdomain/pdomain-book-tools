@@ -92,12 +92,12 @@ def hf_download(
         try:
             # huggingface_hub>=0.22 moved exceptions to .errors; fall back for older
             from huggingface_hub.errors import (
-                EntryNotFoundError as _HFNotFound,  # type: ignore[reportPrivateImportUsage]
+                EntryNotFoundError as _HFNotFound,  # pyright: ignore[reportPrivateImportUsage]
             )
         except ImportError:
             try:
                 from huggingface_hub.utils import (
-                    EntryNotFoundError as _HFNotFound,  # type: ignore[reportPrivateImportUsage]
+                    EntryNotFoundError as _HFNotFound,  # pyright: ignore[reportPrivateImportUsage]
                 )
             except ImportError:
                 _HFNotFound = Exception  # type: ignore[assignment,misc]

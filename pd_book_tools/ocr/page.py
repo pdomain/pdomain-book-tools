@@ -86,12 +86,12 @@ class Page:
     # @property names on this class — Python's dataclass decorator
     # would resolve the property descriptor as the field default
     # at decoration time and break things.
-    blocks: InitVar[Collection | None] = None
+    blocks: InitVar[Collection[Block] | None] = None
     image_array: InitVar[ndarray | None] = None
 
     bounding_box: BoundingBox | None = None
     page_labels: list[str] | None = None
-    unmatched_ground_truth_lines: list | None = None
+    unmatched_ground_truth_lines: list[Any] | None = None
     "List of Ground Truth Lines and the line they were found on before an OCR match"
 
     original_ocr_tool_text: str | None = ""
@@ -182,7 +182,7 @@ class Page:
 
     def __post_init__(
         self,
-        blocks: Collection | None,
+        blocks: Collection[Block] | None,
         image_array: ndarray | None,
     ) -> None:
         if blocks is None:
@@ -333,13 +333,13 @@ class Page:
             logger.debug("Empty blocks removed from page")
 
     @items.setter
-    def items(self, values) -> None:
+    def items(self, values: Collection[Block]) -> None:
         if not isinstance(values, Collection):
             raise TypeError("items must be a collection")
         for block in values:
             if not isinstance(block, Block):
                 raise TypeError("Each item in items must be of type Block")
-        self._items = sorted(
+        self._items = sorted(  # pyright: ignore[reportAttributeAccessIssue]  # dataclass field; setter assigns outside __init__ but this is correct pattern
             values,
             key=lambda block: (
                 block.override_page_sort_order
@@ -896,7 +896,7 @@ class Page:
         if target not in items:
             return False
         updated_items = [item for item in items if item is not target]
-        container._items = updated_items
+        container._items = updated_items  # pyright: ignore[reportAttributeAccessIssue]  # Page|Block union assignment; both have _items
         return True
 
     def _remove_empty_items_safely(self) -> None:
@@ -941,7 +941,7 @@ class Page:
         if not changed:
             return
 
-        container._items = kept_items  # type: ignore[assignment]  # Block._items can hold Block|Word depending on block_category; mypy can't narrow here
+        container._items = kept_items  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue]  # Block._items can hold Block|Word; mypy/pyright can't narrow here
 
     def replace_block_with_split_paragraphs(
         self,
@@ -1240,7 +1240,7 @@ class Page:
                     block_category=BlockCategory.PARAGRAPH,
                 ),
             ]
-            parent.items = (
+            parent.items = (  # pyright: ignore[reportAttributeAccessIssue]  # Page|Block union; both have .items setter; list is Collection
                 current_items[:paragraph_idx]
                 + replacement
                 + current_items[paragraph_idx + 1 :]
@@ -1352,7 +1352,7 @@ class Page:
                     block_category=BlockCategory.PARAGRAPH,
                 ),
             ]
-            parent.items = (
+            parent.items = (  # pyright: ignore[reportAttributeAccessIssue]  # Page|Block union; both have .items setter; list is Collection
                 current_items[:paragraph_idx]
                 + replacement
                 + current_items[paragraph_idx + 1 :]
@@ -1723,7 +1723,7 @@ class Page:
                 logger.warning("Word deletion requires selecting at least one word")
                 return False
 
-            validated_by_line: dict[int, list] = {}
+            validated_by_line: dict[int, list[Any]] = {}
 
             for line_index, word_index in unique_keys:
                 line_words = validated_by_line.get(line_index)
@@ -2261,7 +2261,7 @@ class Page:
                 )
 
             selected_words_for_new_line: list[Word] = []
-            source_line_bboxes: list = []
+            source_line_bboxes: list[BoundingBox | None] = []
             containing_paragraphs: list[Block] = []
             line_insertion_points: list[tuple[Block, int]] = []
             emptied_line_ids: set[int] = set()
@@ -2709,7 +2709,7 @@ class Page:
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
             "ocr_provenance": (
-                self.ocr_provenance.to_dict()  # type: ignore[reportAttributeAccessIssue]  # declared as union for deserialization; coerce() normalizes to OCRProvenance|None at init
+                self.ocr_provenance.to_dict()  # pyright: ignore[reportAttributeAccessIssue]  # declared as union for deserialization; coerce() normalizes to OCRProvenance|None at init
                 if self.ocr_provenance is not None
                 else None
             ),
@@ -3052,7 +3052,8 @@ class Page:
             return
 
         for block in row_blocks.items:
-            reorganize_page_utils.reorganize_lines(block)
+            if isinstance(block, Block):
+                reorganize_page_utils.reorganize_lines(block)
 
         # Step H — column / floated-figure expansion of each row block.
         expanded_row_blocks, step_h_decisions = reorganize_page_utils.expand_row_blocks(
@@ -3604,7 +3605,7 @@ _dataclass_generated_page_init = Page.__init__
 def _page_init_with_deprecation_shim(
     self: Page,
     *args: Any,
-    items: Collection | None = None,
+    items: Collection[Block] | None = None,
     cv2_numpy_page_image: ndarray | None = None,
     **kwargs: Any,
 ) -> None:
@@ -3666,7 +3667,7 @@ _legacy_params = [
         annotation="ndarray | None",
     ),
 ]
-_page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(  # type: ignore[attr-defined]
+_page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(  # type: ignore[attr-defined]  # pyright: ignore[reportFunctionMemberAccess]  # runtime __signature__ injection; FunctionType supports it
     parameters=_dc_params + _legacy_params,
 )
 _page_init_with_deprecation_shim.__name__ = "__init__"

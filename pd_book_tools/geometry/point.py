@@ -158,12 +158,12 @@ class Point:
     def pixel(cls, x: float | int, y: float | int) -> "Point":
         return cls(x, y, is_normalized=False)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         # Include normalization state for round-trip serialization
         return {"x": self.x, "y": self.y, "is_normalized": self.is_normalized}
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Point":
+    def from_dict(cls, data: dict[str, Any]) -> "Point":
         """Create a Point from a dict produced by ``to_dict``.
 
         Accepts legacy dicts without ``is_normalized`` (falls back to inference).

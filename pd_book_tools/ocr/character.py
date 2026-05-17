@@ -33,7 +33,7 @@ class Character:
         self.text_style_labels = normalize_text_style_labels(self.text_style_labels)
         self.word_components = normalize_character_components(self.word_components)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
         return {
             "type": "Character",
@@ -45,7 +45,7 @@ class Character:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> Character:
+    def from_dict(cls, data: dict[str, Any]) -> Character:
         """Create Character from dictionary."""
         word_components = list(data.get("word_components", []))
         if data.get("is_footnote_marker"):

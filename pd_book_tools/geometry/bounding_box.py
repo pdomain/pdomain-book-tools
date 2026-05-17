@@ -254,7 +254,7 @@ class BoundingBox:
     @classmethod
     def from_points(
         cls,
-        points: Sequence[dict | Point | ShapelyPoint | Sequence[float]],
+        points: Sequence[dict[str, Any] | Point | ShapelyPoint | Sequence[float]],
         is_normalized: bool | None = None,
     ):
         """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats."""
@@ -505,7 +505,7 @@ class BoundingBox:
             is_normalized=is_norm,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary.
 
         Includes each corner point's normalization state (``is_normalized``) so
@@ -527,7 +527,7 @@ class BoundingBox:
         return {"top_left": tl, "bottom_right": br, "is_normalized": self.is_normalized}
 
     @classmethod
-    def from_dict(cls, dict: dict) -> BoundingBox:
+    def from_dict(cls, dict: dict[str, Any]) -> BoundingBox:
         """Create BoundingBox from dictionary."""
         tl = dict["top_left"]
         br = dict["bottom_right"]
@@ -722,7 +722,9 @@ class BoundingBox:
                     self.maxY,
                     is_normalized=self.is_normalized,
                 )
-            g = self.as_shapely().buffer(dx, join_style=2)  # type: ignore
+            g = self.as_shapely().buffer(
+                dx, join_style="mitre"
+            )  # mitre=square corners; was int 2 (old shapely API)
             if g.is_empty:  # type: ignore
                 raise ValueError(
                     f"Expansion deltas collapse box to zero area "

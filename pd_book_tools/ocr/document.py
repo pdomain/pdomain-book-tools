@@ -50,7 +50,7 @@ class Document:
         self,
         source_lib: str,
         source_path: Path | str | None,
-        pages: Collection,
+        pages: Collection[Page],
         source_identifier: str = "",
     ) -> None:
         self.source_lib = source_lib
@@ -70,7 +70,7 @@ class Document:
         return self._pages.copy()
 
     @pages.setter
-    def pages(self, value) -> None:
+    def pages(self, value: Collection[Page]) -> None:
         if not isinstance(value, Collection):
             raise TypeError("pages must be a collection")
         for page in value:
@@ -78,7 +78,7 @@ class Document:
                 raise TypeError(
                     "Each item in pages must have a page_index attribute of type int"
                 )
-        self._pages = list(value)
+        self._pages = list(value)  # pyright: ignore[reportAttributeAccessIssue]  # dataclass field; setter assigns outside __init__
         self._sort_pages()
 
     def scale(self, width: int, height: int) -> Document:
@@ -89,7 +89,7 @@ class Document:
             pages=[page.scale(width, height) for page in self.pages],
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to a JSON-serializable dictionary."""
         return {
             "source_lib": self.source_lib,
@@ -120,7 +120,7 @@ class Document:
     @classmethod
     def from_image_ocr_via_doctr(
         cls,
-        image: str | PathLike | ndarray | PILImage,
+        image: str | PathLike[str] | ndarray | PILImage,
         source_identifier: str = "",
         predictor=None,
         *,
@@ -257,7 +257,7 @@ class Document:
         # ``str`` is a ``Sequence[str]`` in Python, passing the whole-document
         # string would silently yield a single character per page. Split into
         # one rendered string per page instead.
-        doctr_output: dict = doctr_result.export()
+        doctr_output: dict[str, Any] = doctr_result.export()
         per_page_text: list[str] = [page.render() for page in doctr_result.pages]
         return cls.from_doctr_output(
             doctr_output=doctr_output,
@@ -280,7 +280,7 @@ class Document:
         return BoundingBox.from_nested_float(geometry)
 
     @classmethod
-    def _word_from_doctr(cls, word_data: dict) -> Word:
+    def _word_from_doctr(cls, word_data: dict[str, Any]) -> Word:
         """Build a ``Word`` from a DocTR word dict.
 
         Geometry is guarded (M-16) and ``confidence`` is forwarded as-is so
@@ -291,12 +291,12 @@ class Document:
             text=word_data.get("value", ""),
             bounding_box=cast(
                 "BoundingBox", cls._doctr_bbox(word_data.get("geometry"))
-            ),  # type: ignore[reportArgumentType]  # DocTR may return None bbox; Word checks it defensively
+            ),  # pyright: ignore[reportArgumentType]  # DocTR may return None bbox; Word checks it defensively
             ocr_confidence=word_data.get("confidence"),
         )
 
     @classmethod
-    def _line_from_doctr(cls, line_data: dict) -> Block:
+    def _line_from_doctr(cls, line_data: dict[str, Any]) -> Block:
         """Build a ``Block(LINE)`` of ``Word`` children from a DocTR line dict."""
         words = [cls._word_from_doctr(w) for w in line_data.get("words", [])]
         return Block(
@@ -307,7 +307,7 @@ class Document:
         )
 
     @classmethod
-    def _artefact_from_doctr(cls, artefact_data: dict) -> Block:
+    def _artefact_from_doctr(cls, artefact_data: dict[str, Any]) -> Block:
         """Build a role-labelled artefact ``Block`` from a DocTR artefact dict.
 
         DocTR's block export carries non-text regions (stamps, barcodes, QR
@@ -316,7 +316,7 @@ class Document:
         page-level Blocks tagged ``role="artefact"`` (M-15) so consumers
         can keep, render, or strip them on intent.
         """
-        attrs: dict = {}
+        attrs: dict[str, Any] = {}
         if "type" in artefact_data:
             attrs["artefact_type"] = artefact_data["type"]
         if "confidence" in artefact_data:
@@ -331,7 +331,7 @@ class Document:
         )
 
     @classmethod
-    def _block_from_doctr(cls, block_data: dict) -> list[Block]:
+    def _block_from_doctr(cls, block_data: dict[str, Any]) -> list[Block]:
         """Expand a DocTR block dict into one canonical Block plus artefact siblings.
 
         DocTR's data model is ``pages -> blocks -> lines -> words`` (no
@@ -367,7 +367,7 @@ class Document:
     @classmethod
     def _page_from_doctr(
         cls,
-        page_data: dict,
+        page_data: dict[str, Any],
         page_idx: int,
         ocr_provenance: OCRProvenance,
         original_text: Sequence[str] | None,
@@ -394,7 +394,7 @@ class Document:
     @classmethod
     def from_doctr_output(
         cls,
-        doctr_output: dict,
+        doctr_output: dict[str, Any],
         original_text: Sequence[str] | None = None,
         source_path: str | Path | None = None,
         source_identifier: str = "",
@@ -518,7 +518,7 @@ class Document:
     @classmethod
     def from_json_file(cls, file_path: str | Path) -> Document:
         """Load OCR from JSON file."""
-        d: dict
+        d: dict[str, Any]
         with open(file_path, encoding="utf-8") as f:
             d = json.load(f)
         return cls.from_dict(d)

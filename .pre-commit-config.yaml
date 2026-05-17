@@ -53,7 +53,7 @@ repos:
 
     -   id: basedpyright
         name: basedpyright type check (recommended mode; workspace canonical)
-        entry: uv run basedpyright pd_book_tools
+        entry: uv run basedpyright pd_book_tools --level error
         language: system
         stages: [pre-commit]
         pass_filenames: false

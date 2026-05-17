@@ -17,7 +17,7 @@ import os
 import pathlib
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from cv2 import (
@@ -475,8 +475,8 @@ def extract_top_header_lines(
     if len(valid) < 1:
         return [], list(lines)
 
-    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.minY)  # type: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box above
-    top_min_y = valid_sorted[0].bounding_box.minY  # type: ignore[reportOptionalMemberAccess]  # same filter
+    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.minY)  # pyright: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box above
+    top_min_y = valid_sorted[0].bounding_box.minY  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     if top_min_y > near_top_factor * metrics.coord_h:
         return [], list(lines)
 
@@ -486,8 +486,8 @@ def extract_top_header_lines(
     header_lines = [
         l
         for l in valid_sorted
-        if l.bounding_box.minY <= band_bottom  # type: ignore[reportOptionalMemberAccess]  # same filter
-        and l.bounding_box.maxY <= band_bottom + slack  # type: ignore[reportOptionalMemberAccess]  # same filter
+        if l.bounding_box.minY <= band_bottom  # pyright: ignore[reportOptionalMemberAccess]  # same filter
+        and l.bounding_box.maxY <= band_bottom + slack  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     ]
     if not header_lines:
         return [], list(lines)
@@ -495,8 +495,8 @@ def extract_top_header_lines(
     header_ids = {id(l) for l in header_lines}
     remaining = [l for l in valid_sorted if id(l) not in header_ids]
     if remaining:
-        header_max_y = max(l.bounding_box.maxY for l in header_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
-        next_min_y = min(l.bounding_box.minY for l in remaining)  # type: ignore[reportOptionalMemberAccess]  # same filter
+        header_max_y = max(l.bounding_box.maxY for l in header_lines)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
+        next_min_y = min(l.bounding_box.minY for l in remaining)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
         gap = next_min_y - header_max_y
         if gap < min_gap_factor * metrics.median_word_h:
             return [], list(lines)
@@ -523,8 +523,8 @@ def extract_bottom_footer_lines(
     if len(valid) < 1:
         return [], list(lines)
 
-    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.maxY, reverse=True)  # type: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box above
-    bottom_max_y = valid_sorted[0].bounding_box.maxY  # type: ignore[reportOptionalMemberAccess]  # same filter
+    valid_sorted = sorted(valid, key=lambda l: l.bounding_box.maxY, reverse=True)  # pyright: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box above
+    bottom_max_y = valid_sorted[0].bounding_box.maxY  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     if bottom_max_y < (1.0 - near_bottom_factor) * metrics.coord_h:
         return [], list(lines)
 
@@ -534,7 +534,7 @@ def extract_bottom_footer_lines(
     footer_lines = [
         l
         for l in valid_sorted
-        if l.bounding_box.maxY >= band_top and l.bounding_box.minY >= band_top - slack  # type: ignore[reportOptionalMemberAccess]  # same filter
+        if l.bounding_box.maxY >= band_top and l.bounding_box.minY >= band_top - slack  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     ]
     if not footer_lines:
         return [], list(lines)
@@ -542,8 +542,8 @@ def extract_bottom_footer_lines(
     footer_ids = {id(l) for l in footer_lines}
     remaining = [l for l in valid_sorted if id(l) not in footer_ids]
     if remaining:
-        footer_min_y = min(l.bounding_box.minY for l in footer_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
-        prev_max_y = max(l.bounding_box.maxY for l in remaining)  # type: ignore[reportOptionalMemberAccess]  # same filter
+        footer_min_y = min(l.bounding_box.minY for l in footer_lines)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
+        prev_max_y = max(l.bounding_box.maxY for l in remaining)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
         gap = footer_min_y - prev_max_y
         if gap < min_gap_factor * metrics.median_word_h:
             return [], list(lines)
@@ -617,9 +617,9 @@ _SPECIAL_BLOCK_LABELS = {
 
 def emit_step_h_debug(
     page,
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
     debug_squeezed_lines: list[str],
-    step_h_decisions: list[dict],
+    step_h_decisions: list[dict[str, Any]],
 ) -> None:
     """Append the Step H summary section (and its overlay PNG) to debug_sections."""
     if not layout_debug_enabled():
@@ -649,7 +649,7 @@ def emit_step_h_debug(
 
 def emit_step_k_debug(
     page,
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
     final_blocks: list[Block],
 ) -> None:
     """Append the Step K (paragraph splits) overlay to debug_sections."""
@@ -668,7 +668,7 @@ def emit_step_k_debug(
 
 def emit_step_l_debug(
     page,
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
     final_blocks: list[Block],
 ) -> None:
     """Append the Step L summary section (and its overlay PNG) to debug_sections."""
@@ -952,7 +952,7 @@ def stitch_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
 
 def emit_step_dropcap_debug(
     page,
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
     final_blocks: list[Block],
 ) -> None:
     """Append a Step DC summary listing every word now tagged ``drop cap``."""
@@ -962,8 +962,10 @@ def emit_step_dropcap_debug(
     found = 0
     for outer in final_blocks:
         for paragraph in outer.items:
+            if not isinstance(paragraph, Block):
+                continue
             for line in paragraph.items:
-                if not hasattr(line, "words"):
+                if not isinstance(line, Block):
                     continue
                 for w in line.words:
                     if "drop cap" in (w.word_components or []):
@@ -1206,13 +1208,13 @@ def write_step_d_debug_overlay_png(
         id(line)
         for paragraph in pre_split_paragraphs
         for line in paragraph.items
-        if line.block_category == BlockCategory.LINE
+        if isinstance(line, Block) and line.block_category == BlockCategory.LINE
     }
 
     post_lines: list[Block] = []
     for paragraph in post_split_paragraphs:
         for item in paragraph.items:
-            if item.block_category == BlockCategory.LINE:
+            if isinstance(item, Block) and item.block_category == BlockCategory.LINE:
                 post_lines.append(item)
 
     for line in post_lines:
@@ -1245,7 +1247,7 @@ def write_step_d_debug_overlay_png(
 
 def write_step_h_debug_overlay_png(
     page,
-    row_block_decisions: list[dict],
+    row_block_decisions: list[dict[str, Any]],
     suffix: str = "stepH",
 ) -> pathlib.Path | None:
     """Write a debug PNG showing column-split decisions per row block.
@@ -1506,7 +1508,7 @@ def layout_debug_output_path(page) -> pathlib.Path:
 def line_vertical_gaps(lines: list[Block]) -> list[float]:
     sorted_lines = sorted(
         [l for l in lines if l.bounding_box],
-        key=lambda l: (l.bounding_box.minY, l.bounding_box.minX),  # type: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box
+        key=lambda l: (l.bounding_box.minY, l.bounding_box.minX),  # pyright: ignore[reportOptionalMemberAccess]  # items filtered to non-None bounding_box
     )
     if len(sorted_lines) < 2:
         return []
@@ -2042,7 +2044,7 @@ def split_mixed_content_lines(paragraphs: list[Block], page_width: int) -> None:
         candidate_lines = [
             line
             for line in paragraph.items
-            if line.block_category == BlockCategory.LINE
+            if isinstance(line, Block) and line.block_category == BlockCategory.LINE
         ]
         if not candidate_lines:
             continue
@@ -2306,10 +2308,10 @@ def absorb_caption_tails_into_caption(
     if not seed_bbox_lines:
         return flow_rest
 
-    seed_x = float(np_median([l.bounding_box.minX for l in seed_bbox_lines]))  # type: ignore[reportOptionalMemberAccess]  # filtered to non-None above
-    seed_y0 = min(l.bounding_box.minY for l in seed_bbox_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
-    seed_y1 = max(l.bounding_box.maxY for l in seed_bbox_lines)  # type: ignore[reportOptionalMemberAccess]  # same filter
-    seed_h = float(np_mean([l.bounding_box.height for l in seed_bbox_lines] or [1]))  # type: ignore[reportOptionalMemberAccess]  # same filter
+    seed_x = float(np_median([l.bounding_box.minX for l in seed_bbox_lines]))  # pyright: ignore[reportOptionalMemberAccess]  # filtered to non-None above
+    seed_y0 = min(l.bounding_box.minY for l in seed_bbox_lines)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
+    seed_y1 = max(l.bounding_box.maxY for l in seed_bbox_lines)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
+    seed_h = float(np_mean([l.bounding_box.height for l in seed_bbox_lines] or [1]))  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     block_median_w = float(
         np_median(
             [l.bounding_box.width for l in row_block.lines if l.bounding_box]
@@ -2372,7 +2374,7 @@ def expand_floated_flow_row_block(
     floated_flow,
     row_idx: int,
     debug_squeezed_lines: list[str],
-    step_h_decisions: list[dict],
+    step_h_decisions: list[dict[str, Any]],
 ) -> list[Block]:
     """Pipeline Step I \u2014 expand a row block that contains a floated figure."""  # EM DASH
     pre_lines, left_flow, right_flow, band_body, post_lines = floated_flow
@@ -2451,7 +2453,7 @@ def expand_floated_flow_row_block(
 def expand_mixed_column_row_block(
     mixed_col_split,
     row_idx: int,
-    step_h_decisions: list[dict],
+    step_h_decisions: list[dict[str, Any]],
 ) -> list[Block]:
     """Pipeline Step H \u2014 expand a row block whose lines split into two narrow  # EM DASH
     columns plus optional spanning lines.
@@ -2578,7 +2580,7 @@ def expand_multi_column_row_block(
     page,
     multi_col_split,
     row_idx: int,
-    step_h_decisions: list[dict],
+    step_h_decisions: list[dict[str, Any]],
 ) -> Block:
     """Pipeline Step H \u2014 collapse a multi-column row block into a single flow."""  # EM DASH
     column_groups, spanning_lines = multi_col_split
@@ -2605,7 +2607,7 @@ def expand_simple_two_column_row_block(
     page,
     col_split,
     row_idx: int,
-    step_h_decisions: list[dict],
+    step_h_decisions: list[dict[str, Any]],
 ) -> Block:
     """Pipeline Step H \u2014 collapse a simple two-column row block into a single  # EM DASH
     flow paragraph (left then right).
@@ -2642,11 +2644,13 @@ def expand_row_blocks(
     page,
     row_blocks: Block,
     debug_squeezed_lines: list[str],
-) -> tuple[list[Block], list[dict]]:
+) -> tuple[list[Block], list[dict[str, Any]]]:
     """Pipeline Step H \u2014 dispatch each row block to the right expander."""  # EM DASH
     expanded_row_blocks: list[Block] = []
-    step_h_decisions: list[dict] = []
+    step_h_decisions: list[dict[str, Any]] = []
     for row_idx, b in enumerate(row_blocks.items, start=1):
+        if not isinstance(b, Block):
+            continue
         floated_flow = _detect_floated_flow_span(b.lines, page.width)
         if floated_flow is not None:
             expanded_row_blocks.extend(
@@ -2815,11 +2819,11 @@ def reorganize_lines(block: Block) -> None:
     """Step B \u2014 re-merge OCR-fragmented lines inside ``block``."""  # EM DASH
     if not block.items:
         return
-    lines: list[Block] = block.items
-    if not all(hasattr(line, "block_category") for line in lines) and not all(
-        line.block_category == BlockCategory.LINE for line in lines
-    ):
-        raise TypeError("All items in lines must have a block_category of LINE")
+    lines: list[Block] = [
+        item
+        for item in block.items
+        if isinstance(item, Block) and item.block_category == BlockCategory.LINE
+    ]
 
     logger.debug("Recomputing lines for block " + str(block.text[0:10] + "..."))
     if len(lines) < 2:
@@ -2832,7 +2836,11 @@ def reorganize_lines(block: Block) -> None:
     i = -1
     while True:
         i = i + 1
-        lines = block.items
+        lines = [
+            item
+            for item in block.items
+            if isinstance(item, Block) and item.block_category == BlockCategory.LINE
+        ]
         if i >= len(lines) - 1:
             break
 
@@ -3008,7 +3016,7 @@ def emit_band_only_blocks(
 
 def run_step_d_split_mixed_content(
     page,
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
 ) -> None:
     """Step D \u2014 split OCR-merged caption/body lines and emit debug PNG."""  # EM DASH
     debug = layout_debug_enabled()
@@ -3047,7 +3055,7 @@ def run_step_d_split_mixed_content(
 
 def run_step_e_extract_header_footer(
     page,
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
 ):
     """Step E \u2014 peel page header/footer bands and split body words."""  # EM DASH
     page_metrics = compute_page_metrics(page)
@@ -3117,6 +3125,8 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
     seen_word_ids: set[int] = set()
     kept: list[Block] = []
     for rb in row_blocks.items:
+        if not isinstance(rb, Block):
+            continue
         rb_word_ids = {id(w) for line in rb.lines for w in line.words}
         if rb_word_ids and rb_word_ids.issubset(seen_word_ids):
             continue
@@ -3124,7 +3134,7 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
         kept.append(rb)
     if len(kept) == len(row_blocks.items):
         return row_blocks
-    row_blocks._items = kept
+    row_blocks._items = kept  # pyright: ignore[reportAttributeAccessIssue]  # internal mutation; _items setter not exposed publicly
     if kept:
         row_blocks.recompute_bounding_box()
     else:
@@ -3136,7 +3146,7 @@ def run_step_f_row_blocks(
     page,
     body_lines: list[Block],
     body_words: list[Word],
-    debug_sections: list[tuple],
+    debug_sections: list[tuple[Any, ...]],
 ) -> Block | None:
     """Step F \u2014 pick between legacy and seeded row-block grouping."""  # EM DASH
     legacy_row_blocks = compute_text_row_blocks(body_lines)
@@ -3515,8 +3525,8 @@ def _detect_mixed_column_split(
             return None
 
     # Ensure deterministic left/right assignment even if split_x is noisy.
-    left_median_x = float(np_median([l.bounding_box.minX for l in left_lines]))  # type: ignore[reportOptionalMemberAccess]  # left_lines built from bb-filtered source
-    right_median_x = float(np_median([l.bounding_box.minX for l in right_lines]))  # type: ignore[reportOptionalMemberAccess]  # right_lines built from bb-filtered source
+    left_median_x = float(np_median([l.bounding_box.minX for l in left_lines]))  # pyright: ignore[reportOptionalMemberAccess]  # left_lines built from bb-filtered source
+    right_median_x = float(np_median([l.bounding_box.minX for l in right_lines]))  # pyright: ignore[reportOptionalMemberAccess]  # right_lines built from bb-filtered source
     if left_median_x > right_median_x:
         left_lines, right_lines = right_lines, left_lines
 

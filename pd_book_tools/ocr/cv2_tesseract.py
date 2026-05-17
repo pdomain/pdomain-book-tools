@@ -69,7 +69,7 @@ def tesseract_ocr_cv2_image(
                 "alpha channel (matches cv2 COLOR_BGRA2GRAY semantics). "
                 "This notice is logged once per process."
             )
-            _RGBA_NOTICE_LOGGED = True
+            _RGBA_NOTICE_LOGGED = True  # pyright: ignore[reportConstantRedefinition]  # once-per-process flag; uppercase but not a true constant
         image_grayscale = cvtColor(image, COLOR_BGRA2GRAY)
     else:
         raise ValueError(
@@ -91,22 +91,22 @@ def tesseract_ocr_cv2_image(
     ]
     config_str = " ".join(config)
 
-    dataframe = image_to_data(  # type: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
+    dataframe = image_to_data(  # pyright: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
         image_grayscale,
         lang=lang,
         config=config_str,
-        output_type=pytesseract_Output.DATAFRAME,  # type: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
+        output_type=pytesseract_Output.DATAFRAME,  # pyright: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
     )
-    result_string = image_to_string(  # type: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
+    result_string = image_to_string(  # pyright: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
         image_grayscale,
         lang=lang,
         config=config_str,
-        output_type=pytesseract_Output.STRING,  # type: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
+        output_type=pytesseract_Output.STRING,  # pyright: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
     )
 
     ocr_doc = Document.from_tesseract(
-        tesseract_output=dataframe,
-        tesseract_string=result_string,
+        tesseract_output=dataframe,  # pyright: ignore[reportArgumentType]  # pytesseract stubs return wider type than DataFrame; guarded by _pytesseract_available
+        tesseract_string=result_string,  # pyright: ignore[reportArgumentType]  # pytesseract stubs return wider type than str; guarded by _pytesseract_available
         source_path=source_path if source_path else None,
         lang=lang,
         tesseract_config=config_str,

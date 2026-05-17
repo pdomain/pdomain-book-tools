@@ -73,10 +73,10 @@ def rescale_image_gpu(
             filter_size = (pre_filter_size_h, pre_filter_size_w)
         else:
             filter_size = (pre_filter_size_h, pre_filter_size_w, 1)
-        src = uniform_filter(src, size=filter_size, mode="reflect")  # type: ignore[reportOptionalCall]  # guarded by require_cupy() in caller
+        src = uniform_filter(src, size=filter_size, mode="reflect")  # pyright: ignore[reportOptionalCall,reportArgumentType]  # guarded by require_cupy(); cupyx stubs expect int but tuple is valid
 
     zoom_factors = (zoom_h, zoom_w) if img_cp.ndim == 2 else (zoom_h, zoom_w, 1.0)
-    result = zoom(src, zoom_factors, order=1)  # type: ignore[reportOptionalCall]  # guarded by require_cupy() in caller
+    result = zoom(src, zoom_factors, order=1)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in caller
     return result.clip(0, 255).astype(cp.uint8)
 
 

@@ -38,7 +38,7 @@ def gaussian_filter_gpu(
     require_cupy()
     _sigma = (sigma, sigma, 0) if img_cp.ndim == 3 else sigma
 
-    result = gaussian_filter(img_cp.astype(cp.float32), sigma=_sigma)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
+    result = gaussian_filter(img_cp.astype(cp.float32), sigma=_sigma)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
     return cp.rint(result).clip(0, 255).astype(img_cp.dtype)
 
 
@@ -57,7 +57,7 @@ def median_filter_gpu(
     require_cupy()
     _size = (size, size, 1) if img_cp.ndim == 3 else size
 
-    return median_filter(img_cp, size=_size).astype(img_cp.dtype)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
+    return median_filter(img_cp, size=_size).astype(img_cp.dtype)  # pyright: ignore[reportOptionalCall,reportArgumentType,reportOptionalMemberAccess]  # guarded by require_cupy(); cupyx stubs mistype size and return
 
 
 def uniform_filter_gpu(
@@ -75,7 +75,7 @@ def uniform_filter_gpu(
     require_cupy()
     _size = (size, size, 1) if img_cp.ndim == 3 else size
 
-    result = uniform_filter(img_cp.astype(cp.float32), size=_size)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
+    result = uniform_filter(img_cp.astype(cp.float32), size=_size)  # pyright: ignore[reportOptionalCall,reportArgumentType]  # guarded by require_cupy(); cupyx stubs expect int but tuple is valid
     return cp.rint(result).clip(0, 255).astype(img_cp.dtype)
 
 

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def _compute_envelopes(
-    img: cp.array,  # type: ignore
+    img: cp.ndarray,  # pyright: ignore[reportAttributeAccessIssue]  # CuPy stubs expose ndarray but not as a plain class annotation
     radius,
     samples,
     iterations,
@@ -26,7 +26,7 @@ def _compute_envelopes(
     dy = cp.round(radii * cp.sin(angles)).astype(cp.int32)
 
     # Create meshgrid for batch processing
-    X, Y = cp.meshgrid(cp.arange(width), y_range)  # type: ignore[reportAssignmentType]  # cp.meshgrid returns list[ndarray]; unpacking is always 2 items for 2 inputs
+    X, Y = cp.meshgrid(cp.arange(width), y_range)  # pyright: ignore[reportAssignmentType]  # cp.meshgrid returns list[ndarray]; unpacking is always 2 items for 2 inputs
 
     # Compute sampled coordinates in a single batch operation
     nx = cp.clip(X[None, None, :, :] + dx, 0, width - 1)
@@ -48,13 +48,13 @@ _RGBA_NOTICE_LOGGED = False
 
 
 def cupy_color_to_gray(
-    img: cp.array,  # type: ignore
+    img: cp.ndarray,  # pyright: ignore[reportAttributeAccessIssue]  # CuPy stubs expose ndarray but not as a plain class annotation
     radius=300,
     samples=4,
     iterations=10,
     enhance_shadows=False,
     batch_size=100,
-) -> cp.array:  # type: ignore
+) -> cp.ndarray:  # pyright: ignore[reportAttributeAccessIssue]  # CuPy stubs
     # Validate input shape at the public boundary so callers see a clear
     # error here instead of a confusing `ValueError: not enough values to
     # unpack` deep inside `_compute_envelopes`. Also catch silent alpha
@@ -87,7 +87,7 @@ def cupy_color_to_gray(
                 "channel (matches cv2 COLOR_BGRA2GRAY semantics). This "
                 "notice is logged once per process."
             )
-            _RGBA_NOTICE_LOGGED = True
+            _RGBA_NOTICE_LOGGED = True  # pyright: ignore[reportConstantRedefinition]  # once-per-process flag; uppercase but not a true constant
         img = img[..., :3]
 
     # Shape validation above is backend-agnostic. Only require CuPy here,
@@ -152,7 +152,7 @@ def np_uint8_color_to_gray(
     img_float = img.astype(np.float32) / 255.0
 
     # Move source image to GPU
-    src: cp.array = cp.asarray(img_float)  # type: ignore
+    src: cp.ndarray = cp.asarray(img_float)  # pyright: ignore[reportAttributeAccessIssue]  # CuPy stubs
 
     cupy_result = cupy_color_to_gray(
         img=src,

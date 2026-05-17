@@ -82,7 +82,7 @@ class Word:
 
     _ground_truth_text: str | None = None
     ground_truth_bounding_box: BoundingBox | None = None
-    ground_truth_match_keys: dict = field(default_factory=dict)
+    ground_truth_match_keys: dict[str, Any] = field(default_factory=dict)
     baseline: dict[str, float | str] | None = None
 
     # Optional human-review metadata (Word-scope). None when no review pass
@@ -101,7 +101,7 @@ class Word:
         baseline: dict[str, float | str] | None = None,
         ground_truth_text: str | None = None,
         ground_truth_bounding_box: BoundingBox | None = None,
-        ground_truth_match_keys: dict | None = None,
+        ground_truth_match_keys: dict[str, Any] | None = None,
         review: ReviewMetadata | None = None,
     ) -> None:
         self.text = text  # Use the setter for validation or processing
@@ -640,9 +640,9 @@ class Word:
         """
         return fuzz_ratio(self.text, ground_truth_text)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
-        d = {
+        d: dict[str, Any] = {
             "type": "Word",
             "text": self.text,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
@@ -667,7 +667,7 @@ class Word:
         return d
 
     @classmethod
-    def from_dict(cls, dict: dict) -> Word:
+    def from_dict(cls, dict: dict[str, Any]) -> Word:
         """Create OCRWord from dictionary."""
         review_raw = dict.get("review")
         review = (

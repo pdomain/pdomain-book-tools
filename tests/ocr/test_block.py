@@ -746,12 +746,11 @@ def test_refine_bounding_boxes_nested(monkeypatch):
     assert para.bounding_box.maxX == before_union_right - 1
 
 
-def test_refine_bounding_boxes_not_implemented():
+def test_refine_bounding_boxes_skips_non_word_items():
     # Insert a stub object lacking refine_bbox into a WORDS block post-construction.
     # Since the items setter/add_item enforce Word types, this can only happen via
-    # direct _items manipulation. The resulting AttributeError is expected.
-    # (Pre-R-04 this test asserted the missing method was ``refine_bounding_box``;
-    # R-04 consolidates Block's WORDS path to call ``refine_bbox`` instead.)
+    # direct _items manipulation. The isinstance(item, Word) guard inside
+    # refine_bounding_boxes silently skips non-Word items (no AttributeError).
     class Stub:
         def __init__(self, bbox):
             self.bounding_box = bbox
@@ -763,8 +762,8 @@ def test_refine_bounding_boxes_not_implemented():
     )
     stub = Stub(BoundingBox.from_ltrb(10, 0, 15, 5))
     line._items.append(stub)  # bypass validation intentionally
-    with pytest.raises(AttributeError):
-        line.refine_bounding_boxes(image=np.ones((10, 10), dtype=np.uint8))
+    # Should not raise; Stub is skipped by the isinstance(item, Word) guard
+    line.refine_bounding_boxes(image=np.ones((10, 10), dtype=np.uint8))
 
 
 # ---------------- Additional targeted coverage tests -----------------------

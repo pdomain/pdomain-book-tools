@@ -1,13 +1,17 @@
+from __future__ import annotations
+
 import itertools
 from collections.abc import Collection
 from enum import Enum
 from logging import getLogger
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 from numpy import ndarray
-from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
+
+if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -148,10 +152,11 @@ class Block:
     # equality semantics (identity comparisons are intended) and because a custom __init__ already
     # existed. Behavior retained.
     # _items: internal storage list; use items property for external access (sorted copy)
+    _items: list[Word | Block]
 
     def __init__(
         self,
-        items: Collection,
+        items: Collection[Word | Block],
         bounding_box: BoundingBox | None = None,
         child_type: BlockChildType | None = BlockChildType.BLOCKS,
         block_category: BlockCategory | None = BlockCategory.BLOCK,
@@ -163,7 +168,7 @@ class Block:
         baseline: dict[str, float | str] | None = None,
         override_page_sort_order: int | None = None,
         unmatched_ground_truth_words: list[tuple[int, str]] | None = None,
-        additional_block_attributes: dict | None = None,
+        additional_block_attributes: dict[str, Any] | None = None,
         base_ground_truth_text: str | None = None,
         review: ReviewMetadata | None = None,
     ) -> None:
@@ -219,7 +224,7 @@ class Block:
         self.override_page_sort_order: int | None = override_page_sort_order
         self.base_ground_truth_text: str | None = base_ground_truth_text
         # containers
-        self.additional_block_attributes: dict = (
+        self.additional_block_attributes: dict[str, Any] = (
             additional_block_attributes
             if additional_block_attributes is not None
             else {}
@@ -234,6 +239,8 @@ class Block:
         )
         # Initialize bounding box attribute so it's always present (may be None for empty blocks)
         self.bounding_box: BoundingBox | None = None
+        # _items is initialized by the items setter below; pre-declare to satisfy type checkers
+        self._items = []
         # Will set self._items and compute bounding box
         self.items = items  # type: ignore[assignment]
         # If explicit bbox passed, override computed one
@@ -342,7 +349,7 @@ class Block:
             )
 
     @property
-    def items(self) -> list:
+    def items(self) -> list[Word | Block]:
         """Returns a copy of the item list in this block."""
         return self._items.copy()
 
@@ -401,12 +408,14 @@ class Block:
         else:
             self.unmatched_ground_truth_words = []
         if self.child_type == BlockChildType.WORDS:
-            for word in self._items:
-                word.ground_truth_text = ""
-                word.ground_truth_bounding_box = None
+            for item in self._items:
+                if isinstance(item, Word):
+                    item.ground_truth_text = ""
+                    item.ground_truth_bounding_box = None
         else:
-            for block in self._items:
-                block.remove_ground_truth()
+            for item in self._items:
+                if isinstance(item, Block):
+                    item.remove_ground_truth()
         logger.debug("Ground truth text removed from block")
 
     def remove_line_if_exists(self, line) -> bool:
@@ -419,8 +428,8 @@ class Block:
             self.remove_item(line)
             removed = True
         else:
-            for block in self._items:
-                if block.remove_line_if_exists(line):
+            for item in self._items:
+                if isinstance(item, Block) and item.remove_line_if_exists(line):
                     removed = True
                     break
 
@@ -442,9 +451,12 @@ class Block:
             return
         if self.child_type != BlockChildType.WORDS:
             for item in self._items:
-                item.remove_empty_items()
+                if isinstance(item, Block):
+                    item.remove_empty_items()
             before = len(self._items)
-            self._items = [item for item in self._items if item._items]
+            self._items = [
+                item for item in self._items if isinstance(item, Block) and item._items
+            ]
             if len(self._items) != before:
                 self._sort_items()
                 self.recompute_bounding_box()
@@ -452,7 +464,7 @@ class Block:
         # Empty words are directly removed with remove_item, do not need to be handled here
 
     @items.setter
-    def items(self, value) -> None:
+    def items(self, value: Collection[Word | Block]) -> None:
         if not isinstance(value, Collection):
             raise TypeError("items must be a collection (e.g., list, tuple, set)")
         for item in value:
@@ -583,7 +595,7 @@ class Block:
         """Check if the ground truth text of the block matches the text."""
         return all(item.ground_truth_exact_match for item in self._items)
 
-    def validate_line_consistency(self) -> dict:
+    def validate_line_consistency(self) -> dict[str, Any]:
         """Validate consistency of OCR vs ground truth for this line.
 
         Returns a dict with word counts, match counts, mismatch details,
@@ -668,32 +680,44 @@ class Block:
     def word_list(self) -> list[str]:
         """Get list of words in the block."""
         if self.child_type == BlockChildType.WORDS:
-            return [item.text for item in self._items]
+            return [item.text for item in self._items if isinstance(item, Word)]
         return list(
-            itertools.chain.from_iterable(item.word_list for item in self._items)
+            itertools.chain.from_iterable(
+                item.word_list for item in self._items if isinstance(item, Block)
+            )
         )
 
     @property
     def words(self) -> list[Word]:
         """Get flat list of all words in the block."""
         if self.child_type == BlockChildType.WORDS:
-            return list(self._items)
-        return list(itertools.chain.from_iterable(item.words for item in self._items))
+            return [item for item in self._items if isinstance(item, Word)]
+        return list(
+            itertools.chain.from_iterable(
+                item.words for item in self._items if isinstance(item, Block)
+            )
+        )
 
     @property
-    def lines(self) -> list["Block"]:
+    def lines(self) -> list[Block]:
         """Flat list of all 'lines' in the block."""
         if self.child_type == BlockChildType.WORDS:
             return [self]
-        return list(itertools.chain.from_iterable(item.lines for item in self._items))
+        return list(
+            itertools.chain.from_iterable(
+                item.lines for item in self._items if isinstance(item, Block)
+            )
+        )
 
     @property
-    def paragraphs(self) -> list["Block"]:
+    def paragraphs(self) -> list[Block]:
         """Flat list of all 'paragraphs' in the block."""
         if self.block_category == BlockCategory.PARAGRAPH:
             return [self]
         return list(
-            itertools.chain.from_iterable(item.paragraphs for item in self._items)
+            itertools.chain.from_iterable(
+                item.paragraphs for item in self._items if isinstance(item, Block)
+            )
         )
 
     def split_word(
@@ -863,7 +887,7 @@ class Block:
         """Return True for known malformed-bbox normalization failures."""
         return BoundingBox.is_geometry_normalization_error(error)
 
-    def merge_fallback(self, other: "Block") -> bool:
+    def merge_fallback(self, other: Block) -> bool:
         """Fallback merge that concatenates items when :meth:`merge` fails
         on malformed bbox metadata.
         """
@@ -887,7 +911,7 @@ class Block:
             logger.exception("Fallback merge failed: %s", fallback_error)
             return False
 
-    def refine_word_bboxes(self, page_image: "ndarray | None") -> bool:
+    def refine_word_bboxes(self, page_image: ndarray | None) -> bool:
         """Refine all word bounding boxes using the page image and recompute
         this block's bbox.
 
@@ -904,7 +928,7 @@ class Block:
         self.recompute_bounding_box()
         return refined_any
 
-    def merge(self, block_to_merge: "Block") -> None:
+    def merge(self, block_to_merge: Block) -> None:
         """Merge another block into this one."""
         if self.child_type != block_to_merge.child_type:
             raise ValueError("Cannot merge blocks with different child types")
@@ -956,10 +980,14 @@ class Block:
         if not self._items:
             return []
         if self.child_type == BlockChildType.WORDS:
-            return [item.ocr_confidence for item in self._items]
+            return [
+                item.ocr_confidence for item in self._items if isinstance(item, Word)
+            ]
         return list(
             itertools.chain.from_iterable(
-                item.ocr_confidence_scores() for item in self._items
+                item.ocr_confidence_scores()
+                for item in self._items
+                if isinstance(item, Block)
             )
         )
 
@@ -975,7 +1003,7 @@ class Block:
             return 0.0
         return sum(scores) / len(scores)
 
-    def scale(self, width: int, height: int) -> "Block":
+    def scale(self, width: int, height: int) -> Block:
         """
         Return new block with scaled bounding box
         and scaled children to absolute pixel coordinates.
@@ -1005,9 +1033,9 @@ class Block:
         """
         return fuzz_ratio(self.text, ground_truth_text)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to JSON-serializable dictionary."""
-        d = {
+        d: dict[str, Any] = {
             "type": "Block",
             "child_type": self.child_type.value if self.child_type else None,
             "block_category": self.block_category.value
@@ -1031,7 +1059,7 @@ class Block:
         return d
 
     @classmethod
-    def from_dict(cls, data) -> "Block":
+    def from_dict(cls, data) -> Block:
         """Create OCRBlock from dictionary."""
         child_type_raw = data.get("child_type")
         if isinstance(child_type_raw, BlockChildType):
@@ -1166,18 +1194,20 @@ class Block:
                 "Refining bounding boxes for %s words in block", len(self._items)
             )
             for item in self._items:
-                # R-04: prefer the consolidated ``refine_bbox`` (boolean
-                # return + crop_bottom fallback). The legacy
-                # ``refine_bounding_box`` shim still works for any
-                # external callers but inside the library we use the
-                # surviving contract directly.
-                item.refine_bbox(image, padding_px=padding_px)
+                if isinstance(item, Word):
+                    # R-04: prefer the consolidated ``refine_bbox`` (boolean
+                    # return + crop_bottom fallback). The legacy
+                    # ``refine_bounding_box`` shim still works for any
+                    # external callers but inside the library we use the
+                    # surviving contract directly.
+                    item.refine_bbox(image, padding_px=padding_px)
         else:
             logger.debug(
                 "Refining bounding boxes for %s blocks in block", len(self._items)
             )
             for item in self._items:
-                item.refine_bounding_boxes(image, padding_px=padding_px)
+                if isinstance(item, Block):
+                    item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
 
     @classmethod
@@ -1288,7 +1318,7 @@ class Block:
 # ---------------------------------------------------------------------------
 
 
-def purge_words_from_blocks(blocks: list["Block"], targets: set[int]) -> None:
+def purge_words_from_blocks(blocks: list[Block], targets: set[int]) -> None:
     """Recursively remove words from a block tree by Python ``id()``.
 
     Used by the layout-aware reorganisation pipeline (drop pass) and by
@@ -1322,7 +1352,9 @@ def purge_words_from_blocks(blocks: list["Block"], targets: set[int]) -> None:
                 else:
                     block.bounding_box = None
         else:
-            purge_words_from_blocks(list(block._items), targets)
+            purge_words_from_blocks(
+                [item for item in block._items if isinstance(item, Block)], targets
+            )
             # Drop child blocks left empty by the recursive purge — their
             # bounding boxes were cleared to None and would poison the
             # parent's recompute.

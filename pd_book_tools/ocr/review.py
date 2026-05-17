@@ -14,6 +14,7 @@ review state.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -31,7 +32,7 @@ class ReviewMetadata:
     reviewer_note: str | None = None
     flagged_for_attention: bool = False
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "validated": self.validated,
             "reviewer_note": self.reviewer_note,
@@ -39,7 +40,7 @@ class ReviewMetadata:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> ReviewMetadata:
+    def from_dict(cls, d: dict[str, Any]) -> ReviewMetadata:
         return cls(
             validated=d.get("validated", False),
             reviewer_note=d.get("reviewer_note"),

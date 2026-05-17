@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 import numpy as np
 
@@ -21,7 +22,7 @@ except ImportError:  # pragma: no cover - exercised only on CPU-only installs
 logger = logging.getLogger(__name__)
 
 
-def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict:
+def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict[str, Any]:
     """
     Compute bounding-box size statistics for every connected component in the image.
 
@@ -44,7 +45,7 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict:
     all use characters of a similar or identical size to the body text.
     """
     require_cupy()
-    labeled, n_labels = ndimage_label(img_cp > 0)  # type: ignore[reportOptionalCall]  # guarded by require_cupy(); None only on CPU-only installs
+    labeled, n_labels = ndimage_label(img_cp > 0)  # pyright: ignore[reportOptionalCall,reportGeneralTypeIssues]  # guarded by require_cupy(); cupyx stubs mistype return as int
     if n_labels == 0:
         return {
             "count": 0,
@@ -56,7 +57,7 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict:
             "p10_h": 0,
         }
 
-    objects = find_objects(labeled)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
+    objects = find_objects(labeled)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
     widths = []
     heights = []
     for slices in objects:
@@ -133,7 +134,7 @@ def remove_small_contours_gpu(
     Returns a copy with isolated small components zeroed out.
     """
     require_cupy()
-    labeled, n_labels = ndimage_label(img_cp > 0)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
+    labeled, n_labels = ndimage_label(img_cp > 0)  # pyright: ignore[reportOptionalCall,reportGeneralTypeIssues]  # guarded by require_cupy(); cupyx stubs mistype return as int
     if n_labels == 0:
         return img_cp.copy()
 
@@ -148,7 +149,7 @@ def remove_small_contours_gpu(
     sh = search_h_pixels if search_h_pixels is not None else int(pixels_h * 0.5)
 
     result = img_cp.copy()
-    objects = find_objects(labeled)  # type: ignore[reportOptionalCall]  # guarded by require_cupy()
+    objects = find_objects(labeled)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     for _i, slices in enumerate(objects):
         if slices is None:

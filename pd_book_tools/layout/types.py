@@ -22,7 +22,7 @@ class RegionType(str, Enum):
     """
 
     text = "text"
-    title = "title"  # type: ignore[assignment]  # str.title() method clash; harmless in practice
+    title = "title"  # pyright: ignore[reportAssignmentType]  # str.title() method clash; Literal["title"] conflicts with inherited str.title overload
     section = "section"
     list = "list"
     table = "table"
@@ -80,10 +80,10 @@ class LayoutRegion:
                 f"LayoutRegion has T > B ({self.T} > {self.B}); "
                 "coordinates must satisfy T <= B"
             )
-        self.L = max(self.L, 0)
-        self.T = max(self.T, 0)
-        self.R = max(self.R, 0)
-        self.B = max(self.B, 0)
+        self.L = max(self.L, 0)  # pyright: ignore[reportConstantRedefinition]  # dataclass field; ALL_CAPS is LTRB convention
+        self.T = max(self.T, 0)  # pyright: ignore[reportConstantRedefinition]  # dataclass field; ALL_CAPS is LTRB convention
+        self.R = max(self.R, 0)  # pyright: ignore[reportConstantRedefinition]  # dataclass field; ALL_CAPS is LTRB convention
+        self.B = max(self.B, 0)  # pyright: ignore[reportConstantRedefinition]  # dataclass field; ALL_CAPS is LTRB convention
 
     @property
     def width(self) -> int:
