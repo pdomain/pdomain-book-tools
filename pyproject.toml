@@ -38,6 +38,7 @@ dependencies = [
     # AVIF decode via libaom (BSD-2) through pillow-avif-plugin (MIT) —
     # fully permissive, no LGPL caveats.
     "pillow-avif-plugin>=1.4",
+    "pydantic>=2.0",
     "pytesseract (>=0.3.13,<0.4.0)",
     "python-doctr",
     "regex (>=2024.11.6,<2025.0.0)",
