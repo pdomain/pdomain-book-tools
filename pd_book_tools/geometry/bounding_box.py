@@ -4,6 +4,7 @@ import functools
 from collections.abc import Sequence
 from dataclasses import dataclass
 from logging import getLogger
+from typing import Any
 
 import cv2  # historical import; kept for back-compat per R-03 wrapper-stays
 from cv2 import (
@@ -15,6 +16,8 @@ from cv2 import (
     threshold,
 )
 from numpy import ndarray
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 from shapely.geometry import (
     Point as ShapelyPoint,
 )  # removed LineString import
@@ -26,7 +29,7 @@ from shapely.geometry import (
 )
 from shapely.ops import unary_union  # removed split import
 
-from pd_book_tools.geometry.point import Point
+from pd_book_tools.geometry.point import _POINT_DICT_SCHEMA, Point
 
 # Configure logging
 logger = getLogger(__name__)
@@ -784,3 +787,29 @@ class BoundingBox:
         """Return True for known malformed-bbox normalization failures."""
         message = str(error)
         return "NoneType" in message and "is_normalized" in message
+
+    # ------------------------------------------------------------------
+    # Pydantic v2 integration: wire-shape JSON Schema via TypeAdapter.
+    # See ``Point.__get_pydantic_core_schema__`` for the pattern rationale.
+    # ------------------------------------------------------------------
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            function=cls.from_dict,
+            schema=core_schema.typed_dict_schema(
+                {
+                    "top_left": core_schema.typed_dict_field(_POINT_DICT_SCHEMA),
+                    "bottom_right": core_schema.typed_dict_field(_POINT_DICT_SCHEMA),
+                    "is_normalized": core_schema.typed_dict_field(
+                        core_schema.bool_schema(),
+                    ),
+                }
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls.to_dict,
+            ),
+        )
