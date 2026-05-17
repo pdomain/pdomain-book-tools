@@ -24,6 +24,7 @@ from pd_book_tools.ocr.label_normalization import (
     normalize_word_component,
     normalize_word_components,
 )
+from pd_book_tools.ocr.review import ReviewMetadata
 
 # Configure logging
 logger = getLogger(__name__)
@@ -72,6 +73,10 @@ class Word:
     ground_truth_match_keys: dict = field(default_factory=dict)
     baseline: dict[str, float | str] | None = None
 
+    # Optional human-review metadata (Word-scope). None when no review pass
+    # has touched this word. See pd_book_tools/ocr/review.py.
+    review: ReviewMetadata | None = None
+
     def __init__(
         self,
         text: str,
@@ -85,6 +90,7 @@ class Word:
         ground_truth_text: str | None = None,
         ground_truth_bounding_box: BoundingBox | None = None,
         ground_truth_match_keys: dict | None = None,
+        review: ReviewMetadata | None = None,
     ):
         self.text = text  # Use the setter for validation or processing
         self.bounding_box = bounding_box
@@ -106,6 +112,7 @@ class Word:
             self.ground_truth_match_keys = ground_truth_match_keys
         else:
             self.ground_truth_match_keys = {}
+        self.review = review
 
     @classmethod
     def _normalize_text_style_label(cls, label: str) -> str:
@@ -623,7 +630,7 @@ class Word:
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary"""
-        return {
+        d = {
             "type": "Word",
             "text": self.text,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
@@ -643,10 +650,18 @@ class Word:
             ),
             "ground_truth_match_keys": self.ground_truth_match_keys,
         }
+        if self.review is not None:
+            d["review"] = self.review.to_dict()
+        return d
 
     @classmethod
     def from_dict(cls, dict: dict) -> Word:
         """Create OCRWord from dictionary"""
+        review = (
+            ReviewMetadata.from_dict(dict["review"])
+            if dict.get("review") is not None
+            else None
+        )
         return Word(
             text=dict["text"],
             bounding_box=BoundingBox.from_dict(dict["bounding_box"]),
@@ -663,6 +678,7 @@ class Word:
                 else None
             ),
             ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
+            review=review,
         )
 
     def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0):
