@@ -2,15 +2,23 @@ import itertools
 from collections.abc import Collection
 from enum import Enum
 from logging import getLogger
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import numpy as np
 from numpy import ndarray
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
+from pd_book_tools.schemas._helpers import (
+    NULLABLE_BASELINE_SCHEMA,
+    NULLABLE_STR_SCHEMA,
+    STR_ANY_DICT_SCHEMA,
+    STR_LIST_SCHEMA,
+)
 
 # Configure logging
 logger = getLogger(__name__)
@@ -1043,32 +1051,53 @@ class Block:
     @classmethod
     def from_dict(cls, data) -> "Block":
         """Create OCRBlock from dictionary"""
-        if data.get("child_type"):
-            child_type = BlockChildType(data["child_type"])
+        child_type_raw = data.get("child_type")
+        if isinstance(child_type_raw, BlockChildType):
+            child_type = child_type_raw
+        elif child_type_raw:
+            child_type = BlockChildType(child_type_raw)
         else:
             child_type = BlockChildType.WORDS
 
+        raw_items = data["items"]
         if child_type == BlockChildType.WORDS:
-            items = [Word.from_dict(item) for item in data["items"]]
+            items = [
+                item if isinstance(item, Word) else Word.from_dict(item)
+                for item in raw_items
+            ]
         else:
-            items = [Block.from_dict(item) for item in data["items"]]
+            items = [
+                item if isinstance(item, Block) else Block.from_dict(item)
+                for item in raw_items
+            ]
 
+        review_raw = data.get("review")
         review = (
-            ReviewMetadata.from_dict(data["review"])
-            if data.get("review") is not None
-            else None
+            review_raw
+            if isinstance(review_raw, ReviewMetadata)
+            else (
+                ReviewMetadata.from_dict(review_raw) if review_raw is not None else None
+            )
+        )
+        bb_raw = data.get("bounding_box")
+        bounding_box = (
+            bb_raw
+            if isinstance(bb_raw, BoundingBox)
+            else (BoundingBox.from_dict(bb_raw) if bb_raw else None)
+        )
+        block_cat_raw = data.get("block_category")
+        block_category = (
+            block_cat_raw
+            if isinstance(block_cat_raw, BlockCategory)
+            else (
+                BlockCategory(block_cat_raw) if block_cat_raw else BlockCategory.BLOCK
+            )
         )
         return cls(
             items=items,
-            bounding_box=(
-                BoundingBox.from_dict(data["bounding_box"])
-                if data.get("bounding_box")
-                else None
-            ),
+            bounding_box=bounding_box,
             child_type=child_type,
-            block_category=BlockCategory(data["block_category"])
-            if data.get("block_category")
-            else BlockCategory.BLOCK,
+            block_category=block_category,
             block_labels=data.get("block_labels", []),
             block_role_labels=data.get("block_role_labels", []),
             block_position_labels=data.get("block_position_labels", []),
@@ -1168,6 +1197,107 @@ class Block:
             for item in self._items:
                 item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        bb_schema = handler.generate_schema(BoundingBox)
+        nullable_bb_schema = core_schema.nullable_schema(bb_schema)
+        word_schema = handler.generate_schema(Word)
+        review_schema = handler.generate_schema(ReviewMetadata)
+        nullable_review_schema = core_schema.nullable_schema(review_schema)
+        # ``items`` is a list of EITHER Word dicts OR Block dicts; the
+        # discriminator is the sibling ``child_type`` field. We use
+        # ``definition-ref`` to allow Block to reference its own schema
+        # for nested-block items.
+        block_ref = core_schema.definition_reference_schema("Block")
+        items_schema = core_schema.list_schema(
+            core_schema.union_schema([word_schema, block_ref])
+        )
+        return core_schema.definitions_schema(
+            core_schema.no_info_after_validator_function(
+                function=cls.from_dict,
+                schema=core_schema.typed_dict_schema(
+                    {
+                        "type": core_schema.typed_dict_field(
+                            core_schema.literal_schema(["Block"]),
+                            required=False,
+                        ),
+                        "child_type": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(
+                                core_schema.literal_schema(["WORDS", "BLOCKS"])
+                            ),
+                            required=False,
+                        ),
+                        "block_category": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(
+                                core_schema.literal_schema(
+                                    ["BLOCK", "PARAGRAPH", "LINE"]
+                                )
+                            ),
+                            required=False,
+                        ),
+                        "block_labels": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(STR_LIST_SCHEMA),
+                            required=False,
+                        ),
+                        "block_role_labels": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(STR_LIST_SCHEMA),
+                            required=False,
+                        ),
+                        "block_position_labels": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(STR_LIST_SCHEMA),
+                            required=False,
+                        ),
+                        "line_role_labels": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(STR_LIST_SCHEMA),
+                            required=False,
+                        ),
+                        "line_position_labels": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(STR_LIST_SCHEMA),
+                            required=False,
+                        ),
+                        "baseline": core_schema.typed_dict_field(
+                            NULLABLE_BASELINE_SCHEMA,
+                            required=False,
+                        ),
+                        "bounding_box": core_schema.typed_dict_field(
+                            nullable_bb_schema,
+                            required=False,
+                        ),
+                        "items": core_schema.typed_dict_field(items_schema),
+                        "override_page_sort_order": core_schema.typed_dict_field(
+                            core_schema.nullable_schema(core_schema.int_schema()),
+                            required=False,
+                        ),
+                        "unmatched_ground_truth_words": core_schema.typed_dict_field(
+                            STR_LIST_SCHEMA,
+                            required=False,
+                        ),
+                        "additional_block_attributes": core_schema.typed_dict_field(
+                            STR_ANY_DICT_SCHEMA,
+                            required=False,
+                        ),
+                        "base_ground_truth_text": core_schema.typed_dict_field(
+                            NULLABLE_STR_SCHEMA,
+                            required=False,
+                        ),
+                        "review": core_schema.typed_dict_field(
+                            nullable_review_schema,
+                            required=False,
+                        ),
+                    }
+                ),
+                serialization=core_schema.plain_serializer_function_ser_schema(
+                    cls.to_dict,
+                ),
+                ref="Block",
+            ),
+            [],
+        )
 
 
 # ---------------------------------------------------------------------------
