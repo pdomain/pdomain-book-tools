@@ -4,6 +4,8 @@ from pathlib import Path
 
 
 def test_coverage_threshold_configured():
-    """Verify that coverage fail_under threshold is set to 80%."""
+    """Verify that coverage fail_under threshold is set (currently 87% post-branch migration)."""
     pyproject = (Path(__file__).parent.parent / "pyproject.toml").read_text()
-    assert "fail_under = 80" in pyproject, "Coverage threshold should be set to 80%"
+    assert "fail_under = 87" in pyproject, (
+        "Coverage threshold should be set to 87% (ratcheted from 80% when --cov-branch was added)"
+    )

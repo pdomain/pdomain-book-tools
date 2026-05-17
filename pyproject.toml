@@ -102,7 +102,7 @@ concurrency = ["thread"]  # NiceGUI & timers may spawn threads
 [tool.coverage.report]
 show_missing = true
 skip_empty = true
-fail_under = 80
+fail_under = 87  # TODO: ratchet up as branch-coverage gaps land tests (was 80 pre-branch, 89.6% post-branch)
 precision = 1
 exclude_also = [
     "if __name__ == .__main__.:",
@@ -320,16 +320,28 @@ root = "scripts"
 
 # Pytest configuration
 [tool.pytest.ini_options]
-addopts = "--cov=pd_book_tools --cov-report=term-missing:skip-covered --cov-report=html"
+addopts = [
+    "-ra",                       # show short summary of all non-pass outcomes
+    "--strict-markers",          # fail on unknown markers
+    "--strict-config",           # fail on unknown pytest config keys
+    "--cov=pd_book_tools",
+    "--cov-branch",              # measure branch coverage (gates except-path testing)
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+]
 markers = [
     "gpu: marks tests as requiring GPU/CUDA functionality",
     "cupy: marks tests as requiring CuPy library",
     "torch_cuda: marks tests as requiring PyTorch CUDA",
     "slow: marks tests as slow (use -m 'not slow' to skip)",
-    "integration: marks tests as integration tests"
+    "integration: marks tests as integration tests",
 ]
-# Skip GPU tests by default in CI environments
 filterwarnings = [
+    # Treat all warnings as errors — surfaces deprecation issues at LLM-iteration time.
+    "error",
+    # Pre-existing ignores: third-party noise that isn't actionable here.
     "ignore::UserWarning:cupy.*",
-    "ignore::FutureWarning:torch.*"
+    "ignore::FutureWarning:torch.*",
+    # Add new ignores below as new warnings surface — each one with a comment
+    # explaining the package and why we tolerate it.
 ]
