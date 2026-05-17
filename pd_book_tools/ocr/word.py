@@ -3,11 +3,13 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import cv2
 import numpy as np
 from numpy import ndarray
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -25,6 +27,14 @@ from pd_book_tools.ocr.label_normalization import (
     normalize_word_components,
 )
 from pd_book_tools.ocr.review import ReviewMetadata
+from pd_book_tools.schemas._helpers import (
+    NULLABLE_BASELINE_SCHEMA,
+    NULLABLE_STR_SCHEMA,
+    NUMBER_SCHEMA,
+    STR_ANY_DICT_SCHEMA,
+    STR_LIST_SCHEMA,
+    STR_STR_DICT_SCHEMA,
+)
 
 # Configure logging
 logger = getLogger(__name__)
@@ -657,14 +667,27 @@ class Word:
     @classmethod
     def from_dict(cls, dict: dict) -> Word:
         """Create OCRWord from dictionary"""
+        review_raw = dict.get("review")
         review = (
-            ReviewMetadata.from_dict(dict["review"])
-            if dict.get("review") is not None
-            else None
+            review_raw
+            if isinstance(review_raw, ReviewMetadata)
+            else (
+                ReviewMetadata.from_dict(review_raw) if review_raw is not None else None
+            )
+        )
+        bb_raw = dict["bounding_box"]
+        bounding_box = (
+            bb_raw if isinstance(bb_raw, BoundingBox) else BoundingBox.from_dict(bb_raw)
+        )
+        gt_bb_raw = dict.get("ground_truth_bounding_box")
+        ground_truth_bounding_box = (
+            gt_bb_raw
+            if isinstance(gt_bb_raw, BoundingBox)
+            else (BoundingBox.from_dict(gt_bb_raw) if gt_bb_raw else None)
         )
         return Word(
             text=dict["text"],
-            bounding_box=BoundingBox.from_dict(dict["bounding_box"]),
+            bounding_box=bounding_box,
             ocr_confidence=dict.get("ocr_confidence"),
             word_labels=dict.get("word_labels", []),
             text_style_labels=dict.get("text_style_labels", []),
@@ -672,11 +695,7 @@ class Word:
             word_components=dict.get("word_components", []),
             baseline=dict.get("baseline"),
             ground_truth_text=dict.get("ground_truth_text"),
-            ground_truth_bounding_box=(
-                BoundingBox.from_dict(dict["ground_truth_bounding_box"])
-                if dict.get("ground_truth_bounding_box")
-                else None
-            ),
+            ground_truth_bounding_box=ground_truth_bounding_box,
             ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
             review=review,
         )
@@ -1109,3 +1128,74 @@ class Word:
         from pd_book_tools.ocr.image_utilities import crop_word_top
 
         crop_word_top(self, img_ndarray)
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        # Local imports to avoid circulars with the lower-level geometry
+        # types whose modules import Word transitively.
+        bb_schema = handler.generate_schema(BoundingBox)
+        review_schema = handler.generate_schema(ReviewMetadata)
+        nullable_bb_schema = core_schema.nullable_schema(bb_schema)
+        nullable_review_schema = core_schema.nullable_schema(review_schema)
+        return core_schema.no_info_after_validator_function(
+            function=cls.from_dict,
+            schema=core_schema.typed_dict_schema(
+                {
+                    "type": core_schema.typed_dict_field(
+                        core_schema.literal_schema(["Word"]),
+                        required=False,
+                    ),
+                    "text": core_schema.typed_dict_field(
+                        core_schema.str_schema(),
+                    ),
+                    "bounding_box": core_schema.typed_dict_field(bb_schema),
+                    "ocr_confidence": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(NUMBER_SCHEMA),
+                        required=False,
+                    ),
+                    "word_labels": core_schema.typed_dict_field(
+                        STR_LIST_SCHEMA,
+                        required=False,
+                    ),
+                    "text_style_labels": core_schema.typed_dict_field(
+                        STR_LIST_SCHEMA,
+                        required=False,
+                    ),
+                    "text_style_label_scopes": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(STR_STR_DICT_SCHEMA),
+                        required=False,
+                    ),
+                    "word_components": core_schema.typed_dict_field(
+                        STR_LIST_SCHEMA,
+                        required=False,
+                    ),
+                    "baseline": core_schema.typed_dict_field(
+                        NULLABLE_BASELINE_SCHEMA,
+                        required=False,
+                    ),
+                    "ground_truth_text": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "ground_truth_bounding_box": core_schema.typed_dict_field(
+                        nullable_bb_schema,
+                        required=False,
+                    ),
+                    "ground_truth_match_keys": core_schema.typed_dict_field(
+                        STR_ANY_DICT_SCHEMA,
+                        required=False,
+                    ),
+                    "review": core_schema.typed_dict_field(
+                        nullable_review_schema,
+                        required=False,
+                    ),
+                }
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls.to_dict,
+            ),
+        )
