@@ -9,6 +9,7 @@ from numpy import ndarray
 from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
 
 # Configure logging
@@ -156,6 +157,7 @@ class Block:
         unmatched_ground_truth_words: list[tuple[int, str]] | None = None,
         additional_block_attributes: dict | None = None,
         base_ground_truth_text: str | None = None,
+        review: ReviewMetadata | None = None,
     ):
         self.child_type: BlockChildType | None = child_type
         self.block_category: BlockCategory | None = block_category
@@ -229,6 +231,9 @@ class Block:
         # If explicit bbox passed, override computed one
         if bounding_box is not None:
             self.bounding_box = bounding_box
+        # Optional human-review metadata (Block-scope; also serves line-scope
+        # when block_category == LINE). See pd_book_tools/ocr/review.py.
+        self.review: ReviewMetadata | None = review
 
     def __repr__(self) -> str:  # pragma: no cover (representation convenience)
         cls = self.__class__.__name__
@@ -1012,7 +1017,7 @@ class Block:
 
     def to_dict(self) -> dict:
         """Convert to JSON-serializable dictionary."""
-        return {
+        d = {
             "type": "Block",
             "child_type": self.child_type.value if self.child_type else None,
             "block_category": self.block_category.value
@@ -1031,6 +1036,9 @@ class Block:
             "additional_block_attributes": self.additional_block_attributes or {},
             "base_ground_truth_text": self.base_ground_truth_text or "",
         }
+        if self.review is not None:
+            d["review"] = self.review.to_dict()
+        return d
 
     @classmethod
     def from_dict(cls, data) -> "Block":
@@ -1045,6 +1053,11 @@ class Block:
         else:
             items = [Block.from_dict(item) for item in data["items"]]
 
+        review = (
+            ReviewMetadata.from_dict(data["review"])
+            if data.get("review") is not None
+            else None
+        )
         return cls(
             items=items,
             bounding_box=(
@@ -1066,6 +1079,7 @@ class Block:
             unmatched_ground_truth_words=data.get("unmatched_ground_truth_words", []),
             additional_block_attributes=data.get("additional_block_attributes", {}),
             base_ground_truth_text=data.get("base_ground_truth_text", None),
+            review=review,
         )
 
     def estimate_baseline_from_image(
