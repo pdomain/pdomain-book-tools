@@ -68,6 +68,7 @@ def test_constructor_signature_pin():
         "provenance_saved_ocr",
         "provenance_saved",
         "rotation_applied",
+        "review",
         "items",
         "cv2_numpy_page_image",
     ]

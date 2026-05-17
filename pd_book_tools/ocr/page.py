@@ -34,6 +34,7 @@ from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.ground_truth_matching import update_page_with_ground_truth_text
 from pd_book_tools.ocr.provenance import OCRProvenance
+from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
 
 # Configure logging
@@ -110,6 +111,10 @@ class Page:
     # original. See pd_book_tools.ocr.rotation. Validated in
     # ``__post_init__``.
     rotation_applied: int = 0
+
+    # Optional human-review metadata (Page-scope). See
+    # pd_book_tools/ocr/review.py.
+    review: ReviewMetadata | None = None
 
     # Internal state — not part of the public init signature.
     _items: list[Block] = field(
@@ -2716,6 +2721,8 @@ class Page:
             result["provenance_saved"] = self.provenance_saved
         if self.rotation_applied:
             result["rotation_applied"] = self.rotation_applied
+        if self.review is not None:
+            result["review"] = self.review.to_dict()
         return result
 
     def copy(self) -> Page:
@@ -3143,6 +3150,11 @@ class Page:
         """Create OCRPage from dictionary"""
         # Resolve source from either "source" or legacy "page_source" key
         source = data.get("source", data.get("page_source", "ocr"))
+        review = (
+            ReviewMetadata.from_dict(data["review"])
+            if data.get("review") is not None
+            else None
+        )
         return cls(
             blocks=[Block.from_dict(block) for block in data["items"]],
             width=data["width"],
@@ -3162,6 +3174,7 @@ class Page:
             provenance_saved_ocr=data.get("provenance_saved_ocr"),
             provenance_saved=data.get("provenance_saved"),
             rotation_applied=data.get("rotation_applied", 0),
+            review=review,
         )
 
     def recompute_bounding_box(self):
