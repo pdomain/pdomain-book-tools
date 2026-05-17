@@ -1,4 +1,25 @@
+from typing import Any
+
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 from shapely.geometry import Point as ShapelyPoint  # type: ignore
+
+from pd_book_tools.schemas._helpers import NUMBER_SCHEMA
+
+# Wire shape for a Point dict — extracted as a module-level constant so
+# composite models (BoundingBox, etc.) can embed Point's shape without
+# triggering Point's full validator pipeline (which would coerce nested
+# dicts to Point instances inside parent ``from_dict`` callers that
+# expect raw dicts).
+_POINT_DICT_SCHEMA = core_schema.typed_dict_schema(
+    {
+        "x": core_schema.typed_dict_field(NUMBER_SCHEMA),
+        "y": core_schema.typed_dict_field(NUMBER_SCHEMA),
+        "is_normalized": core_schema.typed_dict_field(
+            core_schema.bool_schema(),
+        ),
+    }
+)
 
 
 class Point:
@@ -206,3 +227,26 @@ class Point:
 
     def __hash__(self) -> int:  # Allow use in sets / dicts
         return hash((float(self.x), float(self.y), self.is_normalized))
+
+    # ------------------------------------------------------------------
+    # Pydantic v2 integration: wire-shape JSON Schema via TypeAdapter.
+    #
+    # Point is not a dataclass and uses __slots__, so pydantic cannot
+    # auto-introspect it. This hook declares the wire shape produced by
+    # ``Point.to_dict()`` so ``TypeAdapter(Point).json_schema()`` emits a
+    # precise JSON Schema for downstream TypeScript codegen (pd-ui,
+    # pd-ocr-ops).
+    # ------------------------------------------------------------------
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(
+            function=cls.from_dict,
+            schema=_POINT_DICT_SCHEMA,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls.to_dict,
+            ),
+        )
