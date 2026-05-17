@@ -8,7 +8,7 @@ def test_bounding_box_repr_format():
 
 def test_bounding_box_repr_eval_safe():
     bb = BoundingBox(Point(0, 0), Point(10, 10))
-    restored = eval(repr(bb))
+    restored = eval(repr(bb))  # noqa: S307  # test verifies repr() is eval-safe by design
     assert restored == bb
 
 

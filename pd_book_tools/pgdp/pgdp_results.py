@@ -18,7 +18,7 @@ class PGDPResults:
     # bare class-level annotations (R-19) were misleading because they
     # looked like class variables; they have been removed, and instance
     # attribute types are now declared inline in __init__.
-    def __init__(self, png_file: str, page_text: str):
+    def __init__(self, png_file: str, page_text: str) -> None:
         self.png_file: str = png_file
         self.png_full_path: pathlib.Path = pathlib.Path(png_file).resolve()
         self.original_page_text: str = page_text
@@ -179,9 +179,9 @@ class PGDPResults:
         )
 
         # 9. Remaining leading straight single quotes before lowercase word => opening curly
-        s = regex.sub(r"(?<=^|\s)'(?=[a-z])", "\u2018", s)  # LEFT SINGLE QUOTATION MARK
-
-        return s
+        return regex.sub(
+            r"(?<=^|\s)'(?=[a-z])", "\u2018", s
+        )  # LEFT SINGLE QUOTATION MARK
 
     @staticmethod
     def split_hyphen_asterisk(text):
@@ -201,8 +201,7 @@ class PGDPResults:
 
     @staticmethod
     def fix_footnotes(text):
-        text = regex.sub(r"\[(\d+)\]", r"\1", text)
-        return text
+        return regex.sub(r"\[(\d+)\]", r"\1", text)
 
     @staticmethod
     def fix_pgdp_diacritics(text):
@@ -279,15 +278,14 @@ class PGDPResults:
         text = regex.sub(r"\[\)o\]", "ŏ", text)
         text = regex.sub(r"\[\)u\]", "ŭ", text)
 
-        text = regex.sub(r"\[c,\]", "ç", text)
-        return text
+        return regex.sub(r"\[c,\]", "ç", text)
 
 
 class PGDPExport:
     pages: list[PGDPResults]
     project_id: str
 
-    def __init__(self, pages: list[PGDPResults], project_id: str):
+    def __init__(self, pages: list[PGDPResults], project_id: str) -> None:
         self.pages = pages
         self.project_id = project_id
 

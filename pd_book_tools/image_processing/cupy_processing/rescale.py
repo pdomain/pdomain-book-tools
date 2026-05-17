@@ -52,7 +52,7 @@ def rescale_image_gpu(
     zoom_h = new_h / height
     zoom_w = new_w / width
 
-    logger.debug(f"rescale_image_gpu: {height}x{width} -> {new_h}x{new_w}")
+    logger.debug("rescale_image_gpu: %sx%s -> %sx%s", height, width, new_h, new_w)
 
     src = img_cp.astype(cp.float32)
 

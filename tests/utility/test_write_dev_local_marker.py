@@ -27,7 +27,8 @@ def _load_script_module():
     executing so any future ``@dataclass`` forward refs resolve cleanly
     (mirrors the pattern used in ``test_check_dev_local.py``)."""
     spec = importlib.util.spec_from_file_location("write_dev_local_marker", SCRIPT_PATH)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["write_dev_local_marker"] = module
     spec.loader.exec_module(module)
@@ -105,7 +106,8 @@ def test_write_marker_round_trips_with_check_dev_local(wm, tmp_path):
     §4 (in-repo dev-local)."""
     cdl_path = Path(__file__).resolve().parents[2] / "scripts" / "check_dev_local.py"
     spec = importlib.util.spec_from_file_location("check_dev_local", cdl_path)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     cdl = importlib.util.module_from_spec(spec)
     sys.modules["check_dev_local"] = cdl
     spec.loader.exec_module(cdl)

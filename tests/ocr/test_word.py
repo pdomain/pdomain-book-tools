@@ -368,7 +368,7 @@ def test_split_basic_right_gt(split_basic_case):
 
 
 @pytest.mark.parametrize(
-    "bbox_split_offset,character_split_index,exc",
+    ("bbox_split_offset", "character_split_index", "exc"),
     [
         (-1, 2, ValueError),
         (2, -1, ValueError),

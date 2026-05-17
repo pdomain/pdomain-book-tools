@@ -340,7 +340,8 @@ def test_snapshot_text_renders_words():
 
     pure = page.diagnostic_pure_ocr
     post = page.diagnostic_post_noise_removal
-    assert pure is not None and post is not None
+    assert pure is not None
+    assert post is not None
 
     pure_text = pure.text
     post_text = post.text

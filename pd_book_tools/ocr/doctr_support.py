@@ -276,11 +276,11 @@ def _load_reco_model(
     reco_arch_name = _read_arch_sidecar(reco_path) or _detect_recognition_arch(
         reco_params
     )
-    reco_kwargs = dict(
-        pretrained=False,
-        pretrained_backbone=False,
-        vocab=vocab,
-    )
+    reco_kwargs = {
+        "pretrained": False,
+        "pretrained_backbone": False,
+        "vocab": vocab,
+    }
     try:
         reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
     except TypeError:

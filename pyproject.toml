@@ -64,7 +64,7 @@ dev = [
     "pre-commit (>=4.2.0,<5.0.0)",
     "pytest-cov>=6.2.1",
     "pytest>=8.3",
-    "ruff>=0.12.5",
+    "ruff>=0.15.13",
     "pytest-xdist>=3.8.0",
     "gitlint>=0.19.1",
 ]
@@ -119,7 +119,35 @@ directory = "htmlcov"
 output = "coverage.xml"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "B", "SIM", "UP", "RUF", "ERA", "T20"]
+select = [
+    # Current baseline
+    "E", "W",       # pycodestyle errors/warnings
+    "F",            # pyflakes
+    "I",            # isort (replaces standalone isort)
+    "N",            # pep8-naming
+    "B",            # flake8-bugbear — mutable defaults, broad excepts, etc.
+    "SIM",          # flake8-simplify
+    "UP",           # pyupgrade
+    "RUF",          # ruff-specific rules
+    "ERA",          # eradicate — commented-out code
+    "T20",          # flake8-print
+    # Added per 2026-05-17 strict-linting decisions
+    "ANN",          # flake8-annotations — force type hints on all sigs
+    "S",            # flake8-bandit — security rules
+    "C4",           # flake8-comprehensions
+    "PERF",         # perflint — performance anti-patterns
+    "TC",           # flake8-type-checking — move type-only imports to TYPE_CHECKING
+    "TID",          # flake8-tidy-imports
+    "PT",           # flake8-pytest-style
+    "RET",          # flake8-return
+    "PL",           # pylint subset (PLC + PLE + PLR + PLW)
+    "D",            # pydocstyle
+    # Added per 2026-05-17 guidelines audit (BLE/TRY/LOG/G)
+    "BLE",          # flake8-blind-except
+    "TRY",          # tryceratops — TRY400 enforces log.exception over log.error in except
+    "LOG",          # flake8-logging — proper log.* usage
+    "G",            # flake8-logging-format — lazy formatting in log calls
+]
 ignore = [
     # `l` is widely used as the loop-variable name for "line" in the OCR layout
     # code. Renaming everywhere is invasive and the meaning is always
@@ -129,36 +157,75 @@ ignore = [
     # Line length: many long docstrings, error messages, and URLs; enforcing
     # 88-char wrapping everywhere adds noise without improving readability.
     "E501",
+    # Docstring style: D203 (1-blank-before-class-docstring) conflicts with
+    # D211 (no-blank-before-class-docstring); D212 (multi-line-summary-first-line)
+    # conflicts with D213 (multi-line-summary-second-line). Pick one of each pair.
+    "D203",
+    "D212",
+    # Missing docstrings on public modules/packages/magic-methods: large
+    # existing codebase; add incrementally, not in a single lint sweep.
+    "D100",
+    "D104",
+    "D107",
+    # ANN101/ANN102 (self/cls annotations) are deprecated in ruff >= 0.2.
+    "ANN101",
+    "ANN102",
+    # PLR0913 (too-many-arguments): OCR/image functions legitimately need many
+    # params; enforcing here would require invasive config-object refactors.
+    "PLR0913",
+    # PLR2004 (magic-value-comparison): common in OCR geometry/threshold code.
+    "PLR2004",
+    # TRY003 (long-message-outside-exception-class): too noisy for a library
+    # that uses f-string error messages everywhere.
+    "TRY003",
+    # COM812 (missing-trailing-comma): conflicts with ruff formatter auto-style.
+    "COM812",
+    # PLC0415 (import-not-at-top-level): deferred imports are a legitimate
+    # pattern here — used to break circular deps (e.g. block ↔ page) and to
+    # avoid loading optional-heavy modules (warnings, math, cupy) until needed.
+    # Suppressing globally; circular-import deferred imports can't be moved
+    # without architectural refactors.
+    "PLC0415",
+    # PLR complexity rules: OCR pipeline functions legitimately have high
+    # branch/return counts; enforcing these would require invasive refactors
+    # not warranted by the linting rollout.
+    "PLR0912",  # too-many-branches
+    "PLR0911",  # too-many-return-statements
+    "PLR0915",  # too-many-statements
+    # ANN401 (dynamically-typed-expressions): some functions legitimately
+    # accept/return Any (e.g. JSON deserialisers, generic dispatch helpers).
+    "ANN401",
+    # D205 (1-blank-line-required-between-summary-and-description): enforcing
+    # this across the entire docstring backlog is too noisy for one commit.
+    "D205",
+    # D105 (missing-docstring-in-magic-method): __repr__, __eq__, etc. are
+    # self-documenting; require incrementally on new code only.
+    "D105",
 ]
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["pd_book_tools"]
+
 [tool.ruff.lint.per-file-ignores]
-# Files that use the project's camelCase coordinate API (minX/maxX/minY/maxY).
-# Renaming these names everywhere would be an invasive API-breaking change.
-"pd_book_tools/geometry/bounding_box.py" = ["N802", "F401"]  # N802: coord props; F401: back-compat re-exports
-"pd_book_tools/geometry/point.py" = ["N806"]
-"pd_book_tools/hf/download.py" = ["N806"]
-"pd_book_tools/image_processing/cupy_processing/color_to_gray.py" = ["N806"]
-"pd_book_tools/image_processing/cupy_processing/contours.py" = ["N806"]
-"pd_book_tools/image_processing/cupy_processing/crop.py" = ["N803", "N806"]
-"pd_book_tools/image_processing/cupy_processing/deskew.py" = ["N806"]
-"pd_book_tools/image_processing/cupy_processing/edge_finding.py" = ["N806"]
-"pd_book_tools/image_processing/cv2_processing/contours.py" = ["N806"]
-"pd_book_tools/image_processing/cv2_processing/crop.py" = ["N803", "N806"]
-"pd_book_tools/image_processing/cv2_processing/edge_finding.py" = ["N806"]
-"pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py" = ["N806"]
-"pd_book_tools/image_processing/cv2_processing/rotate.py" = ["N803", "N806"]
-"pd_book_tools/image_processing/external_tools.py" = ["N803"]
-"pd_book_tools/image_processing/formats.py" = ["F401"]  # pillow_avif import is for side-effect (plugin registration)
-"pd_book_tools/layout/geometry.py" = ["N806"]
-"pd_book_tools/ocr/cv2_tesseract.py" = ["N816"]  # pytesseract_Output mirrors the module attribute name
-"pd_book_tools/ocr/doctr_support.py" = ["F401"]  # doctr models imported to force module load
-"pd_book_tools/ocr/document.py" = ["N806"]
-"pd_book_tools/ocr/dropcap.py" = ["N806", "N815"]
-"pd_book_tools/ocr/layout_aware_reorg.py" = ["N806"]
-"pd_book_tools/ocr/page.py" = ["N811", "E402"]  # N811: cv2_ prefix convention; E402: deferred inspect import
-"pd_book_tools/ocr/reorganize_page_utils.py" = ["N803", "N806", "N811", "N815"]  # N811: cv2_ prefix convention
-"pd_book_tools/utility/timing.py" = ["N803"]
-"tests/hf/test_hf.py" = ["N818"]  # _NotFound: test-internal sentinel, not a public API
+# Tests: assert is the idiom (S101); magic numbers common (PLR2004); no
+# annotations required (ANN); no docstrings required (D); security rules
+# relaxed (S105/S106/S311 — hardcoded passwords/random are test fixtures);
+# pytest.raises match= not required for every test (PT011);
+# /tmp paths are fine in tests (S108); trivial comparisons can be intentional (PLR0133);
+# loop-var reassignment as pattern (PLW2901); list-building loops in tests are fine (PERF401).
+"tests/**/*.py" = ["S101", "S105", "S106", "S311", "T201", "ANN", "D", "PLR2004", "PT011", "S108", "PLR0133", "PLW2901", "PERF401"]
+# Scripts: print() is the output mechanism; no docstrings required; S607 partial
+# executable path is idiomatic when invoking system tools (uv, git, etc.)
+"scripts/*.py" = ["T201", "D", "S607"]
+"tests/fixtures/layout_regression/*.py" = ["T201"]
+# __init__.py: re-exports without docstrings; F401 used for public API surface.
+"**/__init__.py" = ["D104", "F401", "TC"]
+# Private modules: internal convention, no docstrings required.
+"**/_*.py" = ["D"]
+# Test files with camelCase coordinate API usage — these also get N806
 "tests/image_processing/cupy_processing/test_edge_finding.py" = ["N806"]
 "tests/image_processing/cupy_processing/test_rotate.py" = ["N806"]
 "tests/image_processing/cv2_processing/test_edge_finding.py" = ["N806"]
@@ -175,11 +242,58 @@ ignore = [
 "tests/test_public_api.py" = ["N814"]  # _BB alias: underscore-prefixed for identity tests
 "tests/utility/test_ipynb_widgets.py" = ["E402"]  # imports after pytest.importorskip guard
 "tests/utility/test_timing.py" = ["N802"]
+"tests/hf/test_hf.py" = ["N818"]  # _NotFound: test-internal sentinel, not a public API
 # Enum members are list-typed values; RUF012 incorrectly treats them as mutable class attributes
 "pd_book_tools/ocr/ground_truth_matching_helpers/character_groups.py" = ["RUF012"]
-# CLI scripts and fixture scripts — print() is the output mechanism
-"scripts/*.py" = ["T201"]
-"tests/fixtures/layout_regression/*.py" = ["T201"]
+# Heavy OCR pipeline files: annotation debt (ANN) + docstring debt (D) +
+# logging string-concatenation (G003/G004) + BLE/TRY patterns not touched
+# in this rollout. Add individually as each file gets a focused pass.
+"pd_book_tools/ocr/page.py" = ["N811", "E402", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
+"pd_book_tools/ocr/reorganize_page_utils.py" = ["N803", "N806", "N811", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
+"pd_book_tools/ocr/ground_truth_matching.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "PLW0603"]
+"pd_book_tools/geometry/bounding_box.py" = ["N802", "F401", "ANN", "D", "G003", "G004", "S108"]
+"pd_book_tools/ocr/document.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pd_book_tools/pgdp/pgdp_results.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
+"pd_book_tools/ocr/doctr_support.py" = ["F401", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pd_book_tools/ocr/word.py" = ["ANN", "D", "G003", "G004", "PERF401", "BLE001"]
+"pd_book_tools/geometry/point.py" = ["N806", "ANN", "D"]
+"pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "S108"]
+"pd_book_tools/ocr/block.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
+"pd_book_tools/ocr/image_utilities.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pd_book_tools/layout/types.py" = ["ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/color_to_gray.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pd_book_tools/hf/download.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "S110"]
+"pd_book_tools/hf/models.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pd_book_tools/image_processing/cv2_processing/canvas.py" = ["ANN", "D", "G003", "G004"]
+"pd_book_tools/image_processing/cv2_processing/edge_finding.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pd_book_tools/image_processing/cv2_processing/rescale.py" = ["ANN", "D", "G003", "G004"]
+"pd_book_tools/utility/timing.py" = ["N803", "ANN", "D", "G003", "G004"]
+"pd_book_tools/image_processing/cupy_processing/deskew.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pd_book_tools/ocr/dropcap.py" = ["N806", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pd_book_tools/ocr/layout_aware_reorg.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
+"pd_book_tools/layout/registry.py" = ["ANN", "D", "G003", "G004"]
+"pd_book_tools/layout/visualize.py" = ["ANN", "D", "G003", "G004"]
+"pd_book_tools/ocr/cv2_tesseract.py" = ["N816", "ANN", "D", "G003", "G004"]
+"pd_book_tools/ocr/review.py" = ["ANN", "D"]
+"pd_book_tools/layout/geometry.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pd_book_tools/image_processing/formats.py" = ["F401", "ANN", "D", "BLE001"]
+"pd_book_tools/image_processing/external_tools.py" = ["N803", "ANN", "D", "G003", "G004", "BLE001", "S607"]
+"pd_book_tools/utility/ipynb_widgets.py" = ["ANN", "D"]
+"pd_book_tools/image_processing/cv2_processing/contours.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pd_book_tools/image_processing/cv2_processing/crop.py" = ["N803", "N806", "ANN", "D"]
+"pd_book_tools/image_processing/cv2_processing/rotate.py" = ["N803", "N806", "ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/contours.py" = ["N806", "ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/crop.py" = ["N803", "N806", "ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/edge_finding.py" = ["N806", "ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/filters.py" = ["ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/morph.py" = ["ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/rescale.py" = ["ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/rotate.py" = ["ANN", "D"]
+"pd_book_tools/image_processing/cupy_processing/threshold.py" = ["ANN", "D"]
+"pd_book_tools/layout/adapters/pp_doclayout.py" = ["ANN", "D"]
+"pd_book_tools/layout/_mappings.py" = ["ANN", "D"]
+"pd_book_tools/ocr/ground_truth_matching_helpers/match_helpers.py" = ["ANN", "D", "PERF401"]
+"pd_book_tools/pgdp/pgdp_page_image.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "S314", "S307"]
 
 [tool.basedpyright]
 # Include source, tests, and scripts. Match the layout this repo uses.

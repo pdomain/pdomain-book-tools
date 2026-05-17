@@ -16,6 +16,7 @@ free functions here directly; old code calling
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import TYPE_CHECKING
 
 import cv2
 from cv2 import (
@@ -26,9 +27,11 @@ from cv2 import (
     findNonZero,
     threshold,
 )
-from numpy import ndarray
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 __all__ = [
     "crop_bottom_bbox",
@@ -42,7 +45,9 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def _extract_roi(bbox: BoundingBox, image: ndarray):
+def _extract_roi(
+    bbox: BoundingBox, image: ndarray
+) -> tuple[ndarray, float, float, float, float, int, int, bool]:
     """Return ``(roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized)``.
 
     Scales ``bbox`` to pixel coordinates if it was normalized.
@@ -66,7 +71,7 @@ def _threshold_inverted(roi: ndarray) -> tuple[ndarray, ndarray]:
     return thresh, roi_gray
 
 
-def _tight_bbox_from_thresh(thresh: ndarray):
+def _tight_bbox_from_thresh(thresh: ndarray) -> tuple[int, int, int, int] | None:
     non_zero = findNonZero(thresh)
     if non_zero is None:
         return None
@@ -80,7 +85,7 @@ def _connected_content_bbox_from_image_thresh(
     y1: float,
     x2: float,
     y2: float,
-):
+) -> tuple[float, float, float, float] | None:
     """Return bbox for connected components that intersect the original ROI.
 
     Coordinates are in image pixel space and returned as
@@ -187,10 +192,10 @@ def refine_bbox(
         x_max = min(float(img_w), x_max + extra_w)
         y_max = min(float(img_h), y_max + extra_h)
     else:
-        x_min = max(orig_x1, max(0.0, x_min - padding_px))
-        y_min = max(orig_y1, max(0.0, y_min - padding_px))
-        x_max = min(orig_x2, min(float(img_w), x_max + padding_px))
-        y_max = min(orig_y2, min(float(img_h), y_max + padding_px))
+        x_min = max(orig_x1, 0.0, x_min - padding_px)
+        y_min = max(orig_y1, 0.0, y_min - padding_px)
+        x_max = min(orig_x2, float(img_w), x_max + padding_px)
+        y_max = min(orig_y2, float(img_h), y_max + padding_px)
     return _finalize_pixel_bbox(
         x_min, y_min, x_max, y_max, img_w, img_h, original_is_normalized
     )

@@ -11,15 +11,15 @@ from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
 
 
 def _region(**kwargs) -> LayoutRegion:
-    defaults = dict(
-        type=RegionType.figure,
-        L=10,
-        R=110,
-        T=20,
-        B=220,
-        confidence=0.9,
-        raw_label="image",
-    )
+    defaults = {
+        "type": RegionType.figure,
+        "L": 10,
+        "R": 110,
+        "T": 20,
+        "B": 220,
+        "confidence": 0.9,
+        "raw_label": "image",
+    }
     defaults.update(kwargs)
     return LayoutRegion(**defaults)
 

@@ -119,7 +119,7 @@ def silence_transformers_load_chatter() -> None:
 
         _hf_logging.set_verbosity_error()
         _hf_logging.disable_progress_bar()
-    except Exception:
+    except Exception:  # noqa: S110  # transformers optional dep absence; silently no-op
         pass
 
 

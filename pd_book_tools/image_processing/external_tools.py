@@ -5,7 +5,7 @@ import subprocess
 
 def run_optipng(
     src: pathlib.Path,
-):
+) -> None:
     subprocess.run(
         args=[
             "optipng",
@@ -21,7 +21,7 @@ def run_gegl_c2g(
     source_image_file: pathlib.Path,
     target_image_file: pathlib.Path,
     c2gOptions: str = "",
-):
+) -> None:
     args = [
         "gegl",
         source_image_file.absolute().as_posix(),

@@ -17,6 +17,7 @@ import os
 import pathlib
 from dataclasses import dataclass
 from logging import getLogger
+from typing import TYPE_CHECKING
 
 import numpy as np
 from cv2 import (
@@ -35,7 +36,9 @@ from pd_book_tools.ocr.block import (
     BlockChildType,
     purge_words_from_blocks,
 )
-from pd_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from pd_book_tools.ocr.word import Word
 
 logger = getLogger(__name__)
 
@@ -195,7 +198,7 @@ def _purge_words_from_blocks(blocks: list[Block], targets: set[int]) -> None:
 
 
 def _is_gibberish_line(line: Block) -> bool:
-    """Classify a 3\u20135-char LINE as plate-page-noise gibberish.  # EN DASH
+    """Classify a 3\u20135-char LINE as plate-page-noise gibberish.  # EN DASH.
 
     Patterns we catch:
       * **No vowels** in a multi-letter alphabetic token \u2014 printed words  # EM DASH
@@ -252,7 +255,7 @@ def _line_is_pure_punctuation(line: Block) -> bool:
 
 
 def drop_heuristic_figure_noise(page) -> int:
-    """Drop OCR lines that look like figure-internal noise \u2014 pure heuristic.  # EM DASH
+    """Drop OCR lines that look like figure-internal noise \u2014 pure heuristic.  # EM DASH.
 
     Pure-text/geometry fallback for pages reorganized without a layout
     model. Identifies clusters of "weak" lines (so short and so isolated
@@ -586,13 +589,12 @@ def _build_band_block(
         block_role_labels=[role],
         block_position_labels=[position],
     )
-    outer = Block(
+    return Block(
         items=[paragraph],
         block_category=BlockCategory.BLOCK,
         block_role_labels=[role],
         block_position_labels=[position],
     )
-    return outer
 
 
 def build_page_header_block(header_lines: list[Block]) -> Block | None:
@@ -796,7 +798,7 @@ def reorganize_strict_mode_enabled() -> bool:
 class ReorganizeDroppedWordsError(RuntimeError):
     """Raised in strict mode when reorganize_page drops one or more words."""
 
-    def __init__(self, dropped: list[Word], errors: list[str]):
+    def __init__(self, dropped: list[Word], errors: list[str]) -> None:
         super().__init__(
             f"reorganize_page dropped {len(dropped)} word(s); "
             f"first: {errors[0] if errors else '(none)'}"
@@ -1020,13 +1022,12 @@ def wrap_special_role_block(lines: list[Block], block_type: str) -> Block:
         block_role_labels=[role],
         block_position_labels=position_labels,
     )
-    outer = Block(
+    return Block(
         items=[paragraph],
         block_category=BlockCategory.BLOCK,
         block_role_labels=[role],
         block_position_labels=position_labels,
     )
-    return outer
 
 
 @dataclass(frozen=True)
@@ -1677,8 +1678,7 @@ def estimate_average_word_distance(words: list[Word], page_width: int) -> float:
             if abs(mid_y_s[j] - bb_mid) > 1.5 * max_h:
                 continue
             gap = minX_s[j] - bb_maxX
-            if gap < 0.0:
-                gap = 0.0
+            gap = max(gap, 0.0)
             if gap <= max_horizontal_gap and (nearest_gap is None or gap < nearest_gap):
                 nearest_gap = gap
         if nearest_gap is not None:
@@ -1763,16 +1763,14 @@ def build_word_seeded_row_blocks(
                 y_gap = bb_minY - maxY_s[j]
                 if y_gap < 0.0:
                     y_gap = minY_s[j] - bb_maxY
-                    if y_gap < 0.0:
-                        y_gap = 0.0
+                    y_gap = max(y_gap, 0.0)
                 if y_gap > y_expand:
                     continue
                 # X interval gap.
                 x_gap = bb_minX - maxX_s[j]
                 if x_gap < 0.0:
                     x_gap = minX_s[j] - bb_maxX
-                    if x_gap < 0.0:
-                        x_gap = 0.0
+                    x_gap = max(x_gap, 0.0)
                 if x_gap > x_expand:
                     continue
                 visited[j] = True
@@ -2456,7 +2454,8 @@ def expand_mixed_column_row_block(
     step_h_decisions: list[dict],
 ) -> list[Block]:
     """Pipeline Step H \u2014 expand a row block whose lines split into two narrow  # EM DASH
-    columns plus optional spanning lines."""
+    columns plus optional spanning lines.
+    """
     left_lines, right_lines, spanning_lines = mixed_col_split
     left_median_x = float(
         np_median([l.bounding_box.minX for l in left_lines if l.bounding_box])
@@ -2609,7 +2608,8 @@ def expand_simple_two_column_row_block(
     step_h_decisions: list[dict],
 ) -> Block:
     """Pipeline Step H \u2014 collapse a simple two-column row block into a single  # EM DASH
-    flow paragraph (left then right)."""
+    flow paragraph (left then right).
+    """
     left_lines, right_lines = col_split
     left_median_x = float(
         np_median([l.bounding_box.minX for l in left_lines if l.bounding_box])
@@ -2717,7 +2717,8 @@ def classify_and_paragraphize_blocks(
     expanded_row_blocks: list[Block],
 ) -> list[Block]:
     """Pipeline Step L \u2014 classify each row block (page header/footer, sidenote,  # EM DASH
-    poetry, blockquote, body) and paragraphize body blocks via Step K."""
+    poetry, blockquote, body) and paragraphize body blocks via Step K.
+    """
     all_lines = list(
         itertools.chain.from_iterable([b.lines for b in expanded_row_blocks])
     )
@@ -2887,11 +2888,10 @@ def reorganize_lines(block: Block) -> None:
             block.remove_item(next_line)
             i = i - 1
             continue
-        else:
-            _reorganize_lines_log_debug(
-                "Lines not split on X axis enough.", line.text, next_line.text
-            )
-            continue
+        _reorganize_lines_log_debug(
+            "Lines not split on X axis enough.", line.text, next_line.text
+        )
+        continue
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2900,7 +2900,7 @@ def reorganize_lines(block: Block) -> None:
 
 
 def compute_text_row_blocks(lines: list[Block], tolerance=None) -> Block | None:
-    """Step F \u2014 group lines into row blocks by dynamic vertical spacing.  # EM DASH
+    """Step F \u2014 group lines into row blocks by dynamic vertical spacing.  # EM DASH.
 
     Does not mutate the caller's ``lines`` list \u2014 sorts a local copy.  # EM DASH
     """
@@ -2991,7 +2991,8 @@ def emit_band_only_blocks(
     page_footer_block: Block | None,
 ) -> None:
     """Assemble the page even when no body content remains so headerless pages
-    stay consistent."""
+    stay consistent.
+    """
     band_only_blocks: list[Block] = []
     if page_header_block is not None:
         band_only_blocks.append(page_header_block)

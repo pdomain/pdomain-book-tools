@@ -166,7 +166,7 @@ class Block:
         additional_block_attributes: dict | None = None,
         base_ground_truth_text: str | None = None,
         review: ReviewMetadata | None = None,
-    ):
+    ) -> None:
         self.child_type: BlockChildType | None = child_type
         self.block_category: BlockCategory | None = block_category
         # R-14: a ``LINE`` always contains words directly — never child
@@ -303,7 +303,7 @@ class Block:
         ]
         return list(dict.fromkeys(normalized))
 
-    def _sort_items(self):
+    def _sort_items(self) -> None:
         # TODO: Implement a more robust sorting mechanism.
 
         # Blocks should be sorted:
@@ -362,8 +362,8 @@ class Block:
             return
         self.bounding_box = BoundingBox.union(bboxes)
 
-    def add_item(self, item):
-        """Add an item to the block"""
+    def add_item(self, item) -> None:
+        """Add an item to the block."""
         if self.child_type == BlockChildType.WORDS:
             if not isinstance(item, Word):
                 raise TypeError("Item must be of type Word")
@@ -378,9 +378,8 @@ class Block:
                     raise ValueError(
                         "All word bounding boxes in a WORDS block must share the same coordinate system (normalized or pixel)."
                     )
-        else:
-            if not isinstance(item, Block):
-                raise TypeError("Item must be of type Block")
+        elif not isinstance(item, Block):
+            raise TypeError("Item must be of type Block")
         self._items.append(item)
         self._sort_items()
         self.recompute_bounding_box()
@@ -453,7 +452,7 @@ class Block:
         # Empty words are directly removed with remove_item, do not need to be handled here
 
     @items.setter
-    def items(self, value):
+    def items(self, value) -> None:
         if not isinstance(value, Collection):
             raise TypeError("items must be a collection (e.g., list, tuple, set)")
         for item in value:
@@ -518,10 +517,9 @@ class Block:
                 sep = "" if "drop cap" in prev_components else " "
                 parts.append(sep + item.text)
             return "".join(parts)
-        elif self.block_category == BlockCategory.PARAGRAPH:
+        if self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(item.text for item in self._items)
-        else:
-            return "\n\n".join(item.text for item in self._items)
+        return "\n\n".join(item.text for item in self._items)
 
     @property
     def ground_truth_text(self) -> str:
@@ -552,10 +550,9 @@ class Block:
                     matched_words,
                 )
             return " ".join(matched_words)
-        elif self.block_category == BlockCategory.PARAGRAPH:
+        if self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(item.ground_truth_text for item in self._items)
-        else:
-            return "\n\n".join(item.ground_truth_text for item in self._items)
+        return "\n\n".join(item.ground_truth_text for item in self._items)
 
     @property
     def ground_truth_text_only_ocr(self) -> str:
@@ -571,18 +568,15 @@ class Block:
                 for s in (item.ground_truth_text_only_ocr for item in self._items)
                 if s
             )
-        elif self.block_category == BlockCategory.PARAGRAPH:
+        if self.block_category == BlockCategory.PARAGRAPH:
             return "\n".join(
                 s
                 for s in (item.ground_truth_text_only_ocr for item in self._items)
                 if s
             )
-        else:
-            return "\n\n".join(
-                s
-                for s in (item.ground_truth_text_only_ocr for item in self._items)
-                if s
-            )
+        return "\n\n".join(
+            s for s in (item.ground_truth_text_only_ocr for item in self._items) if s
+        )
 
     @property
     def ground_truth_exact_match(self) -> bool:
@@ -675,40 +669,32 @@ class Block:
         """Get list of words in the block."""
         if self.child_type == BlockChildType.WORDS:
             return [item.text for item in self._items]
-        else:
-            return list(
-                itertools.chain.from_iterable(item.word_list for item in self._items)
-            )
+        return list(
+            itertools.chain.from_iterable(item.word_list for item in self._items)
+        )
 
     @property
     def words(self) -> list[Word]:
         """Get flat list of all words in the block."""
         if self.child_type == BlockChildType.WORDS:
             return list(self._items)
-        else:
-            return list(
-                itertools.chain.from_iterable(item.words for item in self._items)
-            )
+        return list(itertools.chain.from_iterable(item.words for item in self._items))
 
     @property
     def lines(self) -> list["Block"]:
         """Flat list of all 'lines' in the block."""
         if self.child_type == BlockChildType.WORDS:
             return [self]
-        else:
-            return list(
-                itertools.chain.from_iterable(item.lines for item in self._items)
-            )
+        return list(itertools.chain.from_iterable(item.lines for item in self._items))
 
     @property
     def paragraphs(self) -> list["Block"]:
         """Flat list of all 'paragraphs' in the block."""
         if self.block_category == BlockCategory.PARAGRAPH:
             return [self]
-        else:
-            return list(
-                itertools.chain.from_iterable(item.paragraphs for item in self._items)
-            )
+        return list(
+            itertools.chain.from_iterable(item.paragraphs for item in self._items)
+        )
 
     def split_word(
         self,
@@ -879,7 +865,8 @@ class Block:
 
     def merge_fallback(self, other: "Block") -> bool:
         """Fallback merge that concatenates items when :meth:`merge` fails
-        on malformed bbox metadata."""
+        on malformed bbox metadata.
+        """
         try:
             self._items = [*self._items, *other.items]
             self._sort_items()
@@ -937,11 +924,10 @@ class Block:
             )
         if self.block_labels is None:
             self.block_labels = block_to_merge.block_labels
-        else:
-            if block_to_merge.block_labels is not None:
-                self.block_labels = list(
-                    set(self.block_labels).union(block_to_merge.block_labels)
-                )
+        elif block_to_merge.block_labels is not None:
+            self.block_labels = list(
+                set(self.block_labels).union(block_to_merge.block_labels)
+            )
         self.block_role_labels = list(
             dict.fromkeys(self.block_role_labels + block_to_merge.block_role_labels)
         )
@@ -971,12 +957,11 @@ class Block:
             return []
         if self.child_type == BlockChildType.WORDS:
             return [item.ocr_confidence for item in self._items]
-        else:
-            return list(
-                itertools.chain.from_iterable(
-                    item.ocr_confidence_scores() for item in self._items
-                )
+        return list(
+            itertools.chain.from_iterable(
+                item.ocr_confidence_scores() for item in self._items
             )
+        )
 
     def mean_ocr_confidence(self) -> float:
         """Get the mean of the OCR confidence score of all items.
@@ -993,7 +978,7 @@ class Block:
     def scale(self, width: int, height: int) -> "Block":
         """
         Return new block with scaled bounding box
-        and scaled children to absolute pixel coordinates
+        and scaled children to absolute pixel coordinates.
         """
         return Block(
             items=[item.scale(width, height) for item in self._items],
@@ -1011,7 +996,7 @@ class Block:
         )
 
     def fuzz_score_against(self, ground_truth_text):
-        """Scores a string as "matching" against a ground truth string
+        """Scores a string as "matching" against a ground truth string.
 
         TODO: Perhaps add loose scoring for curly quotes against straight quotes, and em-dashes against hyphens to count these as "closer" to gt
 
@@ -1047,7 +1032,7 @@ class Block:
 
     @classmethod
     def from_dict(cls, data) -> "Block":
-        """Create OCRBlock from dictionary"""
+        """Create OCRBlock from dictionary."""
         child_type_raw = data.get("child_type")
         if isinstance(child_type_raw, BlockChildType):
             child_type = child_type_raw

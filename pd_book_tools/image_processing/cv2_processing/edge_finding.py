@@ -14,9 +14,7 @@ def find_edges(
     fuzzy_px_w_override=None,
     fuzzy_px_h_override=None,
 ):
-    """
-    Optimized version of finding edges in a binary image using vectorized NumPy operations.
-    """
+    """Optimized version of finding edges in a binary image using vectorized NumPy operations."""
     log_prefix = "find_edges - "
     logger.debug(log_prefix + "Start")
 

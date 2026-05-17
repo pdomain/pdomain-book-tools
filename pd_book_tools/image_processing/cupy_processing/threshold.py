@@ -80,11 +80,7 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     # Apply binary thresholding. Return uint8 0/255 to match the cv2 backend's
     # `otsu_binary_thresh` contract so downstream code can switch backends
     # without dtype/range surprises (review issue H-16).
-    binary_img_cp_uint8 = cp.where(img_cp_float > otsu_threshold, 255, 0).astype(
-        cp.uint8
-    )
-
-    return binary_img_cp_uint8
+    return cp.where(img_cp_float > otsu_threshold, 255, 0).astype(cp.uint8)
 
 
 def binary_thresh_gpu(img_cp: cp.ndarray, level: int = 127) -> cp.ndarray:

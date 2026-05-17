@@ -22,7 +22,7 @@ from pd_book_tools.layout.types import RegionType
 
 
 @pytest.mark.parametrize(
-    "raw_label, expected",
+    ("raw_label", "expected"),
     [
         ("header", RegionType.header),
         ("footer", RegionType.footer),

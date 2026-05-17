@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy as np
 
 try:
     from cupyx.scipy.ndimage import convolve1d  # type: ignore[import-not-found]
@@ -58,7 +60,9 @@ def find_edges_gpu(
     minY = int(y_indices[0]) if y_indices.size > 0 else 0
     maxY = int(y_indices[-1]) if y_indices.size > 0 else h
 
-    logger.debug(f"find_edges_gpu: minX={minX}, maxX={maxX}, minY={minY}, maxY={maxY}")
+    logger.debug(
+        "find_edges_gpu: minX=%s, maxX=%s, minY=%s, maxY=%s", minX, maxX, minY, maxY
+    )
     return minX, maxX, minY, maxY
 
 

@@ -40,12 +40,22 @@ def crop_to_rectangle(
     # Ensure cropping makes sense
     if minX >= maxX or minY >= maxY:
         logger.warning(
-            f"{log_prefix}Invalid crop dimensions: minX={minX}, maxX={maxX}, minY={minY}, maxY={maxY}. Returning original image."
+            "%sInvalid crop dimensions: minX=%s, maxX=%s, minY=%s, maxY=%s. Returning original image.",
+            log_prefix,
+            minX,
+            maxX,
+            minY,
+            maxY,
         )
         return img  # Return original if invalid crop
 
     logger.debug(
-        f"{log_prefix}Cropping image to: minX={minX}, maxX={maxX}, minY={minY}, maxY={maxY}"
+        "%sCropping image to: minX=%s, maxX=%s, minY=%s, maxY=%s",
+        log_prefix,
+        minX,
+        maxX,
+        minY,
+        maxY,
     )
 
     # Perform cropping

@@ -89,7 +89,7 @@ class TestFuncLogExecutionTime:
         @func_log_excution_time(logger)
         def documented():
             """A docstring."""
-            return None
+            return
 
         assert documented.__name__ == "documented"
         assert documented.__doc__ == "A docstring."

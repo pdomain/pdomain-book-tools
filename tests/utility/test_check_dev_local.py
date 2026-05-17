@@ -25,7 +25,8 @@ def _load_script_module():
     executing so ``@dataclass`` (which inspects ``cls.__module__``) can
     resolve forward references."""
     spec = importlib.util.spec_from_file_location("check_dev_local", SCRIPT_PATH)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None
+    assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["check_dev_local"] = module
     spec.loader.exec_module(module)

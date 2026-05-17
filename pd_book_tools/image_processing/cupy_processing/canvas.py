@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import logging
 import math
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from pd_book_tools.image_processing.types import Alignment
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +55,14 @@ def map_content_onto_scaled_canvas_gpu(
     canvas[y_offset : y_offset + height, x_offset : x_offset + width] = img_cp
 
     logger.debug(
-        f"map_content_onto_scaled_canvas_gpu: {height}x{width} -> {new_height}x{new_width} "
-        f"offset=({y_offset},{x_offset}) align={force_align}"
+        "map_content_onto_scaled_canvas_gpu: %sx%s -> %sx%s offset=(%s,%s) align=%s",
+        height,
+        width,
+        new_height,
+        new_width,
+        y_offset,
+        x_offset,
+        force_align,
     )
     return canvas
 

@@ -6,10 +6,12 @@ import io
 import json
 import subprocess
 import sys
-
-import pytest
+from typing import TYPE_CHECKING
 
 from pd_book_tools.schemas.emit import PUBLIC_MODELS, emit_schemas, main
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _run_emit() -> dict:

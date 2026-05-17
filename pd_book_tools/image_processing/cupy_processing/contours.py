@@ -220,10 +220,15 @@ def remove_small_contours_adaptive_gpu(
     search_h = max(pixels_h, int(stats["median_h"] * 0.5))
 
     logger.debug(
-        f"remove_small_contours_adaptive_gpu: n={stats['count']}, "
-        f"median=({stats['median_w']:.1f}w, {stats['median_h']:.1f}h), "
-        f"threshold=({pixels_w}w, {pixels_h}h), "
-        f"search_area=({search_w}w, {search_h}h)"
+        "remove_small_contours_adaptive_gpu: n=%s, median=(%.1fw, %.1fh), "
+        "threshold=(%sw, %sh), search_area=(%sw, %sh)",
+        stats["count"],
+        stats["median_w"],
+        stats["median_h"],
+        pixels_w,
+        pixels_h,
+        search_w,
+        search_h,
     )
 
     return remove_small_contours_gpu(

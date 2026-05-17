@@ -15,8 +15,7 @@ map to ``None`` are dropped.
 from __future__ import annotations
 
 from logging import getLogger
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import torch
@@ -25,6 +24,9 @@ from transformers import RTDetrForObjectDetection, RTDetrImageProcessor
 
 from pd_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
 from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 logger = getLogger(__name__)
 
@@ -64,7 +66,7 @@ class PPDocLayoutPlusLDetector:
         confidence: float = 0.5,
         checkpoint_path: str | None = None,
         revision: str | None = None,
-    ):
+    ) -> None:
         repo = checkpoint_path or self.HF_REPO
         # When the user supplies their own ``checkpoint_path``, don't force
         # our pinned revision onto it.
@@ -98,7 +100,7 @@ class PPDocLayoutPlusLDetector:
             target_sizes=target,  # type: ignore[reportArgumentType]  # transformers stubs require TensorType; torch.Tensor is accepted at runtime
             threshold=self._conf,
         )
-        results = cast(list[dict], raw_results)[0]
+        results = cast("list[dict]", raw_results)[0]
 
         regions: list[LayoutRegion] = []
         id2label = self._model.config.id2label  # type: ignore[reportAttributeAccessIssue]  # transformers stubs type config as generic PretrainedConfig; id2label is always set

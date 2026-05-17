@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +19,8 @@ logger = logging.getLogger(__name__)
 _BGR2GRAY_WEIGHTS = None
 
 
-def _bgr2gray_weights():
-    global _BGR2GRAY_WEIGHTS
+def _bgr2gray_weights() -> cp.ndarray:
+    global _BGR2GRAY_WEIGHTS  # noqa: PLW0603  # lazy singleton — avoids CuPy import on module load
     if _BGR2GRAY_WEIGHTS is None:
         require_cupy()
         _BGR2GRAY_WEIGHTS = cp.array([0.114, 0.587, 0.299], dtype=cp.float32)

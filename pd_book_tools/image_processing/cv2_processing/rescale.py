@@ -41,5 +41,4 @@ def rescale_image(
         else (new_long_side, new_short_side)
     )
 
-    img = cv2.resize(src=img, dsize=new_size, interpolation=cv2.INTER_AREA)
-    return img
+    return cv2.resize(src=img, dsize=new_size, interpolation=cv2.INTER_AREA)

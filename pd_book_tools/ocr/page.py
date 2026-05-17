@@ -16,6 +16,8 @@ from typing import (
 )
 
 if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler
+
     from pd_book_tools.layout.types import PageLayout
 
 from cv2 import (
@@ -28,7 +30,6 @@ from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
 from numpy import ndarray
-from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -47,7 +48,7 @@ logger = getLogger(__name__)
 
 
 class BBoxColors(Enum):
-    """Enum for different colors used to draw bounding boxes"""
+    """Enum for different colors used to draw bounding boxes."""
 
     PAGE = (255, 0, 255)  # Magenta
     BLOCK = (0, 255, 0)  # Green
@@ -256,7 +257,7 @@ class Page:
     def page_source(self, value: str) -> None:
         self.source = value
 
-    def _sort_items(self):
+    def _sort_items(self) -> None:
         self._items.sort(
             key=lambda item: (
                 item.override_page_sort_order
@@ -269,20 +270,20 @@ class Page:
 
     @property
     def items(self) -> list[Block]:
-        """Returns a copy of the item list in this page"""
+        """Returns a copy of the item list in this page."""
         self._sort_items()
         return self._items.copy()
 
-    def add_item(self, item):
-        """Add an item to the page"""
+    def add_item(self, item) -> None:
+        """Add an item to the page."""
         if not isinstance(item, Block):
             raise TypeError("Item must be of type Block")
         self._items.append(item)
         self._sort_items()
         self.recompute_bounding_box()
 
-    def remove_item(self, item):
-        """Remove a block from the page"""
+    def remove_item(self, item) -> None:
+        """Remove a block from the page."""
         if item in self._items:
             self._items.remove(item)
             self._sort_items()
@@ -291,7 +292,7 @@ class Page:
             raise ValueError("Item not found in page")
 
     def remove_line_if_exists(self, line):
-        """Remove a line from the page if it exists"""
+        """Remove a line from the page if it exists."""
         removed = False
 
         if line in self._items:
@@ -310,7 +311,7 @@ class Page:
 
         return removed
 
-    def remove_empty_items(self):
+    def remove_empty_items(self) -> None:
         """Remove empty child blocks from the page.
 
         Bulk-removes all empties and recomputes the bounding box once,
@@ -332,7 +333,7 @@ class Page:
             logger.debug("Empty blocks removed from page")
 
     @items.setter
-    def items(self, values):
+    def items(self, values) -> None:
         if not isinstance(values, Collection):
             raise TypeError("items must be a collection")
         for block in values:
@@ -354,7 +355,7 @@ class Page:
         return self._cv2_numpy_page_image
 
     @cv2_numpy_page_image.setter
-    def cv2_numpy_page_image(self, value: ndarray):
+    def cv2_numpy_page_image(self, value: ndarray) -> None:
         if value is not None and not isinstance(value, ndarray):
             raise TypeError("cv2_numpy_page_image must be a numpy ndarray")
         self._cv2_numpy_page_image = value
@@ -393,7 +394,7 @@ class Page:
     def cv2_numpy_page_image_matched_word_with_colors(self) -> ndarray | None:
         return self._cv2_numpy_page_image_matched_word_with_colors
 
-    def refresh_page_images(self):
+    def refresh_page_images(self) -> None:
         if self._cv2_numpy_page_image is None:
             return
 
@@ -491,7 +492,7 @@ class Page:
                 self._cv2_numpy_page_image_matched_word_with_colors, w, color
             )
 
-    def _add_rect_recurse(self, items, image, item_add_lambda):
+    def _add_rect_recurse(self, items, image, item_add_lambda) -> None:
         if image is None:
             return
         for item in items:
@@ -501,7 +502,7 @@ class Page:
                 self._add_rect_recurse(item.items, image, item_add_lambda)
 
     @classmethod
-    def _add_rect(cls, image, item, box_color=None):
+    def _add_rect(cls, image, item, box_color=None) -> None:
         w, h = image.shape[1], image.shape[0]
         if not box_color:
             if isinstance(item, Page):
@@ -533,7 +534,7 @@ class Page:
                     thickness=2,
                 )
 
-    def _add_text_recurse(self, items, image, text_attr="text"):
+    def _add_text_recurse(self, items, image, text_attr="text") -> None:
         if image is None:
             return
         for item in items:
@@ -543,7 +544,7 @@ class Page:
                 self._add_text_recurse(item.items, image, text_attr=text_attr)
 
     @classmethod
-    def _add_text_label(cls, image, item, text_attr="text", color=None):
+    def _add_text_label(cls, image, item, text_attr="text", color=None) -> None:
         if not isinstance(item, Word):
             raise TypeError("item must be of type Word")
         w, h = image.shape[1], image.shape[0]
@@ -571,7 +572,7 @@ class Page:
     def text(self) -> str:
         """
         Get the full text of the page, separating each top-level block
-        by double carriage returns and one final carraige return
+        by double carriage returns and one final carraige return.
         """
         return "\n\n".join(block.text for block in self.items) + "\n"
 
@@ -579,13 +580,13 @@ class Page:
     def ground_truth_text(self) -> str:
         """
         Get the full ground truth text of the page, separating each top-level block
-        by double carriage returns and one final carraige return
+        by double carriage returns and one final carraige return.
         """
         return "\n\n".join(block.ground_truth_text for block in self.items) + "\n"
 
     @property
     def ground_truth_exact_match(self) -> bool:
-        """Check if the ground truth text of the block matches the text"""
+        """Check if the ground truth text of the block matches the text."""
         return all(item.ground_truth_exact_match for item in self.items)
 
     def copy_ocr_to_ground_truth(self) -> bool:
@@ -619,17 +620,17 @@ class Page:
 
     @property
     def words(self) -> list[Word]:
-        """Get flat list of all words in the page"""
+        """Get flat list of all words in the page."""
         return list(itertools.chain.from_iterable([item.words for item in self.items]))
 
     @property
     def lines(self) -> list[Block]:
-        """Get flat list of all 'lines' in the page"""
+        """Get flat list of all 'lines' in the page."""
         return list(itertools.chain.from_iterable([item.lines for item in self.items]))
 
     @property
     def paragraphs(self) -> list[Block]:
-        """Get flat list of all 'paragraphs' in the page"""
+        """Get flat list of all 'paragraphs' in the page."""
         return list(
             itertools.chain.from_iterable([item.paragraphs for item in self.items])
         )
@@ -889,7 +890,8 @@ class Page:
         target: Block | Word,
     ) -> bool:
         """Best-effort item removal when remove_item triggers malformed bbox
-        recompute errors."""
+        recompute errors.
+        """
         items = list(container.items)
         if target not in items:
             return False
@@ -899,7 +901,8 @@ class Page:
 
     def _remove_empty_items_safely(self) -> None:
         """Best-effort empty-item pruning that tolerates malformed geometry
-        recompute errors."""
+        recompute errors.
+        """
         try:
             self.remove_empty_items()
         except Exception as error:
@@ -917,7 +920,8 @@ class Page:
         container: Page | Block,
     ) -> None:
         """Recursively remove empty line/paragraph blocks from nested items
-        lists."""
+        lists.
+        """
         child_items = list(container.items)
         if not child_items:
             return
@@ -966,7 +970,7 @@ class Page:
         for paragraph in paragraphs:
             try:
                 paragraph.recompute_bounding_box()
-            except Exception:
+            except Exception:  # noqa: PERF203  # try-in-loop: individual failures must not abort the pass
                 logger.debug(
                     "Paragraph bbox recompute fallback skipped for %s",
                     type(paragraph).__name__,
@@ -1161,7 +1165,8 @@ class Page:
 
     def split_paragraph_after_line(self, line_index: int) -> bool:
         """Split the containing paragraph immediately after the selected
-        line."""
+        line.
+        """
         try:
             lines = list(self.lines)
             if line_index < 0 or line_index >= len(lines):
@@ -2680,7 +2685,7 @@ class Page:
     def scale(self, width: int, height: int) -> Page:
         """
         Return new page with scaled bounding box
-        to absolute pixel coordinates
+        to absolute pixel coordinates.
         """
         return Page(
             width=width,
@@ -2695,7 +2700,7 @@ class Page:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to JSON-serializable dictionary"""
+        """Convert to JSON-serializable dictionary."""
         result: dict[str, Any] = {
             "type": "Page",
             "width": self.width,
@@ -2743,7 +2748,7 @@ class Page:
         capture_diagnostics: bool = True,
         emit_illustration_placeholders: bool = True,
         sidenote_max_height_ratio: float | None = None,
-    ):
+    ) -> None:
         """Top-level reorganize pipeline — thin orchestration shim.
 
         All pipeline-step logic lives in
@@ -3136,12 +3141,12 @@ class Page:
                 emit_placeholders=emit_illustration_placeholders,
             )
 
-    def add_ground_truth(self, text: str):
+    def add_ground_truth(self, text: str) -> None:
         update_page_with_ground_truth_text(self, text)
         self.refresh_page_images()
 
-    def remove_ground_truth(self):
-        """Remove ground truth text from the page"""
+    def remove_ground_truth(self) -> None:
+        """Remove ground truth text from the page."""
         for item in self.items:
             item.remove_ground_truth()
         if self.unmatched_ground_truth_lines:
@@ -3152,7 +3157,7 @@ class Page:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Page:
-        """Create OCRPage from dictionary"""
+        """Create OCRPage from dictionary."""
         # Resolve source from either "source" or legacy "page_source" key
         source = data.get("source", data.get("page_source", "ocr"))
         review_raw = data.get("review")
@@ -3192,7 +3197,7 @@ class Page:
             review=review,
         )
 
-    def recompute_bounding_box(self):
+    def recompute_bounding_box(self) -> None:
         """Recompute the bounding box of the page based on its items.
 
         ``BoundingBox.union`` is strict about empty input, so we also
@@ -3210,7 +3215,9 @@ class Page:
             return
         self.bounding_box = BoundingBox.union(bboxes)
 
-    def refine_bounding_boxes(self, image: ndarray | None = None, padding_px: int = 0):
+    def refine_bounding_boxes(
+        self, image: ndarray | None = None, padding_px: int = 0
+    ) -> None:
         if image is None:
             if hasattr(self, "cv2_numpy_page_image"):
                 image = self.cv2_numpy_page_image
@@ -3222,7 +3229,7 @@ class Page:
             item.refine_bounding_boxes(image, padding_px=padding_px)
         self.recompute_bounding_box()
 
-    def generate_doctr_checks(self, output_path: pathlib.Path):
+    def generate_doctr_checks(self, output_path: pathlib.Path) -> None:
         if self.cv2_numpy_page_image is None:
             raise ValueError(
                 "cv2_numpy_page_image is not set. Please set it before calling this method."

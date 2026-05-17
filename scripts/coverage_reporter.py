@@ -16,13 +16,13 @@ def get_coverage_percentage() -> float | None:
         return None
 
     try:
-        tree = ET.parse(coverage_xml)
+        tree = ET.parse(coverage_xml)  # noqa: S314  # source is local CI-generated coverage.xml, not user input
         root = tree.getroot()
         lines_valid = int(root.get("lines-valid", 0))
         lines_covered = int(root.get("lines-covered", 0))
         if lines_valid > 0:
             return (lines_covered / lines_valid) * 100
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001  # final fallback: any parse failure returns None
         print(f"coverage_reporter: failed to parse coverage.xml: {e}", file=sys.stderr)
         return None
 

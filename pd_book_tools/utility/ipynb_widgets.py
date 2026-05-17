@@ -81,8 +81,7 @@ def get_html_string_from_cropped_image(
 
 def get_html_widget_from_cropped_image(img: ndarray, bounding_box: BoundingBox):
     img_html_string: str = get_html_string_from_cropped_image(img, bounding_box)
-    html_widget = HTML(img_html_string)
-    return html_widget
+    return HTML(img_html_string)
 
 
 def get_hbox_widget_for_cropped_image(

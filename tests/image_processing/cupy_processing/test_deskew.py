@@ -58,7 +58,8 @@ class TestAutoDeskewGpu:
 
         img = cp.zeros((100, 100), dtype=cp.uint8)
         result = auto_deskew_gpu(img)
-        assert isinstance(result, tuple) and len(result) == 3
+        assert isinstance(result, tuple)
+        assert len(result) == 3
         out, _top, _bottom = result
         assert isinstance(out, cp.ndarray)
 

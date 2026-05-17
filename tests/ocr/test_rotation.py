@@ -6,7 +6,7 @@ callables, so they're fast and don't require the DocTR predictor.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -17,6 +17,9 @@ from pd_book_tools.ocr.rotation import (
     detect_best_rotation,
     rotate_image,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _make_image(width: int = 6, height: int = 4) -> np.ndarray:

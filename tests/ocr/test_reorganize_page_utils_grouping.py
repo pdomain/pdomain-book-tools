@@ -196,7 +196,6 @@ def _wipe_text_outputs():
 
     for d in (TEXT_CURRENT_DIR, TEXT_DIFF_DIR):
         shutil.rmtree(d, ignore_errors=True)
-    yield
 
 
 def _load_fixture_page(case_name: str):

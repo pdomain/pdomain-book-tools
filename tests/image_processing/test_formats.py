@@ -82,7 +82,7 @@ class TestSupportedSuffixes:
 
 class TestMagicByteSniff:
     @pytest.mark.parametrize(
-        "name,data",
+        ("name", "data"),
         [
             ("a.png", PNG_SIG),
             ("a.jpg", JPEG_SIG),

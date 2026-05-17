@@ -74,7 +74,7 @@ def test_pgdp_reexports():
 def test_utility_reexports():
     # utility/ previously had no __init__.py at all — the package itself
     # is part of the new public surface.
-    import pd_book_tools.utility as utility
+    from pd_book_tools import utility
     from pd_book_tools.utility import ipynb_widgets, timing
 
     assert utility.timing is timing

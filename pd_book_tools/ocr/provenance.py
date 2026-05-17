@@ -8,11 +8,14 @@ UNKNOWN_METADATA_VALUE = "unknown"
 
 @dataclass(frozen=True)
 class OCRModelProvenance:
+    """Provenance metadata for a single OCR model (name, version, weights)."""
+
     name: str
     version: str | None = None
     weights_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialise to a plain dict for JSON persistence."""
         result: dict[str, Any] = {"name": self.name}
         if self.version:
             result["version"] = self.version
@@ -22,6 +25,7 @@ class OCRModelProvenance:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OCRModelProvenance:
+        """Deserialise from the dict produced by :meth:`to_dict`."""
         return cls(
             name=str(data.get("name", UNKNOWN_METADATA_VALUE)),
             version=(str(data["version"]) if data.get("version") is not None else None),
@@ -33,6 +37,8 @@ class OCRModelProvenance:
 
 @dataclass(frozen=True)
 class OCRProvenance:
+    """Full provenance record for an OCR pass: engine, version, and model list."""
+
     engine: str = UNKNOWN_METADATA_VALUE
     engine_version: str | None = None
     # Stored as a tuple so the frozen=True immutability promise is real:
@@ -49,6 +55,7 @@ class OCRProvenance:
             object.__setattr__(self, "models", tuple(self.models))
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialise to a plain dict for JSON persistence."""
         result: dict[str, Any] = {
             "engine": self.engine,
             "models": [model.to_dict() for model in self.models],
@@ -66,6 +73,7 @@ class OCRProvenance:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> OCRProvenance:
+        """Deserialise from the dict produced by :meth:`to_dict`."""
         raw_models = data.get("models", [])
         models: list[OCRModelProvenance] = []
         if isinstance(raw_models, list):
@@ -111,6 +119,7 @@ class OCRProvenance:
     def coerce(
         cls, value: OCRProvenance | dict[str, Any] | None
     ) -> OCRProvenance | None:
+        """Coerce a raw value to :class:`OCRProvenance` or ``None``."""
         if value is None:
             return None
         if isinstance(value, OCRProvenance):

@@ -47,7 +47,9 @@ class LayoutDetector(Protocol):
     the registry memoises adapters and reuses them across pages.
     """
 
-    def detect(self, source: ImageSource) -> PageLayout: ...
+    def detect(self, source: ImageSource) -> PageLayout:
+        """Analyse ``source`` and return a :class:`PageLayout` with detected regions."""
+        ...
 
 
 class NullDetector:
@@ -60,6 +62,7 @@ class NullDetector:
     KEY = "none"
 
     def detect(self, source: ImageSource) -> PageLayout:
+        """Return an empty PageLayout with the image dimensions populated."""
         img = _load_image(source)
         h, w = img.shape[:2]
         return PageLayout(
@@ -97,7 +100,7 @@ class ContourDetector:
         min_aspect: float = 0.1,
         max_aspect: float = 10.0,
         close_kernel_px: int = 9,
-    ):
+    ) -> None:
         self.min_area_frac = min_area_frac
         self.max_area_frac = max_area_frac
         self.min_aspect = min_aspect
@@ -105,6 +108,7 @@ class ContourDetector:
         self.close_kernel_px = close_kernel_px
 
     def detect(self, source: ImageSource) -> PageLayout:
+        """Find rectangular contours in the image and return them as layout regions."""
         img = _load_image(source)
         h, w = img.shape[:2]
         page_area = float(h * w)

@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import logging
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy as np
 
 try:
     from cupy.lib.stride_tricks import (  # type: ignore[import-not-found]
@@ -70,9 +72,7 @@ def erode(img: cp.ndarray, kernel: cp.ndarray):
 
 
 def morph_fill(img: cp.ndarray, shape=(6, 6)):
-    """
-    Apply closing followed by opening morphology using fully vectorized operations.
-    """
+    """Apply closing followed by opening morphology using fully vectorized operations."""
     require_cupy()
     kernel = cp.ones(shape, dtype=cp.uint8)
 
@@ -82,9 +82,7 @@ def morph_fill(img: cp.ndarray, shape=(6, 6)):
 
     # Morphological opening (erode then dilate)
     opened = erode(closed, kernel)
-    opened = dilate(opened, kernel)
-
-    return opened
+    return dilate(opened, kernel)
 
 
 def np_uint8_morph_fill(img: np.ndarray, shape=(6, 6)) -> np.ndarray:

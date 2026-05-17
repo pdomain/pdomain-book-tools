@@ -410,7 +410,8 @@ def test_split_word_happy_path(sample_block1):
     # word1 -> split into 'wo' + 'rd1'
     sample_block1.split_word(0, bbox_split_offset=2, character_split_index=2)
     texts = [w.text for w in sample_block1.items]
-    assert "wo" in texts and "rd1" in texts
+    assert "wo" in texts
+    assert "rd1" in texts
     assert any(t == "word2" for t in texts)
 
 
@@ -637,7 +638,8 @@ def test_block_scale_normalized():
     assert scaled.bounding_box.minX == 10
     assert not scaled.bounding_box.is_normalized
     # Original unchanged
-    assert w1.bounding_box.is_normalized and w2.bounding_box.is_normalized
+    assert w1.bounding_box.is_normalized
+    assert w2.bounding_box.is_normalized
 
 
 def test_block_scale_pixels_deepcopy(sample_block1):

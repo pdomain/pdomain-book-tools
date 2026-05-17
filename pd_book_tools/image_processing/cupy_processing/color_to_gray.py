@@ -80,7 +80,7 @@ def cupy_color_to_gray(
             f"{channels} channels."
         )
     if channels == 4:
-        global _RGBA_NOTICE_LOGGED
+        global _RGBA_NOTICE_LOGGED  # noqa: PLW0603  # once-per-process notice flag
         if not _RGBA_NOTICE_LOGGED:
             logger.info(
                 "cupy_color_to_gray received 4-channel input; dropping alpha "

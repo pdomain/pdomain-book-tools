@@ -197,7 +197,8 @@ def test_bounding_box_intersection():
 def test_intersection_mixed_coordinate_system_error():
     norm_box = BoundingBox.from_ltrb(0.1, 0.2, 0.3, 0.4)
     pix_box = BoundingBox.from_ltrb(10, 20, 30, 40)
-    assert norm_box.is_normalized and not pix_box.is_normalized
+    assert norm_box.is_normalized
+    assert not pix_box.is_normalized
     with pytest.raises(ValueError):
         norm_box.intersection(pix_box)
 
@@ -521,7 +522,8 @@ def test_from_points_accepts_zero_area_like_other_constructors():
 
     # Both equal (singleton anchor) — also accepted
     bb_pt = BoundingBox.from_points([Point(4, 4), Point(4, 4)])
-    assert bb_pt.width == 0 and bb_pt.height == 0
+    assert bb_pt.width == 0
+    assert bb_pt.height == 0
 
     # Strictly inverted still raises
     with pytest.raises(ValueError):
@@ -614,7 +616,8 @@ def test_expand_variants():
     assert bbox.expand(0, 0).to_ltrb() == bbox.to_ltrb()
     # uniform buffer uses shapely; just assert bigger
     bigger = bbox.expand(2, 2)
-    assert bigger.width > bbox.width and bigger.height > bbox.height
+    assert bigger.width > bbox.width
+    assert bigger.height > bbox.height
     # anisotropic different dx, dy
     aniso = bbox.expand(3, 1)
     assert aniso.width == pytest.approx(bbox.width + 2 * 3)
@@ -687,7 +690,8 @@ def test_crop_top_and_bottom():
     top_cropped = bbox.crop_top(img)
     bottom_cropped = bbox.crop_bottom(img)
     # Both remain normalized
-    assert top_cropped.is_normalized and bottom_cropped.is_normalized
+    assert top_cropped.is_normalized
+    assert bottom_cropped.is_normalized
     # Crops should reduce height relative to original in at least one case
     assert top_cropped.height <= bbox.height
     assert bottom_cropped.height <= bbox.height
@@ -828,7 +832,8 @@ def test_vertical_crop_branch_coverage():
     bbox_full = BoundingBox.from_ltrb(0.0, 0.0, 1.0, 1.0)
     ct = bbox_full.crop_top(img)
     cb = bbox_full.crop_bottom(img)
-    assert ct.is_normalized and cb.is_normalized
+    assert ct.is_normalized
+    assert cb.is_normalized
     # Ensure y adjustments occurred (top crop raised top; bottom crop lowered bottom)
     assert ct.minY > 0
     assert cb.maxY < 1

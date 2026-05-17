@@ -113,7 +113,7 @@ class TestFindEdgesGpu:
         img_np = np.zeros((300, 200), dtype=np.uint8)
         img_np[40:260, 30:170] = rng.integers(100, 256, (220, 140), dtype=np.uint8)
 
-        kwargs = dict(fuzzy_pct=0, pixel_count_columns=1, pixel_count_rows=1)
+        kwargs = {"fuzzy_pct": 0, "pixel_count_columns": 1, "pixel_count_rows": 1}
         cpu = find_edges(img_np, **kwargs)
         gpu = find_edges_gpu(cp.asarray(img_np), **kwargs)
 

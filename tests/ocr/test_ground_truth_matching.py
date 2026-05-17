@@ -567,13 +567,15 @@ class TestUpdatePageWithGroundTruthText:
         )
 
         # The OCR caption line should match the GT caption line.
-        assert "GEORGE" in gts[caption_idx] and "WASHINGTON" in gts[caption_idx]
+        assert "GEORGE" in gts[caption_idx]
+        assert "WASHINGTON" in gts[caption_idx]
 
         # The paragraph lines should be matched to their paragraph GT lines.
         # (The first paragraph line ends with "com-" in OCR, so the matcher
         # may store the dash-wrapped variant of the GT line as the base GT.)
         para_first_idx = 0
-        assert "money" in gts[para_first_idx] and "particular" in gts[para_first_idx]
+        assert "money" in gts[para_first_idx]
+        assert "particular" in gts[para_first_idx]
         assert "GEORGE" not in gts[para_first_idx]
 
         para_third_idx = 2
@@ -603,10 +605,12 @@ class TestUpdatePageWithGroundTruthText:
         gts = [line.base_ground_truth_text or "" for line in page.lines]
         # OCR line 0 ("Tbe quiek browm fox") should match the "The quick..."
         # GT line, NOT the "jumps over..." GT line.
-        assert "quick" in gts[0] and "fox" in gts[0]
+        assert "quick" in gts[0]
+        assert "fox" in gts[0]
         assert "jumps" not in gts[0]
         # OCR line 1 ("jumps ovcr tbe lazv dog") should match the "jumps..." GT.
-        assert "jumps" in gts[1] and "dog" in gts[1]
+        assert "jumps" in gts[1]
+        assert "dog" in gts[1]
         assert "fox" not in gts[1]
 
     def test_aligned_lines_still_match_positionally(self):
@@ -659,8 +663,10 @@ class TestUpdatePageWithGroundTruthText:
         update_page_with_ground_truth_text(page, gt_text)
 
         gts = [line.base_ground_truth_text or "" for line in page.lines]
-        assert "quick" in gts[0] and "fox" in gts[0]
-        assert "the" in gts[1] and "dog" in gts[1]
+        assert "quick" in gts[0]
+        assert "fox" in gts[0]
+        assert "the" in gts[1]
+        assert "dog" in gts[1]
         assert "away" in gts[2]
 
     def test_unmatched_gt_lines_recorded(self):

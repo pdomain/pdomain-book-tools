@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import logging
 import math
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._cupy_compat import cp, require_cupy
 from .edge_finding import find_edges_gpu
 from .rotate import rotate_image_gpu
+
+if TYPE_CHECKING:
+    import numpy as np
 
 logger = logging.getLogger(__name__)
 

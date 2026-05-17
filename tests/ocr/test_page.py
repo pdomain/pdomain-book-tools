@@ -459,7 +459,8 @@ def test_page_scale_normalized():
     )
     page = Page(width=100, height=200, page_index=0, blocks=[para])
     scaled = page.scale(1000, 2000)
-    assert scaled.width == 1000 and scaled.height == 2000
+    assert scaled.width == 1000
+    assert scaled.height == 2000
     assert not scaled.items[0].items[0].items[0].bounding_box.is_normalized
 
 
@@ -959,14 +960,13 @@ def test_page_recognition_label_formatter(tmp_path):
 def test_page_refresh_page_images_match_score_coloring():
     # Create several words with different match score conditions
     def mw(x1, x2, score, gt_text="w"):
-        w = Word(
+        return Word(
             text="w",
             bounding_box=BoundingBox.from_ltrb(x1, 0, x2, 10),
             ocr_confidence=0.9,
             ground_truth_text=gt_text if score is not None else "",
             ground_truth_match_keys={"match_score": score} if score is not None else {},
         )
-        return w
 
     words = [
         mw(0, 5, 100),  # skipped drawing

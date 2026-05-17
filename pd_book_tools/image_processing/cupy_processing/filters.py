@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
-
-import numpy as np
+from typing import TYPE_CHECKING
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy as np
 
 try:
     from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]

@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class MatchType(Enum):
+    """Classification of how an OCR word or line aligns with a ground-truth token."""
+
     WORD_EXACTLY_EQUAL = "word-exactly-equal"
     "Word is exactly equal to GT word"
 

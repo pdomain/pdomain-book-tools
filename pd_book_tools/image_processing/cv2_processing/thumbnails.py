@@ -11,20 +11,20 @@ logger = logging.getLogger(__name__)
 def create_file_thumbnail(
     source_file_path: pathlib.Path,
     target_file_path: pathlib.Path,
-    jpeg_quality=50,
+    jpeg_quality: int = 50,
     max_dimension: int = 300,
-):
+) -> None:
+    """Rescale ``source_file_path`` to fit within ``max_dimension`` and save as JPEG."""
     img = read_image(source_file_path)
     thumb = rescale_image(img, target_short_side=max_dimension)
 
     if target_file_path.suffix == ".png":
         raise NotImplementedError("PNG not yet implemented")
-    elif target_file_path.suffix == ".jpg":
+    if target_file_path.suffix == ".jpg":
         write_jpg(
             img=thumb,
             f=target_file_path,
             quality=jpeg_quality,
         )
         return
-    else:
-        raise ValueError("file suffix must be '.jpg' or '.png'")
+    raise ValueError("file suffix must be '.jpg' or '.png'")

@@ -8,9 +8,12 @@ the helpers easy to reason about.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from pd_book_tools.layout.types import LayoutRegion, RegionType
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def iou(a: LayoutRegion, b: LayoutRegion) -> float:
@@ -164,8 +167,7 @@ def _detect_columns(regions: list[LayoutRegion]) -> list[list[LayoutRegion]] | N
         else:
             # Horizontal overlap with the running column — same column.
             columns[-1].append(r)
-            if column_R < r.R:
-                column_R = r.R
+            column_R = max(column_R, r.R)
     if len(columns) < 2:
         return None
     # Sanity: a region must fit entirely inside its assigned column. A

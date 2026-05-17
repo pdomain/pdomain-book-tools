@@ -114,16 +114,14 @@ def auto_deskew(img, pct=0.30):
             logger.debug("Clockwise")
             new_img = rotate_image(img=img, angle=rotate, borderValue=(0, 0, 0))
             return new_img, top_of_img, bottom_of_img
-        elif bottom_left_bottom_x_y[0] < perpendicular_line_bottom_x_y[0]:
+        if bottom_left_bottom_x_y[0] < perpendicular_line_bottom_x_y[0]:
             # Rotate Counter-Clockwise
             logger.debug("Counter-Clockwise")
             new_img = rotate_image(img=img, angle=(-1 * rotate), borderValue=(0, 0, 0))
             return new_img, top_of_img, bottom_of_img
-        else:
-            # Nothing
-            logger.debug("Rotate - Do Nothing")
-            return img, top_of_img, bottom_of_img
-    else:
         # Nothing
-        logger.debug("Rotate - Do Nothing 2")
+        logger.debug("Rotate - Do Nothing")
         return img, top_of_img, bottom_of_img
+    # Nothing
+    logger.debug("Rotate - Do Nothing 2")
+    return img, top_of_img, bottom_of_img

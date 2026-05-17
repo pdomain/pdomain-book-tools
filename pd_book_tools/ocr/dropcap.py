@@ -584,7 +584,7 @@ def detect_and_stitch_cursive_dropcaps(
     metrics
         Per-page geometric statistics (``PageMetrics``).
 
-    Returns
+    Returns:
     -------
     list[Block]
         ``blocks``, possibly with cap words prepended to first body
@@ -923,5 +923,4 @@ def detect_and_stitch_drop_caps(
     Word from the block-cap pass, so running both is safe.
     """
     blocks = stitch_block_drop_caps(blocks, metrics)
-    blocks = detect_and_stitch_cursive_dropcaps(blocks, image, metrics)
-    return blocks
+    return detect_and_stitch_cursive_dropcaps(blocks, image, metrics)

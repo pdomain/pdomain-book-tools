@@ -26,9 +26,12 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 # Packages whose presence in the venv signals an active extra/override
 # that ``uv sync --group dev`` (no extras) would remove. Names are
@@ -153,10 +156,11 @@ def _marker_path() -> Path:
 def _format_summary(result: DetectionResult) -> str:
     if not result.is_dev_local:
         return "venv is in canonical mode."
-    lines = ["venv is in dev-local mode. Reasons:"]
-    for r in result.reasons:
-        lines.append(f"  - {r}")
-    lines.append("")
+    lines = [
+        "venv is in dev-local mode. Reasons:",
+        *[f"  - {r}" for r in result.reasons],
+        "",
+    ]
     lines.append(
         "Run `make upgrade-deps-local` instead of `make upgrade-deps` "
         "to upgrade without clobbering these overrides."

@@ -46,6 +46,7 @@ def _normalize_token(label: str) -> str:
 
 
 def normalize_text_style_label(label: str) -> str:
+    """Normalise a single text style label to a canonical allowed value."""
     normalized = _normalize_token(label)
 
     if normalized not in ALLOWED_TEXT_STYLE_LABELS:
@@ -65,6 +66,7 @@ def normalize_text_style_label(label: str) -> str:
 
 
 def normalize_text_style_labels(labels: list[str] | None) -> list[str]:
+    """Normalise a list of style labels, deduplicating and stripping redundant 'regular'."""
     if not labels:
         return ["regular"]
     normalized = list(
@@ -80,6 +82,7 @@ def normalize_text_style_labels(labels: list[str] | None) -> list[str]:
 
 
 def normalize_text_style_label_scope(scope: str | None) -> str:
+    """Normalise a single text style scope value (``'whole'`` or ``'part'``)."""
     if scope is None:
         return "whole"
 
@@ -96,6 +99,7 @@ def normalize_text_style_label_scope(scope: str | None) -> str:
 def normalize_text_style_label_scopes(
     labels: list[str], scopes: dict[str, str] | None
 ) -> dict[str, str]:
+    """Build a normalised label→scope mapping, validating each scope against its label."""
     normalized_labels = [normalize_text_style_label(label) for label in labels]
     if not normalized_labels:
         normalized_labels = ["regular"]
@@ -104,7 +108,7 @@ def normalize_text_style_label_scopes(
     # concrete style is present, so scopes stays in lockstep with labels.
     if "regular" in normalized_labels and len(normalized_labels) > 1:
         normalized_labels = [label for label in normalized_labels if label != "regular"]
-    normalized_scopes = {label: "whole" for label in normalized_labels}
+    normalized_scopes = dict.fromkeys(normalized_labels, "whole")
 
     if not scopes:
         return normalized_scopes
@@ -128,6 +132,7 @@ def normalize_text_style_label_scopes(
 
 
 def normalize_word_component(component: str) -> str:
+    """Normalise a single word component label to a canonical allowed value."""
     return _normalize_component(
         component,
         allowed_components=ALLOWED_COMPONENTS,
@@ -136,6 +141,7 @@ def normalize_word_component(component: str) -> str:
 
 
 def normalize_word_components(components: list[str] | None) -> list[str]:
+    """Normalise a list of word component labels, deduplicating order-preservingly."""
     if not components:
         return []
     normalized = [normalize_word_component(component) for component in components]
@@ -143,6 +149,7 @@ def normalize_word_components(components: list[str] | None) -> list[str]:
 
 
 def normalize_character_component(component: str) -> str:
+    """Normalise a single character component label to a canonical allowed value."""
     return _normalize_component(
         component,
         allowed_components=ALLOWED_COMPONENTS,
@@ -175,6 +182,7 @@ def _normalize_component(
 
 
 def normalize_character_components(components: list[str] | None) -> list[str]:
+    """Normalise a list of character component labels, deduplicating order-preservingly."""
     if not components:
         return []
     normalized = [normalize_character_component(component) for component in components]

@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class CharacterGroups(Enum):
+    """Groups of visually/semantically interchangeable characters for fuzzy matching."""
+
     HYPHEN = ["-"]
     ENDASH = ["\u2013"]  # EN DASH
     EMDASH = ["—"]
@@ -36,5 +38,5 @@ class CharacterGroups(Enum):
     PRIMES = list(dict.fromkeys(SINGLE_PRIME + DOUBLE_PRIME))
     QUOTES_AND_PRIMES = list(dict.fromkeys(QUOTES + PRIMES))
 
-    def __contains__(self, char):
+    def __contains__(self, char: object) -> bool:
         return char in self.value

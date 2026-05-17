@@ -11,6 +11,8 @@ from enum import Enum
 
 
 class Alignment(Enum):
+    """Vertical alignment for canvas placement of image content."""
+
     TOP = "top"
     CENTER = "center"
     BOTTOM = "bottom"

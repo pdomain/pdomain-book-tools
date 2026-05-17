@@ -119,7 +119,8 @@ def test_convert_straight_to_curly_quotes_cases():
         "\u201d",
     ]:  # LEFT SINGLE QUOTATION MARK, RIGHT SINGLE QUOTATION MARK, LEFT DOUBLE QUOTATION MARK, RIGHT DOUBLE QUOTATION MARK
         assert ch in out
-    assert "can\u2019t" in out and "don\u2019t" in out  # RIGHT SINGLE QUOTATION MARK
+    assert "can\u2019t" in out
+    assert "don\u2019t" in out
     assert "\u2019Tis" in out  # RIGHT SINGLE QUOTATION MARK
 
 
@@ -348,9 +349,11 @@ def test_convert_quotes_cause_in_quoted_phrase():
 
         txt = page.processed_page_text
         # Proofer note & blank page removed
-        assert "Editor note" not in txt and "Blank Page" not in txt
+        assert "Editor note" not in txt
+        assert "Blank Page" not in txt
         # Leading * removed and trailing -* cleaned
-        assert not txt.lstrip().startswith("*") and "-*\n" not in txt
+        assert not txt.lstrip().startswith("*")
+        assert "-*\n" not in txt
         # Long dash (⸺) and em dash (--) present, no raw double hyphens
         assert "--" not in txt
         assert ("\u2014" in txt) or ("⸺" in txt)  # EM DASH
@@ -376,13 +379,11 @@ def test_convert_quotes_cause_in_quoted_phrase():
         ]:
             assert word in txt
         # Possessive & contraction
-        assert (
-            "James\u2019 cap" in txt and "doin\u2019 things" in txt
-        )  # RIGHT SINGLE QUOTATION MARK
+        assert "James\u2019 cap" in txt
+        assert "doin\u2019 things" in txt
         # Double quotes curly
-        assert (
-            "\u201cGo" in txt and "Stay\u201d" in txt
-        )  # LEFT DOUBLE QUOTATION MARK, RIGHT DOUBLE QUOTATION MARK
+        assert "\u201cGo" in txt
+        assert "Stay\u201d" in txt
         # Processed structures non-empty and size reasonable
         assert len(page.processed_lines) >= 6
         assert len(page.processed_words) > 30
@@ -405,7 +406,8 @@ def test_convert_quotes_cause_in_quoted_phrase():
         txt = page.processed_page_text
 
         # Ensure removals
-        assert "Cut this" not in txt and "Blank Page" not in txt
+        assert "Cut this" not in txt
+        assert "Blank Page" not in txt
         # No stray raw hyphen groups
         assert "--" not in txt
         # Apostrophes for elisions
@@ -431,11 +433,11 @@ def test_convert_quotes_cause_in_quoted_phrase():
         # Trailing -* cleaned
         assert not txt.rstrip().endswith("-*")
         # Possessive & contraction
-        assert (
-            "James\u2019 hat" in txt and "doin\u2019 chores" in txt
-        )  # RIGHT SINGLE QUOTATION MARK
+        assert "James\u2019 hat" in txt
+        assert "doin\u2019 chores" in txt
         # Years
-        assert "\u201905" in txt and "\u201990s" in txt  # RIGHT SINGLE QUOTATION MARK
+        assert "\u201905" in txt
+        assert "\u201990s" in txt
         assert len(page.processed_words) > 35
 
     def test_pgdp_large_mixed_order_case3(tmp_path):
@@ -452,7 +454,8 @@ def test_convert_quotes_cause_in_quoted_phrase():
         txt = page.processed_page_text
 
         # Removals
-        assert "Blank Page" not in txt and "X" not in txt
+        assert "Blank Page" not in txt
+        assert "X" not in txt
         # Hyphen split
         assert "word-\nWrap" in txt
         # Dashes converted
@@ -470,9 +473,9 @@ def test_convert_quotes_cause_in_quoted_phrase():
         ]:  # RIGHT SINGLE QUOTATION MARK
             assert frag in txt
         # Contractions & decades
-        assert (
-            "doin\u2019" in txt and "\u201990s" in txt and "\u201905" in txt
-        )  # RIGHT SINGLE QUOTATION MARK
+        assert "doin\u2019" in txt
+        assert "\u201990s" in txt
+        assert "\u201905" in txt
         # Possessive James' present
         assert "James\u2019" in txt  # RIGHT SINGLE QUOTATION MARK
         # Diacritics subset

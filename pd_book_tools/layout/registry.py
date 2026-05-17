@@ -12,14 +12,16 @@ import threading
 import time
 from collections.abc import Callable
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pd_book_tools.layout.detector import (
     ContourDetector,
     LayoutDetector,
     NullDetector,
 )
-from pd_book_tools.layout.types import PageLayout
+
+if TYPE_CHECKING:
+    from pd_book_tools.layout.types import PageLayout
 
 logger = getLogger(__name__)
 
@@ -51,7 +53,7 @@ _CACHE_LOCK = threading.Lock()
 class _TimingDetector:
     """Wrapper that fills ``inference_ms`` on the returned PageLayout."""
 
-    def __init__(self, inner: LayoutDetector):
+    def __init__(self, inner: LayoutDetector) -> None:
         self._inner = inner
 
     def detect(self, source) -> PageLayout:

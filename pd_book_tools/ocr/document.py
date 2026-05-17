@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from logging import getLogger
-from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -15,6 +14,8 @@ from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
 from numpy import array, ndarray
 
 if TYPE_CHECKING:
+    from os import PathLike
+
     from pandas import DataFrame
     from PIL.Image import Image as PILImage
 
@@ -51,7 +52,7 @@ class Document:
         source_path: Path | str | None,
         pages: Collection,
         source_identifier: str = "",
-    ):
+    ) -> None:
         self.source_lib = source_lib
         if isinstance(source_path, str):
             source_path = Path(source_path)
@@ -59,17 +60,17 @@ class Document:
         self.pages = pages
         self.source_identifier = source_identifier
 
-    def _sort_pages(self):
+    def _sort_pages(self) -> None:
         self._pages.sort(key=lambda item: item.page_index)
 
     @property
     def pages(self) -> list[Page]:
-        """Returns a copy of the item list in this block"""
+        """Returns a copy of the item list in this block."""
         self._sort_pages()
         return self._pages.copy()
 
     @pages.setter
-    def pages(self, value):
+    def pages(self, value) -> None:
         if not isinstance(value, Collection):
             raise TypeError("pages must be a collection")
         for page in value:
@@ -81,7 +82,7 @@ class Document:
         self._sort_pages()
 
     def scale(self, width: int, height: int) -> Document:
-        """Return new document with scaled bounding boxes to absolute pixel coordinates"""
+        """Return new document with scaled bounding boxes to absolute pixel coordinates."""
         return Document(
             source_lib=self.source_lib,
             source_path=self.source_path,
@@ -89,7 +90,7 @@ class Document:
         )
 
     def to_dict(self) -> dict:
-        """Convert to a JSON-serializable dictionary"""
+        """Convert to a JSON-serializable dictionary."""
         return {
             "source_lib": self.source_lib,
             "source_identifier": self.source_identifier,
@@ -100,13 +101,13 @@ class Document:
         }
 
     def to_json_file(self, file_path: str | Path) -> None:
-        """Save OCR results to JSON file"""
+        """Save OCR results to JSON file."""
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
 
     @classmethod
     def from_dict(cls, data) -> Document:
-        """Create Document from dictionary"""
+        """Create Document from dictionary."""
         return cls(
             source_lib=data.get("source_lib", ""),
             source_identifier=data.get("source_identifier", ""),
@@ -249,7 +250,7 @@ class Document:
         source_path: str | Path | None = None,
         source_identifier: str = "",
     ) -> Document:
-        """Create Document from docTR result object"""
+        """Create Document from docTR result object."""
         # NOTE (H-12): ``doctr_result.render()`` returns a single ``str`` for
         # the whole document. ``from_doctr_output`` indexes ``original_text``
         # with ``original_text[page_idx]`` to get per-page text — and since
@@ -357,9 +358,10 @@ class Document:
             block_category=BlockCategory.BLOCK,
             child_type=BlockChildType.BLOCKS,
         )
-        result: list[Block] = [canonical_block]
-        for artefact_data in block_data.get("artefacts", []):
-            result.append(cls._artefact_from_doctr(artefact_data))
+        result: list[Block] = [
+            canonical_block,
+            *[cls._artefact_from_doctr(a) for a in block_data.get("artefacts", [])],
+        ]
         return result
 
     @classmethod
@@ -397,7 +399,7 @@ class Document:
         source_path: str | Path | None = None,
         source_identifier: str = "",
     ) -> Document:
-        """Create Document from docTR dictionary"""
+        """Create Document from docTR dictionary."""
         if isinstance(source_path, str):
             source_path = Path(source_path)
 
@@ -509,13 +511,13 @@ class Document:
             detected = pytesseract.get_tesseract_version()
             if detected:
                 return str(detected)
-        except Exception:
-            pass
+        except Exception:  # pytesseract version detection may fail for various reasons
+            logger.debug("Could not detect tesseract version", exc_info=True)
         return "unknown"
 
     @classmethod
     def from_json_file(cls, file_path: str | Path) -> Document:
-        """Load OCR from JSON file"""
+        """Load OCR from JSON file."""
         d: dict
         with open(file_path, encoding="utf-8") as f:
             d = json.load(f)
@@ -552,7 +554,7 @@ class Document:
         if hasattr(val, "item"):
             with contextlib.suppress(Exception):
                 val = val.item()
-        if isinstance(val, float) and val != val:  # NaN
+        if isinstance(val, float) and val != val:  # NaN  # noqa: PLR0124
             return ""
         return str(val)
 
@@ -579,7 +581,7 @@ class Document:
             f = float(val)
         except (TypeError, ValueError):
             return None
-        if f != f:  # NaN
+        if f != f:  # NaN  # noqa: PLR0124
             return None
         if f <= 0:
             return None

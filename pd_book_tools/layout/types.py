@@ -80,14 +80,10 @@ class LayoutRegion:
                 f"LayoutRegion has T > B ({self.T} > {self.B}); "
                 "coordinates must satisfy T <= B"
             )
-        if self.L < 0:
-            self.L = 0
-        if self.T < 0:
-            self.T = 0
-        if self.R < 0:
-            self.R = 0
-        if self.B < 0:
-            self.B = 0
+        self.L = max(self.L, 0)
+        self.T = max(self.T, 0)
+        self.R = max(self.R, 0)
+        self.B = max(self.B, 0)
 
     @property
     def width(self) -> int:

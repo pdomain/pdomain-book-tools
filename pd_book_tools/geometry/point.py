@@ -47,7 +47,7 @@ class Point:
 
     def __init__(
         self, x: float | int, y: float | int, is_normalized: bool | None = None
-    ):
+    ) -> None:
         """Create a point backed directly by a Shapely Point.
 
         Args:
@@ -130,17 +130,13 @@ class Point:
     # (to_x_y removed; use (p.x, p.y) directly)
 
     def scale(self, width: int, height: int) -> "Point":
-        """
-        Scale the point to pixel coordinates based on the given width and height.
-        """
+        """Scale the point to pixel coordinates based on the given width and height."""
         if not self.is_normalized:
             raise ValueError("scale() expected a normalized point (values in [0,1])")
         return Point.pixel(round(self.x * width), round(self.y * height))
 
     def normalize(self, width: int, height: int) -> "Point":
-        """
-        Normalize the point to [0,1] unit square coordinates based on the given width and height.
-        """
+        """Normalize the point to [0,1] unit square coordinates based on the given width and height."""
         if self.is_normalized:
             raise ValueError("normalize() expected a pixel point (non-normalized)")
         if not (self._is_int_like(self.x) and self._is_int_like(self.y)):

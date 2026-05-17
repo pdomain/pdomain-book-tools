@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
@@ -15,6 +14,9 @@ from pd_book_tools.schemas._helpers import (
     NUMBER_SCHEMA,
     STR_LIST_SCHEMA,
 )
+
+if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler
 
 
 @dataclass

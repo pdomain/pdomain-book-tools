@@ -3,12 +3,11 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import cv2
 import numpy as np
 from numpy import ndarray
-from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
 from thefuzz.fuzz import ratio as fuzz_ratio
 
@@ -36,13 +35,16 @@ from pd_book_tools.schemas._helpers import (
     STR_STR_DICT_SCHEMA,
 )
 
+if TYPE_CHECKING:
+    from pydantic import GetCoreSchemaHandler
+
 # Configure logging
 logger = getLogger(__name__)
 
 
 @dataclass
 class Word:
-    """Represents a single word (uninterrupted sequence of characters) detected by OCR"""
+    """Represents a single word (uninterrupted sequence of characters) detected by OCR."""
 
     ALLOWED_TEXT_STYLE_LABELS: ClassVar[frozenset[str]] = ALLOWED_TEXT_STYLE_LABELS
 
@@ -101,7 +103,7 @@ class Word:
         ground_truth_bounding_box: BoundingBox | None = None,
         ground_truth_match_keys: dict | None = None,
         review: ReviewMetadata | None = None,
-    ):
+    ) -> None:
         self.text = text  # Use the setter for validation or processing
         self.bounding_box = bounding_box
         self.ocr_confidence = ocr_confidence
@@ -192,7 +194,7 @@ class Word:
 
     @property
     def ground_truth_exact_match(self) -> bool:
-        """Check if the word matches the ground truth text exactly"""
+        """Check if the word matches the ground truth text exactly."""
         if self.ground_truth_text:
             return self.text == self.ground_truth_text
         return False
@@ -383,7 +385,7 @@ class Word:
         for label in labels:
             try:
                 normalized.append(normalize_text_style_label(str(label)))
-            except ValueError:
+            except ValueError:  # noqa: PERF203  # per-item isolation: one bad label must not abort the pass
                 logger.debug("Ignoring invalid text style label %r", label)
         if not normalized:
             return ["regular"]
@@ -397,7 +399,7 @@ class Word:
             try:
                 normalized_label = normalize_text_style_label(str(label))
                 normalized[normalized_label] = normalize_text_style_label_scope(scope)
-            except ValueError:
+            except ValueError:  # noqa: PERF203  # per-item isolation: one bad scope must not abort the pass
                 logger.debug(
                     "Ignoring invalid text style scope entry %r=%r", label, scope
                 )
@@ -410,7 +412,7 @@ class Word:
         for component in components:
             try:
                 normalized.append(normalize_word_component(str(component)))
-            except ValueError:
+            except ValueError:  # noqa: PERF203  # per-item isolation: one bad component must not abort the pass
                 logger.debug("Ignoring invalid word component %r", component)
         return normalized
 
@@ -628,7 +630,7 @@ class Word:
         return Word.from_dict(data)
 
     def fuzz_score_against(self, ground_truth_text):
-        """Scores a string as "matching" against a ground truth string
+        """Scores a string as "matching" against a ground truth string.
 
         TODO: Perhaps add loose scoring for curly quotes against straight quotes,
         and em-dashes against hyphens to count these as "closer" to gt
@@ -639,7 +641,7 @@ class Word:
         return fuzz_ratio(self.text, ground_truth_text)
 
     def to_dict(self) -> dict:
-        """Convert to JSON-serializable dictionary"""
+        """Convert to JSON-serializable dictionary."""
         d = {
             "type": "Word",
             "text": self.text,
@@ -666,7 +668,7 @@ class Word:
 
     @classmethod
     def from_dict(cls, dict: dict) -> Word:
-        """Create OCRWord from dictionary"""
+        """Create OCRWord from dictionary."""
         review_raw = dict.get("review")
         review = (
             review_raw
@@ -700,7 +702,7 @@ class Word:
             review=review,
         )
 
-    def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0):
+    def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0) -> None:
         """Refine the bounding box of the word based on the image content.
 
         Back-compat shim: delegates to :meth:`refine_bbox` (which adds a
@@ -711,15 +713,15 @@ class Word:
         """
         if image is None:
             logger.warning("Image is None, skipping bounding box refinement")
-            return None
+            return
         logger.debug(
             f"Refining bounding box for word '{self.text}' with padding {padding_px} pixels"
         )
         self.refine_bbox(image, padding_px=padding_px)
-        return None
+        return
 
     def split(self, bbox_split_offset: float, character_split_index: int):
-        """Split a word into two words at the given indices"""
+        """Split a word into two words at the given indices."""
         logger.debug(
             f"Splitting word '{self.text}' at bbox_split_offset {bbox_split_offset} and character_split_index {character_split_index}"
         )
@@ -1023,8 +1025,8 @@ class Word:
         }
         return self.baseline
 
-    def merge(self, word_to_merge: Word):
-        """Merge this word with another word"""
+    def merge(self, word_to_merge: Word) -> None:
+        """Merge this word with another word."""
         if not isinstance(word_to_merge, Word):
             raise TypeError("word_to_merge must be an instance of Word")
 
@@ -1105,7 +1107,7 @@ class Word:
             merged_scopes[label] = "part" if "part" in (current, incoming) else "whole"
         self.text_style_label_scopes = merged_scopes
 
-    def crop_bottom(self, img_ndarray):
+    def crop_bottom(self, img_ndarray) -> None:
         """Crop the bottom of the word using bounding box crop_bottom method.
 
         The implementation lives in
@@ -1117,7 +1119,7 @@ class Word:
 
         crop_word_bottom(self, img_ndarray)
 
-    def crop_top(self, img_ndarray):
+    def crop_top(self, img_ndarray) -> None:
         """Crop the top of the word using bounding box crop_top method.
 
         The implementation lives in

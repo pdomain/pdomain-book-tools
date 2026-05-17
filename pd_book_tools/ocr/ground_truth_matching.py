@@ -47,7 +47,7 @@ WordMatchScores = namedtuple(
 def update_page_with_ground_truth_text(
     page: "Page",
     ground_truth_page: str,
-):
+) -> None:
     """
     Match ground truth words against the OCR on a page.
     This is for source text of a complete page, where the source does not have bounding boxes.
@@ -60,7 +60,6 @@ def update_page_with_ground_truth_text(
     Ground truth lines that have no corresponding OCR lines are added
     to the unmatched_ground_truth_lines list.
     """
-
     page.remove_ground_truth()
 
     # Sequence Matcher needs ordered tuples, so convert lists + dicts into tuples of tuples of strings
@@ -114,7 +113,7 @@ def update_page_with_ground_truth_text(
     update_page_match_unmatched_lines_best_effort(page)
 
 
-def update_page_match_unmatched_lines_best_effort(page: "Page"):
+def update_page_match_unmatched_lines_best_effort(page: "Page") -> None:
     """Try to align unmatched GT lines to unmatched OCR lines.
 
     Difflib can emit a delete+insert pair when a short line moves position.
@@ -122,7 +121,6 @@ def update_page_match_unmatched_lines_best_effort(page: "Page"):
     lines are stored in ``page.unmatched_ground_truth_lines``. This post-pass
     reattaches only very high-confidence full-line matches.
     """
-
     unmatched_gt_lines = list(page.unmatched_ground_truth_lines or [])
     if not unmatched_gt_lines:
         return
@@ -173,10 +171,8 @@ def update_page_match_unmatched_lines_best_effort(page: "Page"):
         ]
 
 
-def update_page_match_difflib_lines_delete(page: "Page", op: LineDiffOpCodes):
-    """
-    Currently for lines that don't exist in Ground Truth, but do exist in OCR, do nothing
-    """
+def update_page_match_difflib_lines_delete(page: "Page", op: LineDiffOpCodes) -> None:
+    """Currently for lines that don't exist in Ground Truth, but do exist in OCR, do nothing."""
     logger.debug(
         "DELETE - LINES exist in OCR that do not appear to exist in Ground Truth data. Do Nothing."
     )
@@ -185,10 +181,8 @@ def update_page_match_difflib_lines_delete(page: "Page", op: LineDiffOpCodes):
 
 def update_page_match_difflib_lines_equal(
     page: "Page", op: LineDiffOpCodes, ground_truth_tuples: Sequence[Sequence[str]]
-):
-    """
-    Add Ground Truth Data to lines that are equal between OCR and ground truth.
-    """
+) -> None:
+    """Add Ground Truth Data to lines that are equal between OCR and ground truth."""
     logger.debug("EQUAL - LINES exist and match OCR and GT data. Match all words.")
     lines = page.lines[op.ocr_line_1 : op.ocr_line_2]
     ground_truth_lines = ground_truth_tuples[op.gt_line_1 : op.gt_line_2]
@@ -202,10 +196,8 @@ def update_page_match_difflib_lines_equal(
 
 def update_line_match_difflib_lines_equal(
     line: Block, ground_truth_line: Sequence[str]
-):
-    """
-    Add Ground Truth Data to a line where the line and ground truth are known to be equivalent
-    """
+) -> None:
+    """Add Ground Truth Data to a line where the line and ground truth are known to be equivalent."""
     logger.debug("Update Line: " + line.text[0:20] + " ...")
     logger.debug(
         "With Ground Truth Line: " + " ".join(ground_truth_line[0:20]) + " ..."
@@ -254,10 +246,10 @@ def update_page_match_difflib_lines_insert(
     op: LineDiffOpCodes,
     ground_truth_tuples: Sequence[Sequence[str]],
     ocr_tuples: Sequence[Sequence[str]],
-):
+) -> None:
     """
     Entire Lines that exist in Ground Truth for a page, but do NOT exist in OCR.
-    Add these to a list of 'unmatched lines' on the page
+    Add these to a list of 'unmatched lines' on the page.
     """
     logger.debug("INSERT - LINES exist in GT that do not appear to exist in OCR data")
     # Add unmatched GT lines to the page after the OCR lines
@@ -279,7 +271,7 @@ def update_page_match_difflib_lines_insert(
 
 def update_page_match_difflib_lines_replace(
     page: "Page", op: LineDiffOpCodes, ocr_tuples, ground_truth_tuples
-):
+) -> None:
     logger.debug("REPLACE - LINES exist in GT and OCR data, but do not match")
 
     if (op.ocr_line_2 - op.ocr_line_1) == (op.gt_line_2 - op.gt_line_1):
@@ -361,7 +353,7 @@ def update_line_with_best_matched_ground_truth_text(
     line: Block,
     ground_truth_text: str,
     previous_ground_truth_text: str = "",
-):
+) -> None:
     ocr_line_tuple = tuple(line.word_list)
 
     ocr_text = " ".join(ocr_line_tuple)
@@ -381,7 +373,7 @@ def update_line_with_best_matched_ground_truth_text(
 
 def update_line_with_ground_truth(
     line: Block, ocr_line_tuple, ground_truth_tuple, auto_combine=True
-):
+) -> None:
     line.base_ground_truth_text = " ".join(ground_truth_tuple)
 
     logger.debug("OCR Line Tuple: " + str(ocr_line_tuple))
@@ -448,7 +440,7 @@ def try_matching_combined_words(
     Try to match combined words in OCR line with single-word ground truth.
     e.g. ["<word>", ";"] OCR might be "<word>;" GT
     if so, merge the two words in the OCR line
-    and update the ground truth text
+    and update the ground truth text.
     """
     # Combine adjoining OCR words and see if they closely match single-word ground truth
     # e.g. ["<word>", ";"] OCR might be "<word>;" GT
@@ -787,9 +779,7 @@ def update_line_with_ground_truth_replace_words(
     logger.debug("Matched OCR Line Tuple" + str(matched_ocr_line_tuple))
     logger.debug("Matched GT Line Tuple" + str(matched_ground_truth_tuple))
 
-    matched_ocr_line_words = [
-        word for word in line.words[op.ocr_word_1 : op.ocr_word_2]
-    ]
+    matched_ocr_line_words = list(line.words[op.ocr_word_1 : op.ocr_word_2])
 
     if auto_combine:
         logger.debug("Auto Combine Words in Line")
@@ -801,22 +791,18 @@ def update_line_with_ground_truth_replace_words(
         # Update each word with best matched ground truth text. If there are then more
         # GT words than OCR words, append them to the unmatched list.
         combined_ocr_word_nbrs = list(
-            set(
-                [
-                    (r + op.ocr_word_1)
-                    for combination_start, combination_end, _, _ in combined_word_detail
-                    for r in range(combination_start, combination_end)
-                ]
-            )
+            {
+                (r + op.ocr_word_1)
+                for combination_start, combination_end, _, _ in combined_word_detail
+                for r in range(combination_start, combination_end)
+            }
         )
 
         combined_gt_word_nbrs = list(
-            set(
-                [
-                    (gt_word_nbr + op.gt_word_1)
-                    for _, _, gt_word_nbr, _ in combined_word_detail
-                ]
-            )
+            {
+                (gt_word_nbr + op.gt_word_1)
+                for _, _, gt_word_nbr, _ in combined_word_detail
+            }
         )
     else:
         logger.debug("Auto Combine Is Off")
@@ -885,7 +871,7 @@ def update_combined_words_in_line(
     line: Block,
     combined_ocr_word_nbrs: list[int],
     new_combined_words: list[Word],
-):
+) -> None:
     # If there are any combined words:
     # - remove existing words
     # - add combined words to the line
@@ -959,7 +945,7 @@ def match_different_line_counts(op: LineDiffOpCodes, ocr_tuples, ground_truth_tu
 
 def update_page_match_difflib_lines_replace_different_line_count(
     page: "Page", op: LineDiffOpCodes, ocr_tuples, ground_truth_tuples
-):
+) -> None:
     # More or Fewer OCR Lines than GT Lines
     # Match best lines, add any missing GT lines to page unmatched
     match_scores: list[LineMatchScores] = match_different_line_counts(
@@ -1031,9 +1017,7 @@ def update_page_match_difflib_lines_replace_different_line_count(
 def _build_current_work_gt_line_from_prev(
     prev_char_count, previous_ground_truth_text, ground_truth_text
 ) -> str:
-    """
-    Build a working ground truth line by adding characters from the previous line.
-    """
+    """Build a working ground truth line by adding characters from the previous line."""
     if prev_char_count != 0:
         if previous_ground_truth_text[-prev_char_count] == " ":
             # Boundary char is a space: skip prepending from the previous line
@@ -1055,8 +1039,7 @@ def _build_current_work_gt_line_from_prev(
 def _build_current_work_gt_line_remove_suffix(remove_count, ground_truth_text):
     if remove_count <= len(ground_truth_text):
         return ground_truth_text[0:-remove_count].rstrip()
-    else:
-        raise ValueError("Cannot remove more characters than exist in the string")
+    raise ValueError("Cannot remove more characters than exist in the string")
 
 
 def _generate_work_variants(
@@ -1110,7 +1093,7 @@ def generate_best_matched_ground_truth_line(
         - adding characters from previous line's GT
         - removing characters from last word of GT and adding a hyphen, em-dash, or long dash to each
             (iff there's a hyphen, em-dash, or long dash at end of OCR line)
-        - lowercasing the OCR text and GT text and scoring the differences
+        - lowercasing the OCR text and GT text and scoring the differences.
     """
     if not ocr_text.strip() or not ground_truth_text.strip():
         return ground_truth_text, 0

@@ -39,7 +39,7 @@ CASES = _cases()
     reason="no layout fixtures present — run `make layout-fixtures-regenerate`",
 )
 class TestFixtureLayouts:
-    @pytest.mark.parametrize("case,path", CASES, ids=[c for c, _ in CASES])
+    @pytest.mark.parametrize(("case", "path"), CASES, ids=[c for c, _ in CASES])
     def test_round_trip(self, case: str, path: Path):
         data = json.loads(path.read_text())
         layout = PageLayout.from_dict(data)
@@ -50,7 +50,7 @@ class TestFixtureLayouts:
         valid = {rt.value for rt in RegionType}
         assert all(r.type.value in valid for r in layout.regions)
 
-    @pytest.mark.parametrize("case,path", CASES, ids=[c for c, _ in CASES])
+    @pytest.mark.parametrize(("case", "path"), CASES, ids=[c for c, _ in CASES])
     def test_regions_inside_image_bounds(self, case: str, path: Path):
         layout = PageLayout.from_dict(json.loads(path.read_text()))
         for r in layout.regions:

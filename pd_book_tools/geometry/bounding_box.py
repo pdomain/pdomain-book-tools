@@ -4,7 +4,7 @@ import functools
 from collections.abc import Sequence
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cv2  # historical import; kept for back-compat per R-03 wrapper-stays
 from cv2 import (
@@ -15,8 +15,6 @@ from cv2 import (
     findNonZero,
     threshold,
 )
-from numpy import ndarray
-from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
 from shapely.geometry import (
     Point as ShapelyPoint,
@@ -30,6 +28,10 @@ from shapely.geometry import (
 from shapely.ops import unary_union  # removed split import
 
 from pd_book_tools.geometry.point import _POINT_DICT_SCHEMA, Point
+
+if TYPE_CHECKING:
+    from numpy import ndarray
+    from pydantic import GetCoreSchemaHandler
 
 # Configure logging
 logger = getLogger(__name__)
@@ -83,17 +85,17 @@ class BoundingBox:
 
     @property
     def width(self) -> float:
-        """Get width of the box"""
+        """Get width of the box."""
         return self.bottom_right.x - self.top_left.x
 
     @property
     def height(self) -> float:
-        """Get height of the box"""
+        """Get height of the box."""
         return self.bottom_right.y - self.top_left.y
 
     @property
     def size(self) -> tuple[float, float]:
-        """Get (width, height) of the box"""
+        """Get (width, height) of the box."""
         return self.width, self.height
 
     @property
@@ -116,7 +118,7 @@ class BoundingBox:
     def get_four_point_scaled_polygon_list(
         self, width: int, height: int
     ) -> list[list[float]]:
-        """Get four points of the box"""
+        """Get four points of the box."""
         return [
             [int(self.minX * width), int(self.minY * height)],
             [int(self.maxX * width), int(self.minY * height)],
@@ -131,7 +133,7 @@ class BoundingBox:
 
     @property
     def center(self) -> Point:
-        """Get center point of the box"""
+        """Get center point of the box."""
         return Point(
             (self.top_left.x + self.bottom_right.x) / 2,
             (self.top_left.y + self.bottom_right.y) / 2,
@@ -214,7 +216,7 @@ class BoundingBox:
 
     # Initialization Checks
     def __post_init__(self):
-        """Validate the bounding box coordinates"""
+        """Validate the bounding box coordinates."""
         if (
             self.top_left.x > self.bottom_right.x
             or self.top_left.y > self.bottom_right.y
@@ -231,11 +233,10 @@ class BoundingBox:
         inferred = all(0 <= c <= 1 for c in coords)
         if self.is_normalized is None:
             self.is_normalized = inferred
-        else:
-            if self.is_normalized and not inferred:
-                raise ValueError(
-                    "Cannot mark bounding box as normalized: coordinates must lie within [0,1]"
-                )
+        elif self.is_normalized and not inferred:
+            raise ValueError(
+                "Cannot mark bounding box as normalized: coordinates must lie within [0,1]"
+            )
         # Rebuild points if their flags differ from box-level flag
         if (
             self.top_left.is_normalized != self.is_normalized
@@ -256,7 +257,7 @@ class BoundingBox:
         points: Sequence[dict | Point | ShapelyPoint | Sequence[float]],
         is_normalized: bool | None = None,
     ):
-        """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats"""
+        """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats."""
         if len(points) != 2:
             raise ValueError("Bounding box should have exactly 2 points")
         converted_points: list[Point] = []
@@ -300,7 +301,7 @@ class BoundingBox:
 
     @classmethod
     def from_float(cls, points: Sequence[float], is_normalized: bool | None = None):
-        """Create from [x_min, y_min, x_max, y_max] format"""
+        """Create from [x_min, y_min, x_max, y_max] format."""
         if len(points) != 4:
             raise ValueError(
                 "Bounding box should have exactly 4 coordinates: x_min, y_min, x_max, y_max"
@@ -315,7 +316,7 @@ class BoundingBox:
     def from_nested_float(
         cls, points: Sequence[Sequence[float]], is_normalized: bool | None = None
     ):
-        """Create from [[x_min, y_min], [x_max, y_max]] format"""
+        """Create from [[x_min, y_min], [x_max, y_max]] format."""
         if len(points) != 2:
             raise ValueError("Bounding box should have exactly 2 points")
         if len(points[0]) != 2 or len(points[1]) != 2:
@@ -337,7 +338,7 @@ class BoundingBox:
         bottom: float,
         is_normalized: bool | None = None,
     ):
-        """Create from left, top, right, bottom format"""
+        """Create from left, top, right, bottom format."""
         return cls._build(left, top, right, bottom, is_normalized)
 
     @classmethod
@@ -349,7 +350,7 @@ class BoundingBox:
         height: float,
         is_normalized: bool | None = None,
     ):
-        """Create from left, top, width, height format"""
+        """Create from left, top, width, height format."""
         if width < 0 or height < 0:
             raise ValueError("Bounding box width and height must be non-negative")
         right = left + width
@@ -357,11 +358,11 @@ class BoundingBox:
         return cls._build(left, top, right, bottom, is_normalized)
 
     def to_points(self) -> tuple[Point, Point]:
-        """Convert to (Point,Point) format (top left point, bottom right point)"""
+        """Convert to (Point,Point) format (top left point, bottom right point)."""
         return (self.top_left, self.bottom_right)
 
     def to_ltrb(self) -> tuple[float, float, float, float]:
-        """Convert to (left, top, right, bottom) format"""
+        """Convert to (left, top, right, bottom) format."""
         return (
             self.top_left.x,
             self.top_left.y,
@@ -370,7 +371,7 @@ class BoundingBox:
         )
 
     def to_ltwh(self) -> tuple[float, float, float, float]:
-        """Convert to (left, top, width, height) format"""
+        """Convert to (left, top, width, height) format."""
         return (
             self.top_left.x,
             self.top_left.y,
@@ -381,7 +382,7 @@ class BoundingBox:
     def to_scaled_ltwh(
         self, width: int, height: int
     ) -> tuple[float, float, float, float]:
-        """Convert to (left, top, width, height) format with absolute pixel coordinates"""
+        """Convert to (left, top, width, height) format with absolute pixel coordinates."""
         scaled: BoundingBox = self.scale(width, height)
         return scaled.to_ltwh()
 
@@ -527,7 +528,7 @@ class BoundingBox:
 
     @classmethod
     def from_dict(cls, dict: dict) -> BoundingBox:
-        """Create BoundingBox from dictionary"""
+        """Create BoundingBox from dictionary."""
         tl = dict["top_left"]
         br = dict["bottom_right"]
         box_norm = dict.get("is_normalized")

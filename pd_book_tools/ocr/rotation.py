@@ -18,7 +18,6 @@ That keeps it composable with non-DocTR OCR backends down the line.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from logging import getLogger
 from typing import TYPE_CHECKING
@@ -27,6 +26,8 @@ import numpy as np
 from numpy import ndarray
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from pd_book_tools.ocr.document import Document
 
 logger = getLogger(__name__)
@@ -53,6 +54,7 @@ class RotationProbe:
 
     @property
     def has_words(self) -> bool:
+        """True if this probe produced at least one recognised word."""
         return self.word_count > 0
 
 
@@ -82,11 +84,12 @@ def _mean_confidence(doc: Document) -> tuple[float, int]:
     when no words have a confidence value (so the empty-page case is
     treated as "no signal" rather than NaN-poisoning the comparison).
     """
-    confidences: list[float] = []
-    for page in doc.pages:
-        for word in page.words:
-            if word.ocr_confidence is not None:
-                confidences.append(float(word.ocr_confidence))
+    confidences: list[float] = [
+        float(word.ocr_confidence)
+        for page in doc.pages
+        for word in page.words
+        if word.ocr_confidence is not None
+    ]
     if not confidences:
         return 0.0, 0
     return float(np.mean(confidences)), len(confidences)
@@ -129,7 +132,7 @@ def detect_best_rotation(
         the upright orientation and want to avoid a redundant pass. When
         ``None`` (default), the upright pass runs as before.
 
-    Returns
+    Returns:
     -------
     chosen_rotation
         Degrees of rotation applied to the source image to produce the

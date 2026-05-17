@@ -12,8 +12,10 @@ Public API:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from pd_book_tools.layout.types import PageLayout
+if TYPE_CHECKING:
+    from pd_book_tools.layout.types import PageLayout
 
 # Color per region type (BGR for cv2). Anything not listed falls back to gray.
 # Chosen to be distinguishable on both light and dark scans.

@@ -40,10 +40,10 @@ def test_cupy_canvas_does_not_import_cv2_backend():
     (the M-27 cross-backend coupling)."""
     # Drop both modules from cache so we observe a fresh import graph.
     for mod_name in list(sys.modules):
-        if (
-            mod_name == "pd_book_tools.image_processing.cupy_processing.canvas"
-            or mod_name == "pd_book_tools.image_processing.cv2_processing.canvas"
-        ):
+        if mod_name in {
+            "pd_book_tools.image_processing.cupy_processing.canvas",
+            "pd_book_tools.image_processing.cv2_processing.canvas",
+        }:
             del sys.modules[mod_name]
 
     # Skip if cupy is unavailable in this environment — the import-graph

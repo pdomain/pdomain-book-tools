@@ -32,8 +32,8 @@ worse than current behaviour.
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Sequence
 from logging import getLogger
+from typing import TYPE_CHECKING
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
@@ -45,7 +45,11 @@ from pd_book_tools.ocr.block import (
     BlockChildType,
     purge_words_from_blocks,
 )
-from pd_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
+    from pd_book_tools.ocr.word import Word
 
 logger = getLogger(__name__)
 
@@ -614,7 +618,8 @@ def _dominant_layout_info(
 
 def _dominant_layout_tag(words: Sequence[Word]) -> RegionType | None:
     """Return the single most-common non-``text`` ``layout:*`` tag, or
-    ``text`` if that's all there is."""
+    ``text`` if that's all there is.
+    """
     info = _dominant_layout_info(words)
     return info[0] if info is not None else None
 

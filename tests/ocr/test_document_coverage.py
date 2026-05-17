@@ -520,7 +520,8 @@ class TestFromTesseractRecordsLanguageInProvenance:
         doc_b = Document.from_tesseract(df_b, lang="deu")
         prov_a = doc_a.pages[0].ocr_provenance
         prov_b = doc_b.pages[0].ocr_provenance
-        assert prov_a is not None and prov_b is not None
+        assert prov_a is not None
+        assert prov_b is not None
         assert prov_a.models != prov_b.models
 
 
