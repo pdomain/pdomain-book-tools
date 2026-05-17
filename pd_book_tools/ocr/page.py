@@ -28,6 +28,8 @@ from cv2 import imwrite as cv2_imwrite
 from cv2 import putText as cv2_putText
 from cv2 import rectangle as cv2_rectangle
 from numpy import ndarray
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr import reorganize_page_utils
@@ -36,6 +38,9 @@ from pd_book_tools.ocr.ground_truth_matching import update_page_with_ground_trut
 from pd_book_tools.ocr.provenance import OCRProvenance
 from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
+from pd_book_tools.schemas._helpers import (
+    NULLABLE_STR_SCHEMA,
+)
 
 # Configure logging
 logger = getLogger(__name__)
@@ -3150,21 +3155,31 @@ class Page:
         """Create OCRPage from dictionary"""
         # Resolve source from either "source" or legacy "page_source" key
         source = data.get("source", data.get("page_source", "ocr"))
+        review_raw = data.get("review")
         review = (
-            ReviewMetadata.from_dict(data["review"])
-            if data.get("review") is not None
-            else None
+            review_raw
+            if isinstance(review_raw, ReviewMetadata)
+            else (
+                ReviewMetadata.from_dict(review_raw) if review_raw is not None else None
+            )
+        )
+        raw_items = data.get("items", [])
+        blocks = [
+            item if isinstance(item, Block) else Block.from_dict(item)
+            for item in raw_items
+        ]
+        bb_raw = data.get("bounding_box")
+        bounding_box = (
+            bb_raw
+            if isinstance(bb_raw, BoundingBox)
+            else (BoundingBox.from_dict(bb_raw) if bb_raw else None)
         )
         return cls(
-            blocks=[Block.from_dict(block) for block in data["items"]],
+            blocks=blocks,
             width=data["width"],
             height=data["height"],
             page_index=data["page_index"],
-            bounding_box=(
-                BoundingBox.from_dict(data["bounding_box"])
-                if data.get("bounding_box")
-                else None
-            ),
+            bounding_box=bounding_box,
             ocr_provenance=data.get("ocr_provenance"),
             image_path=data.get("image_path"),
             name=data.get("name"),
@@ -3465,6 +3480,97 @@ class Page:
         )
         self.generate_doctr_recognition_training_set(
             output_path=output_path, prefix=prefix, word_filter=word_filter
+        )
+
+    # ------------------------------------------------------------------
+    # Pydantic v2 integration: wire-shape JSON Schema via TypeAdapter.
+    #
+    # Page is @dataclass(eq=False) but carries InitVar[Collection] and
+    # ten ndarray cache fields that pydantic cannot introspect. This
+    # hook declares the wire shape produced by Page.to_dict() — which
+    # already skips both the InitVars and the ndarray caches — so
+    # TypeAdapter can emit a precise JSON Schema for downstream codegen.
+    # ------------------------------------------------------------------
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source_type: Any,
+        handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        bb_schema = handler.generate_schema(BoundingBox)
+        block_schema = handler.generate_schema(Block)
+        provenance_schema = handler.generate_schema(OCRProvenance)
+        review_schema = handler.generate_schema(ReviewMetadata)
+        return core_schema.no_info_after_validator_function(
+            function=cls.from_dict,
+            schema=core_schema.typed_dict_schema(
+                {
+                    "type": core_schema.typed_dict_field(
+                        core_schema.literal_schema(["Page"]),
+                        required=False,
+                    ),
+                    "width": core_schema.typed_dict_field(
+                        core_schema.int_schema(),
+                    ),
+                    "height": core_schema.typed_dict_field(
+                        core_schema.int_schema(),
+                    ),
+                    "page_index": core_schema.typed_dict_field(
+                        core_schema.int_schema(),
+                    ),
+                    "bounding_box": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(bb_schema),
+                        required=False,
+                    ),
+                    "items": core_schema.typed_dict_field(
+                        core_schema.list_schema(block_schema),
+                        required=False,
+                    ),
+                    "ocr_provenance": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(provenance_schema),
+                        required=False,
+                    ),
+                    "image_path": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "name": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "source": core_schema.typed_dict_field(
+                        core_schema.str_schema(),
+                        required=False,
+                    ),
+                    "ocr_failed": core_schema.typed_dict_field(
+                        core_schema.bool_schema(),
+                        required=False,
+                    ),
+                    "provenance_live_ocr": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "provenance_saved_ocr": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "provenance_saved": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "rotation_applied": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(core_schema.int_schema()),
+                        required=False,
+                    ),
+                    "review": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(review_schema),
+                        required=False,
+                    ),
+                }
+            ),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                cls.to_dict,
+            ),
         )
 
 
