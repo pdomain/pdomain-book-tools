@@ -58,3 +58,8 @@ repos:
         stages: [pre-commit]
         pass_filenames: false
         files: ^pd_book_tools/.*\.py$
+-   repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+    -   id: gitlint
+        stages: [commit-msg]
