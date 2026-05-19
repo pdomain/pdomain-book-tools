@@ -12,7 +12,7 @@ name: release
 #   3. Attest build provenance via Sigstore (actions/attest-build-provenance).
 #   4. Publish a GitHub Release with auto-generated notes and attach
 #      dist/*.whl + dist/*.tar.gz as assets.
-#   5. Ping ConcaveTrillion/pd-index so the self-hosted PEP 503 simple
+#   5. Ping ConcaveTrillion/pd-index-pip so the self-hosted PEP 503 simple
 #      index regenerates immediately instead of waiting up to 15 min for
 #      its cron. Non-fatal: the index has a 15-min cron safety net.
 #
@@ -30,7 +30,7 @@ permissions:
 # the default in June 2026. Most pinned actions below are still on Node
 # 20 today (no Node-24-native release available yet) — this env var
 # forces them onto 24 preemptively, matching the pattern in
-# ConcaveTrillion/pd-index/.github/workflows/regen.yml.
+# ConcaveTrillion/pd-index-pip/.github/workflows/regen.yml.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
@@ -78,13 +78,13 @@ jobs:
             dist/*.tar.gz
           fail_on_unmatched_files: true
 
-      # Notify ConcaveTrillion/pd-index so it regenerates the PEP 503
+      # Notify ConcaveTrillion/pd-index-pip so it regenerates the PEP 503
       # simple index right away. Without this, the index catches up via
       # its 15-min cron — fine, just slower for downstream installers.
       #
       # Requires repo secret PD_INDEX_DISPATCH_TOKEN (fine-grained PAT
       # with `Contents: read` + `Metadata: read` on
-      # ConcaveTrillion/pd-index — repository_dispatch on a foreign repo
+      # ConcaveTrillion/pd-index-pip — repository_dispatch on a foreign repo
       # needs Contents read/write per GitHub docs; create the PAT with
       # the minimum scope that makes the dispatch succeed).
       #
@@ -98,8 +98,8 @@ jobs:
             echo "::warning::PD_INDEX_DISPATCH_TOKEN is not set; index will catch up via 15-min cron"
             exit 0
           fi
-          gh api -X POST /repos/ConcaveTrillion/pd-index/dispatches \
+          gh api -X POST /repos/ConcaveTrillion/pd-index-pip/dispatches \
             -f event_type=pd-release-published \
             -F 'client_payload[repo]=pd-book-tools' \
             -F "client_payload[tag]=${{ github.ref_name }}" || \
-            echo "::warning::pd-index dispatch failed; index will catch up via 15-min cron"
+            echo "::warning::pd-index-pip dispatch failed; index will catch up via 15-min cron"
