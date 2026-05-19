@@ -1,51 +1,22 @@
-# pd-book-tools — Documentation
+# docs/
 
-Detailed documentation for the `pd-book-tools` Python library. Quick-start
-information for users (installation, dependencies, basic usage) lives in the
-top-level [`README.md`](../README.md); this directory holds the long-form
-reference material.
+How documentation is organized in this repo.
 
-## Layout
+| Folder | Purpose | Use when |
+|---|---|---|
+| `architecture/` | Durable reference — how the system works today. | Capturing current shape (modules, data flow, contracts, current-state diagrams). |
+| `archive/` | Cold storage. Mirrors the nine active folders. | A doc is no longer in force (shipped, superseded, abandoned). |
+| `decisions/` | ADRs — dated, append-only "we chose X because Y." | Recording a specific design choice with context, alternatives, consequences. |
+| `plans/` | Active execution — what order to make a spec real. | Sequencing work for an approved spec. |
+| `process/` | Cross-cutting workflow conventions (verification rules, merge strategy, release process). | Capturing how the team works, not what the system does. |
+| `research/` | Investigation in progress. Messy by design. | Exploring before committing to a design. |
+| `runbooks/` | Operational reference — something is broken or being operated. | An on-call or ops task needs a recipe. |
+| `specs/` | Aspirational, pre-implementation design. | Describing what to build, before code. |
+| `templates/` | Issue, spec, plan, ADR boilerplate. | Adding a starter template for a new doc type. |
+| `usage/` | Downstream reference — how to consume this app/tool/library. | A user or integrator needs to know how to use it. |
 
-```text
-docs/
-├── README.md                          ← you are here
-├── ROADMAP.md                         ← curated narrative of open work
-├── ROADMAP-shipped.md                 ← what landed (and where to find it)
-├── specs/                             ← architecture & planning specs
-│   ├── README.md                      ← spec index (start here)
-│   └── 0X-*.md                        ← numbered specs, see specs/README.md
-└── review/                            ← human review notes (bugs, refactors)
-```
+Empty folders are intentional and tracked via `.gitkeep`.
 
-When you reach for documentation, expect:
-
-- **`specs/`** — durable architectural decisions and planning specs:
-  pipeline diagrams, per-step heuristics, data-flow notes, the rationale
-  behind specific thresholds, and the fixture-driven failures that shaped
-  them. Read these when you need to *change* the behaviour of a subsystem
-  and want to know what each knob does. Numbered prefixes are stable
-  pointers — issues and code comments can refer to `Spec: 03-reorganize-pipeline`
-  without breaking when neighbours are added.
-
-Future top-level sections (add as needed):
-
-- `guides/` — task-oriented walkthroughs (e.g. "how to add a new OCR fixture"
-  or "how to fine-tune a DocTR model").
-- `reference/` — generated or curated API references.
-
-## Conventions
-
-- Spec docs use a numbered or labelled pipeline outline at the top so the
-  reader can map module functions to documented steps quickly. Each step
-  has its own `### Step <name>` heading with the actual function names that
-  implement it.
-- When a heuristic threshold appears in code, mention it by name (e.g.
-  `band_factor`) so a reader can grep both directions: docs ↔ code.
-- Keep "what shaped this" sections at the bottom of architectural specs
-  that list the specific fixtures or incidents that drove non-obvious
-  decisions. Future maintainers should be able to see *why* a constant
-  has its current value, not just *what* the constant is.
-- New specs follow the workspace 9-section template (see
-  `/workspaces/ocr-container/scripts/lint-spec.py`); existing specs are
-  allowlisted as `legacy` in `specs/.specrc` and are migrated incrementally.
+Active docs map to GitHub issues — see this repo's issue tracker for status.
+This layout is workspace-standard; see
+`/workspaces/ocr-container/docs/README.md` for the master.
