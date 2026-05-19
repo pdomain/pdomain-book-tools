@@ -159,8 +159,6 @@ tests/fixtures/layout_regression/expected_text/diff/
 # see a .claude/ tree here, it is leakage; clean it up.
 .claude/
 
-# Hourly-regenerated spec-chain dashboard — workspace-only artifact, not source.
-docs/spec-chain-report.md
 
 # CI output log when using AI=1 flag
 .ci-ai.log
