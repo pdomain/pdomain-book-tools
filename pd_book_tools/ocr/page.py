@@ -3673,4 +3673,4 @@ _page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(  # type: ignor
 _page_init_with_deprecation_shim.__name__ = "__init__"
 _page_init_with_deprecation_shim.__qualname__ = "Page.__init__"
 
-Page.__init__ = _page_init_with_deprecation_shim  # type: ignore[method-assign]
+Page.__init__ = _page_init_with_deprecation_shim

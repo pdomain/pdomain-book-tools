@@ -831,6 +831,34 @@ def test_word_from_tesseract_drops_negative_conf_sentinel():
     assert word.ocr_confidence == 88.0
 
 
+def test_tesseract_confidence_treats_nan_as_none():
+    """A NaN ``conf`` cell must be excluded from aggregation, not averaged in.
+
+    Tesseract can emit a ``NaN`` confidence for rejected/empty rows. ``NaN``
+    is the sentinel for "no confidence available"; it must map to ``None`` so
+    it is left out of mean-confidence math rather than corrupting it.
+    """
+    import math
+
+    assert Document._tesseract_confidence(math.nan) is None
+    assert Document._tesseract_confidence(float("nan")) is None
+    # Real confidences still pass through unchanged.
+    assert Document._tesseract_confidence(95) == 95.0
+    # Non-positive sentinel and non-numeric values stay None.
+    assert Document._tesseract_confidence(-1) is None
+    assert Document._tesseract_confidence("garbage") is None
+
+
+def test_tesseract_text_treats_nan_as_empty_string():
+    """A NaN ``text`` cell must render as ``""``, never the string ``'nan'``."""
+    import math
+
+    assert Document._tesseract_text(math.nan) == ""
+    assert Document._tesseract_text(float("nan")) == ""
+    assert Document._tesseract_text("Hello") == "Hello"
+    assert Document._tesseract_text(None) == ""
+
+
 def test_block_from_tesseract_handles_non_contiguous_ids():
     """H-18 regression: filtering must use the row's actual ids."""
     df = DataFrame(

@@ -55,7 +55,7 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
         return cp.zeros_like(img_cp_float, dtype=cp.uint8)
 
     hist, bin_edges = cp.histogram(img_cp_float, bins=256, range=(min_val, max_val))
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # type: ignore # Midpoints of bins
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Midpoints of bins
 
     # Compute cumulative sums and means.
     #

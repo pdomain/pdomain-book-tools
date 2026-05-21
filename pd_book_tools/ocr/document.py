@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Collection, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -554,7 +555,7 @@ class Document:
         if hasattr(val, "item"):
             with contextlib.suppress(Exception):
                 val = val.item()
-        if isinstance(val, float) and val != val:  # NaN  # noqa: PLR0124
+        if isinstance(val, float) and math.isnan(val):
             return ""
         return str(val)
 
@@ -581,7 +582,7 @@ class Document:
             f = float(val)
         except (TypeError, ValueError):
             return None
-        if f != f:  # NaN  # noqa: PLR0124
+        if math.isnan(f):
             return None
         if f <= 0:
             return None

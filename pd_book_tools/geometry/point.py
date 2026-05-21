@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
-from shapely.geometry import Point as ShapelyPoint  # type: ignore
+from shapely.geometry import Point as ShapelyPoint
 
 from pd_book_tools.schemas._helpers import NUMBER_SCHEMA
 
@@ -174,7 +174,7 @@ class Point:
         return cls(x, y, is_normalized=is_norm)
 
     def as_shapely(self) -> "ShapelyPoint":
-        return self._geom  # type: ignore
+        return self._geom
 
     def distance_to(self, other: "Point") -> float:
         return float(self._geom.distance(other.as_shapely()))
@@ -188,35 +188,35 @@ class Point:
     # Comparisons ------------------------------------------------------
     def __gt__(self, other: object) -> bool:
         if not isinstance(other, Point):
-            return NotImplemented  # type: ignore[return-value]
+            return NotImplemented
         if self.is_normalized != other.is_normalized:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) > (other.x, other.y)
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Point):
-            return NotImplemented  # type: ignore[return-value]
+            return NotImplemented
         if self.is_normalized != other.is_normalized:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) < (other.x, other.y)
 
     def __ge__(self, other: object) -> bool:
         if not isinstance(other, Point):
-            return NotImplemented  # type: ignore[return-value]
+            return NotImplemented
         if self.is_normalized != other.is_normalized:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) >= (other.x, other.y)
 
     def __le__(self, other: object) -> bool:
         if not isinstance(other, Point):
-            return NotImplemented  # type: ignore[return-value]
+            return NotImplemented
         if self.is_normalized != other.is_normalized:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) <= (other.x, other.y)
 
-    def __eq__(self, other: object) -> bool:  # type: ignore[override]
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Point):
-            return NotImplemented  # type: ignore[return-value]
+            return NotImplemented
         if self.is_normalized != other.is_normalized:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) == (other.x, other.y)

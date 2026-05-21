@@ -13,9 +13,11 @@ try:
     _pytesseract_available = True
 except ImportError:
     _pytesseract_available = False
-    pytesseract_Output = None  # type: ignore[assignment]  # mirrors the pytesseract module attribute name; None when not installed
-    image_to_data = None  # type: ignore[assignment]  # None when pytesseract is not installed
-    image_to_string = None  # type: ignore[assignment]  # None when pytesseract is not installed
+    pytesseract_Output = (
+        None  # mirrors the pytesseract module attribute name; None when not installed
+    )
+    image_to_data = None  # None when pytesseract is not installed
+    image_to_string = None  # None when pytesseract is not installed
 
 logger = logging.getLogger(__name__)
 

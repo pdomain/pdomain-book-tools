@@ -242,7 +242,7 @@ class Block:
         # _items is initialized by the items setter below; pre-declare to satisfy type checkers
         self._items = []
         # Will set self._items and compute bounding box
-        self.items = items  # type: ignore[assignment]
+        self.items = items
         # If explicit bbox passed, override computed one
         if bounding_box is not None:
             self.bounding_box = bounding_box

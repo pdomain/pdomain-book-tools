@@ -163,22 +163,31 @@ gap between the cv2 stub types and the actual values.
 
 ---
 
-## 9. `type: ignore` (unscoped) — mypy-style — basedpyright / mypy
+## 9. `type: ignore` (unscoped) — mypy-style — RESOLVED
 
-**Files:** `pd_book_tools/geometry/bounding_box.py` (~25 occurrences),
-`pd_book_tools/geometry/point.py` (7 occurrences),
-`pd_book_tools/ocr/page.py`, `pd_book_tools/ocr/block.py`,
-`pd_book_tools/ocr/cv2_tesseract.py`,
+**Files (historical):** `pd_book_tools/geometry/bounding_box.py`,
+`pd_book_tools/geometry/point.py`, `pd_book_tools/ocr/page.py`,
+`pd_book_tools/ocr/block.py`, `pd_book_tools/ocr/cv2_tesseract.py`,
 `pd_book_tools/image_processing/cupy_processing/threshold.py`
 
-**Suppression form:** `# type: ignore` or `# type: ignore[...]` inline.
+**Resolution.** These were legacy mypy-style suppressions left over from
+before the basedpyright migration. They were audited by stripping every
+unscoped `# type: ignore` / `# type: ignore[...]` and re-running
+`basedpyright … --level error` (the level CI enforces). The stripped files
+produced **0 errors** — the suppressions silenced no diagnostic that CI
+enforces. They were mypy-era artifacts that, left in place, would also
+silence any *future* real basedpyright error on those lines. They have all
+been removed.
 
-**Status: needs review.** These are legacy mypy-style suppressions in files
-that predate the basedpyright migration (`bounding_box.py`, `point.py`).
-They are in the annotation / lint backlog (see `per-file-ignores` for both
-files in `pyproject.toml`). They should be converted to
-`# pyright: ignore[<specific-rule>]` with justifications as each file gets
-a focused pass.
+The dual-tool suppressions in `page.py` (lines carrying both a
+`# type: ignore[...]` mypy code and a `# pyright: ignore[...]` code) were
+left intact — the basedpyright half is the active, scoped suppression and
+is already documented under sections 4 and 8. The one genuinely unscoped
+`# type: ignore[method-assign]` in `page.py` (`Page.__init__` reassignment)
+was removed: basedpyright raises no diagnostic there.
+
+No suppression in this group was converted to `# pyright: ignore[...]`,
+because none was silencing a basedpyright error in the first place.
 
 ---
 
@@ -257,15 +266,20 @@ cost is acceptable for the correctness guarantee.
 
 ---
 
-## 16. `PLR0124` — ruff (comparison-to-itself)
+## 16. `PLR0124` — ruff (comparison-to-itself) — RESOLVED
 
-**Files:** `pd_book_tools/ocr/document.py` (2 occurrences)
+**Files (historical):** `pd_book_tools/ocr/document.py` (2 occurrences)
 
-**Suppression form:** `# noqa: PLR0124` inline.
-
-**Status: needs review.** These suppressions predate the strict-linting
-rollout. The comparisons should be audited — a comparison-to-itself is
-either dead code or an identity check that should use `is`/`is not`.
+**Resolution.** The two suppressed comparisons were `val != val` and
+`f != f` in `Document._tesseract_text` / `Document._tesseract_confidence` —
+the classic "x is the only value not equal to itself" NaN test. The
+suppression was warranted (the comparison is intentional, not dead code),
+but the underlying construct is now expressed directly: both sites were
+rewritten to `math.isnan(...)`, which is clearer and needs no suppression
+at all. The `# noqa: PLR0124` comments have been removed. NaN handling for
+both helpers is regression-tested in `tests/ocr/test_document.py`
+(`test_tesseract_confidence_treats_nan_as_none`,
+`test_tesseract_text_treats_nan_as_empty_string`).
 
 ---
 

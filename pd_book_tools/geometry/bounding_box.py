@@ -266,15 +266,15 @@ class BoundingBox:
                 if "x" not in p or "y" not in p:
                     raise ValueError("Dictionary should have 'x' and 'y' keys")
                 converted_points.append(Point(p["x"], p["y"]))
-            elif isinstance(p, ShapelyPoint):  # type: ignore
+            elif isinstance(p, ShapelyPoint):
                 if hasattr(p, "x") and hasattr(p, "y"):
-                    converted_points.append(Point(p.x, p.y))  # type: ignore
+                    converted_points.append(Point(p.x, p.y))
                 else:
                     raise ValueError("ShapelyPoint should have 'x' and 'y' attributes")
             elif isinstance(p, Point):
                 converted_points.append(p)
-            elif isinstance(p, Sequence) and len(p) == 2:  # type: ignore
-                converted_points.append(Point(p[0], p[1]))  # type: ignore
+            elif isinstance(p, Sequence) and len(p) == 2:
+                converted_points.append(Point(p[0], p[1]))
             else:
                 raise TypeError("Unsupported point specification in from_points")
         # Policy: zero-width / zero-height boxes are accepted across the
@@ -434,31 +434,31 @@ class BoundingBox:
         return self.minX <= point.x <= self.maxX and self.minY <= point.y <= self.maxY
 
     @staticmethod
-    def _require_same_coords(fn):  # type: ignore
+    def _require_same_coords(fn):
         # R-21: ``functools.wraps`` preserves ``__name__``/``__doc__``/
         # ``__qualname__`` on decorated bounding-box methods so help(),
         # tracebacks, and tooling report the underlying method instead
         # of the generic ``wrapper`` shim.
         @functools.wraps(fn)
-        def wrapper(self, other, *args, **kwargs):  # type: ignore
+        def wrapper(self, other, *args, **kwargs):
             if self.is_normalized != other.is_normalized:
                 raise ValueError(
                     "Bounding boxes must share coordinate system (both normalized or both pixel)"
                 )
-            return fn(self, other, *args, **kwargs)  # type: ignore
+            return fn(self, other, *args, **kwargs)
 
         return wrapper
 
     @_require_same_coords
-    def intersects(self, other: BoundingBox) -> bool:  # type: ignore
-        return self.as_shapely().intersects(other.as_shapely())  # type: ignore
+    def intersects(self, other: BoundingBox) -> bool:
+        return self.as_shapely().intersects(other.as_shapely())
 
     @_require_same_coords
-    def intersection(self, other: BoundingBox) -> BoundingBox | None:  # type: ignore
-        inter = self.as_shapely().intersection(other.as_shapely())  # type: ignore
-        if inter.is_empty:  # type: ignore
+    def intersection(self, other: BoundingBox) -> BoundingBox | None:
+        inter = self.as_shapely().intersection(other.as_shapely())
+        if inter.is_empty:
             return None
-        minx, miny, maxx, maxy = inter.bounds  # type: ignore
+        minx, miny, maxx, maxy = inter.bounds
         if minx == maxx or miny == maxy:
             return None
         is_norm = self.is_normalized and all(
@@ -466,12 +466,12 @@ class BoundingBox:
         )
         return BoundingBox.from_ltrb(minx, miny, maxx, maxy, is_normalized=is_norm)
 
-    @_require_same_coords  # type: ignore
+    @_require_same_coords
     def overlap_y_amount(self, other: BoundingBox):
         """Return the amount of overlap on the y-axis (projection overlap)."""
         return self._interval_overlap(self.minY, self.maxY, other.minY, other.maxY)
 
-    @_require_same_coords  # type: ignore
+    @_require_same_coords
     def overlap_x_amount(self, other: BoundingBox):
         """Return the amount of overlap on the x-axis (projection overlap)."""
         return self._interval_overlap(self.minX, self.maxX, other.minX, other.maxX)
@@ -491,8 +491,8 @@ class BoundingBox:
             raise ValueError(
                 "All bounding boxes must share coordinate system (all normalized or all pixel) for union"
             )
-        geom = unary_union([b.as_shapely() for b in bounding_boxes])  # type: ignore
-        minx, miny, maxx, maxy = geom.bounds  # type: ignore
+        geom = unary_union([b.as_shapely() for b in bounding_boxes])
+        minx, miny, maxx, maxy = geom.bounds
         coords = [minx, miny, maxx, maxy]
         # Normalized only if all source boxes are normalized AND bounds lie in [0,1]
         is_norm = all(
@@ -681,7 +681,7 @@ class BoundingBox:
 
         Raises ImportError if shapely is missing.
         """
-        return shapely_box(  # type: ignore
+        return shapely_box(
             self.top_left.x, self.top_left.y, self.bottom_right.x, self.bottom_right.y
         )
 
@@ -695,16 +695,16 @@ class BoundingBox:
         return self.union([self, other])
 
     @_require_same_coords
-    def iou(self, other: BoundingBox) -> float:  # type: ignore
+    def iou(self, other: BoundingBox) -> float:
         a = self.as_shapely()
         b = other.as_shapely()
-        inter = a.intersection(b)  # type: ignore
-        if inter.is_empty:  # type: ignore
+        inter = a.intersection(b)
+        if inter.is_empty:
             return 0.0
-        union_area = a.union(b).area  # type: ignore
+        union_area = a.union(b).area
         if union_area == 0:
             return 0.0
-        return float(inter.area / union_area)  # type: ignore
+        return float(inter.area / union_area)
 
     def expand(self, dx: float = 0.0, dy: float = 0.0) -> BoundingBox:
         """Expand (or shrink) the box by dx, dy on each side.
@@ -725,12 +725,12 @@ class BoundingBox:
             g = self.as_shapely().buffer(
                 dx, join_style="mitre"
             )  # mitre=square corners; was int 2 (old shapely API)
-            if g.is_empty:  # type: ignore
+            if g.is_empty:
                 raise ValueError(
                     f"Expansion deltas collapse box to zero area "
                     f"(dx=dy={dx} applied to {self.width}x{self.height} box)"
                 )
-            minx, miny, maxx, maxy = g.bounds  # type: ignore
+            minx, miny, maxx, maxy = g.bounds
             return BoundingBox.from_ltrb(
                 minx, miny, maxx, maxy, is_normalized=self.is_normalized
             )
