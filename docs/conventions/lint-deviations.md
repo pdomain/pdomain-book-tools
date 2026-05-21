@@ -13,7 +13,11 @@ the justification. Update this file whenever a new suppression is added.
 `rotate.py`
 
 **Suppression form:** `# pyright: ignore[reportMissingImports]` on each
-`import cupy` / `import cupyx.*` line inside the guarded `try` block.
+`import cupy` / `import cupyx.*` line inside the guarded `try` block. For
+multiline parenthesised `from ... import (...)` statements the comment must
+sit on the `from` line — that is the line basedpyright flags (it points at
+the module path, not the imported names). Placing it on an imported-name
+line inside the parentheses does not suppress the diagnostic.
 
 **Justification.** `cupy` and `cupyx` are optional `[gpu]`-extra dependencies
 (see `pyproject.toml`). The import is wrapped in `try/except ImportError`
