@@ -20,8 +20,9 @@ This spec relates to:
   each rendered component sits on the image.
 - `Spec: 01-page-model` — the `Word` / `Character` / `BoundingBox`
   types that this spec builds on.
-- `Spec: 06-word-reference-lines` — baseline / x-height geometry used
-  to classify diacritic blobs vs. base-letter blobs.
+- `Spec: 06b-word-reference-lines-api` — baseline / x-height geometry used
+  to classify diacritic blobs vs. base-letter blobs (see also the
+  parent index at `Spec: 06-word-reference-lines`).
 
 ---
 
