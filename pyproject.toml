@@ -90,14 +90,23 @@ source = ["pd_book_tools"]
 branch = true
 omit = [
     "*/tests/*",
-    "*/.*/*",
+    # Virtualenv / VCS internals. NOTE: do NOT use a broad "*/.*/*" glob here —
+    # it also matches any source file whose path contains a dot-prefixed
+    # directory segment (e.g. a git worktree under ".worktrees/"), which
+    # silently omits the entire package and makes coverage report 0%.
+    "*/.venv/*",
+    "*/.tox/*",
     "*/site-packages/*",
     # GPU-only modules: tests exist but skip without CUDA/CuPy.
     # Excluded so CPU-only coverage runs report a meaningful baseline.
     "*/image_processing/cupy_processing/*",
     "*/image_processing/cv2cuda_processing/*",
 ]
-concurrency = ["thread"]  # NiceGUI & timers may spawn threads
+# "multiprocessing" is required so pytest-xdist (-n auto) per-worker
+# subprocesses each write a .coverage.* file that `coverage combine` can
+# merge; without it the worker data is dropped and the total reports 0%.
+# "thread" stays for NiceGUI & timers that may spawn threads.
+concurrency = ["multiprocessing", "thread"]
 
 [tool.coverage.report]
 show_missing = true
