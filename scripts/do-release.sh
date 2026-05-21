@@ -22,8 +22,7 @@
 #
 # Defaults to BUMP=minor.
 #
-# Branch: defaults to `master` (pd-book-tools' default branch). Override
-# with RELEASE_BRANCH=main if the repo ever migrates.
+# Branch: defaults to `main` (pd-book-tools' default branch).
 #
 # Escape hatches:
 #   FORCE=1     skip the three repo-state guards (dirty tree / branch /
@@ -39,7 +38,7 @@ set -eu
 BUMP=${BUMP:-minor}
 FORCE=${FORCE:-0}
 SKIP_PUSH=${SKIP_PUSH:-0}
-RELEASE_BRANCH=${RELEASE_BRANCH:-master}
+RELEASE_BRANCH=${RELEASE_BRANCH:-main}
 
 if [ "$BUMP" != "major" ] && [ "$BUMP" != "minor" ] && [ "$BUMP" != "patch" ]; then
     echo "❌ BUMP must be one of: major, minor, patch (got: $BUMP)" >&2
