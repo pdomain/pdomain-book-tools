@@ -28,6 +28,9 @@ GPU_EXTRA_INSTALL_HINT = (
     "(requires CUDA 12 toolkit and a compatible NVIDIA GPU)."
 )
 
+# cupy is an optional [gpu]-extra dependency (see pyproject.toml). This guard
+# lets the module load on CPU-only installs; require_cupy() in every GPU
+# function raises the actionable ImportError before cp is ever dereferenced.
 try:
     import cupy as cp  # pyright: ignore[reportMissingImports]
 

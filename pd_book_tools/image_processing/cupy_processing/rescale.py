@@ -6,6 +6,9 @@ import numpy as np
 
 from ._cupy_compat import cp, require_cupy
 
+# cupyx is part of the CuPy install ([gpu] extra). This guard lets the module
+# load on CPU-only installs; require_cupy() in each function gives the
+# actionable error before these names are ever dereferenced.
 try:
     from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]
         uniform_filter,

@@ -9,6 +9,9 @@ from ._cupy_compat import cp, require_cupy
 if TYPE_CHECKING:
     import numpy as np
 
+# cupy is an optional [gpu]-extra dependency (see pyproject.toml). This guard
+# lets the module load on CPU-only installs; require_cupy() in each function
+# raises the actionable error before these names are ever dereferenced.
 try:
     from cupy.lib.stride_tricks import (  # pyright: ignore[reportMissingImports]
         sliding_window_view,
