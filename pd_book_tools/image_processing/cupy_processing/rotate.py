@@ -9,8 +9,11 @@ from ._cupy_compat import cp, require_cupy
 if TYPE_CHECKING:
     import numpy as np
 
+# cupyx is part of the CuPy install ([gpu] extra). This guard lets the module
+# load on CPU-only installs; require_cupy() in each function gives the
+# actionable error before these names are ever dereferenced.
 try:
-    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]
         affine_transform,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs
