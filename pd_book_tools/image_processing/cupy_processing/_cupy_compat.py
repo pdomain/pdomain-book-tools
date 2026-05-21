@@ -29,7 +29,7 @@ GPU_EXTRA_INSTALL_HINT = (
 )
 
 try:
-    import cupy as cp  # type: ignore[import-not-found]
+    import cupy as cp  # pyright: ignore[reportMissingImports]
 
     _CUPY_AVAILABLE = True
     _CUPY_IMPORT_ERROR: ImportError | None = None

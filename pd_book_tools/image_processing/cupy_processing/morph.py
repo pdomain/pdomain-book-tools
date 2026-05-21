@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 try:
-    from cupy.lib.stride_tricks import (  # type: ignore[import-not-found]
+    from cupy.lib.stride_tricks import (  # pyright: ignore[reportMissingImports]
         sliding_window_view,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs

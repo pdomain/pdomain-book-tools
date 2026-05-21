@@ -11,8 +11,10 @@ from ._cupy_compat import cp, require_cupy
 # cleanly on CPU-only installs; require_cupy() in each function gives the
 # actionable error before these names are ever dereferenced.
 try:
-    from cupyx.scipy.ndimage import find_objects  # type: ignore[import-not-found]
-    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (
+        find_objects,  # pyright: ignore[reportMissingImports]
+    )
+    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]
         label as ndimage_label,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs

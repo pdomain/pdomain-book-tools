@@ -7,7 +7,7 @@ import numpy as np
 from ._cupy_compat import cp, require_cupy
 
 try:
-    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]
         uniform_filter,
         zoom,
     )

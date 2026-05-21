@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 try:
-    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]
         affine_transform,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs

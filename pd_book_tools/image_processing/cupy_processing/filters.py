@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 try:
-    from cupyx.scipy.ndimage import (  # type: ignore[import-not-found]
+    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]
         gaussian_filter,
         median_filter,
         uniform_filter,
