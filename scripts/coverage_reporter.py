@@ -1,12 +1,38 @@
 #!/usr/bin/env python3
-"""Display coverage report with soft-target indicator."""
+"""Display coverage report with soft-target indicator.
 
+The hard threshold (CI-failing gate) is the single source of truth in
+``pyproject.toml`` under ``[tool.coverage.report] fail_under``. This
+script reads it from there so the reported number can never drift from
+the real gate (#188).
+"""
+
+import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 SOFT_TARGET = 88
-HARD_THRESHOLD = 80
+_DEFAULT_HARD_THRESHOLD = 87
+
+
+def get_hard_threshold() -> int:
+    """Read the hard coverage gate from ``[tool.coverage.report] fail_under``.
+
+    Falls back to ``_DEFAULT_HARD_THRESHOLD`` if pyproject.toml is missing
+    or does not declare ``fail_under``.
+    """
+    pyproject = Path(__file__).parent.parent / "pyproject.toml"
+    if not pyproject.exists():
+        return _DEFAULT_HARD_THRESHOLD
+    match = re.search(
+        r"^\s*fail_under\s*=\s*(\d+(?:\.\d+)?)",
+        pyproject.read_text(),
+        re.MULTILINE,
+    )
+    if match is None:
+        return _DEFAULT_HARD_THRESHOLD
+    return int(float(match.group(1)))
 
 
 def get_coverage_percentage() -> float | None:
@@ -32,11 +58,12 @@ def get_coverage_percentage() -> float | None:
 def main() -> None:
     """Print coverage report with soft-target indicator."""
     coverage_pct = get_coverage_percentage()
+    hard_threshold = get_hard_threshold()
 
     print("\n" + "=" * 70)
     print("COVERAGE THRESHOLD REPORT")
     print("=" * 70)
-    print(f"  Hard threshold (fail):   {HARD_THRESHOLD}%")
+    print(f"  Hard threshold (fail):   {hard_threshold}%")
     print(f"  Soft target (goal):      {SOFT_TARGET}%")
     if coverage_pct is not None:
         print(f"  Current coverage:        {coverage_pct:.1f}%")
