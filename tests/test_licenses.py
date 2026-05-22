@@ -67,3 +67,19 @@ def test_vendored_json_data_file_loadable():
     text = resource.read_text(encoding="utf-8")
     assert '"licenses"' in text
     assert '"licenseId"' in text
+
+
+def test_vendored_spdx_data_has_third_party_attribution():
+    """The vendored SPDX data ships an adjacent third-party notice naming
+    its upstream source and license, so redistributors can trace it."""
+    notice = importlib.resources.files("pd_book_tools.data").joinpath(
+        "THIRD-PARTY-NOTICES.md"
+    )
+    assert notice.is_file()
+    text = notice.read_text(encoding="utf-8")
+    # Must name the upstream project, its repository, and the data license.
+    assert "license-list-data" in text
+    assert "spdx/license-list-data" in text
+    assert "CC0-1.0" in text
+    # Must reference the specific vendored file.
+    assert "spdx_licenses.json" in text
