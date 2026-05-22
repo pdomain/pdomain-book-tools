@@ -1,8 +1,8 @@
 # Geometry Types `__repr__` Contract
 
-> **Status**: Active
-> **Last updated**: 2026-05-11
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#36
+> **Status**: Shipped — archived 2026-05-22
+> **Last updated**: 2026-05-22
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#36 (closed)
 
 ## TL;DR
 

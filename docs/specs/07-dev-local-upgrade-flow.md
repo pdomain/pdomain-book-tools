@@ -1,7 +1,7 @@
 # Spec: dev-local-aware `upgrade-deps` flow
 
-> **Status**: Active
-> **Last updated**: 2026-05-10
+> **Status**: Partially shipped — doctr-from-git signal still open (tracked in issue #7)
+> **Last updated**: 2026-05-22
 
 Status: **shipped** (2026-05). All required behavior in §2 landed across
 commits `ba267f3` (refuse-rather-than-clobber `upgrade-deps` +
