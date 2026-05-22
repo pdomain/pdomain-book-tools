@@ -229,7 +229,28 @@ release-major: ## Release: bump major, run ci-slow, tag, push (fires GitHub Rele
 layout-fork-info: ## Show pinned layout SHA + upstream / fork latest SHAs (warns on real file drift; never fails)
 	@uv run python scripts/check_layout_fork.py
 
+# Strict validators for variables interpolated into shell recipes below.
+# These developer-only targets accept Make variables on the command line;
+# a malicious value (e.g. SHA='x; rm -rf ~') would otherwise be a
+# command-injection surface. Each guard rejects anything outside a tight
+# allowlist regex before the value reaches a shell recipe.
+#
+# Hugging Face repo id: "owner/name", each segment [A-Za-z0-9._-].
+HF_REPO_ID_RE := ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$$
+# Filesystem path: no shell metacharacters.
+HF_PATH_RE := ^[A-Za-z0-9._/-]+$$
+# Git commit SHA: 7-40 lowercase hex digits.
+SHA_RE := ^[0-9a-f]{7,40}$$
+
+define _check_var
+	@printf '%s' "$(2)" | grep -Eq '$(3)' || { \
+	  echo "❌ Invalid $(1): '$(2)' (must match $(3))"; exit 1; }
+endef
+
 layout-fork-update: ## Re-sync layout-detector fork from upstream and print the new SHA
+	$(call _check_var,HF_LAYOUT_UPSTREAM,$(HF_LAYOUT_UPSTREAM),$(HF_REPO_ID_RE))
+	$(call _check_var,HF_LAYOUT_FORK,$(HF_LAYOUT_FORK),$(HF_REPO_ID_RE))
+	$(call _check_var,HF_LAYOUT_MIRROR,$(HF_LAYOUT_MIRROR),$(HF_PATH_RE))
 	@command -v hf >/dev/null 2>&1 || { echo "ERROR: 'hf' CLI not found. uv add huggingface_hub or pip install -U huggingface_hub"; exit 1; }
 	@echo "🔁 Re-downloading $(HF_LAYOUT_UPSTREAM) → $(HF_LAYOUT_MIRROR) ..."
 	@rm -rf "$(HF_LAYOUT_MIRROR)"
@@ -251,6 +272,7 @@ layout-fork-pin: ## Pin a SHA into pp_doclayout.py (usage: make layout-fork-pin 
 	  echo "❌ Missing SHA. Usage: make layout-fork-pin SHA=<commit>"; \
 	  exit 1; \
 	fi
+	$(call _check_var,SHA,$(SHA),$(SHA_RE))
 	@if ! [ -f "$(HF_LAYOUT_ADAPTER)" ]; then \
 	  echo "❌ Adapter not found at $(HF_LAYOUT_ADAPTER)"; exit 1; \
 	fi
