@@ -19,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import logging
 from pathlib import Path, PurePosixPath
+from typing import override
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ def suppress_hf_unauth_warning():
     """
 
     class _Filter(logging.Filter):
+        @override
         def filter(self, record: logging.LogRecord) -> bool:
             msg = record.getMessage().lower()
             return not ("unauthenticated requests" in msg and "hf hub" in msg)
@@ -92,7 +94,7 @@ def hf_download(
         try:
             # huggingface_hub>=0.22 moved exceptions to .errors; fall back for older
             from huggingface_hub.errors import (
-                EntryNotFoundError as _HFNotFound,  # pyright: ignore[reportPrivateImportUsage]
+                EntryNotFoundError as _HFNotFound,
             )
         except ImportError:
             try:
@@ -114,7 +116,7 @@ def hf_download(
             sidecar = str(p.with_suffix(ext))
             try:
                 with suppress_hf_unauth_warning():
-                    hf_hub_download(
+                    _ = hf_hub_download(
                         repo_id=repo_id, filename=sidecar, revision=revision
                     )
             except _HFNotFound:

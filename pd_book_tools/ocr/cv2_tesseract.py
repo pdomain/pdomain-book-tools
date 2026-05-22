@@ -7,8 +7,8 @@ from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.page import Page
 
 try:
-    from pytesseract import Output as pytesseract_Output
-    from pytesseract import image_to_data, image_to_string
+    from pytesseract import Output as pytesseract_Output  # pyright: ignore[reportMissingTypeStubs]  # noqa: I001
+    from pytesseract import image_to_data, image_to_string  # pyright: ignore[reportMissingTypeStubs]
 
     _pytesseract_available = True
 except ImportError:
@@ -67,17 +67,13 @@ def tesseract_ocr_cv2_image(
         global _RGBA_NOTICE_LOGGED  # noqa: PLW0603  # once-per-process notice flag
         if not _RGBA_NOTICE_LOGGED:
             logger.info(
-                "tesseract_ocr_cv2_image received 4-channel input; dropping "
-                "alpha channel (matches cv2 COLOR_BGRA2GRAY semantics). "
-                "This notice is logged once per process."
+                "tesseract_ocr_cv2_image received 4-channel input; dropping alpha channel (matches cv2 COLOR_BGRA2GRAY semantics). This notice is logged once per process."
             )
             _RGBA_NOTICE_LOGGED = True  # pyright: ignore[reportConstantRedefinition]  # once-per-process flag; uppercase but not a true constant
         image_grayscale = cvtColor(image, COLOR_BGRA2GRAY)
     else:
         raise ValueError(
-            "tesseract_ocr_cv2_image expected a 2D grayscale, 3-channel "
-            "BGR, or 4-channel BGRA image; got shape="
-            f"{tuple(image.shape)} (ndim={image.ndim})."
+            f"tesseract_ocr_cv2_image expected a 2D grayscale, 3-channel BGR, or 4-channel BGRA image; got shape={tuple(image.shape)} (ndim={image.ndim})."
         )
 
     config = [

@@ -1,20 +1,10 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Sequence
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, TypedDict, TypeVar, override
 
-import cv2  # historical import; kept for back-compat per R-03 wrapper-stays
-from cv2 import (
-    COLOR_BGR2GRAY,  # historical re-exports; kept for back-compat
-    THRESH_BINARY,
-    THRESH_OTSU,
-    cvtColor,
-    findNonZero,
-    threshold,
-)
 from pydantic_core import CoreSchema, core_schema
 from shapely.geometry import (
     Point as ShapelyPoint,
@@ -27,14 +17,52 @@ from shapely.geometry import (
 )
 from shapely.ops import unary_union  # removed split import
 
-from pd_book_tools.geometry.point import _POINT_DICT_SCHEMA, Point
+from pd_book_tools.geometry.point import Point
+from pd_book_tools.schemas._helpers import NUMBER_SCHEMA
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from numpy import ndarray
     from pydantic import GetCoreSchemaHandler
 
+# Inline wire-shape for a Point dict — mirrors _POINT_DICT_SCHEMA from point.py
+# without importing a private name. Used by __get_pydantic_core_schema__.
+_POINT_DICT_SCHEMA_INLINE = core_schema.typed_dict_schema(
+    {
+        "x": core_schema.typed_dict_field(NUMBER_SCHEMA),
+        "y": core_schema.typed_dict_field(NUMBER_SCHEMA),
+        "is_normalized": core_schema.typed_dict_field(
+            core_schema.bool_schema(),
+        ),
+    }
+)
+
 # Configure logging
 logger = getLogger(__name__)
+
+# TypeVar for the _require_same_coords decorator
+_T = TypeVar("_T")
+
+
+class _PointDict(TypedDict, total=False):
+    """Wire shape for a serialized Point corner (from to_dict / from_dict)."""
+
+    x: float
+    y: float
+    is_normalized: bool | None
+
+
+class _BoundingBoxDict(TypedDict):
+    """Wire shape for a serialized BoundingBox (from to_dict / from_dict).
+
+    ``top_left`` and ``bottom_right`` are required; ``is_normalized`` is
+    optional (older serialized forms omit it).
+    """
+
+    top_left: _PointDict
+    bottom_right: _PointDict
+    is_normalized: bool | None
 
 
 @dataclass
@@ -171,8 +199,7 @@ class BoundingBox:
         import math
 
         return all(
-            c is not None and math.isfinite(c)
-            for c in (self.minX, self.minY, self.maxX, self.maxY)
+            math.isfinite(c) for c in (self.minX, self.minY, self.maxX, self.maxY)
         )
 
     @staticmethod
@@ -209,13 +236,14 @@ class BoundingBox:
         """
         return self._split_at_x(self, x_absolute)
 
+    @override
     def __repr__(self) -> str:
         return (
             f"BoundingBox.from_ltrb({self.minX}, {self.minY}, {self.maxX}, {self.maxY})"
         )
 
     # Initialization Checks
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate the bounding box coordinates."""
         if (
             self.top_left.x > self.bottom_right.x
@@ -254,9 +282,9 @@ class BoundingBox:
     @classmethod
     def from_points(
         cls,
-        points: Sequence[dict[str, Any] | Point | ShapelyPoint | Sequence[float]],
+        points: Sequence[dict[str, float] | Point | ShapelyPoint | Sequence[float]],
         is_normalized: bool | None = None,
-    ):
+    ) -> BoundingBox:
         """Create from a sequence of two Point instances, Shapely points, dicts with "x" and "y" keys, or sequences of 2 floats."""
         if len(points) != 2:
             raise ValueError("Bounding box should have exactly 2 points")
@@ -265,15 +293,16 @@ class BoundingBox:
             if isinstance(p, dict):
                 if "x" not in p or "y" not in p:
                     raise ValueError("Dictionary should have 'x' and 'y' keys")
-                converted_points.append(Point(p["x"], p["y"]))
+                converted_points.append(Point(float(p["x"]), float(p["y"])))
             elif isinstance(p, ShapelyPoint):
                 if hasattr(p, "x") and hasattr(p, "y"):
-                    converted_points.append(Point(p.x, p.y))
+                    converted_points.append(Point(float(p.x), float(p.y)))
                 else:
                     raise ValueError("ShapelyPoint should have 'x' and 'y' attributes")
             elif isinstance(p, Point):
                 converted_points.append(p)
-            elif isinstance(p, Sequence) and len(p) == 2:
+            elif len(p) == 2:
+                # Remaining type is Sequence[float] per the union annotation
                 converted_points.append(Point(p[0], p[1]))
             else:
                 raise TypeError("Unsupported point specification in from_points")
@@ -300,7 +329,9 @@ class BoundingBox:
         )
 
     @classmethod
-    def from_float(cls, points: Sequence[float], is_normalized: bool | None = None):
+    def from_float(
+        cls, points: Sequence[float], is_normalized: bool | None = None
+    ) -> BoundingBox:
         """Create from [x_min, y_min, x_max, y_max] format."""
         if len(points) != 4:
             raise ValueError(
@@ -315,7 +346,7 @@ class BoundingBox:
     @classmethod
     def from_nested_float(
         cls, points: Sequence[Sequence[float]], is_normalized: bool | None = None
-    ):
+    ) -> BoundingBox:
         """Create from [[x_min, y_min], [x_max, y_max]] format."""
         if len(points) != 2:
             raise ValueError("Bounding box should have exactly 2 points")
@@ -337,7 +368,7 @@ class BoundingBox:
         right: float,
         bottom: float,
         is_normalized: bool | None = None,
-    ):
+    ) -> BoundingBox:
         """Create from left, top, right, bottom format."""
         return cls._build(left, top, right, bottom, is_normalized)
 
@@ -349,7 +380,7 @@ class BoundingBox:
         width: float,
         height: float,
         is_normalized: bool | None = None,
-    ):
+    ) -> BoundingBox:
         """Create from left, top, width, height format."""
         if width < 0 or height < 0:
             raise ValueError("Bounding box width and height must be non-negative")
@@ -434,13 +465,17 @@ class BoundingBox:
         return self.minX <= point.x <= self.maxX and self.minY <= point.y <= self.maxY
 
     @staticmethod
-    def _require_same_coords(fn):
+    def _require_same_coords(
+        fn: Callable[..., _T],
+    ) -> Callable[..., _T]:
         # R-21: ``functools.wraps`` preserves ``__name__``/``__doc__``/
         # ``__qualname__`` on decorated bounding-box methods so help(),
         # tracebacks, and tooling report the underlying method instead
         # of the generic ``wrapper`` shim.
         @functools.wraps(fn)
-        def wrapper(self, other, *args, **kwargs):
+        def wrapper(
+            self: BoundingBox, other: BoundingBox, *args: object, **kwargs: object
+        ) -> _T:
             if self.is_normalized != other.is_normalized:
                 raise ValueError(
                     "Bounding boxes must share coordinate system (both normalized or both pixel)"
@@ -467,12 +502,12 @@ class BoundingBox:
         return BoundingBox.from_ltrb(minx, miny, maxx, maxy, is_normalized=is_norm)
 
     @_require_same_coords
-    def overlap_y_amount(self, other: BoundingBox):
+    def overlap_y_amount(self, other: BoundingBox) -> float:
         """Return the amount of overlap on the y-axis (projection overlap)."""
         return self._interval_overlap(self.minY, self.maxY, other.minY, other.maxY)
 
     @_require_same_coords
-    def overlap_x_amount(self, other: BoundingBox):
+    def overlap_x_amount(self, other: BoundingBox) -> float:
         """Return the amount of overlap on the x-axis (projection overlap)."""
         return self._interval_overlap(self.minX, self.maxX, other.minX, other.maxX)
 
@@ -505,7 +540,7 @@ class BoundingBox:
             is_normalized=is_norm,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> _BoundingBoxDict:
         """Convert to JSON-serializable dictionary.
 
         Includes each corner point's normalization state (``is_normalized``) so
@@ -514,12 +549,12 @@ class BoundingBox:
         flag; :meth:`from_dict` remains backward compatible and will infer the
         state when the flag is absent.
         """
-        tl = {
+        tl: _PointDict = {
             "x": self.top_left.x,
             "y": self.top_left.y,
             "is_normalized": self.top_left.is_normalized,
         }
-        br = {
+        br: _PointDict = {
             "x": self.bottom_right.x,
             "y": self.bottom_right.y,
             "is_normalized": self.bottom_right.is_normalized,
@@ -527,14 +562,18 @@ class BoundingBox:
         return {"top_left": tl, "bottom_right": br, "is_normalized": self.is_normalized}
 
     @classmethod
-    def from_dict(cls, dict: dict[str, Any]) -> BoundingBox:
+    def from_dict(cls, data: _BoundingBoxDict) -> BoundingBox:
         """Create BoundingBox from dictionary."""
-        tl = dict["top_left"]
-        br = dict["bottom_right"]
-        box_norm = dict.get("is_normalized")
+        tl: _PointDict = data["top_left"]
+        br: _PointDict = data["bottom_right"]
+        box_norm: bool | None = data.get("is_normalized")
+        tl_x = float(tl.get("x", 0.0))
+        tl_y = float(tl.get("y", 0.0))
+        br_x = float(br.get("x", 0.0))
+        br_y = float(br.get("y", 0.0))
         return BoundingBox(
-            top_left=Point(tl["x"], tl["y"], is_normalized=tl.get("is_normalized")),
-            bottom_right=Point(br["x"], br["y"], is_normalized=br.get("is_normalized")),
+            top_left=Point(tl_x, tl_y, is_normalized=tl.get("is_normalized")),
+            bottom_right=Point(br_x, br_y, is_normalized=br.get("is_normalized")),
             is_normalized=box_norm,
         )
 
@@ -623,7 +662,8 @@ class BoundingBox:
 
         Returns ``None`` when the resulting crop would be empty.
         """
-        height, width = image.shape[:2]
+        shape: tuple[int, ...] = image.shape
+        height, width = shape[0], shape[1]
 
         pixel_bbox = self.scale(width, height) if self.is_normalized else self
 
@@ -663,7 +703,13 @@ class BoundingBox:
             ValueError: If input is not a valid Shapely geometry
         """
         try:
-            minx, miny, maxx, maxy = shapely_box.bounds
+            raw_bounds = shapely_box.bounds
+            minx, miny, maxx, maxy = (
+                float(raw_bounds[0]),
+                float(raw_bounds[1]),
+                float(raw_bounds[2]),
+                float(raw_bounds[3]),
+            )
             coords = [minx, miny, maxx, maxy]
             is_norm = all(0 <= c <= 1 for c in coords)
             return cls(
@@ -727,8 +773,7 @@ class BoundingBox:
             )  # mitre=square corners; was int 2 (old shapely API)
             if g.is_empty:
                 raise ValueError(
-                    f"Expansion deltas collapse box to zero area "
-                    f"(dx=dy={dx} applied to {self.width}x{self.height} box)"
+                    f"Expansion deltas collapse box to zero area (dx=dy={dx} applied to {self.width}x{self.height} box)"
                 )
             minx, miny, maxx, maxy = g.bounds
             return BoundingBox.from_ltrb(
@@ -751,7 +796,7 @@ class BoundingBox:
     @staticmethod
     def _build(
         left: float, top: float, right: float, bottom: float, is_normalized: bool | None
-    ):
+    ) -> BoundingBox:
         """Internal helper to construct a BoundingBox with shared validation & normalization inference.
 
         Mirrors the previous logic in individual factory constructors so behavior remains unchanged.
@@ -782,8 +827,9 @@ class BoundingBox:
     @classmethod
     def from_json(cls, s: str) -> BoundingBox:
         import json
+        from typing import cast
 
-        return cls.from_dict(json.loads(s))
+        return cls.from_dict(cast("_BoundingBoxDict", json.loads(s)))
 
     @staticmethod
     def is_geometry_normalization_error(error: Exception) -> bool:
@@ -798,15 +844,17 @@ class BoundingBox:
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        source_type: Any,
+        source_type: type[BoundingBox],
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         return core_schema.no_info_after_validator_function(
             function=cls.from_dict,
             schema=core_schema.typed_dict_schema(
                 {
-                    "top_left": core_schema.typed_dict_field(_POINT_DICT_SCHEMA),
-                    "bottom_right": core_schema.typed_dict_field(_POINT_DICT_SCHEMA),
+                    "top_left": core_schema.typed_dict_field(_POINT_DICT_SCHEMA_INLINE),
+                    "bottom_right": core_schema.typed_dict_field(
+                        _POINT_DICT_SCHEMA_INLINE
+                    ),
                     "is_normalized": core_schema.typed_dict_field(
                         core_schema.bool_schema(),
                     ),

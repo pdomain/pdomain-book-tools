@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Literal, cast, get_args
 
 if TYPE_CHECKING:
     from pd_book_tools.ocr.word import Word
@@ -145,7 +145,7 @@ class LigatureMark:
     kind: LigatureKind
     char_span: tuple[int, int] | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to a JSON-compatible dict.
 
         ``char_span`` is emitted as a list (JSON arrays) when set, or ``None``
@@ -157,7 +157,7 @@ class LigatureMark:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> LigatureMark:
+    def from_dict(cls, d: dict[str, object]) -> LigatureMark:
         """Deserialize from a dict produced by :meth:`to_dict`.
 
         Accepts both current UPPERCASE values and legacy lowercase values from
@@ -168,12 +168,13 @@ class LigatureMark:
                 value.  Unknown values must raise (spec section 4.4) to prevent
                 silent schema drift.
         """
-        raw_kind = _migrate_ligature_kind_value(d["kind"])
+        raw_kind = _migrate_ligature_kind_value(cast("str", d["kind"]))
         kind = LigatureKind(raw_kind)  # raises ValueError for unknown strings
         span_raw = d.get("char_span")
         char_span: tuple[int, int] | None = None
         if span_raw is not None:
-            char_span = (int(span_raw[0]), int(span_raw[1]))
+            span = cast("list[int]", span_raw)
+            char_span = (int(span[0]), int(span[1]))
         return cls(kind=kind, char_span=char_span)
 
 
@@ -221,11 +222,11 @@ class GlyphAnnotations:
         if self.source not in _VALID_GLYPH_SOURCES:
             raise ValueError(
                 f"GlyphAnnotations.source={self.source!r} is not a recognised "
-                f"provenance value.  Must be one of "
-                f"{sorted(_VALID_GLYPH_SOURCES)} (ADR D-044)."
+                + "provenance value.  Must be one of "
+                + f"{sorted(_VALID_GLYPH_SOURCES)} (ADR D-044)."
             )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Serialize to the canonical JSON wire shape (spec section 3.1)."""
         return {
             "ligatures": [m.to_dict() for m in self.ligatures],
@@ -235,7 +236,7 @@ class GlyphAnnotations:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> GlyphAnnotations:
+    def from_dict(cls, d: dict[str, object]) -> GlyphAnnotations:
         """Deserialize from a dict produced by :meth:`to_dict`.
 
         Missing keys fall back to their default values (spec section 1.4 /
@@ -245,10 +246,11 @@ class GlyphAnnotations:
             ValueError: if any ``LigatureMark`` contains an unknown ``kind``
                 value (spec section 4.4).
         """
-        ligatures = [LigatureMark.from_dict(m) for m in d.get("ligatures", [])]
-        long_s_positions = list(d.get("long_s_positions", []))
+        raw_ligatures = cast("list[dict[str, object]]", d.get("ligatures") or [])
+        ligatures = [LigatureMark.from_dict(m) for m in raw_ligatures]
+        long_s_positions = list(cast("list[int]", d.get("long_s_positions") or []))
         swash = bool(d.get("swash", False))
-        source = d.get("source", "human")
+        source = cast("GlyphSource", d.get("source", "human"))
         return cls(
             ligatures=ligatures,
             long_s_positions=long_s_positions,
@@ -275,8 +277,8 @@ class GlyphAnnotations:
             if ch in _BANNED_GT_CODEPOINTS:
                 raise ValueError(
                     f"GT text contains banned codepoint U+{ord(ch):04X} ({ch!r}). "
-                    "Ligatures and long-s must be recorded via glyph_annotations, "
-                    "not embedded in ground_truth_text (spec section 1.1)."
+                    + "Ligatures and long-s must be recorded via glyph_annotations, "
+                    + "not embedded in ground_truth_text (spec section 1.1)."
                 )
 
         gt_len = len(gt)
@@ -288,9 +290,9 @@ class GlyphAnnotations:
                 if not (0 <= start < end <= gt_len):
                     raise ValueError(
                         f"ligatures[{i}].char_span ({start}, {end}) is invalid for "
-                        f"GT text of length {gt_len}.  Spans must satisfy "
-                        "0 <= start < end <= len(gt) (spec section 4.2).  "
-                        "Use char_span=None to express 'unknown location'."
+                        + f"GT text of length {gt_len}.  Spans must satisfy "
+                        + "0 <= start < end <= len(gt) (spec section 4.2).  "
+                        + "Use char_span=None to express 'unknown location'."
                     )
 
         # Section 4.3 -- long_s_positions bounds and character check
@@ -298,11 +300,11 @@ class GlyphAnnotations:
             if not (0 <= idx < gt_len):
                 raise ValueError(
                     f"long_s_positions[{j}]={idx} is out of range for GT text of "
-                    f"length {gt_len} (spec section 4.3)."
+                    + f"length {gt_len} (spec section 4.3)."
                 )
             if gt[idx] not in ("s", "S"):
                 raise ValueError(
                     f"long_s_positions[{j}]={idx} points at {gt[idx]!r}, not 's' or "
-                    "'S'.  Each long_s index must point at the normalised form of "
-                    "U+017F (spec section 4.3)."
+                    + "'S'.  Each long_s index must point at the normalised form of "
+                    + "U+017F (spec section 4.3)."
                 )

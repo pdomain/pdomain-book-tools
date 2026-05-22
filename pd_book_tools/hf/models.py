@@ -106,7 +106,7 @@ def prefetch_layout_files(repo: str, revision: str | None) -> None:
     bar — not transformers' in-memory weight-loading bar.
     """
     for fname in LAYOUT_MODEL_FILES:
-        hf_download(repo, fname, revision)
+        _ = hf_download(repo, fname, revision)
 
 
 def silence_transformers_load_chatter() -> None:

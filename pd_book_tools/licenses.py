@@ -30,8 +30,17 @@ from __future__ import annotations
 
 import importlib.resources
 import json
+from typing import TypedDict
 
 __all__ = ["SPDX_VALID_IDS", "is_valid_spdx_id"]
+
+
+class _SpdxEntry(TypedDict):
+    licenseId: str
+
+
+class _SpdxData(TypedDict):
+    licenses: list[_SpdxEntry]
 
 
 def _load_spdx_ids() -> frozenset[str]:
@@ -39,7 +48,7 @@ def _load_spdx_ids() -> frozenset[str]:
     resource = importlib.resources.files("pd_book_tools.data").joinpath(
         "spdx_licenses.json"
     )
-    data = json.loads(resource.read_text(encoding="utf-8"))
+    data: _SpdxData = json.loads(resource.read_text(encoding="utf-8"))
     return frozenset(entry["licenseId"] for entry in data["licenses"])
 
 
@@ -47,7 +56,7 @@ def _load_spdx_ids() -> frozenset[str]:
 SPDX_VALID_IDS: frozenset[str] = _load_spdx_ids()
 
 
-def is_valid_spdx_id(value: str) -> bool:
+def is_valid_spdx_id(value: object) -> bool:
     """Return ``True`` iff *value* is a valid SPDX license identifier.
 
     Matching is exact and case-sensitive against the canonical SPDX
