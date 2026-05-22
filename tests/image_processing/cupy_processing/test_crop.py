@@ -50,3 +50,10 @@ class TestCupyCropEdges:
         img = cp.zeros((10, 10), dtype=cp.uint8)
         with pytest.raises(ValueError, match="exceed"):
             crop_mod.crop_edges(img, top=6, bottom=5)
+
+    @pytest.mark.parametrize("edge", ["top", "bottom", "left", "right"])
+    def test_negative_edge_raises(self, cupy_crop, edge):
+        crop_mod, cp = cupy_crop
+        img = cp.zeros((10, 10), dtype=cp.uint8)
+        with pytest.raises(ValueError, match="non-negative"):
+            crop_mod.crop_edges(img, **{edge: -1})

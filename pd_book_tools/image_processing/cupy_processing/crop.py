@@ -79,9 +79,19 @@ def crop_edges(
         cp.ndarray: Cropped image.
 
     Raises:
-        ValueError: If the cropping values exceed the image dimensions.
+        ValueError: If any crop value is negative, or if the cropping
+            values exceed the image dimensions.
     """
     require_cupy()
+    for name, value in (
+        ("top", top),
+        ("bottom", bottom),
+        ("left", left),
+        ("right", right),
+    ):
+        if value < 0:
+            raise ValueError(f"Crop value {name!r} must be non-negative, got {value}.")
+
     h, w = img.shape[:2]
 
     if top + bottom >= h or left + right >= w:
