@@ -18,6 +18,7 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
 from pd_book_tools.schemas._helpers import (
+    INT_STR_PAIR_LIST_SCHEMA,
     NULLABLE_BASELINE_SCHEMA,
     NULLABLE_STR_SCHEMA,
     STR_ANY_DICT_SCHEMA,
@@ -1286,7 +1287,9 @@ class Block:
                             required=False,
                         ),
                         "unmatched_ground_truth_words": core_schema.typed_dict_field(
-                            STR_LIST_SCHEMA,
+                            # #181: runtime type is list[tuple[int, str]];
+                            # STR_LIST_SCHEMA (list[str]) was incorrect.
+                            INT_STR_PAIR_LIST_SCHEMA,
                             required=False,
                         ),
                         "additional_block_attributes": core_schema.typed_dict_field(
