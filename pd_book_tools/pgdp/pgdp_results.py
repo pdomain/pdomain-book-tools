@@ -1,6 +1,7 @@
 import json
 import pathlib
 from logging import getLogger
+from typing import cast
 
 import regex
 
@@ -27,9 +28,9 @@ class PGDPResults:
         self.processed_page_text: str = ""
         self.processed_lines: list[tuple[int, str]] = []
         self.processed_words: list[tuple[int, int, str]] = []
-        self.process()
+        _ = self.process()
 
-    def process(self):
+    def process(self) -> "PGDPResults":
         text = self.original_page_text
         text = text.replace(
             "\r\n", "\n"
@@ -57,9 +58,9 @@ class PGDPResults:
         return self
 
     @staticmethod
-    def remove_blank_page(text):
+    def remove_blank_page(text: str) -> str:
         logger.debug("Removing blank page markers from text")
-        s = regex.sub(r"\[Blank Page\]", "", text, flags=regex.DOTALL)
+        s: str = regex.sub(r"\[Blank Page\]", "", text, flags=regex.DOTALL)
         if s == text:
             logger.debug("No blank page markers found")
         else:
@@ -67,9 +68,9 @@ class PGDPResults:
         return s
 
     @staticmethod
-    def remove_proofer_notes(text):
+    def remove_proofer_notes(text: str) -> str:
         logger.debug("Removing proofer notes from text")
-        s = regex.sub(r"\[\*.*?\]", "", text, flags=regex.DOTALL)
+        s: str = regex.sub(r"\[\*.*?\]", "", text, flags=regex.DOTALL)
         if s == text:
             logger.debug("No proofer notes found")
         else:
@@ -77,9 +78,9 @@ class PGDPResults:
         return s
 
     @staticmethod
-    def convert_pgdp_dashes(text):
+    def convert_pgdp_dashes(text: str) -> str:
         logger.debug("Converting PGDP dashes to Unicode dashes")
-        s = regex.sub(r"----", "⸺", text, flags=regex.DOTALL)
+        s: str = regex.sub(r"----", "⸺", text, flags=regex.DOTALL)
         s = regex.sub(r"--", "\u2014", s, flags=regex.DOTALL)  # EM DASH
         if s == text:
             logger.debug("No PGDP dashes found")
@@ -88,10 +89,10 @@ class PGDPResults:
         return s
 
     @staticmethod
-    def convert_straight_to_curly_quotes(text):
+    def convert_straight_to_curly_quotes(text: str) -> str:
         logger.debug("Converting straight quotes to curly quotes")
         # Heuristic approach (no heavy NLP): handle elisions, decades, contractions, then generic quotes.
-        s = text
+        s: str = text
 
         elision_remainders = [
             "Tis",
@@ -184,11 +185,11 @@ class PGDPResults:
         )  # LEFT SINGLE QUOTATION MARK
 
     @staticmethod
-    def split_hyphen_asterisk(text):
+    def split_hyphen_asterisk(text: str) -> str:
         return regex.sub(r"-\*(\S+)\n(\S+)", r"-\n\1 \2", text)
 
     @staticmethod
-    def remove_leading_trailing_asterisk(text):
+    def remove_leading_trailing_asterisk(text: str) -> str:
         text = text.strip()
         if text[0:1] == "*":
             text = text[1:]
@@ -200,11 +201,11 @@ class PGDPResults:
         return text
 
     @staticmethod
-    def fix_footnotes(text):
+    def fix_footnotes(text: str) -> str:
         return regex.sub(r"\[(\d+)\]", r"\1", text)
 
     @staticmethod
-    def fix_pgdp_diacritics(text):
+    def fix_pgdp_diacritics(text: str) -> str:
         text = regex.sub(r"\[=A\]", "Ā", text)
         text = regex.sub(r"\[=E\]", "Ē", text)
         text = regex.sub(r"\[=I\]", "Ī", text)
@@ -290,7 +291,7 @@ class PGDPExport:
         self.project_id = project_id
 
     @classmethod
-    def from_json_file(cls, input_file_path: pathlib.Path | str):
+    def from_json_file(cls, input_file_path: pathlib.Path | str) -> "PGDPExport":
         if isinstance(input_file_path, str):
             input_file_path = pathlib.Path(input_file_path)
         if not input_file_path.exists():
@@ -301,15 +302,15 @@ class PGDPExport:
             return cls.from_json(json_file.read(), input_file_path.parent)
 
     @classmethod
-    def from_json(cls, json_str: str, path_prefix: pathlib.Path | str):
+    def from_json(cls, json_str: str, path_prefix: pathlib.Path | str) -> "PGDPExport":
         # Hoisted above the loop (L-26): when ``pages`` is empty the loop
         # body never runs, so the in-loop str->Path conversion left
         # ``path_prefix`` as a ``str`` and ``path_prefix.stem`` raised
         # ``AttributeError`` on the return line. Convert once up front.
         if isinstance(path_prefix, str):
             path_prefix = pathlib.Path(path_prefix)
-        pages = json.loads(json_str)
-        new_pages = []
+        pages = cast("dict[str, str]", json.loads(json_str))
+        new_pages: list[PGDPResults] = []
         for png_file, page_text in pages.items():
             png_full_file_path = pathlib.Path(path_prefix, png_file)
             new_pages.append(PGDPResults(str(png_full_file_path), page_text))
