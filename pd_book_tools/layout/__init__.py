@@ -8,6 +8,8 @@ Public surface:
   the original model label.
 - :class:`PageLayout` — a list of regions plus image dimensions and
   detector metadata.
+- :class:`LayoutRegionDict` / :class:`PageLayoutDict` — TypedDict types
+  for the serialised forms returned by ``to_dict()``.
 - :class:`LayoutDetector` — Protocol all adapters implement.
 - :func:`get_detector` — registry: returns a memoised adapter for the given
   key. Keys: ``"none"`` (no-op), ``"contour"`` (rule-based heuristic),
@@ -33,15 +35,23 @@ from pd_book_tools.layout.geometry import (
     region_reading_order,
 )
 from pd_book_tools.layout.registry import clear_detector_cache, get_detector
-from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+from pd_book_tools.layout.types import (
+    LayoutRegion,
+    LayoutRegionDict,
+    PageLayout,
+    PageLayoutDict,
+    RegionType,
+)
 from pd_book_tools.layout.visualize import draw_layout_overlay
 
 __all__ = [
     "ContourDetector",
     "LayoutDetector",
     "LayoutRegion",
+    "LayoutRegionDict",
     "NullDetector",
     "PageLayout",
+    "PageLayoutDict",
     "RegionType",
     "caption_for_figure",
     "clear_detector_cache",

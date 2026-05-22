@@ -3,9 +3,16 @@ import inspect
 import logging
 import time
 import warnings
+from collections.abc import Callable
+from typing import ParamSpec, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
-def func_log_execution_time(logger: logging.Logger, log_level=logging.DEBUG):
+def func_log_execution_time(
+    logger: logging.Logger, log_level: int = logging.DEBUG
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Decorator that logs the execution time of a function using the provided logger.
 
     R-22 / R-23: this is the canonical name. ``func_log_excution_time``
@@ -14,9 +21,9 @@ def func_log_execution_time(logger: logging.Logger, log_level=logging.DEBUG):
     on use and will be removed in a future major release.
     """
 
-    def decorator(func):
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             # L-30: ``inspect.stack()`` walks the entire Python call stack
             # on every invocation — measured at hundreds of microseconds
             # per call on a typical OCR pipeline frame depth, which makes
@@ -40,20 +47,27 @@ def func_log_execution_time(logger: logging.Logger, log_level=logging.DEBUG):
                 kwarg_summary = {k: type(v).__name__ for k, v in kwargs.items()}
                 logger.log(
                     log_level,
-                    f"Function {func.__name__} called from {caller} with "
-                    f"{len(args)} positional args (types={arg_types}) and "
-                    f"{len(kwargs)} kwargs (types={kwarg_summary})",
+                    "Function %s called from %s with %d positional args (types=%s) and %d kwargs (types=%s)",
+                    func.__name__,
+                    caller,
+                    len(arg_types),
+                    arg_types,
+                    len(kwarg_summary),
+                    kwarg_summary,
                 )
             start_time = time.perf_counter()
             if log_enabled:
-                logger.log(log_level, f"'{func.__name__}' started at {start_time}")
+                logger.log(log_level, "'%s' started at %s", func.__name__, start_time)
             result = func(*args, **kwargs)
             end_time = time.perf_counter()
             if log_enabled:
                 execution_time = end_time - start_time
                 logger.log(
                     log_level,
-                    f"'{func.__name__}' ended at {end_time}. Executed in {execution_time:.6f} seconds",
+                    "'%s' ended at %s. Executed in %.6f seconds",
+                    func.__name__,
+                    end_time,
+                    execution_time,
                 )
             return result
 
@@ -62,7 +76,11 @@ def func_log_execution_time(logger: logging.Logger, log_level=logging.DEBUG):
     return decorator
 
 
-def func_log_excution_time(logger: logging.Logger, logLevel=None, log_level=None):
+def func_log_excution_time(
+    logger: logging.Logger,
+    logLevel: int | None = None,
+    log_level: int | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Deprecated alias for :func:`func_log_execution_time` (R-22).
 
     Also accepts the deprecated ``logLevel`` camelCase keyword (R-23).
@@ -70,9 +88,7 @@ def func_log_excution_time(logger: logging.Logger, logLevel=None, log_level=None
     future major release. Use ``func_log_execution_time(..., log_level=...)``.
     """
     warnings.warn(
-        "func_log_excution_time is a deprecated alias for "
-        "func_log_execution_time (R-22 — fixes 'excution' typo). "
-        "Update imports; the alias will be removed in a future major release.",
+        "func_log_excution_time is a deprecated alias for func_log_execution_time (R-22 — fixes 'excution' typo). Update imports; the alias will be removed in a future major release.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -80,6 +96,7 @@ def func_log_excution_time(logger: logging.Logger, logLevel=None, log_level=None
         raise TypeError(
             "Pass either 'log_level' (canonical) or 'logLevel' (deprecated), not both."
         )
+    effective_level: int
     if logLevel is not None:
         warnings.warn(
             "The 'logLevel' keyword is deprecated; use 'log_level' (R-23).",

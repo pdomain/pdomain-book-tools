@@ -55,11 +55,11 @@ def emit_schemas() -> dict[str, dict[str, Any]]:
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
-    """CLI entrypoint. argv is accepted for testability but unused today."""
+def main(_argv: list[str] | None = None) -> int:
+    """CLI entrypoint. _argv is accepted for testability but unused today."""
     schemas = emit_schemas()
     json.dump(schemas, sys.stdout, indent=2, sort_keys=True)
-    sys.stdout.write("\n")
+    _ = sys.stdout.write("\n")
     return 0
 
 

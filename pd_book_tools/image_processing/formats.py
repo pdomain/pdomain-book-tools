@@ -52,9 +52,9 @@ logger = logging.getLogger(__name__)
 # magic-byte sniff continues to work even if decode would later fail.
 
 try:
-    import pillow_heif as _pillow_heif
+    import pillow_heif as _pillow_heif  # pyright: ignore[reportMissingTypeStubs]
 
-    _pillow_heif.register_heif_opener()
+    _pillow_heif.register_heif_opener()  # pyright: ignore[reportUnknownMemberType]
 except Exception as _heif_exc:  # pragma: no cover - import-time guard
     logger.debug(
         "pillow-heif not available; HEIF/HEIC decode will fail. (%s)",
@@ -62,7 +62,7 @@ except Exception as _heif_exc:  # pragma: no cover - import-time guard
     )
 
 try:
-    import pillow_avif as _pillow_avif  # import for side-effect (plugin registration)
+    import pillow_avif as _pillow_avif  # pyright: ignore[reportMissingTypeStubs]  # import for side-effect (plugin registration)
 except Exception as _avif_exc:  # pragma: no cover - import-time guard
     logger.debug(
         "pillow-avif-plugin not available; AVIF decode will fail. (%s)",
@@ -234,8 +234,7 @@ def is_image_file(path: pathlib.Path) -> bool:
         # Both fired. Check for disagreement.
         if not _suffix_matches_format(suffix, sniffed):
             logger.warning(
-                "Image file %s has extension %s but its bytes look like %s; "
-                "accepting anyway (file is likely misnamed).",
+                "Image file %s has extension %s but its bytes look like %s; accepting anyway (file is likely misnamed).",
                 path,
                 suffix,
                 sniffed,
@@ -249,9 +248,7 @@ def is_image_file(path: pathlib.Path) -> bool:
         # Extension passes but sniff didn't recognise the bytes. Warn the
         # user — the file may be corrupt or in a sub-format we don't know.
         logger.warning(
-            "Image file %s has known extension %s but its first 16 bytes do "
-            "not match any known image signature; accepting on extension "
-            "alone (decode may fail).",
+            "Image file %s has known extension %s but its first 16 bytes do not match any known image signature; accepting on extension alone (decode may fail).",
             path,
             suffix,
         )

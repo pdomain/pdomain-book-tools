@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, cast
 
 from pydantic_core import CoreSchema, core_schema
 
@@ -33,7 +33,7 @@ class Character:
         self.text_style_labels = normalize_text_style_labels(self.text_style_labels)
         self.word_components = normalize_character_components(self.word_components)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert to JSON-serializable dictionary."""
         return {
             "type": "Character",
@@ -45,28 +45,43 @@ class Character:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Character:
+    def from_dict(cls, data: dict[str, object]) -> Character:
         """Create Character from dictionary."""
-        word_components = list(data.get("word_components", []))
+        raw_word_components = data.get("word_components")
+        word_components: list[str] = (
+            cast("list[str]", raw_word_components)
+            if raw_word_components is not None
+            else []
+        )
         if data.get("is_footnote_marker"):
-            word_components.append("footnote marker")
+            word_components = [*word_components, "footnote marker"]
 
         bb_raw = data["bounding_box"]
-        bounding_box = (
-            bb_raw if isinstance(bb_raw, BoundingBox) else BoundingBox.from_dict(bb_raw)
+        if isinstance(bb_raw, BoundingBox):
+            bounding_box = bb_raw
+        else:
+            # bb_raw is the dict-serialised form; BoundingBox.from_dict validates it.
+            # Cast is needed because bb_raw is typed as object at this point.
+            bounding_box = BoundingBox.from_dict(cast("dict[str, object]", bb_raw))  # type: ignore[arg-type]
+
+        raw_confidence = data.get("ocr_confidence")
+        ocr_confidence = (
+            float(cast("float | int", raw_confidence))
+            if raw_confidence is not None
+            else None
         )
         return Character(
-            text=data["text"],
+            text=cast("str", data["text"]),
             bounding_box=bounding_box,
-            ocr_confidence=data.get("ocr_confidence"),
-            text_style_labels=data.get("text_style_labels", []),
+            ocr_confidence=ocr_confidence,
+            text_style_labels=cast("list[str]", data.get("text_style_labels") or []),
             word_components=word_components,
         )
 
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        source_type: Any,
+        source_type: type[object],
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         # Local import to avoid a circular: BoundingBox imports Point,

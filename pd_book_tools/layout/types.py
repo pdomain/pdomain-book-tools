@@ -11,7 +11,32 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, TypedDict, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Mapping
+
+
+class LayoutRegionDict(TypedDict):
+    """Serialised form of :class:`LayoutRegion` as returned by ``to_dict()``."""
+
+    type: str
+    L: int
+    R: int
+    T: int
+    B: int
+    confidence: float
+    raw_label: str
+
+
+class PageLayoutDict(TypedDict):
+    """Serialised form of :class:`PageLayout` as returned by ``to_dict()``."""
+
+    regions: list[LayoutRegionDict]
+    image_width: int
+    image_height: int
+    detector: str
+    inference_ms: int
 
 
 class RegionType(str, Enum):
@@ -65,8 +90,12 @@ class LayoutRegion:
         # crash later in ``to_dict()`` when ``self.type.value`` is called.
         # ``RegionType(value)`` raises ``ValueError`` for unknown strings,
         # giving callers an early, clear diagnostic.
-        if not isinstance(self.type, RegionType):
-            self.type = RegionType(self.type)  # pyright: ignore[reportConstantRedefinition]  # dataclass field reassignment in __post_init__
+        # ``RegionType(RegionType.text)`` is idempotent — enum constructors
+        # accept both strings and existing members — so no isinstance guard is
+        # needed.
+        self.type = RegionType(
+            self.type
+        )  # dataclass field reassignment in __post_init__
 
         # #176: reject non-finite and out-of-range confidence values. NaN and
         # infinity produce non-standard JSON (json.dumps raises or emits
@@ -76,8 +105,7 @@ class LayoutRegion:
         # bug upstream.
         if not math.isfinite(self.confidence) or not (0.0 <= self.confidence <= 1.0):
             raise ValueError(
-                f"LayoutRegion confidence must be a finite value in [0, 1]; "
-                f"got {self.confidence!r}"
+                f"LayoutRegion confidence must be a finite value in [0, 1]; got {self.confidence!r}"
             )
 
         # Reject inverted rectangles up front. Without this, ``width`` /
@@ -93,13 +121,11 @@ class LayoutRegion:
         # never has negative pixel indices).
         if self.L > self.R:
             raise ValueError(
-                f"LayoutRegion has L > R ({self.L} > {self.R}); "
-                "coordinates must satisfy L <= R"
+                f"LayoutRegion has L > R ({self.L} > {self.R}); coordinates must satisfy L <= R"
             )
         if self.T > self.B:
             raise ValueError(
-                f"LayoutRegion has T > B ({self.T} > {self.B}); "
-                "coordinates must satisfy T <= B"
+                f"LayoutRegion has T > B ({self.T} > {self.B}); coordinates must satisfy T <= B"
             )
         self.L = max(self.L, 0)  # pyright: ignore[reportConstantRedefinition]  # dataclass field; ALL_CAPS is LTRB convention
         self.T = max(self.T, 0)  # pyright: ignore[reportConstantRedefinition]  # dataclass field; ALL_CAPS is LTRB convention
@@ -129,7 +155,7 @@ class LayoutRegion:
     def contains_point(self, x: float, y: float) -> bool:
         return self.L <= x <= self.R and self.T <= y <= self.B
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> LayoutRegionDict:
         return {
             "type": self.type.value,
             "L": int(self.L),
@@ -141,14 +167,14 @@ class LayoutRegion:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> LayoutRegion:
+    def from_dict(cls, data: Mapping[str, object]) -> LayoutRegion:
         return cls(
-            type=RegionType(data["type"]),
-            L=int(data["L"]),
-            R=int(data["R"]),
-            T=int(data["T"]),
-            B=int(data["B"]),
-            confidence=float(data.get("confidence", 1.0)),
+            type=RegionType(str(data["type"])),
+            L=int(cast("int", data["L"])),
+            R=int(cast("int", data["R"])),
+            T=int(cast("int", data["T"])),
+            B=int(cast("int", data["B"])),
+            confidence=float(cast("float", data.get("confidence", 1.0))),
             raw_label=str(data.get("raw_label", "")),
         )
 
@@ -167,7 +193,7 @@ class PageLayout:
     detector: str = ""
     inference_ms: int = 0
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[LayoutRegion]:
         return iter(self.regions)
 
     def __len__(self) -> int:
@@ -182,13 +208,12 @@ class PageLayout:
         # regions.
         if not types:
             raise ValueError(
-                "of_type() requires at least one RegionType; "
-                "use `layout.regions` to iterate all regions"
+                "of_type() requires at least one RegionType; use `layout.regions` to iterate all regions"
             )
         s = set(types)
         return [r for r in self.regions if r.type in s]
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> PageLayoutDict:
         return {
             "regions": [r.to_dict() for r in self.regions],
             "image_width": int(self.image_width),
@@ -198,11 +223,12 @@ class PageLayout:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> PageLayout:
+    def from_dict(cls, data: Mapping[str, object]) -> PageLayout:
+        raw_regions = cast("list[Mapping[str, object]]", data.get("regions", []))
         return cls(
-            regions=[LayoutRegion.from_dict(r) for r in data.get("regions", [])],
-            image_width=int(data.get("image_width", 0)),
-            image_height=int(data.get("image_height", 0)),
+            regions=[LayoutRegion.from_dict(r) for r in raw_regions],
+            image_width=int(cast("int", data.get("image_width", 0))),
+            image_height=int(cast("int", data.get("image_height", 0))),
             detector=str(data.get("detector", "")),
-            inference_ms=int(data.get("inference_ms", 0)),
+            inference_ms=int(cast("int", data.get("inference_ms", 0))),
         )

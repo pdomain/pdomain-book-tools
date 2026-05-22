@@ -148,7 +148,7 @@ def get_detector(
     confidence: float = 0.5,
     checkpoint_path: str | None = None,
     on_error: str = "raise",
-    **detector_kwargs,
+    **detector_kwargs: object,
 ) -> LayoutDetector:
     """Return a memoised detector instance for ``key``.
 

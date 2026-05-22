@@ -124,7 +124,7 @@ def normalize_text_style_label_scopes(
             allowed_labels = ", ".join(sorted(normalized_scopes.keys()))
             raise ValueError(
                 f"Unknown style label '{label}' in text_style_label_scopes. "
-                f"Must match text_style_labels: {allowed_labels}"
+                + f"Must match text_style_labels: {allowed_labels}"
             )
         normalized_scopes[normalized_label] = normalize_text_style_label_scope(scope)
 

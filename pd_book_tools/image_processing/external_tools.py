@@ -6,7 +6,7 @@ import subprocess
 def run_optipng(
     src: pathlib.Path,
 ) -> None:
-    subprocess.run(
+    _ = subprocess.run(
         args=[
             "optipng",
             "-o7",
@@ -32,7 +32,7 @@ def run_gegl_c2g(
     ]
     if c2gOptions:
         args.extend(shlex.split(c2gOptions))
-    subprocess.run(
+    _ = subprocess.run(
         args=args,
         shell=False,
         check=True,
