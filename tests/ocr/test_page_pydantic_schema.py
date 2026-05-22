@@ -103,3 +103,37 @@ def test_page_validate_from_dict_roundtrip_with_metadata():
     validated = adapter.validate_python(d)
     assert isinstance(validated, Page)
     assert validated.to_dict() == d
+
+
+def test_page_validate_provenance_dict_fields():
+    # #182: provenance_live_ocr / provenance_saved_ocr / provenance_saved are
+    # dict[str, Any] | None at runtime, but the pydantic schema previously
+    # declared them as str | None. Validation of a Page.to_dict() payload
+    # with provenance dicts must not raise.
+    adapter = TypeAdapter(Page)
+    prov_dict = {"engine": "tesseract", "version": "5.3.1", "lang": "eng"}
+    page = Page(
+        width=100,
+        height=100,
+        page_index=0,
+        bounding_box=_bbox(),
+        blocks=[_line()],
+    )
+    page.provenance_live_ocr = prov_dict
+    page.provenance_saved_ocr = {"source": "sidecar.json"}
+    page.provenance_saved = {"format": "v2"}
+    d = page.to_dict()
+    # The dict must contain the provenance dicts, not strings.
+    assert isinstance(d.get("provenance_live_ocr"), dict)
+    assert isinstance(d.get("provenance_saved_ocr"), dict)
+    assert isinstance(d.get("provenance_saved"), dict)
+    # Pydantic schema must accept these dict values without ValidationError.
+    validated = adapter.validate_python(d)
+    assert isinstance(validated, Page)
+    # None values must also be accepted.
+    d_none = dict(d)
+    d_none["provenance_live_ocr"] = None
+    d_none["provenance_saved_ocr"] = None
+    d_none["provenance_saved"] = None
+    validated_none = adapter.validate_python(d_none)
+    assert isinstance(validated_none, Page)

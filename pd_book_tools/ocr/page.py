@@ -40,6 +40,7 @@ from pd_book_tools.ocr.provenance import OCRProvenance
 from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
 from pd_book_tools.schemas._helpers import (
+    NULLABLE_STR_ANY_DICT_SCHEMA,
     NULLABLE_STR_SCHEMA,
 )
 
@@ -3555,15 +3556,17 @@ class Page:
                         required=False,
                     ),
                     "provenance_live_ocr": core_schema.typed_dict_field(
-                        NULLABLE_STR_SCHEMA,
+                        # #182: runtime type is dict[str, Any] | None; the
+                        # previous NULLABLE_STR_SCHEMA (str | None) was wrong.
+                        NULLABLE_STR_ANY_DICT_SCHEMA,
                         required=False,
                     ),
                     "provenance_saved_ocr": core_schema.typed_dict_field(
-                        NULLABLE_STR_SCHEMA,
+                        NULLABLE_STR_ANY_DICT_SCHEMA,
                         required=False,
                     ),
                     "provenance_saved": core_schema.typed_dict_field(
-                        NULLABLE_STR_SCHEMA,
+                        NULLABLE_STR_ANY_DICT_SCHEMA,
                         required=False,
                     ),
                     "rotation_applied": core_schema.typed_dict_field(
