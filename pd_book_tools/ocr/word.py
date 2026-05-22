@@ -129,7 +129,7 @@ class Word:
         self.ground_truth_text = ground_truth_text or ""
         self.ground_truth_bounding_box = ground_truth_bounding_box
         if ground_truth_match_keys:
-            self.ground_truth_match_keys = ground_truth_match_keys
+            self.ground_truth_match_keys = dict(ground_truth_match_keys)
         else:
             self.ground_truth_match_keys = {}
         self.review = review

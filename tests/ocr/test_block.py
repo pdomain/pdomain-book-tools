@@ -1218,3 +1218,19 @@ def test_block_text_two_drop_caps_in_one_line_each_fuse_their_neighbour():
         block_category=BlockCategory.LINE,
     )
     assert line.text == "Studies and Musings"
+
+
+def test_block_does_not_alias_additional_block_attributes():
+    """Block.__init__ must copy additional_block_attributes, not store by reference."""
+    from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+
+    caller_dict = {"key": "value"}
+    block = Block(
+        items=[],
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+        additional_block_attributes=caller_dict,
+    )
+    caller_dict["key"] = "mutated"
+    caller_dict["injected"] = "x"
+    assert block.additional_block_attributes == {"key": "value"}
