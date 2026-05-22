@@ -8,6 +8,14 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ---
 
+## [v0.14.0] — 2026-05-22
+
+- **PEP 561 `py.typed` marker** — downstream consumers no longer require
+  `# pyright: ignore[reportMissingTypeStubs]` on `from pd_book_tools...`
+  imports. Part of workspace-wide `reportMissingTypeStubs` cleanup.
+
+---
+
 ## [v0.13.0] — 2026-05-22
 
 ### Added
