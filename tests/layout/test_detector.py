@@ -354,6 +354,18 @@ class TestRegisterDetector:
             with pytest.raises(ValueError, match="built-in"):
                 register_detector(key, lambda **_: None)
 
+    def test_non_hashable_kwargs_raise_type_error(self):
+        # #179: passing a dict or list as a kwarg value for a user-registered
+        # detector used to raise a confusing TypeError deep inside
+        # _DETECTOR_CACHE.get() because the cache key tuple was unhashable.
+        # Should now raise TypeError with a clear message before touching
+        # the cache.
+        register_detector("custom-x", self._make_factory([]))
+        with pytest.raises(TypeError, match="hashable"):
+            get_detector("custom-x", filters={"a": 1})
+        with pytest.raises(TypeError, match="hashable"):
+            get_detector("custom-x", items=[1, 2, 3])
+
     def test_register_requires_callable(self):
         with pytest.raises(TypeError, match="callable"):
             register_detector("custom-x", "not-callable")  # type: ignore[arg-type]

@@ -98,3 +98,30 @@ def test_block_validate_from_dict_roundtrip_nested_blocks():
     validated = adapter.validate_python(d)
     assert isinstance(validated, Block)
     assert validated.to_dict() == d
+
+
+def test_block_validate_unmatched_ground_truth_words():
+    # #181: Block.unmatched_ground_truth_words is list[tuple[int, str]] at
+    # runtime, but the pydantic schema previously declared it as list[str].
+    # Validation of a dict emitted by to_dict() must now accept the
+    # [(int, str), ...] shape that ground-truth matching produces.
+    adapter = TypeAdapter(Block)
+    block = Block(
+        items=[_word("hello")],
+        bounding_box=_bbox(),
+        child_type=BlockChildType.WORDS,
+        block_category=BlockCategory.LINE,
+        unmatched_ground_truth_words=[(0, "hello"), (1, "world")],
+    )
+    d = block.to_dict()
+    # The dict contains list-of-lists because JSON tuples serialize as arrays.
+    assert d["unmatched_ground_truth_words"] == [(0, "hello"), (1, "world")]
+    # Pydantic must accept both the tuple form (Python round-trip) and the
+    # list form (JSON deserialization).
+    validated = adapter.validate_python(d)
+    assert isinstance(validated, Block)
+    # Also accept the JSON-deserialized form ([int, str] lists instead of tuples).
+    d_json_form = dict(d)
+    d_json_form["unmatched_ground_truth_words"] = [[0, "hello"], [1, "world"]]
+    validated_json = adapter.validate_python(d_json_form)
+    assert isinstance(validated_json, Block)
