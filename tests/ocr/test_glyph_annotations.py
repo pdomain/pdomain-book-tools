@@ -2,6 +2,7 @@
 
 Spec: pd-book-tools/docs/specs/05-glyph-annotations.md
 Issue: ConcaveTrillion/pd-book-tools#41
+Plan: ConcaveTrillion/pd-book-tools#163
 """
 
 from __future__ import annotations
@@ -15,32 +16,53 @@ from pd_book_tools.ocr.glyph_annotations import (
 )
 
 # ---------------------------------------------------------------------------
-# LigatureKind enum
+# LigatureKind enum — UPPERCASE values (Phase 1, plan #163)
 # ---------------------------------------------------------------------------
 
 
-def test_ligature_kind_values_are_strings():
-    """LigatureKind is a str-valued Enum so JSON serialization yields bare strings."""
-    assert LigatureKind.FI == "fi"
-    assert LigatureKind.FL == "fl"
-    assert LigatureKind.FF == "ff"
-    assert LigatureKind.FFI == "ffi"
-    assert LigatureKind.FFL == "ffl"
-    assert LigatureKind.CT == "ct"
-    assert LigatureKind.ST == "st"
-    assert LigatureKind.LONG_S_T == "long_s_t"
-    assert LigatureKind.LONG_S_S == "long_s_s"
-    assert LigatureKind.LONG_S_I == "long_s_i"
-    assert LigatureKind.SP == "sp"
-    assert LigatureKind.QU == "qu"
+def test_ligature_kind_values_are_uppercase_strings():
+    """LigatureKind values are now UPPERCASE per plan #163 (Phase 1)."""
+    assert LigatureKind.FI == "FI"
+    assert LigatureKind.FL == "FL"
+    assert LigatureKind.FF == "FF"
+    assert LigatureKind.FFI == "FFI"
+    assert LigatureKind.FFL == "FFL"
+    assert LigatureKind.CT == "CT"
+    assert LigatureKind.ST == "ST"
+    # Renamed from LONG_S_T to LONG_ST with uppercase value
+    assert LigatureKind.LONG_ST == "LONG_ST"
+    assert LigatureKind.LONG_S_S == "LONG_S_S"
+    assert LigatureKind.LONG_S_I == "LONG_S_I"
+    assert LigatureKind.SP == "SP"
+    assert LigatureKind.QU == "QU"
+    # New members from SPA spec 20 §3
+    assert LigatureKind.OE == "OE"
+    assert LigatureKind.AE == "AE"
+
+
+def test_ligature_kind_long_s_t_member_renamed_to_long_st():
+    """LONG_S_T was renamed to LONG_ST (plan #163 decision 2)."""
+    assert hasattr(LigatureKind, "LONG_ST")
+    # Old name should no longer exist
+    assert not hasattr(LigatureKind, "LONG_S_T")
+
+
+def test_ligature_kind_new_members_oe_ae():
+    """OE and AE are new members added per SPA spec 20 §3 (plan #163 decision 4)."""
+    assert LigatureKind.OE == "OE"
+    assert LigatureKind.AE == "AE"
 
 
 def test_ligature_kind_is_str_subtype():
     assert isinstance(LigatureKind.FI, str)
 
 
-def test_ligature_kind_from_string():
-    assert LigatureKind("ct") is LigatureKind.CT
+def test_ligature_kind_from_uppercase_string():
+    """Direct construction from uppercase value works."""
+    assert LigatureKind("CT") is LigatureKind.CT
+    assert LigatureKind("LONG_ST") is LigatureKind.LONG_ST
+    assert LigatureKind("OE") is LigatureKind.OE
+    assert LigatureKind("AE") is LigatureKind.AE
 
 
 def test_ligature_kind_unknown_raises():
@@ -48,8 +70,30 @@ def test_ligature_kind_unknown_raises():
         LigatureKind("unknown_value")
 
 
+def test_ligature_kind_member_count():
+    """All 14 expected members are present (12 original renamed/uppercased + 2 new)."""
+    member_names = {m.name for m in LigatureKind}
+    expected = {
+        "FI",
+        "FL",
+        "FF",
+        "FFI",
+        "FFL",
+        "CT",
+        "ST",
+        "LONG_ST",
+        "LONG_S_S",
+        "LONG_S_I",
+        "SP",
+        "QU",
+        "OE",
+        "AE",
+    }
+    assert member_names == expected
+
+
 # ---------------------------------------------------------------------------
-# LigatureMark
+# LigatureMark — to_dict emits UPPERCASE values
 # ---------------------------------------------------------------------------
 
 
@@ -64,26 +108,41 @@ def test_ligature_mark_without_span():
     assert mark.char_span is None
 
 
-def test_ligature_mark_to_dict_with_span():
+def test_ligature_mark_to_dict_emits_uppercase_kind():
+    """to_dict always emits uppercase kind value (plan #163 Phase 1 step 6)."""
     mark = LigatureMark(kind=LigatureKind.CT, char_span=(2, 4))
     d = mark.to_dict()
-    assert d == {"kind": "ct", "char_span": [2, 4]}
+    assert d == {"kind": "CT", "char_span": [2, 4]}
 
 
-def test_ligature_mark_to_dict_without_span():
+def test_ligature_mark_to_dict_without_span_emits_uppercase():
     mark = LigatureMark(kind=LigatureKind.ST)
     d = mark.to_dict()
-    assert d == {"kind": "st", "char_span": None}
+    assert d == {"kind": "ST", "char_span": None}
 
 
-def test_ligature_mark_from_dict_with_span():
-    mark = LigatureMark.from_dict({"kind": "fi", "char_span": [0, 2]})
+def test_ligature_mark_to_dict_long_st_emits_new_value():
+    """LONG_ST renamed member emits 'LONG_ST' not 'long_s_t'."""
+    mark = LigatureMark(kind=LigatureKind.LONG_ST, char_span=(0, 2))
+    d = mark.to_dict()
+    assert d["kind"] == "LONG_ST"
+
+
+def test_ligature_mark_to_dict_new_members():
+    """OE and AE new members serialize correctly."""
+    assert LigatureMark(kind=LigatureKind.OE).to_dict()["kind"] == "OE"
+    assert LigatureMark(kind=LigatureKind.AE).to_dict()["kind"] == "AE"
+
+
+def test_ligature_mark_from_dict_uppercase_kind():
+    """from_dict accepts new uppercase values."""
+    mark = LigatureMark.from_dict({"kind": "FI", "char_span": [0, 2]})
     assert mark.kind is LigatureKind.FI
     assert mark.char_span == (0, 2)
 
 
 def test_ligature_mark_from_dict_without_span():
-    mark = LigatureMark.from_dict({"kind": "ct"})
+    mark = LigatureMark.from_dict({"kind": "CT"})
     assert mark.kind is LigatureKind.CT
     assert mark.char_span is None
 
@@ -94,13 +153,68 @@ def test_ligature_mark_from_dict_unknown_kind_raises():
 
 
 def test_ligature_mark_roundtrip():
-    mark = LigatureMark(kind=LigatureKind.LONG_S_T, char_span=(0, 2))
+    mark = LigatureMark(kind=LigatureKind.LONG_ST, char_span=(0, 2))
     assert LigatureMark.from_dict(mark.to_dict()) == mark
 
 
 def test_ligature_mark_roundtrip_no_span():
     mark = LigatureMark(kind=LigatureKind.QU, char_span=None)
     assert LigatureMark.from_dict(mark.to_dict()) == mark
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Migration shim: legacy lowercase values still deserialize
+# ---------------------------------------------------------------------------
+
+
+def test_ligature_kind_legacy_migration_roundtrip():
+    """Old lowercase kind values from pre-#163 snapshots still deserialize.
+
+    This is the migration shim (plan #163 Phase 2). Old JSON had 'fi', 'ct', etc.
+    After migration, from_dict must accept them and map to the new uppercase members.
+    """
+    # All original lowercase values must still deserialize
+    assert LigatureMark.from_dict({"kind": "fi"}).kind is LigatureKind.FI
+    assert LigatureMark.from_dict({"kind": "fl"}).kind is LigatureKind.FL
+    assert LigatureMark.from_dict({"kind": "ff"}).kind is LigatureKind.FF
+    assert LigatureMark.from_dict({"kind": "ffi"}).kind is LigatureKind.FFI
+    assert LigatureMark.from_dict({"kind": "ffl"}).kind is LigatureKind.FFL
+    assert LigatureMark.from_dict({"kind": "ct"}).kind is LigatureKind.CT
+    assert LigatureMark.from_dict({"kind": "st"}).kind is LigatureKind.ST
+    assert LigatureMark.from_dict({"kind": "long_s_s"}).kind is LigatureKind.LONG_S_S
+    assert LigatureMark.from_dict({"kind": "long_s_i"}).kind is LigatureKind.LONG_S_I
+    assert LigatureMark.from_dict({"kind": "sp"}).kind is LigatureKind.SP
+    assert LigatureMark.from_dict({"kind": "qu"}).kind is LigatureKind.QU
+
+
+def test_ligature_kind_legacy_long_s_t_name_migrates_to_long_st():
+    """Old 'long_s_t' value (old name) maps to LigatureKind.LONG_ST."""
+    mark = LigatureMark.from_dict({"kind": "long_s_t"})
+    assert mark.kind is LigatureKind.LONG_ST
+
+
+def test_ligature_kind_legacy_long_s_t_uppercase_old_name_migrates():
+    """Old 'LONG_S_T' uppercase enum value (old name) maps to LigatureKind.LONG_ST."""
+    mark = LigatureMark.from_dict({"kind": "LONG_S_T"})
+    assert mark.kind is LigatureKind.LONG_ST
+
+
+def test_legacy_value_roundtrip_after_migration():
+    """Loading a legacy lowercase dict and re-serializing emits new uppercase value."""
+    old_dict = {"kind": "ct", "char_span": [2, 4]}
+    mark = LigatureMark.from_dict(old_dict)
+    assert mark.kind is LigatureKind.CT
+    new_dict = mark.to_dict()
+    assert new_dict == {"kind": "CT", "char_span": [2, 4]}
+
+
+def test_legacy_long_s_t_roundtrip():
+    """Loading legacy 'long_s_t' value, re-serializing emits 'LONG_ST'."""
+    old_dict = {"kind": "long_s_t", "char_span": [0, 2]}
+    mark = LigatureMark.from_dict(old_dict)
+    assert mark.kind is LigatureKind.LONG_ST
+    new_dict = mark.to_dict()
+    assert new_dict == {"kind": "LONG_ST", "char_span": [0, 2]}
 
 
 # ---------------------------------------------------------------------------
@@ -144,11 +258,12 @@ def test_glyph_annotations_to_dict_empty():
 
 
 def test_glyph_annotations_to_dict_full():
+    """to_dict emits uppercase kind values."""
     mark = LigatureMark(kind=LigatureKind.CT, char_span=(2, 4))
     ga = GlyphAnnotations(ligatures=[mark], long_s_positions=[0], swash=True)
     d = ga.to_dict()
     assert d == {
-        "ligatures": [{"kind": "ct", "char_span": [2, 4]}],
+        "ligatures": [{"kind": "CT", "char_span": [2, 4]}],
         "long_s_positions": [0],
         "swash": True,
         "source": "human",
@@ -226,6 +341,7 @@ def test_glyph_annotations_from_dict_missing_keys_use_defaults():
 
 
 def test_glyph_annotations_from_dict_full():
+    """from_dict with legacy lowercase kind values still works via migration shim."""
     d = {
         "ligatures": [{"kind": "long_s_t", "char_span": [0, 2]}],
         "long_s_positions": [0],
@@ -233,7 +349,8 @@ def test_glyph_annotations_from_dict_full():
     }
     ga = GlyphAnnotations.from_dict(d)
     assert len(ga.ligatures) == 1
-    assert ga.ligatures[0].kind is LigatureKind.LONG_S_T
+    # Legacy 'long_s_t' maps to LONG_ST (renamed member)
+    assert ga.ligatures[0].kind is LigatureKind.LONG_ST
     assert ga.ligatures[0].char_span == (0, 2)
     assert ga.long_s_positions == [0]
     assert ga.swash is False
@@ -386,6 +503,7 @@ def test_word_to_dict_omits_glyph_annotations_when_none():
 
 
 def test_word_to_dict_includes_glyph_annotations_when_set():
+    """Word.to_dict now emits uppercase kind values."""
     word = _make_word("stand", "stand")
     ga = GlyphAnnotations(
         ligatures=[LigatureMark(kind=LigatureKind.ST, char_span=(0, 2))]
@@ -393,7 +511,7 @@ def test_word_to_dict_includes_glyph_annotations_when_set():
     word.glyph_annotations = ga
     d = word.to_dict()
     assert "glyph_annotations" in d
-    assert d["glyph_annotations"]["ligatures"][0]["kind"] == "st"
+    assert d["glyph_annotations"]["ligatures"][0]["kind"] == "ST"
 
 
 def test_word_to_dict_includes_empty_glyph_annotations():
