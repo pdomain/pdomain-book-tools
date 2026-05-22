@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 if TYPE_CHECKING:
     from pd_book_tools.ocr.word import Word
@@ -129,6 +129,15 @@ class LigatureMark:
 # GlyphAnnotations (spec section 2.3)
 # ---------------------------------------------------------------------------
 
+# Provenance vocabulary for GlyphAnnotations.source (object-level provenance).
+# See pd-ocr-labeler-spa specs/20-glyph-annotations.md section 3 and ADR D-044:
+#   "human"           -- entered/edited by a human, no classifier involvement
+#   "predicted"       -- classifier-only output, awaiting human confirmation
+#   "human_confirmed" -- classifier was right and a human kept it
+GlyphSource = Literal["human", "predicted", "human_confirmed"]
+
+_VALID_GLYPH_SOURCES: frozenset[str] = frozenset(get_args(GlyphSource))
+
 
 @dataclass
 class GlyphAnnotations:
@@ -144,11 +153,25 @@ class GlyphAnnotations:
             normalised to ``s``.  The index refers to the GT string.
         swash: ``True`` iff at least one glyph in the word is a swash variant
             (coarse bool; per-glyph refinement is a future extension).
+        source: Object-level provenance for this annotation set -- how the
+            top-level signals got here.  One of ``"human"``, ``"predicted"``,
+            or ``"human_confirmed"``.  Defaults to ``"human"``.  Provenance is
+            per-``GlyphAnnotations`` object, not per-mark (ADR D-044).
     """
 
     ligatures: list[LigatureMark] = field(default_factory=list)
     long_s_positions: list[int] = field(default_factory=list)
     swash: bool = False
+    source: GlyphSource = "human"
+
+    def __post_init__(self) -> None:
+        """Validate ``source`` against the controlled provenance vocabulary."""
+        if self.source not in _VALID_GLYPH_SOURCES:
+            raise ValueError(
+                f"GlyphAnnotations.source={self.source!r} is not a recognised "
+                f"provenance value.  Must be one of "
+                f"{sorted(_VALID_GLYPH_SOURCES)} (ADR D-044)."
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to the canonical JSON wire shape (spec section 3.1)."""
@@ -156,6 +179,7 @@ class GlyphAnnotations:
             "ligatures": [m.to_dict() for m in self.ligatures],
             "long_s_positions": list(self.long_s_positions),
             "swash": self.swash,
+            "source": self.source,
         }
 
     @classmethod
@@ -172,7 +196,13 @@ class GlyphAnnotations:
         ligatures = [LigatureMark.from_dict(m) for m in d.get("ligatures", [])]
         long_s_positions = list(d.get("long_s_positions", []))
         swash = bool(d.get("swash", False))
-        return cls(ligatures=ligatures, long_s_positions=long_s_positions, swash=swash)
+        source = d.get("source", "human")
+        return cls(
+            ligatures=ligatures,
+            long_s_positions=long_s_positions,
+            swash=swash,
+            source=source,
+        )
 
     def validate(self, word: Word) -> None:
         """Validate these annotations against *word* (spec section 4).

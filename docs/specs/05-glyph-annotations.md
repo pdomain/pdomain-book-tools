@@ -238,7 +238,8 @@ The pickle / dataclass-`asdict` form mirrors it 1:1.
       {"kind": "long_s_t", "char_span": [0, 2]}
     ],
     "long_s_positions": [0],
-    "swash": false
+    "swash": false,
+    "source": "human"
   }
 }
 ```
@@ -249,6 +250,11 @@ Field-level rules:
   inside the envelope.
 - `long_s_positions` — array of ints; empty array if none.
 - `swash` — bool; defaults to `false`.
+- `source` — object-level provenance string; one of `"human"`,
+  `"predicted"`, `"human_confirmed"`; defaults to `"human"`. Missing
+  key on load = `"human"`. Per ADR D-044 (pd-ocr-labeler-spa
+  `specs/17-decisions.md`), provenance is per-`GlyphAnnotations` object,
+  not per-mark.
 - Future fields (small_caps_in_lc, italic_in_roman, …) — added as
   optional keys; missing key on load = default value.
 
@@ -268,7 +274,8 @@ flat dict. The new key is added at the top level alongside `text`,
   "glyph_annotations": {
     "ligatures": [{"kind": "st", "char_span": [0, 2]}],
     "long_s_positions": [],
-    "swash": false
+    "swash": false,
+    "source": "human"
   }
 }
 ```
