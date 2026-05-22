@@ -11,6 +11,29 @@ from pathlib import Path
 MAX_OUTPUT_LINES = 300
 FALLBACK_TAIL_LINES = 50
 
+# Cap on how much of the input log we accept. CI logs are normally well
+# under a megabyte; a pathologically large log (runaway loop, leaked
+# binary output) should not be slurped whole into memory. When a log
+# exceeds this budget we keep only the tail — failure context lives near
+# the end of a CI run, not the start.
+MAX_INPUT_BYTES = 16 * 1024 * 1024  # 16 MiB
+
+
+def read_log(path: Path) -> str:
+    """Read the log file, capping oversized inputs to the tail.
+
+    Files within ``MAX_INPUT_BYTES`` are returned whole. Larger files are
+    read tail-first up to the byte budget so the failure-relevant end of
+    the log survives without loading gigabytes into memory.
+    """
+    size = path.stat().st_size
+    if size <= MAX_INPUT_BYTES:
+        return path.read_text(errors="replace")
+    with path.open("rb") as fh:
+        fh.seek(size - MAX_INPUT_BYTES)
+        tail = fh.read(MAX_INPUT_BYTES)
+    return tail.decode("utf-8", errors="replace")
+
 
 def extract_pytest_sections(text: str) -> list[str]:
     sections = []
@@ -69,7 +92,7 @@ def main() -> None:
         print(f"log not found: {path}", file=sys.stderr)
         sys.exit(1)
 
-    text = path.read_text(errors="replace")
+    text = read_log(path)
 
     extractors = [
         extract_pytest_sections,
