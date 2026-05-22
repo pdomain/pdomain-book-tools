@@ -1,0 +1,6 @@
+"""Vendored, non-code data files packaged with ``pd_book_tools``.
+
+This subpackage exists so the JSON data files alongside it are importable
+as package resources via :func:`importlib.resources.files`. It contains no
+runtime code.
+"""
