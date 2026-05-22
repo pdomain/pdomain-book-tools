@@ -135,7 +135,12 @@ def test_glyph_annotations_equality_empty():
 def test_glyph_annotations_to_dict_empty():
     ga = GlyphAnnotations()
     d = ga.to_dict()
-    assert d == {"ligatures": [], "long_s_positions": [], "swash": False}
+    assert d == {
+        "ligatures": [],
+        "long_s_positions": [],
+        "swash": False,
+        "source": "human",
+    }
 
 
 def test_glyph_annotations_to_dict_full():
@@ -146,7 +151,66 @@ def test_glyph_annotations_to_dict_full():
         "ligatures": [{"kind": "ct", "char_span": [2, 4]}],
         "long_s_positions": [0],
         "swash": True,
+        "source": "human",
     }
+
+
+# ---------------------------------------------------------------------------
+# GlyphAnnotations.source provenance field (spec 20-glyph-annotations.md S3,
+# ADR D-044 -- object-level provenance)
+# ---------------------------------------------------------------------------
+
+
+def test_glyph_annotations_source_default_is_human():
+    assert GlyphAnnotations().source == "human"
+
+
+@pytest.mark.parametrize("src", ["human", "predicted", "human_confirmed"])
+def test_glyph_annotations_source_accepts_valid_values(src):
+    ga = GlyphAnnotations(source=src)
+    assert ga.source == src
+    assert ga.to_dict()["source"] == src
+
+
+def test_glyph_annotations_source_invalid_value_raises():
+    with pytest.raises(ValueError):
+        GlyphAnnotations(source="robot")
+
+
+def test_glyph_annotations_from_dict_missing_source_defaults_to_human():
+    ga = GlyphAnnotations.from_dict(
+        {"ligatures": [], "long_s_positions": [], "swash": False}
+    )
+    assert ga.source == "human"
+
+
+def test_glyph_annotations_from_dict_reads_source():
+    ga = GlyphAnnotations.from_dict(
+        {
+            "ligatures": [],
+            "long_s_positions": [],
+            "swash": False,
+            "source": "predicted",
+        }
+    )
+    assert ga.source == "predicted"
+
+
+def test_glyph_annotations_from_dict_unknown_source_raises():
+    with pytest.raises(ValueError):
+        GlyphAnnotations.from_dict(
+            {
+                "ligatures": [],
+                "long_s_positions": [],
+                "swash": False,
+                "source": "bogus",
+            }
+        )
+
+
+def test_glyph_annotations_source_roundtrip():
+    ga = GlyphAnnotations(source="human_confirmed", swash=True)
+    assert GlyphAnnotations.from_dict(ga.to_dict()) == ga
 
 
 def test_glyph_annotations_from_dict_empty():
@@ -342,6 +406,7 @@ def test_word_to_dict_includes_empty_glyph_annotations():
         "ligatures": [],
         "long_s_positions": [],
         "swash": False,
+        "source": "human",
     }
 
 
