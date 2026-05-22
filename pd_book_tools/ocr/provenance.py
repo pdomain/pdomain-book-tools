@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import cast
 
 UNKNOWN_METADATA_VALUE = "unknown"
+
+# JSON-compatible dict type alias used throughout this module.
+# Values are `object` (not `Any`) so callers must explicitly cast/narrow them;
+# `Any` is reserved for genuinely opaque third-party API surfaces.
+_JsonDict = dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -14,9 +19,9 @@ class OCRModelProvenance:
     version: str | None = None
     weights_id: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> _JsonDict:
         """Serialise to a plain dict for JSON persistence."""
-        result: dict[str, Any] = {"name": self.name}
+        result: _JsonDict = {"name": self.name}
         if self.version:
             result["version"] = self.version
         if self.weights_id:
@@ -24,7 +29,7 @@ class OCRModelProvenance:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> OCRModelProvenance:
+    def from_dict(cls, data: _JsonDict) -> OCRModelProvenance:
         """Deserialise from the dict produced by :meth:`to_dict`."""
         return cls(
             name=str(data.get("name", UNKNOWN_METADATA_VALUE)),
@@ -51,12 +56,17 @@ class OCRProvenance:
     def __post_init__(self) -> None:
         # Tolerate callers (and legacy code) constructing with a list.
         # ``object.__setattr__`` is required because the dataclass is frozen.
-        if not isinstance(self.models, tuple):
+        # The isinstance guard is intentional: the field type is ``tuple`` but
+        # callers may pass a list and bypass static checks at runtime (e.g.
+        # via deserialized JSON or legacy code). pyright: ignore is used below
+        # because the guard is always-False from the type checker's perspective
+        # yet genuinely needed at runtime.
+        if not isinstance(self.models, tuple):  # pyright: ignore[reportUnnecessaryIsInstance]
             object.__setattr__(self, "models", tuple(self.models))
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> _JsonDict:
         """Serialise to a plain dict for JSON persistence."""
-        result: dict[str, Any] = {
+        result: _JsonDict = {
             "engine": self.engine,
             "models": [model.to_dict() for model in self.models],
         }
@@ -72,29 +82,30 @@ class OCRProvenance:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> OCRProvenance:
+    def from_dict(cls, data: _JsonDict) -> OCRProvenance:
         """Deserialise from the dict produced by :meth:`to_dict`."""
         raw_models = data.get("models", [])
         models: list[OCRModelProvenance] = []
         if isinstance(raw_models, list):
-            for model in raw_models:
+            for model in cast("list[object]", raw_models):
                 if isinstance(model, str) and model:
                     models.append(OCRModelProvenance(name=model))
                 elif isinstance(model, dict):
-                    name = model.get("name") or model.get("model")
+                    model_d = cast("_JsonDict", model)
+                    name = model_d.get("name") or model_d.get("model")
                     if not isinstance(name, str) or not name:
                         continue
                     models.append(
                         OCRModelProvenance(
                             name=name,
                             version=(
-                                str(model["version"])
-                                if model.get("version") is not None
+                                str(model_d["version"])
+                                if model_d.get("version") is not None
                                 else None
                             ),
                             weights_id=(
-                                str(model["weights_id"])
-                                if model.get("weights_id") is not None
+                                str(model_d["weights_id"])
+                                if model_d.get("weights_id") is not None
                                 else None
                             ),
                         )
@@ -116,9 +127,7 @@ class OCRProvenance:
         )
 
     @classmethod
-    def coerce(
-        cls, value: OCRProvenance | dict[str, Any] | None
-    ) -> OCRProvenance | None:
+    def coerce(cls, value: OCRProvenance | _JsonDict | None) -> OCRProvenance | None:
         """Coerce a raw value to :class:`OCRProvenance` or ``None``."""
         if value is None:
             return None

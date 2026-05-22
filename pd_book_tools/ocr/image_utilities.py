@@ -1,5 +1,6 @@
 import logging
 from base64 import b64encode
+from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from numpy import ndarray
 
@@ -7,6 +8,19 @@ from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.image_processing.cv2_processing import encode_bgr_image_as_png
 from pd_book_tools.ocr.block import Block
 from pd_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from pd_book_tools.ocr.character import Character
+
+
+@runtime_checkable
+class _HasRefineBoundingBoxes(Protocol):
+    """Minimal protocol for Page objects that expose ``refine_bounding_boxes``."""
+
+    def refine_bounding_boxes(
+        self, image: ndarray | None = None, padding_px: int = 0
+    ) -> None: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +44,11 @@ def crop_image_to_bbox(
         logger.debug("No element or page_image for %s", label)
         return None
 
-    bbox = getattr(element, "bounding_box", None)
-    if not bbox:
+    raw_bbox = getattr(element, "bounding_box", None)
+    if not raw_bbox:
         logger.debug("No bounding_box found for %s", label)
         return None
+    bbox = cast("BoundingBox", raw_bbox)
 
     # Only swallow exceptions that genuinely mean "this bbox/image pair
     # cannot produce a crop" — bad coords (ValueError), bad image type or
@@ -42,7 +57,7 @@ def crop_image_to_bbox(
     # must propagate so the caller sees it instead of getting a silent
     # None that masks the failure mode (L-25).
     try:
-        cropped = bbox.crop_image(page_image)
+        cropped: ndarray | None = bbox.crop_image(page_image)
         if cropped is None:
             logger.debug("Empty crop for %s", label)
         return cropped
@@ -75,7 +90,7 @@ def get_cropped_encoded_image_scaled_bbox(
 def get_cropped_encoded_image(
     img: ndarray, bounding_box: BoundingBox
 ) -> tuple[ndarray, ndarray, str, str]:
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
     # Get the bounding box of the word
     x1, y1, x2, y2 = bounding_box.scale(w, h).to_ltrb()
     # Crop the image to the bounding box
@@ -124,16 +139,19 @@ def refine_word_bbox(word: Word, image: ndarray | None, padding_px: int = 1) -> 
     successful refinement, ``False`` otherwise.
     """
     bbox = word.bounding_box
-    if bbox is None or image is None:
+    if image is None:
         return False
 
     try:
         refined_bbox = bbox.refine(
             image, padding_px=padding_px, expand_beyond_original=False
         )
-        if refined_bbox is not None:
-            word.bounding_box = refined_bbox
-            return True
+        # Defensive None check: BoundingBox.refine is typed to return
+        # BoundingBox (non-optional), but test monkey-patches may return None.
+        if refined_bbox is None:  # pyright: ignore[reportUnnecessaryComparison]
+            return False
+        word.bounding_box = refined_bbox
+        return True
     except Exception:
         logger.debug(
             "Bounding-box refine failed during word refine; falling back",
@@ -145,7 +163,7 @@ def refine_word_bbox(word: Word, image: ndarray | None, padding_px: int = 1) -> 
         # tests / call sites that monkey-patch ``word.crop_bottom``
         # continue to work. The method itself thin-wraps the free
         # function ``crop_word_bottom`` in production.
-        word.crop_bottom(image)
+        word.crop_bottom(image)  # pyright: ignore[reportUnknownMemberType]  # word.py typed in W3-B
         return True
     except Exception:
         logger.debug(
@@ -158,13 +176,15 @@ def refine_word_bbox(word: Word, image: ndarray | None, padding_px: int = 1) -> 
 
 def crop_word_bottom(word: Word, image: ndarray | None) -> None:
     """Crop ``word.bounding_box`` to its bottom half. Mutates ``word``."""
-    if not word.bounding_box:
-        raise ValueError("Bounding box is None, cannot crop bottom")
+    if word.bounding_box is None:  # pyright: ignore[reportUnnecessaryComparison]
+        raise ValueError("Bounding box is None, cannot crop bottom")  # pyright: ignore[reportUnreachable]
     if image is None:
         raise ValueError("Image ndarray is None, cannot crop bottom")
 
     cropped_bbox = word.bounding_box.crop_bottom(image)
-    if cropped_bbox is None:
+    # Defensive None check: BoundingBox.crop_bottom is typed BoundingBox→BoundingBox
+    # but test stubs may return None; preserve existing bbox rather than overwrite with None.
+    if cropped_bbox is None:  # pyright: ignore[reportUnnecessaryComparison]
         logger.warning(
             "Cropped bounding box is None, cannot crop bottom; preserving existing bounding_box"
         )
@@ -174,13 +194,15 @@ def crop_word_bottom(word: Word, image: ndarray | None) -> None:
 
 def crop_word_top(word: Word, image: ndarray | None) -> None:
     """Crop ``word.bounding_box`` to its top half. Mutates ``word``."""
-    if not word.bounding_box:
-        raise ValueError("Bounding box is None, cannot crop top")
+    if word.bounding_box is None:  # pyright: ignore[reportUnnecessaryComparison]
+        raise ValueError("Bounding box is None, cannot crop top")  # pyright: ignore[reportUnreachable]
     if image is None:
         raise ValueError("Image ndarray is None, cannot crop top")
 
     cropped_bbox = word.bounding_box.crop_top(image)
-    if cropped_bbox is None:
+    # Defensive None check: BoundingBox.crop_top is typed BoundingBox→BoundingBox
+    # but test stubs may return None; preserve existing bbox rather than overwrite with None.
+    if cropped_bbox is None:  # pyright: ignore[reportUnnecessaryComparison]
         logger.warning(
             "Cropped bounding box is None, cannot crop top; preserving existing bounding_box"
         )
@@ -190,7 +212,7 @@ def crop_word_top(word: Word, image: ndarray | None) -> None:
 
 def split_word_into_characters(
     word: Word, image: ndarray | None, min_ink_pixels_per_column: int = 1
-):
+) -> list["Character"]:
     """Split a :class:`Word` into :class:`Character` objects via vertical-whitespace gaps.
 
     Free-function delegate of :meth:`Word.split_into_characters_from_whitespace`.
@@ -204,7 +226,9 @@ def split_word_into_characters(
     )
 
 
-def estimate_word_baseline(word: Word, image: ndarray | None):
+def estimate_word_baseline(
+    word: Word, image: ndarray | None
+) -> dict[str, float | str] | None:
     """Estimate a horizontal baseline for ``word``. Mutates ``word.baseline``.
 
     Free-function delegate of :meth:`Word.estimate_baseline_from_image`.
@@ -212,7 +236,9 @@ def estimate_word_baseline(word: Word, image: ndarray | None):
     return word.estimate_baseline_from_image(image)
 
 
-def estimate_block_baseline(block: Block, image: ndarray | None):
+def estimate_block_baseline(
+    block: Block, image: ndarray | None
+) -> dict[str, float | str] | None:
     """Estimate a linear baseline for a line block. Mutates ``block.baseline``.
 
     Free-function delegate of :meth:`Block.estimate_baseline_from_image`.
@@ -230,11 +256,14 @@ def refine_block_bounding_boxes(
     block.refine_bounding_boxes(image, padding_px=padding_px)
 
 
-def refine_page_bounding_boxes(page, image: ndarray | None = None, padding_px: int = 0):
+def refine_page_bounding_boxes(
+    page: _HasRefineBoundingBoxes, image: ndarray | None = None, padding_px: int = 0
+) -> None:
     """Refine all bboxes on a :class:`Page` against ``image``.
 
-    Free-function delegate of :meth:`Page.refine_bounding_boxes`. ``page``
-    is typed loosely to avoid an import cycle (``image_utilities`` is
-    imported from inside the OCR package; ``Page`` is too).
+    Free-function delegate of :meth:`Page.refine_bounding_boxes`. The ``page``
+    parameter uses the ``_HasRefineBoundingBoxes`` protocol instead of ``Page``
+    to avoid a circular import (image_utilities lives inside the OCR package;
+    importing ``Page`` would create an import cycle).
     """
-    return page.refine_bounding_boxes(image=image, padding_px=padding_px)
+    page.refine_bounding_boxes(image=image, padding_px=padding_px)
