@@ -225,7 +225,7 @@ class Block:
         self.base_ground_truth_text: str | None = base_ground_truth_text
         # containers
         self.additional_block_attributes: dict[str, Any] = (
-            additional_block_attributes
+            dict(additional_block_attributes)
             if additional_block_attributes is not None
             else {}
         )

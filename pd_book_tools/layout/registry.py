@@ -222,8 +222,10 @@ def register_detector(key: str, factory: _DetectorFactory) -> None:
     ``(key, device, confidence, checkpoint_path, sorted(extra_kwargs))``.
 
     Built-in keys (``"none"``, ``"contour"``, ``"pp-doclayout-plus-l"``)
-    cannot be shadowed; re-registering an existing user key replaces the
-    previous factory and clears the detector cache so the next
+    cannot be shadowed. Registering ``key`` always evicts any cached
+    detector entries for that key — whether they came from a previous
+    user factory or from an earlier ``get_detector(key,
+    on_error="log_and_null")`` fallback — so the next
     :func:`get_detector` call rebuilds with the new factory.
 
     Intended for downstream projects (e.g. ``pd-ocr-trainer``) that
@@ -240,14 +242,15 @@ def register_detector(key: str, factory: _DetectorFactory) -> None:
     if not callable(factory):
         raise TypeError("register_detector: factory must be callable")
     with _CACHE_LOCK:
-        previous = _USER_DETECTORS.get(key)
         _USER_DETECTORS[key] = factory
-        if previous is not None:
-            # Drop any cached instances built by the previous factory so
-            # subsequent ``get_detector`` calls pick up the new one.
-            stale = [k for k in _DETECTOR_CACHE if k and k[0] == key]
-            for k in stale:
-                _DETECTOR_CACHE.pop(k, None)
+        # Always evict cached entries for ``key``, regardless of whether a
+        # previous factory existed. A prior ``get_detector(key,
+        # on_error="log_and_null")`` call could have cached a NullDetector
+        # fallback for this (then-unknown) key; if that stale entry is left
+        # in place, the newly registered factory would never be used (#168).
+        stale = [k for k in _DETECTOR_CACHE if k and k[0] == key]
+        for k in stale:
+            _DETECTOR_CACHE.pop(k, None)
 
 
 def unregister_detector(key: str) -> None:

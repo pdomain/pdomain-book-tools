@@ -1458,3 +1458,16 @@ def test_constructor_with_empty_ground_truth_text_stores_none(pixel_bbox):
 def test_constructor_with_none_ground_truth_text_stores_none(pixel_bbox):
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text=None)
     assert w._ground_truth_text is None
+
+
+def test_word_does_not_alias_ground_truth_match_keys(pixel_bbox):
+    """Word.__init__ must copy ground_truth_match_keys, not store by reference."""
+    caller_dict = {"split": True}
+    w = Word(
+        text="hi",
+        bounding_box=pixel_bbox,
+        ground_truth_match_keys=caller_dict,
+    )
+    caller_dict["split"] = False
+    caller_dict["injected"] = "x"
+    assert w.ground_truth_match_keys == {"split": True}

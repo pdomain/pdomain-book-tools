@@ -252,6 +252,41 @@ class TestDetectorFailureHardening:
         assert layout.regions == []
         assert layout.image_width == 50
 
+    def test_register_after_fallback_evicts_stale_null_detector(self):
+        """Registering a detector after a cached ``log_and_null`` fallback
+        must evict the stale ``NullDetector`` so the new factory is used.
+
+        Regression for #168: ``register_detector`` previously only evicted
+        cached entries when *replacing* a prior user factory. A first-time
+        registration left a fallback cached by an earlier
+        ``get_detector(key, on_error="log_and_null")`` call in place.
+        """
+        # No factory registered yet — fallback to NullDetector and cache it.
+        fallback = get_detector("failing-x", on_error="log_and_null")
+        layout = fallback.detect(_blank_page(10, 10))
+        assert layout.regions == []  # NullDetector returns no regions
+
+        # Now register a real factory for the same key for the first time.
+        sentinel = object()
+
+        class _RealDetector:
+            marker = sentinel
+
+            def detect(self, source):
+                from pd_book_tools.layout.types import LayoutResult
+
+                return LayoutResult(regions=[], image_width=1, image_height=1)
+
+        def factory(*, device, confidence, checkpoint_path, **kwargs):
+            return _RealDetector()
+
+        register_detector("failing-x", factory)
+
+        # The next get_detector must build with the new factory, not return
+        # the stale cached NullDetector.
+        det = get_detector("failing-x")
+        assert getattr(det._inner, "marker", None) is sentinel
+
     def test_timing_detector_per_page_failure_routes_through_caller(self):
         """Per-page detect() failures are not swallowed inside the registry —
         callers (``_TimingDetector`` wrapping the user inner) propagate so

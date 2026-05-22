@@ -114,7 +114,9 @@ make coverage  # Run tests with coverage report (generates htmlcov/index.html)
 
 **Coverage Thresholds:**
 
-- **Hard threshold:** 80% — CI fails if coverage drops below this level
+- **Hard threshold:** 87% — CI fails if coverage drops below this level
+  (the single source of truth is `[tool.coverage.report] fail_under` in
+  `pyproject.toml`)
 - **Soft target:** 88% — Goal for maintainability and code reliability
 
 The coverage report includes a threshold summary with the current coverage
