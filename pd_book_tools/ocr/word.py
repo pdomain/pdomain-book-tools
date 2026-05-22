@@ -14,6 +14,7 @@ from thefuzz.fuzz import ratio as fuzz_ratio
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
 from pd_book_tools.ocr.character import Character
+from pd_book_tools.ocr.glyph_annotations import GlyphAnnotations
 from pd_book_tools.ocr.label_normalization import (
     ALLOWED_COMPONENTS,
     ALLOWED_TEXT_STYLE_LABEL_SCOPES,
@@ -89,6 +90,12 @@ class Word:
     # has touched this word. See pd_book_tools/ocr/review.py.
     review: ReviewMetadata | None = None
 
+    # Optional glyph-level side-channel annotations (spec §2.3).
+    # None  = "nobody has looked at this word for glyph annotations yet" (unknown).
+    # GlyphAnnotations() = "reviewed; no glyph annotations to record for this word".
+    # These two states are semantically distinct — see spec §1.3.
+    glyph_annotations: GlyphAnnotations | None = None
+
     def __init__(
         self,
         text: str,
@@ -103,6 +110,7 @@ class Word:
         ground_truth_bounding_box: BoundingBox | None = None,
         ground_truth_match_keys: dict[str, Any] | None = None,
         review: ReviewMetadata | None = None,
+        glyph_annotations: GlyphAnnotations | None = None,
     ) -> None:
         self.text = text  # Use the setter for validation or processing
         self.bounding_box = bounding_box
@@ -125,6 +133,7 @@ class Word:
         else:
             self.ground_truth_match_keys = {}
         self.review = review
+        self.glyph_annotations = glyph_annotations
 
     @classmethod
     def _normalize_text_style_label(cls, label: str) -> str:
@@ -664,6 +673,8 @@ class Word:
         }
         if self.review is not None:
             d["review"] = self.review.to_dict()
+        if self.glyph_annotations is not None:
+            d["glyph_annotations"] = self.glyph_annotations.to_dict()
         return d
 
     @classmethod
@@ -687,6 +698,10 @@ class Word:
             if isinstance(gt_bb_raw, BoundingBox)
             else (BoundingBox.from_dict(gt_bb_raw) if gt_bb_raw else None)
         )
+        ga_raw = dict.get("glyph_annotations")
+        glyph_annotations = (
+            GlyphAnnotations.from_dict(ga_raw) if ga_raw is not None else None
+        )
         return Word(
             text=dict["text"],
             bounding_box=bounding_box,
@@ -700,6 +715,7 @@ class Word:
             ground_truth_bounding_box=ground_truth_bounding_box,
             ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
             review=review,
+            glyph_annotations=glyph_annotations,
         )
 
     def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0) -> None:
