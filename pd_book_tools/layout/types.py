@@ -8,6 +8,7 @@ that ``Word`` / ``BoundingBox`` / ``Page`` perform.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -59,6 +60,26 @@ class LayoutRegion:
     raw_label: str = ""
 
     def __post_init__(self) -> None:
+        # #176: coerce string ``type`` to ``RegionType`` so direct construction
+        # with ``type="text"`` doesn't silently accept a plain string that will
+        # crash later in ``to_dict()`` when ``self.type.value`` is called.
+        # ``RegionType(value)`` raises ``ValueError`` for unknown strings,
+        # giving callers an early, clear diagnostic.
+        if not isinstance(self.type, RegionType):
+            self.type = RegionType(self.type)  # pyright: ignore[reportConstantRedefinition]  # dataclass field reassignment in __post_init__
+
+        # #176: reject non-finite and out-of-range confidence values. NaN and
+        # infinity produce non-standard JSON (json.dumps raises or emits
+        # "Infinity") and break sort-by-confidence comparisons.  Rule-based
+        # detectors always emit 1.0; model adapters clamp to [0, 1] before
+        # creating LayoutRegion, so a value outside this range indicates a
+        # bug upstream.
+        if not math.isfinite(self.confidence) or not (0.0 <= self.confidence <= 1.0):
+            raise ValueError(
+                f"LayoutRegion confidence must be a finite value in [0, 1]; "
+                f"got {self.confidence!r}"
+            )
+
         # Reject inverted rectangles up front. Without this, ``width`` /
         # ``height`` go negative, ``area`` silently returns 0 (masking the
         # bad input), and ``contains_point`` returns the wrong answer for

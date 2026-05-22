@@ -77,6 +77,45 @@ class TestLayoutRegion:
                 {"type": "not_a_region", "L": 0, "R": 1, "T": 0, "B": 1}
             )
 
+    def test_string_type_coerced_to_enum(self):
+        # #176: direct construction with type="text" (string) used to succeed
+        # but then crash in to_dict() when self.type.value was called on a str.
+        r = LayoutRegion(type="text", L=0, R=10, T=0, B=10)  # type: ignore[arg-type]
+        # Must survive to_dict() — self.type must be a RegionType, not a str.
+        d = r.to_dict()
+        assert d["type"] == "text"
+        assert r.type is RegionType.text
+
+    def test_invalid_string_type_raises(self):
+        # #176: unknown string must raise ValueError, not silently set type to
+        # a string and defer the crash to to_dict().
+        with pytest.raises(ValueError):
+            LayoutRegion(type="not_a_real_type", L=0, R=10, T=0, B=10)  # type: ignore[arg-type]
+
+    def test_non_finite_confidence_rejected(self):
+        # #176: NaN/infinity confidence produces non-standard JSON and breaks
+        # sorting — reject at construction.
+
+        with pytest.raises(ValueError, match="confidence"):
+            LayoutRegion(
+                type=RegionType.text, L=0, R=10, T=0, B=10, confidence=float("nan")
+            )
+        with pytest.raises(ValueError, match="confidence"):
+            LayoutRegion(
+                type=RegionType.text, L=0, R=10, T=0, B=10, confidence=float("inf")
+            )
+        with pytest.raises(ValueError, match="confidence"):
+            LayoutRegion(type=RegionType.text, L=0, R=10, T=0, B=10, confidence=-0.1)
+        with pytest.raises(ValueError, match="confidence"):
+            LayoutRegion(type=RegionType.text, L=0, R=10, T=0, B=10, confidence=1.1)
+
+    def test_confidence_boundary_values_accepted(self):
+        # 0.0 and 1.0 are valid confidence values.
+        r0 = LayoutRegion(type=RegionType.text, L=0, R=10, T=0, B=10, confidence=0.0)
+        r1 = LayoutRegion(type=RegionType.text, L=0, R=10, T=0, B=10, confidence=1.0)
+        assert r0.confidence == 0.0
+        assert r1.confidence == 1.0
+
 
 class TestPageLayout:
     def test_iter_and_len(self):
