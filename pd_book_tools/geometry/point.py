@@ -1,4 +1,4 @@
-from typing import Any
+from typing import cast, override
 
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import CoreSchema, core_schema
@@ -43,7 +43,9 @@ class Point:
     ``is_normalized`` (older dicts without the flag still infer it).
     """
 
-    __slots__ = ("_geom", "_is_normalized")
+    __slots__: tuple[str, ...] = ("_geom", "_is_normalized")
+    _geom: ShapelyPoint
+    _is_normalized: bool
 
     def __init__(
         self, x: float | int, y: float | int, is_normalized: bool | None = None
@@ -109,7 +111,7 @@ class Point:
         return self._is_normalized
 
     @is_normalized.setter
-    def is_normalized(self, value: bool) -> None:  # pragma: no cover - defensive
+    def is_normalized(self, _value: bool) -> None:  # pragma: no cover - defensive
         raise AttributeError(
             "Point is immutable; use factory methods instead of mutating is_normalized"
         )
@@ -124,6 +126,7 @@ class Point:
     # method members defined on this class; for raw Shapely access use
     # ``as_shapely()``.
 
+    @override
     def __repr__(self) -> str:
         return f"Point({self.x}, {self.y})"
 
@@ -158,19 +161,19 @@ class Point:
     def pixel(cls, x: float | int, y: float | int) -> "Point":
         return cls(x, y, is_normalized=False)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, float | int | bool]:
         # Include normalization state for round-trip serialization
         return {"x": self.x, "y": self.y, "is_normalized": self.is_normalized}
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Point":
+    def from_dict(cls, data: dict[str, object]) -> "Point":
         """Create a Point from a dict produced by ``to_dict``.
 
         Accepts legacy dicts without ``is_normalized`` (falls back to inference).
         """
-        x = data["x"]
-        y = data["y"]
-        is_norm = data.get("is_normalized")
+        x = cast("float | int", data["x"])
+        y = cast("float | int", data["y"])
+        is_norm = cast("bool | None", data.get("is_normalized"))
         return cls(x, y, is_normalized=is_norm)
 
     def as_shapely(self) -> "ShapelyPoint":
@@ -181,9 +184,7 @@ class Point:
 
     # Helpers ----------------------------------------------------------
     def _is_int_like(self, value: float | int) -> bool:
-        return isinstance(value, int) or (
-            isinstance(value, float) and float(value).is_integer()
-        )
+        return isinstance(value, int) or value.is_integer()
 
     # Comparisons ------------------------------------------------------
     def __gt__(self, other: object) -> bool:
@@ -214,6 +215,7 @@ class Point:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) <= (other.x, other.y)
 
+    @override
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Point):
             return NotImplemented
@@ -221,6 +223,7 @@ class Point:
             raise TypeError("Cannot compare points with different normalization state")
         return (self.x, self.y) == (other.x, other.y)
 
+    @override
     def __hash__(self) -> int:  # Allow use in sets / dicts
         return hash((float(self.x), float(self.y), self.is_normalized))
 
@@ -236,7 +239,7 @@ class Point:
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        source_type: Any,
+        source_type: object,
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         return core_schema.no_info_after_validator_function(

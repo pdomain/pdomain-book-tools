@@ -15,7 +15,7 @@ map to ``None`` are dropped.
 from __future__ import annotations
 
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import torch
@@ -56,9 +56,14 @@ class PPDocLayoutPlusLDetector:
     a local directory or a different HF repo id).
     """
 
-    HF_REPO = _DEFAULT_REPO
-    HF_REVISION = _DEFAULT_REVISION
-    KEY = _ADAPTER_KEY
+    HF_REPO: str = _DEFAULT_REPO
+    HF_REVISION: str = _DEFAULT_REVISION
+    KEY: str = _ADAPTER_KEY
+
+    _processor: RTDetrImageProcessor
+    _model: RTDetrForObjectDetection
+    _device: str
+    _conf: float
 
     def __init__(
         self,
@@ -84,8 +89,8 @@ class PPDocLayoutPlusLDetector:
         load_kwargs = {"revision": rev} if rev else {}
         self._processor = RTDetrImageProcessor.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportArgumentType]  # transformers stubs don't match **kwargs spread
         _loaded_model = RTDetrForObjectDetection.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportArgumentType]  # transformers stubs don't match **kwargs spread
-        self._model = _loaded_model.to(device)  # pyright: ignore[reportAttributeAccessIssue,reportArgumentType]  # from_pretrained stubs type result as str | RTDetrForObjectDetection; .to() is valid at runtime
-        self._model.eval()
+        self._model = _loaded_model.to(device)  # pyright: ignore[reportArgumentType]  # from_pretrained stubs type result as str | RTDetrForObjectDetection; .to() is valid at runtime
+        _ = self._model.eval()
         self._device = device
         self._conf = float(confidence)
 
@@ -100,10 +105,10 @@ class PPDocLayoutPlusLDetector:
             target_sizes=target,  # pyright: ignore[reportArgumentType]  # transformers stubs require TensorType; torch.Tensor is accepted at runtime
             threshold=self._conf,
         )
-        results = cast("list[dict[str, Any]]", raw_results)[0]
+        results = cast("list[dict[str, torch.Tensor]]", raw_results)[0]
 
         regions: list[LayoutRegion] = []
-        id2label = self._model.config.id2label  # pyright: ignore[reportAttributeAccessIssue]  # transformers stubs type config as generic PretrainedConfig; id2label is always set
+        id2label = self._model.config.id2label
         for score, label, box in zip(
             results["scores"], results["labels"], results["boxes"], strict=False
         ):

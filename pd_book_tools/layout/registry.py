@@ -12,10 +12,11 @@ import threading
 import time
 from collections.abc import Callable
 from logging import getLogger
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pd_book_tools.layout.detector import (
     ContourDetector,
+    ImageSource,
     LayoutDetector,
     NullDetector,
 )
@@ -41,7 +42,7 @@ _USER_DETECTORS: dict[str, _DetectorFactory] = {}
 # additional sorted (name, value) pairs at the end so different tunings
 # memoise to different instances. Kept as ``tuple`` rather than a strict
 # named alias because the trailing kwargs portion is variable-length.
-_CacheKey = tuple[Any, ...]
+_CacheKey = tuple[object, ...]
 _DETECTOR_CACHE: dict[_CacheKey, LayoutDetector] = {}
 # Guards _DETECTOR_CACHE under concurrent access. Without this, two threads
 # can both miss the cache and both call _build(); for PPDocLayoutPlusLDetector
@@ -54,9 +55,9 @@ class _TimingDetector:
     """Wrapper that fills ``inference_ms`` on the returned PageLayout."""
 
     def __init__(self, inner: LayoutDetector) -> None:
-        self._inner = inner
+        self._inner: LayoutDetector = inner
 
-    def detect(self, source) -> PageLayout:
+    def detect(self, source: ImageSource) -> PageLayout:
         start = time.monotonic()
         layout = self._inner.detect(source)
         elapsed_ms = int((time.monotonic() - start) * 1000)
@@ -74,7 +75,7 @@ _CONTOUR_DETECTOR_KWARGS = (
 )
 
 
-def _assert_hashable_kwargs(kwargs: dict[str, Any], context: str) -> None:
+def _assert_hashable_kwargs(kwargs: dict[str, object], context: str) -> None:
     """Raise ``TypeError`` early when any kwarg value is not hashable.
 
     Without this check, un-hashable values (dicts, lists) reach
@@ -87,16 +88,16 @@ def _assert_hashable_kwargs(kwargs: dict[str, Any], context: str) -> None:
         name = bad[0]
         raise TypeError(
             f"{context}: kwarg {name!r} has value {kwargs[name]!r} which is not "
-            "hashable. All detector kwargs must be hashable so they can "
-            "participate in the memoisation cache key. Use a tuple instead "
-            "of a list, or a frozenset instead of a set."
+            + "hashable. All detector kwargs must be hashable so they can "
+            + "participate in the memoisation cache key. Use a tuple instead "
+            + "of a list, or a frozenset instead of a set."
         )
 
 
-def _is_hashable(value: Any) -> bool:
+def _is_hashable(value: object) -> bool:
     """Return True if ``value`` can be used as a dict/set key."""
     try:
-        hash(value)
+        _ = hash(value)
     except TypeError:
         return False
     return True
@@ -107,7 +108,7 @@ def _build(
     device: str,
     confidence: float,
     checkpoint_path: str | None,
-    extra_kwargs: dict[str, Any],
+    extra_kwargs: dict[str, object],
 ) -> LayoutDetector:
     if key == "none":
         return NullDetector()
@@ -120,7 +121,10 @@ def _build(
             raise TypeError(
                 f"ContourDetector got unexpected keyword arguments: {sorted(unknown)}"
             )
-        return ContourDetector(**contour_kwargs)
+        # ``contour_kwargs`` values are typed ``object`` (user-supplied via
+        # **detector_kwargs); ContourDetector's params are heterogeneous
+        # float/int, so a ``**`` spread cannot be statically checked.
+        return ContourDetector(**contour_kwargs)  # pyright: ignore[reportArgumentType]
     if key == "pp-doclayout-plus-l":
         from pd_book_tools.layout.adapters.pp_doclayout import (
             PPDocLayoutPlusLDetector,
@@ -174,8 +178,8 @@ def get_detector(
     """
     if on_error not in ("raise", "log_and_null"):
         raise ValueError(
-            f"get_detector: on_error must be 'raise' or 'log_and_null', "
-            f"got {on_error!r}"
+            "get_detector: on_error must be 'raise' or 'log_and_null', "
+            + f"got {on_error!r}"
         )
     if key == "contour":
         # confidence / checkpoint_path are meaningless for the rule-based
@@ -201,7 +205,7 @@ def get_detector(
         if detector_kwargs:
             raise TypeError(
                 f"get_detector({key!r}, ...) does not accept extra "
-                f"keyword arguments: {sorted(detector_kwargs)}"
+                + f"keyword arguments: {sorted(detector_kwargs)}"
             )
         cache_key = (key, device, confidence, checkpoint_path)
     # Fast path: lock-free read for the common warm-cache case. dict.get is
@@ -221,7 +225,7 @@ def get_detector(
             if on_error == "log_and_null":
                 logger.warning(
                     "get_detector: build failed for key=%r (%s: %s); "
-                    "falling back to NullDetector.",
+                    + "falling back to NullDetector.",
                     key,
                     type(exc).__name__,
                     exc,
@@ -262,15 +266,18 @@ def register_detector(key: str, factory: _DetectorFactory) -> None:
     produce custom fine-tuned checkpoints needing their own adapter
     keys without modifying this registry's hard-coded chain.
     """
-    if not isinstance(key, str) or not key:
+    # Defensive runtime validation of a public API boundary: callers may
+    # violate the declared types, so the isinstance / callable guards stay
+    # even though the type checker proves them statically redundant.
+    if not isinstance(key, str) or not key:  # pyright: ignore[reportUnnecessaryIsInstance]
         raise ValueError("register_detector: key must be a non-empty string")
     if key in _BUILTIN_KEYS:
         raise ValueError(
             f"register_detector: {key!r} is a built-in detector key and "
-            "cannot be overridden"
+            + "cannot be overridden"
         )
     if not callable(factory):
-        raise TypeError("register_detector: factory must be callable")
+        raise TypeError("register_detector: factory must be callable")  # pyright: ignore[reportUnreachable]
     with _CACHE_LOCK:
         _USER_DETECTORS[key] = factory
         # Always evict cached entries for ``key``, regardless of whether a
@@ -280,7 +287,7 @@ def register_detector(key: str, factory: _DetectorFactory) -> None:
         # in place, the newly registered factory would never be used (#168).
         stale = [k for k in _DETECTOR_CACHE if k and k[0] == key]
         for k in stale:
-            _DETECTOR_CACHE.pop(k, None)
+            _ = _DETECTOR_CACHE.pop(k, None)
 
 
 def unregister_detector(key: str) -> None:
@@ -292,13 +299,13 @@ def unregister_detector(key: str) -> None:
     if key in _BUILTIN_KEYS:
         raise ValueError(
             f"unregister_detector: {key!r} is a built-in detector key and "
-            "cannot be removed"
+            + "cannot be removed"
         )
     with _CACHE_LOCK:
         if _USER_DETECTORS.pop(key, None) is not None:
             stale = [k for k in _DETECTOR_CACHE if k and k[0] == key]
             for k in stale:
-                _DETECTOR_CACHE.pop(k, None)
+                _ = _DETECTOR_CACHE.pop(k, None)
 
 
 __all__ = [

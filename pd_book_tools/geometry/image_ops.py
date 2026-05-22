@@ -16,7 +16,7 @@ free functions here directly; old code calling
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import cv2
 from cv2 import (
@@ -31,7 +31,7 @@ from cv2 import (
 from pd_book_tools.geometry.bounding_box import BoundingBox
 
 if TYPE_CHECKING:
-    from numpy import ndarray
+    from cv2.typing import MatLike
 
 __all__ = [
     "crop_bottom_bbox",
@@ -46,13 +46,13 @@ __all__ = [
 
 
 def _extract_roi(
-    bbox: BoundingBox, image: ndarray
-) -> tuple[ndarray, float, float, float, float, int, int, bool]:
+    bbox: BoundingBox, image: MatLike
+) -> tuple[MatLike, float, float, float, float, int, int, bool]:
     """Return ``(roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized)``.
 
     Scales ``bbox`` to pixel coordinates if it was normalized.
     """
-    img_h, img_w = image.shape[:2]
+    img_h, img_w = cast("tuple[int, int]", image.shape[:2])
     original_is_normalized = bool(bbox.is_normalized)
     box = bbox.scale(img_w, img_h) if original_is_normalized else bbox
     x1, y1, x2, y2 = box.to_ltrb()
@@ -60,27 +60,30 @@ def _extract_roi(
     return roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized
 
 
-def _threshold_inverted(roi: ndarray) -> tuple[ndarray, ndarray]:
+def _threshold_inverted(roi: MatLike) -> tuple[MatLike, MatLike]:
     """Convert ROI to grayscale (if needed), invert, OTSU threshold.
 
     Returns ``(thresh, grayscale_roi)``.
     """
-    roi_gray = cvtColor(roi, COLOR_BGR2GRAY) if len(roi.shape) == 3 else roi
+    roi_shape = cast("tuple[int, ...]", roi.shape)
+    roi_gray = cvtColor(roi, COLOR_BGR2GRAY) if len(roi_shape) == 3 else roi
     inverted = cv2.bitwise_not(roi_gray)
     _, thresh = threshold(inverted, 0, 255, THRESH_BINARY + THRESH_OTSU)
     return thresh, roi_gray
 
 
-def _tight_bbox_from_thresh(thresh: ndarray) -> tuple[int, int, int, int] | None:
+def _tight_bbox_from_thresh(thresh: MatLike) -> tuple[int, int, int, int] | None:
     non_zero = findNonZero(thresh)
-    if non_zero is None:
+    # cv2.findNonZero returns None at runtime when the image has no non-zero
+    # pixels; the cv2 stubs type it as non-optional.
+    if non_zero is None:  # pyright: ignore[reportUnnecessaryComparison]
         return None
     x, y, w, h = cv2.boundingRect(non_zero)
     return x, y, w, h
 
 
 def _connected_content_bbox_from_image_thresh(
-    thresh: ndarray,
+    thresh: MatLike,
     x1: float,
     y1: float,
     x2: float,
@@ -110,10 +113,10 @@ def _connected_content_bbox_from_image_thresh(
     y_max = float("-inf")
 
     for label in touching_labels:
-        comp_x = float(stats[label, cv2.CC_STAT_LEFT])
-        comp_y = float(stats[label, cv2.CC_STAT_TOP])
-        comp_w = float(stats[label, cv2.CC_STAT_WIDTH])
-        comp_h = float(stats[label, cv2.CC_STAT_HEIGHT])
+        comp_x = float(cast("int", stats[label, cv2.CC_STAT_LEFT]))
+        comp_y = float(cast("int", stats[label, cv2.CC_STAT_TOP]))
+        comp_w = float(cast("int", stats[label, cv2.CC_STAT_WIDTH]))
+        comp_h = float(cast("int", stats[label, cv2.CC_STAT_HEIGHT]))
         x_min = min(x_min, comp_x)
         y_min = min(y_min, comp_y)
         x_max = max(x_max, comp_x + comp_w)
@@ -149,7 +152,7 @@ def _finalize_pixel_bbox(
 
 def refine_bbox(
     bbox: BoundingBox,
-    image: ndarray,
+    image: MatLike,
     padding_px: int = 0,
     expand_beyond_original: bool = False,
 ) -> BoundingBox:
@@ -201,7 +204,7 @@ def refine_bbox(
     )
 
 
-def _vertical_crop(bbox: BoundingBox, image: ndarray, keep: str) -> BoundingBox:
+def _vertical_crop(bbox: BoundingBox, image: MatLike, keep: str) -> BoundingBox:
     """Shared implementation for :func:`crop_top_bbox` (``keep='top'``) and
     :func:`crop_bottom_bbox` (``keep='bottom'``).
     """
@@ -210,10 +213,11 @@ def _vertical_crop(bbox: BoundingBox, image: ndarray, keep: str) -> BoundingBox:
     )
     thresh, _ = _threshold_inverted(roi)
     non_zero = findNonZero(thresh)
-    if non_zero is None:
+    # cv2.findNonZero returns None at runtime when the ROI has no content.
+    if non_zero is None:  # pyright: ignore[reportUnnecessaryComparison]
         return replace(bbox)
     coords = non_zero.reshape(-1, 2)
-    roi_h, _ = thresh.shape
+    roi_h, _ = cast("tuple[int, int]", thresh.shape)
     center_y = roi_h // 2
     if keep == "top":
         coords = coords[coords[:, 1] <= center_y]
@@ -232,7 +236,7 @@ def _vertical_crop(bbox: BoundingBox, image: ndarray, keep: str) -> BoundingBox:
         coords = coords[coords[:, 1] >= center_y]
         if coords.size == 0:
             return replace(bbox)
-        roi_h = thresh.shape[0]
+        roi_h = cast("tuple[int, ...]", thresh.shape)[0]
         for y in range(center_y + 1, roi_h):
             current = set(coords[coords[:, 1] == y][:, 0])
             prev = set(coords[coords[:, 1] == y - 1][:, 0])
@@ -245,11 +249,11 @@ def _vertical_crop(bbox: BoundingBox, image: ndarray, keep: str) -> BoundingBox:
     return _finalize_pixel_bbox(x1, y1, x2, y2, img_w, img_h, original_is_normalized)
 
 
-def crop_top_bbox(bbox: BoundingBox, image: ndarray) -> BoundingBox:
+def crop_top_bbox(bbox: BoundingBox, image: MatLike) -> BoundingBox:
     """Return a new bbox cropped to the top half of its image content."""
     return _vertical_crop(bbox, image, keep="top")
 
 
-def crop_bottom_bbox(bbox: BoundingBox, image: ndarray) -> BoundingBox:
+def crop_bottom_bbox(bbox: BoundingBox, image: MatLike) -> BoundingBox:
     """Return a new bbox cropped to the bottom half of its image content."""
     return _vertical_crop(bbox, image, keep="bottom")

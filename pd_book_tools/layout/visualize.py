@@ -12,7 +12,7 @@ Public API:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from pd_book_tools.layout.types import PageLayout
@@ -53,6 +53,7 @@ def draw_layout_overlay(
     misled them into believing the file was written (L-08).
     """
     import cv2  # imported lazily — visualization is optional
+    import numpy as np
 
     png_path = Path(png_path)
     dest_path = Path(dest_path)
@@ -60,12 +61,13 @@ def draw_layout_overlay(
     img = cv2.imread(str(png_path), cv2.IMREAD_COLOR)
     if img is None:
         return None
-    overlay = cv2.addWeighted(img, 0.55, 255 * (img * 0 + 1), 0.45, 0)
+    white = np.full_like(img, 255)
+    overlay = cv2.addWeighted(img, 0.55, white, 0.45, 0)
 
-    image_width = overlay.shape[1]
+    image_width = cast("tuple[int, ...]", overlay.shape)[1]
     for r in layout.regions:
         color = _COLORS_BGR.get(r.type.value, (128, 128, 128))
-        cv2.rectangle(overlay, (r.L, r.T), (r.R, r.B), color, thickness=3)
+        _ = cv2.rectangle(overlay, (r.L, r.T), (r.R, r.B), color, thickness=3)
         label = f"{r.type.value} {r.confidence:.2f}"
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 1)
         ly0 = max(r.T - 6, th + 4)
@@ -74,14 +76,14 @@ def draw_layout_overlay(
         # at 0 so an over-wide label on a narrow image still anchors at the
         # left edge rather than going negative.
         lx = max(0, min(r.L, image_width - tw - 6))
-        cv2.rectangle(
+        _ = cv2.rectangle(
             overlay,
             (lx, ly0 - th - 4),
             (lx + tw + 6, ly0 + 2),
             color,
             thickness=-1,
         )
-        cv2.putText(
+        _ = cv2.putText(
             overlay,
             label,
             (lx + 3, ly0 - 2),
@@ -96,7 +98,7 @@ def draw_layout_overlay(
     if not cv2.imwrite(str(dest_path), overlay):
         raise OSError(
             f"cv2.imwrite failed to write layout overlay to {dest_path!s} "
-            "(disk full, bad permissions, or unsupported image extension)"
+            + "(disk full, bad permissions, or unsupported image extension)"
         )
     return dest_path
 

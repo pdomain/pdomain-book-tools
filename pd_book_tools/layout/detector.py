@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from logging import getLogger
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Protocol, cast, runtime_checkable
 
 import cv2
 import numpy as np
@@ -59,12 +59,12 @@ class NullDetector:
     a non-None layout to simplify branching.
     """
 
-    KEY = "none"
+    KEY: str = "none"
 
     def detect(self, source: ImageSource) -> PageLayout:
         """Return an empty PageLayout with the image dimensions populated."""
         img = _load_image(source)
-        h, w = img.shape[:2]
+        h, w = cast("tuple[int, int]", img.shape[:2])
         return PageLayout(
             regions=[],
             image_width=int(w),
@@ -91,7 +91,7 @@ class ContourDetector:
     ``pd-book-tools/docs/ROADMAP.md``.
     """
 
-    KEY = "contour"
+    KEY: str = "contour"
 
     def __init__(
         self,
@@ -101,16 +101,16 @@ class ContourDetector:
         max_aspect: float = 10.0,
         close_kernel_px: int = 9,
     ) -> None:
-        self.min_area_frac = min_area_frac
-        self.max_area_frac = max_area_frac
-        self.min_aspect = min_aspect
-        self.max_aspect = max_aspect
-        self.close_kernel_px = close_kernel_px
+        self.min_area_frac: float = min_area_frac
+        self.max_area_frac: float = max_area_frac
+        self.min_aspect: float = min_aspect
+        self.max_aspect: float = max_aspect
+        self.close_kernel_px: int = close_kernel_px
 
     def detect(self, source: ImageSource) -> PageLayout:
         """Find rectangular contours in the image and return them as layout regions."""
         img = _load_image(source)
-        h, w = img.shape[:2]
+        h, w = cast("tuple[int, int]", img.shape[:2])
         page_area = float(h * w)
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

@@ -46,7 +46,7 @@ from __future__ import annotations
 import string
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr._dropcap_lexicon import WORDS as _LEXICON
@@ -54,7 +54,7 @@ from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.word import Word
 
 if TYPE_CHECKING:
-    import numpy as np
+    from cv2.typing import MatLike
 
     from pd_book_tools.ocr.reorganize_page_utils import PageMetrics
 
@@ -357,7 +357,7 @@ def _geometric_gap_candidates(
 
 
 def _scan_dropcap_cc(
-    image,
+    image: MatLike | None,
     candidate: _GapCandidate,
     metrics: PageMetrics,
 ) -> BoundingBox | None:
@@ -382,7 +382,7 @@ def _scan_dropcap_cc(
     except Exception:  # pragma: no cover — cv2 is a hard dep
         return None
 
-    H, W = image.shape[:2]
+    H, W = cast("tuple[int, int]", image.shape[:2])
     if H == 0 or W == 0:
         return None
 
@@ -417,11 +417,11 @@ def _scan_dropcap_cc(
     best: tuple[int, int, int, int, int] | None = None  # (x, y, w, h, area)
     for i in range(1, n_labels):
         x, y, w, h, area = (
-            stats[i, cv2.CC_STAT_LEFT],
-            stats[i, cv2.CC_STAT_TOP],
-            stats[i, cv2.CC_STAT_WIDTH],
-            stats[i, cv2.CC_STAT_HEIGHT],
-            stats[i, cv2.CC_STAT_AREA],
+            cast("int", stats[i, cv2.CC_STAT_LEFT]),
+            cast("int", stats[i, cv2.CC_STAT_TOP]),
+            cast("int", stats[i, cv2.CC_STAT_WIDTH]),
+            cast("int", stats[i, cv2.CC_STAT_HEIGHT]),
+            cast("int", stats[i, cv2.CC_STAT_AREA]),
         )
         if h < min_cap_h_px:
             continue
@@ -567,7 +567,7 @@ def _attach_cap_to_line(
 
 def detect_and_stitch_cursive_dropcaps(
     blocks: list[Block],
-    image: np.ndarray | None,
+    image: MatLike | None,
     metrics: PageMetrics,
 ) -> list[Block]:
     """Iteration-A cursive-cap fallback. See module docstring for design.
@@ -620,7 +620,7 @@ def detect_and_stitch_cursive_dropcaps(
         if cc_bbox is None:
             logger.warning(
                 "Drop-cap geometric trigger fired but no CC found near body "
-                "word %r at y=[%.4f,%.4f]; tagging unrecovered.",
+                + "word %r at y=[%.4f,%.4f]; tagging unrecovered.",
                 candidate.first_body_word.text,
                 candidate.line_minY,
                 candidate.line_maxY,
@@ -639,8 +639,8 @@ def detect_and_stitch_cursive_dropcaps(
         if letter is None:
             logger.warning(
                 "Drop-cap CC found near body word %r but letter inference "
-                "ambiguous (no unique single-letter prepend matches the "
-                "lexicon); tagging unrecovered.",
+                + "ambiguous (no unique single-letter prepend matches the "
+                + "lexicon); tagging unrecovered.",
                 candidate.first_body_word.text,
             )
             _tag_unrecovered(candidate)
@@ -920,7 +920,7 @@ def stitch_block_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Bl
 
 def detect_and_stitch_drop_caps(
     blocks: list[Block],
-    image: np.ndarray | None,
+    image: MatLike | None,
     metrics: PageMetrics,
 ) -> list[Block]:
     """Unified Step DC entry point: block-cap path then cursive fallback.
