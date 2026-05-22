@@ -17,7 +17,7 @@ Thank you for your interest in contributing to pd-book-tools!
    **Or manually**:
 
    ```bash
-   uv sync --extra dev
+   uv sync --group dev
    uv run pre-commit install
    ```
 
