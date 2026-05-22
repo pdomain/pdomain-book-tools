@@ -52,29 +52,78 @@ _BANNED_GT_CODEPOINTS: frozenset[str] = frozenset(
 class LigatureKind(str, Enum):
     """Controlled vocabulary for ligature types found in early-modern printing.
 
-    Values are plain strings so JSON serialization yields bare human-readable
-    strings without extra encoding.
+    Values are UPPERCASE plain strings so JSON serialization yields bare
+    human-readable strings without extra encoding.
+
+    Note: Using ``str, Enum`` base for Python 3.10 compatibility.
+    TODO: switch to ``StrEnum`` once the minimum Python version is 3.11+.
 
     Adding a new value requires a PR with: the printed form (image/fixture
     reference), the GT decomposition, and a note on the corpus it appeared in.
     Speculative additions are explicitly disallowed.
+
+    Changed in plan #163: values uppercased; LONG_S_T renamed to LONG_ST;
+    OE and AE added per pd-ocr-labeler-spa spec 20 §3.
     """
 
     # Latin ligatures common in early-modern printing
-    FI = "fi"  # U+FB01 in print, "fi" in GT
-    FL = "fl"  # U+FB02
-    FF = "ff"  # U+FB00
-    FFI = "ffi"  # U+FB03
-    FFL = "ffl"  # U+FB04
-    CT = "ct"  # decorative ct ligature, no Unicode codepoint
-    ST = "st"  # U+FB06 in print, "st" in GT
-    LONG_S_T = "long_s_t"  # U+FB05 in print (long-s t), "st" in GT
-    LONG_S_S = "long_s_s"  # long-s s, "ss" in GT
+    FI = "FI"  # U+FB01 in print, "fi" in GT
+    FL = "FL"  # U+FB02
+    FF = "FF"  # U+FB00
+    FFI = "FFI"  # U+FB03
+    FFL = "FFL"  # U+FB04
+    CT = "CT"  # decorative ct ligature, no Unicode codepoint
+    ST = "ST"  # U+FB06 in print, "st" in GT
+    LONG_ST = "LONG_ST"  # U+FB05 in print (long-s t), "st" in GT; renamed from LONG_S_T
+    LONG_S_S = "LONG_S_S"  # long-s s, "ss" in GT
     LONG_S_I = (
-        "long_s_i"  # long-s i, "si" in GT (less common, included for completeness)
+        "LONG_S_I"  # long-s i, "si" in GT (less common, included for completeness)
     )
-    SP = "sp"  # decorative sp ligature
-    QU = "qu"  # decorative Qu ligature
+    SP = "SP"  # decorative sp ligature
+    QU = "QU"  # decorative Qu ligature
+    OE = "OE"  # oe ligature (new in plan #163 per SPA spec 20 §3)
+    AE = "AE"  # ae ligature (new in plan #163 per SPA spec 20 §3)
+
+
+# ---------------------------------------------------------------------------
+# Migration helper (Phase 2, plan #163)
+# ---------------------------------------------------------------------------
+
+# Maps legacy pre-#163 kind strings (lowercase + old LONG_S_T name) to their
+# new uppercase equivalents.  Called by LigatureMark.from_dict on the raw
+# kind field.  May be removed after a release cycle once no persisted
+# snapshots with lowercase values remain.
+_LEGACY_KIND_MAP: dict[str, str] = {
+    "fi": "FI",
+    "fl": "FL",
+    "ff": "FF",
+    "ffi": "FFI",
+    "ffl": "FFL",
+    "ct": "CT",
+    "st": "ST",
+    "long_s_t": "LONG_ST",  # old name + lowercase value → new member
+    "LONG_S_T": "LONG_ST",  # old name uppercase variant → new member
+    "long_s_s": "LONG_S_S",
+    "long_s_i": "LONG_S_I",
+    "sp": "SP",
+    "qu": "QU",
+}
+
+
+def _migrate_ligature_kind_value(raw: str) -> str:
+    """Map a raw kind string to the canonical uppercase LigatureKind value.
+
+    Accepts:
+    - Current UPPERCASE values (passed through unchanged).
+    - Legacy lowercase values from pre-#163 snapshots (mapped to uppercase).
+    - Old ``LONG_S_T`` / ``long_s_t`` name (mapped to ``LONG_ST``).
+
+    Raises:
+        ValueError: indirectly, when the mapped value is not a valid
+            :class:`LigatureKind` member (handled by the calling ``LigatureKind()``
+            constructor in :meth:`LigatureMark.from_dict`).
+    """
+    return _LEGACY_KIND_MAP.get(raw, raw)
 
 
 # ---------------------------------------------------------------------------
@@ -111,12 +160,15 @@ class LigatureMark:
     def from_dict(cls, d: dict[str, Any]) -> LigatureMark:
         """Deserialize from a dict produced by :meth:`to_dict`.
 
+        Accepts both current UPPERCASE values and legacy lowercase values from
+        pre-#163 snapshots (see :func:`_migrate_ligature_kind_value`).
+
         Raises:
             ValueError: if ``kind`` is not a recognised :class:`LigatureKind`
                 value.  Unknown values must raise (spec section 4.4) to prevent
                 silent schema drift.
         """
-        raw_kind = d["kind"]
+        raw_kind = _migrate_ligature_kind_value(d["kind"])
         kind = LigatureKind(raw_kind)  # raises ValueError for unknown strings
         span_raw = d.get("char_span")
         char_span: tuple[int, int] | None = None

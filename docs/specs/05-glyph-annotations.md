@@ -134,25 +134,37 @@ shape exactly.
 
 A `str`-valued `Enum` (so JSON serialization is the bare string, and
 older readers that hand-decode JSON see human-meaningful values).
+Values are **UPPERCASE** (changed in plan #163 to align with
+pd-ocr-labeler-spa spec 20 §3; a migration shim in `from_dict` accepts
+the legacy lowercase values for backwards compatibility with pre-#163
+snapshots).
 
 ```python
 class LigatureKind(str, Enum):
     # Latin ligatures common in early-modern printing
-    FI       = "fi"        # U+FB01 in print, "fi" in GT
-    FL       = "fl"        # U+FB02
-    FF       = "ff"        # U+FB00
-    FFI      = "ffi"       # U+FB03
-    FFL      = "ffl"       # U+FB04
-    CT       = "ct"        # decorative ct ligature, no Unicode codepoint
-    ST       = "st"        # U+FB06 in print, "st" in GT
-    LONG_S_T = "long_s_t"  # ſt, U+FB05 in print, "st" in GT
-    LONG_S_S = "long_s_s"  # ſs, "ss" in GT
-    LONG_S_I = "long_s_i"  # ſi, "si" in GT  (less common, included for completeness)
-    SP       = "sp"        # decorative sp ligature
-    QU       = "qu"        # decorative Qu ligature
+    FI       = "FI"       # U+FB01 in print, "fi" in GT
+    FL       = "FL"       # U+FB02
+    FF       = "FF"       # U+FB00
+    FFI      = "FFI"      # U+FB03
+    FFL      = "FFL"      # U+FB04
+    CT       = "CT"       # decorative ct ligature, no Unicode codepoint
+    ST       = "ST"       # U+FB06 in print, "st" in GT
+    LONG_ST  = "LONG_ST"  # ſt, U+FB05 in print, "st" in GT  (renamed from LONG_S_T)
+    LONG_S_S = "LONG_S_S" # ſs, "ss" in GT
+    LONG_S_I = "LONG_S_I" # ſi, "si" in GT  (less common, included for completeness)
+    SP       = "SP"       # decorative sp ligature
+    QU       = "QU"       # decorative Qu ligature
+    OE       = "OE"       # oe ligature  (added in plan #163)
+    AE       = "AE"       # ae ligature  (added in plan #163)
 
     # Reserved namespace — see §2.4 for "how to add a value"
 ```
+
+**Migration note (plan #163):** `from_dict` accepts legacy lowercase values
+(`"fi"`, `"ct"`, `"long_s_t"`, etc.) from pre-#163 snapshots and maps them
+to the new uppercase members. `to_dict` always emits the new UPPERCASE form.
+The migration shim (`_migrate_ligature_kind_value`) will be removed after a
+release cycle once no persisted snapshots with lowercase values remain.
 
 ### 2.2 `LigatureMark`
 
@@ -234,8 +246,8 @@ The pickle / dataclass-`asdict` form mirrors it 1:1.
 {
   "glyph_annotations": {
     "ligatures": [
-      {"kind": "ct", "char_span": [2, 4]},
-      {"kind": "long_s_t", "char_span": [0, 2]}
+      {"kind": "CT", "char_span": [2, 4]},
+      {"kind": "LONG_ST", "char_span": [0, 2]}
     ],
     "long_s_positions": [0],
     "swash": false,
@@ -272,7 +284,7 @@ flat dict. The new key is added at the top level alongside `text`,
   "ocr_confidence": 0.97,
   "text_style_labels": [],
   "glyph_annotations": {
-    "ligatures": [{"kind": "st", "char_span": [0, 2]}],
+    "ligatures": [{"kind": "ST", "char_span": [0, 2]}],
     "long_s_positions": [],
     "swash": false,
     "source": "human"
