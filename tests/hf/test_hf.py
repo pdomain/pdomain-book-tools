@@ -171,10 +171,19 @@ def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
         try_to_load_from_cache=mock.MagicMock(return_value=str(fake_main)),
         _CACHED_NO_EXIST=object(),
     )
+    # Both .errors (hf_hub >= 0.22) and .utils (older fallback) must map
+    # EntryNotFoundError to the test-local sentinel.  If only .utils is
+    # mocked and the real huggingface_hub.errors is already loaded in
+    # sys.modules (common under xdist when another test imported it first),
+    # download.py resolves _HFNotFound to the *real* EntryNotFoundError and
+    # never catches _NotFound — causing the sidecar loop to propagate the
+    # exception instead of swallowing it.
+    fake_errors = mock.MagicMock(EntryNotFoundError=_NotFound)
     with mock.patch.dict(
         "sys.modules",
         {
             "huggingface_hub": fake_hub,
+            "huggingface_hub.errors": fake_errors,
             "huggingface_hub.utils": mock.MagicMock(EntryNotFoundError=_NotFound),
         },
     ):
@@ -210,10 +219,16 @@ def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path):
         try_to_load_from_cache=mock.MagicMock(return_value=str(fake_main)),
         _CACHED_NO_EXIST=object(),
     )
+    # Both .errors (hf_hub >= 0.22) and .utils (older fallback) must map
+    # EntryNotFoundError to the test-local sentinel — see comment in
+    # test_hf_download_attempts_sidecars_and_swallows_missing for full
+    # explanation of the xdist ordering hazard.
+    fake_errors = mock.MagicMock(EntryNotFoundError=_NotFound)
     with mock.patch.dict(
         "sys.modules",
         {
             "huggingface_hub": fake_hub,
+            "huggingface_hub.errors": fake_errors,
             "huggingface_hub.utils": mock.MagicMock(EntryNotFoundError=_NotFound),
         },
     ):
