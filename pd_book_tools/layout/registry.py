@@ -74,6 +74,34 @@ _CONTOUR_DETECTOR_KWARGS = (
 )
 
 
+def _assert_hashable_kwargs(kwargs: dict[str, Any], context: str) -> None:
+    """Raise ``TypeError`` early when any kwarg value is not hashable.
+
+    Without this check, un-hashable values (dicts, lists) reach
+    ``_DETECTOR_CACHE.get(cache_key)`` and raise a confusing
+    ``TypeError: unhashable type: 'dict'`` with no indication of which
+    kwarg is the culprit (#179).
+    """
+    bad = [name for name in kwargs if not _is_hashable(kwargs[name])]
+    if bad:
+        name = bad[0]
+        raise TypeError(
+            f"{context}: kwarg {name!r} has value {kwargs[name]!r} which is not "
+            "hashable. All detector kwargs must be hashable so they can "
+            "participate in the memoisation cache key. Use a tuple instead "
+            "of a list, or a frozenset instead of a set."
+        )
+
+
+def _is_hashable(value: Any) -> bool:
+    """Return True if ``value`` can be used as a dict/set key."""
+    try:
+        hash(value)
+    except TypeError:
+        return False
+    return True
+
+
 def _build(
     key: str,
     device: str,
@@ -155,11 +183,13 @@ def get_detector(
         # key so distinct confidence values don't create distinct cache
         # entries for behaviorally identical instances. The detector's
         # own tunables are what matter, so include them.
+        _assert_hashable_kwargs(detector_kwargs, f"get_detector({key!r})")
         cache_key = (key, device, 0.0, None, *tuple(sorted(detector_kwargs.items())))
     elif key in _USER_DETECTORS:
         # User-registered detectors may take extra kwargs; fold them into
         # the cache key the same way ``contour`` does so distinct tunings
         # memoise to distinct instances.
+        _assert_hashable_kwargs(detector_kwargs, f"get_detector({key!r})")
         cache_key = (
             key,
             device,
