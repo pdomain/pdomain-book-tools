@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, cast
 
+import numpy as np
+
 from ._cupy_compat import cp, require_cupy
 
 if TYPE_CHECKING:
-    import numpy as np
     import numpy.typing as npt
 
     CuPyArray = npt.NDArray[np.generic]
@@ -32,7 +33,7 @@ def _bgr2gray_weights() -> CuPyArray:
         require_cupy()
         _bgr2gray_weights_cache = cast(
             "CuPyArray",
-            cp.array([0.114, 0.587, 0.299], dtype=cp.float32),
+            cp.array([0.114, 0.587, 0.299], dtype=np.float32),
         )
     return _bgr2gray_weights_cache
 
@@ -47,14 +48,14 @@ def bgr_to_gray_gpu(img_cp: CuPyArray) -> CuPyArray:
     """
     require_cupy()
     weights = _bgr2gray_weights()
-    float_img = cast("CuPyArray", img_cp.astype(cp.float32))
+    float_img = cast("CuPyArray", img_cp.astype(np.float32))
     gray = cast(
         "CuPyArray",
         weights[0] * float_img[:, :, 0]
         + weights[1] * float_img[:, :, 1]
         + weights[2] * float_img[:, :, 2],
     )
-    return cast("CuPyArray", gray.clip(0, 255).astype(cp.uint8))
+    return cast("CuPyArray", gray.clip(0, 255).astype(np.uint8))
 
 
 def gray_to_bgr_gpu(img_cp: CuPyArray) -> CuPyArray:

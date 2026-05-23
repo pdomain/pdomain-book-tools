@@ -9,10 +9,11 @@ import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
+import numpy as np
+
 from ._cupy_compat import cp, require_cupy
 
 if TYPE_CHECKING:
-    import numpy as np
     import numpy.typing as npt
 
     CuPyArray = npt.NDArray[np.generic]
@@ -58,7 +59,7 @@ def gaussian_filter_gpu(
     _sigma = (sigma, sigma, 0) if img_cp.ndim == 3 else sigma
 
     result = gaussian_filter_fn(
-        cast("CuPyArray", img_cp.astype(cp.float32)),
+        cast("CuPyArray", img_cp.astype(np.float32)),
         sigma=_sigma,
     )  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
     return cast("CuPyArray", cp.rint(result).clip(0, 255).astype(img_cp.dtype))
@@ -101,7 +102,7 @@ def uniform_filter_gpu(
     _size = (size, size, 1) if img_cp.ndim == 3 else size
 
     result = uniform_filter_fn(
-        cast("CuPyArray", img_cp.astype(cp.float32)),
+        cast("CuPyArray", img_cp.astype(np.float32)),
         size=_size,
     )  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
     return cast("CuPyArray", cp.rint(result).clip(0, 255).astype(img_cp.dtype))
