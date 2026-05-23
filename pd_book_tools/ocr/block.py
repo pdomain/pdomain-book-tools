@@ -1,18 +1,20 @@
 from __future__ import annotations
 
 import itertools
-from collections.abc import Collection
+from collections.abc import Callable, Collection, Mapping
 from enum import Enum
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import numpy as np
 from numpy import ndarray
 from pydantic_core import CoreSchema, core_schema
+from thefuzz.fuzz import (  # pyright: ignore[reportMissingTypeStubs]  # no upstream stubs
+    ratio as _fuzz_ratio_raw,  # pyright: ignore[reportUnknownVariableType]  # no upstream stubs
+)
 
 if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler
-from thefuzz.fuzz import ratio as fuzz_ratio
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.ocr.review import ReviewMetadata
@@ -27,6 +29,10 @@ from pd_book_tools.schemas._helpers import (
 
 # Configure logging
 logger = getLogger(__name__)
+
+Baseline = dict[str, float | str]
+JsonDict = dict[str, object]
+fuzz_ratio = cast("Callable[[str, str], int]", _fuzz_ratio_raw)
 
 
 class BlockChildType(Enum):
@@ -166,10 +172,10 @@ class Block:
         block_position_labels: list[str] | None = None,
         line_role_labels: list[str] | None = None,
         line_position_labels: list[str] | None = None,
-        baseline: dict[str, float | str] | None = None,
+        baseline: Baseline | None = None,
         override_page_sort_order: int | None = None,
         unmatched_ground_truth_words: list[tuple[int, str]] | None = None,
-        additional_block_attributes: dict[str, Any] | None = None,
+        additional_block_attributes: dict[str, object] | None = None,
         base_ground_truth_text: str | None = None,
         review: ReviewMetadata | None = None,
     ) -> None:
@@ -191,8 +197,7 @@ class Block:
             and self.child_type != BlockChildType.WORDS
         ):
             raise ValueError(
-                "Block(block_category=LINE) must have child_type=WORDS; "
-                f"got child_type={self.child_type}"
+                f"Block(block_category=LINE) must have child_type=WORDS; got child_type={self.child_type}"
             )
         self.block_labels: list[str] | None = block_labels
         self.block_role_labels: list[str] = self._normalize_labels(
@@ -219,13 +224,11 @@ class Block:
             {},
             "line position",
         )
-        self.baseline: dict[str, float | str] | None = (
-            baseline.copy() if baseline else None
-        )
+        self.baseline: Baseline | None = baseline.copy() if baseline else None
         self.override_page_sort_order: int | None = override_page_sort_order
         self.base_ground_truth_text: str | None = base_ground_truth_text
         # containers
-        self.additional_block_attributes: dict[str, Any] = (
+        self.additional_block_attributes: dict[str, object] = (
             dict(additional_block_attributes)
             if additional_block_attributes is not None
             else {}
@@ -251,10 +254,10 @@ class Block:
         # when block_category == LINE). See pd_book_tools/ocr/review.py.
         self.review: ReviewMetadata | None = review
 
-    def __repr__(self) -> str:  # pragma: no cover (representation convenience)
+    def __repr__(self) -> str:  # pyright: ignore[reportImplicitOverride]  # pragma: no cover (representation convenience)
         cls = self.__class__.__name__
         n_items = len(getattr(self, "_items", []))
-        _bb = getattr(self, "bounding_box", None)
+        _bb = cast("BoundingBox | None", getattr(self, "bounding_box", None))
         bbox = None if _bb is None else f"{_bb.to_ltrb()}"
         return (
             f"{cls}(items={n_items}, child_type={self.child_type}, "
@@ -370,7 +373,7 @@ class Block:
             return
         self.bounding_box = BoundingBox.union(bboxes)
 
-    def add_item(self, item) -> None:
+    def add_item(self, item: Word | Block) -> None:
         """Add an item to the block."""
         if self.child_type == BlockChildType.WORDS:
             if not isinstance(item, Word):
@@ -378,10 +381,11 @@ class Block:
             # Enforce uniform coordinate system among word bounding boxes
             if self._items:
                 first_bbox = self._items[0].bounding_box
+                item_bbox = cast("BoundingBox | None", item.bounding_box)
                 if (
                     first_bbox is not None
-                    and item.bounding_box is not None
-                    and first_bbox.is_normalized != item.bounding_box.is_normalized
+                    and item_bbox is not None
+                    and first_bbox.is_normalized != item_bbox.is_normalized
                 ):
                     raise ValueError(
                         "All word bounding boxes in a WORDS block must share the same coordinate system (normalized or pixel)."
@@ -392,7 +396,7 @@ class Block:
         self._sort_items()
         self.recompute_bounding_box()
 
-    def remove_item(self, item) -> None:
+    def remove_item(self, item: Word | Block) -> None:
         """Remove an item from the block."""
         if item in self._items:
             self._items.remove(item)
@@ -419,7 +423,7 @@ class Block:
                     item.remove_ground_truth()
         logger.debug("Ground truth text removed from block")
 
-    def remove_line_if_exists(self, line) -> bool:
+    def remove_line_if_exists(self, line: Block) -> bool:
         """Remove a line from the page if it exists."""
         if self.child_type == BlockChildType.WORDS:
             return False
@@ -465,9 +469,10 @@ class Block:
         # Empty words are directly removed with remove_item, do not need to be handled here
 
     @items.setter
-    def items(self, value: Collection[Word | Block]) -> None:
+    def items(self, value: object) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts any collection; getter returns a sorted copy
         if not isinstance(value, Collection):
             raise TypeError("items must be a collection (e.g., list, tuple, set)")
+        typed_items: list[Word | Block] = []
         for item in value:
             # M-16 / H-19: allow items whose ``bounding_box`` is ``None``.
             # ``recompute_bounding_box`` already filters None bboxes
@@ -476,27 +481,26 @@ class Block:
             # word with no ``geometry`` key, or an empty child Block)
             # must not be rejected here — that would force the adapter
             # to silently drop content, violating the project invariant.
-            if not hasattr(item, "bounding_box") or (
-                item.bounding_box is not None
-                and not isinstance(item.bounding_box, BoundingBox)
-            ):
+            if not isinstance(item, (Word, Block)):
+                raise TypeError("Each item in items must be of type Word or Block")
+            raw_bbox = cast("object", item.bounding_box)
+            if raw_bbox is not None and not isinstance(raw_bbox, BoundingBox):
                 raise TypeError(
                     "Each item in items must have a bounding_box attribute of type BoundingBox or None"
                 )
-            if not isinstance(item, (Word, Block)):
-                raise TypeError("Each item in items must be of type Word or Block")
+            typed_items.append(item)
         # Enforce coordinate system uniformity for WORDS blocks
-        if value and self.child_type == BlockChildType.WORDS:
+        if typed_items and self.child_type == BlockChildType.WORDS:
             is_norm_set = {
                 getattr(it.bounding_box, "is_normalized", False)
-                for it in value
+                for it in typed_items
                 if it.bounding_box is not None
             }
             if len(is_norm_set) > 1:
                 raise ValueError(
                     "All word bounding boxes in a WORDS block must share the same coordinate system (normalized or pixel)."
                 )
-        self._items = list(value)
+        self._items = typed_items
         self._sort_items()
         self.recompute_bounding_box()
 
@@ -517,17 +521,16 @@ class Block:
             # Leading / interior empty words are preserved so existing
             # output (where a leading empty word yields a leading-space
             # prefix) round-trips unchanged.
-            items = list(self._items)
+            items = [item for item in self._items if isinstance(item, Word)]
             while items and not (items[-1].text or "").strip():
-                items.pop()
+                _ = items.pop()
             parts: list[str] = []
             for idx, item in enumerate(items):
                 if idx == 0:
                     parts.append(item.text)
                     continue
                 prev = items[idx - 1]
-                prev_components = getattr(prev, "word_components", None) or []
-                sep = "" if "drop cap" in prev_components else " "
+                sep = "" if "drop cap" in prev.word_components else " "
                 parts.append(sep + item.text)
             return "".join(parts)
         if self.block_category == BlockCategory.PARAGRAPH:
@@ -543,8 +546,8 @@ class Block:
         """
         if self.child_type == BlockChildType.WORDS:
             # If the block is a line, use the ground truth text of the words
-            matched_words = []
-            for word in self._items:
+            matched_words: list[str] = []
+            for word in self.words:
                 matched_words.append(word.ground_truth_text or "")
 
             # Also, add unmatched ground truth words to the text
@@ -596,7 +599,7 @@ class Block:
         """Check if the ground truth text of the block matches the text."""
         return all(item.ground_truth_exact_match for item in self._items)
 
-    def validate_line_consistency(self) -> dict[str, Any]:
+    def validate_line_consistency(self) -> dict[str, object]:
         """Validate consistency of OCR vs ground truth for this line.
 
         Returns a dict with word counts, match counts, mismatch details,
@@ -615,7 +618,7 @@ class Block:
         total_words = len(words)
         words_with_gt = 0
         exact_matches = 0
-        mismatches = []
+        mismatches: list[dict[str, object]] = []
 
         for word_idx, word in enumerate(words):
             ocr_text = word.text
@@ -850,7 +853,7 @@ class Block:
             )
             return False
 
-        bbox = word.bounding_box
+        bbox = cast("BoundingBox | None", word.bounding_box)
         bbox_width = float(bbox.width if bbox else 0.0)
         if bbox is None or bbox_width <= 0.0:
             logger.warning(
@@ -902,8 +905,7 @@ class Block:
                 if not self._is_geometry_normalization_error(recompute_error):
                     raise
                 logger.warning(
-                    "Fallback merge skipped bbox recompute due to "
-                    "malformed geometry: %s",
+                    "Fallback merge skipped bbox recompute due to malformed geometry: %s",
                     recompute_error,
                 )
 
@@ -1024,7 +1026,7 @@ class Block:
             baseline=self.baseline,
         )
 
-    def fuzz_score_against(self, ground_truth_text):
+    def fuzz_score_against(self, ground_truth_text: str) -> int:
         """Scores a string as "matching" against a ground truth string.
 
         TODO: Perhaps add loose scoring for curly quotes against straight quotes, and em-dashes against hyphens to count these as "closer" to gt
@@ -1034,9 +1036,9 @@ class Block:
         """
         return fuzz_ratio(self.text, ground_truth_text)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonDict:
         """Convert to JSON-serializable dictionary."""
-        d: dict[str, Any] = {
+        d: JsonDict = {
             "type": "Block",
             "child_type": self.child_type.value if self.child_type else None,
             "block_category": self.block_category.value
@@ -1060,7 +1062,7 @@ class Block:
         return d
 
     @classmethod
-    def from_dict(cls, data) -> Block:
+    def from_dict(cls, data: Mapping[str, object]) -> Block:
         """Create OCRBlock from dictionary."""
         child_type_raw = data.get("child_type")
         if isinstance(child_type_raw, BlockChildType):
@@ -1070,15 +1072,19 @@ class Block:
         else:
             child_type = BlockChildType.WORDS
 
-        raw_items = data["items"]
+        raw_items = cast("list[object]", data["items"])
         if child_type == BlockChildType.WORDS:
             items = [
-                item if isinstance(item, Word) else Word.from_dict(item)
+                item
+                if isinstance(item, Word)
+                else Word.from_dict(cast("Mapping[str, object]", item))
                 for item in raw_items
             ]
         else:
             items = [
-                item if isinstance(item, Block) else Block.from_dict(item)
+                item
+                if isinstance(item, Block)
+                else Block.from_dict(cast("Mapping[str, object]", item))
                 for item in raw_items
             ]
 
@@ -1087,14 +1093,20 @@ class Block:
             review_raw
             if isinstance(review_raw, ReviewMetadata)
             else (
-                ReviewMetadata.from_dict(review_raw) if review_raw is not None else None
+                ReviewMetadata.from_dict(cast("dict[str, object]", review_raw))
+                if review_raw is not None
+                else None
             )
         )
         bb_raw = data.get("bounding_box")
         bounding_box = (
             bb_raw
             if isinstance(bb_raw, BoundingBox)
-            else (BoundingBox.from_dict(bb_raw) if bb_raw else None)
+            else (
+                BoundingBox.from_dict(cast("dict[str, object]", bb_raw))  # pyright: ignore[reportArgumentType]  # accepts serialized bbox dict shape
+                if bb_raw
+                else None
+            )
         )
         block_cat_raw = data.get("block_category")
         block_category = (
@@ -1109,16 +1121,32 @@ class Block:
             bounding_box=bounding_box,
             child_type=child_type,
             block_category=block_category,
-            block_labels=data.get("block_labels", []),
-            block_role_labels=data.get("block_role_labels", []),
-            block_position_labels=data.get("block_position_labels", []),
-            line_role_labels=data.get("line_role_labels", []),
-            line_position_labels=data.get("line_position_labels", []),
-            baseline=data.get("baseline"),
-            override_page_sort_order=data.get("override_page_sort_order", None),
-            unmatched_ground_truth_words=data.get("unmatched_ground_truth_words", []),
-            additional_block_attributes=data.get("additional_block_attributes", {}),
-            base_ground_truth_text=data.get("base_ground_truth_text", None),
+            block_labels=cast("list[str] | None", data.get("block_labels", [])),
+            block_role_labels=cast(
+                "list[str] | None", data.get("block_role_labels", [])
+            ),
+            block_position_labels=cast(
+                "list[str] | None", data.get("block_position_labels", [])
+            ),
+            line_role_labels=cast("list[str] | None", data.get("line_role_labels", [])),
+            line_position_labels=cast(
+                "list[str] | None", data.get("line_position_labels", [])
+            ),
+            baseline=cast("Baseline | None", data.get("baseline")),
+            override_page_sort_order=cast(
+                "int | None", data.get("override_page_sort_order", None)
+            ),
+            unmatched_ground_truth_words=cast(
+                "list[tuple[int, str]] | None",
+                data.get("unmatched_ground_truth_words", []),
+            ),
+            additional_block_attributes=cast(
+                "dict[str, object] | None",
+                data.get("additional_block_attributes", {}),
+            ),
+            base_ground_truth_text=cast(
+                "str | None", data.get("base_ground_truth_text", None)
+            ),
             review=review,
         )
 
@@ -1150,7 +1178,7 @@ class Block:
             chars = item.split_into_characters_from_whitespace(image)
             if not chars:
                 continue
-            item.estimate_baseline_from_image(image)
+            _ = item.estimate_baseline_from_image(image)
             for ch in chars:
                 x_points.append(
                     float((ch.bounding_box.minX + ch.bounding_box.maxX) / 2)
@@ -1166,12 +1194,16 @@ class Block:
         y_arr = np.array(y_points, dtype=float)
         w_arr = np.array(weights, dtype=float)
 
-        slope, intercept = np.polyfit(x_arr, y_arr, deg=1, w=w_arr)
+        polyfit_values = cast("ndarray", np.polyfit(x_arr, y_arr, deg=1, w=w_arr))
+        slope = float(cast("float", polyfit_values[0]))
+        intercept = float(cast("float", polyfit_values[1]))
         predicted = slope * x_arr + intercept
         residual = y_arr - predicted
-        weighted_var = float(np.average(residual * residual, weights=w_arr))
-        weighted_std = float(np.sqrt(weighted_var))
-        y_span = float(max(1.0, np.max(y_arr) - np.min(y_arr)))
+        weighted_var = float(
+            cast("float", np.average(residual * residual, weights=w_arr))
+        )
+        weighted_std = float(cast("float", np.sqrt(weighted_var)))
+        y_span = float(max(1.0, max(y_points) - min(y_points)))
         confidence = max(0.0, 1.0 - (weighted_std / y_span))
 
         self.baseline = {
@@ -1201,7 +1233,7 @@ class Block:
                     # ``refine_bounding_box`` shim still works for any
                     # external callers but inside the library we use the
                     # surviving contract directly.
-                    item.refine_bbox(image, padding_px=padding_px)
+                    _ = item.refine_bbox(image, padding_px=padding_px)
         else:
             logger.debug(
                 "Refining bounding boxes for %s blocks in block", len(self._items)
@@ -1214,7 +1246,7 @@ class Block:
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        source_type: Any,
+        source_type: object,
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         bb_schema = handler.generate_schema(BoundingBox)
@@ -1347,22 +1379,23 @@ def purge_words_from_blocks(blocks: list[Block], targets: set[int]) -> None:
     """
     for block in blocks:
         if block.child_type == BlockChildType.WORDS:
-            kept = [w for w in block._items if id(w) not in targets]
-            if len(kept) != len(block._items):
-                block._items = kept
+            kept = [w for w in block._items if id(w) not in targets]  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
+            if len(kept) != len(block._items):  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
+                block._items = kept  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
                 if kept:
                     block.recompute_bounding_box()
                 else:
                     block.bounding_box = None
         else:
             purge_words_from_blocks(
-                [item for item in block._items if isinstance(item, Block)], targets
+                [item for item in block._items if isinstance(item, Block)],
+                targets,  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
             )
             # Drop child blocks left empty by the recursive purge — their
             # bounding boxes were cleared to None and would poison the
             # parent's recompute.
-            block._items = [b for b in block._items if not b.is_empty]
-            if block._items:
+            block._items = [b for b in block._items if not b.is_empty]  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
+            if block._items:  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
                 block.recompute_bounding_box()
             else:
                 block.bounding_box = None
