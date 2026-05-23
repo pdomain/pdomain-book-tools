@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import functools
+import sys
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, TypedDict, TypeVar, override
+from typing import TYPE_CHECKING, TypedDict, TypeVar
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override  # pyright: ignore[reportUnreachable]
 
 from pydantic_core import CoreSchema, core_schema
 from shapely.geometry import (

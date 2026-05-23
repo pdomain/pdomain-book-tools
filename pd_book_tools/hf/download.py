@@ -18,8 +18,13 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import sys
 from pathlib import Path, PurePosixPath
-from typing import override
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override  # pyright: ignore[reportUnreachable]
 
 logger = logging.getLogger(__name__)
 
