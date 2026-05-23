@@ -2,7 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-21
-> **Split from**: [06-word-reference-lines.md](06-word-reference-lines.md)
+> **Split from**: [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md)
 
 Audit of existing baseline-estimation code in `pd-book-tools` and gap
 analysis of the four reference lines (top, x-height, baseline, bottom).
@@ -260,6 +260,6 @@ for the full open-questions list (Q-RL-1 through Q-RL-10).
 
 - [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md) — API design, heuristics, parameters
 - [06c-word-reference-lines-testing.md](06c-word-reference-lines-testing.md) — Testing, open questions, decisions
-- [06-word-reference-lines.md](06-word-reference-lines.md) — Parent forwarding stub
+- [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md) — Parent forwarding stub (archived)
 - `pd_book_tools/ocr/word.py` — `estimate_baseline_from_image`, `split_into_characters_from_whitespace`
 - `pd_book_tools/ocr/block.py` — `Block.estimate_baseline_from_image`

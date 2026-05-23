@@ -22,7 +22,7 @@ This spec relates to:
   types that this spec builds on.
 - `Spec: 06b-word-reference-lines-api` — baseline / x-height geometry used
   to classify diacritic blobs vs. base-letter blobs (see also the
-  parent index at `Spec: 06-word-reference-lines`).
+  parent index at `Spec: 06-word-reference-lines` (archived)).
 
 ---
 
