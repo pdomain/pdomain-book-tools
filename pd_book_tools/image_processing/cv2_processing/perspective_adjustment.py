@@ -1,19 +1,25 @@
 # Configure logging
 import logging
 import math
+from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 
 from .edge_finding import find_edges
 from .rotate import rotate_image
 
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
 
-def auto_deskew(img, pct=0.30):
+
+def auto_deskew(
+    img: ImageArray, pct: float = 0.30
+) -> tuple[ImageArray, ImageArray, ImageArray]:
     logger.debug("auto deskewing")
 
-    _img_h, img_w = img.shape[:2]
+    _img_h, img_w = cast("tuple[int, int]", img.shape[:2])
 
     _minX, _maxX, minY, maxY = find_edges(
         img=img,
@@ -34,46 +40,46 @@ def auto_deskew(img, pct=0.30):
         # (image, top_slice, bottom_slice). Empty placeholders match cupy's
         # cp.empty((0, 0), dtype=img_cp.dtype) on the same early-exit path,
         # so callers do not need isinstance(out, tuple) backend dispatch.
-        empty = np.empty((0, 0), dtype=img.dtype)
+        empty = cast("ImageArray", np.empty((0, 0), dtype=img.dtype))
         return img, empty, empty
 
     # Find Top Left first Column pixel, starting at top row and going down by 10%
-    X1 = 0
-    X2 = img_w - 1
+    x1 = 0
+    x2 = img_w - 1
     # Use minY (detected content top edge) rather than 0; otherwise stray
     # noise pixels above the text block corrupt the column-sum scan and
     # bias the detected skew angle. Mirrors the cupy backend.
-    Y1 = minY
-    Y2 = min(maxY, (minY + h_percent))
-    top_of_img: np.ndarray = img[Y1:Y2, X1:X2]
-    logger.debug(f"Top of Img: {X1}:{X2},{Y1}:{Y2}")
-    columns: np.ndarray = np.sum(top_of_img, axis=0)
+    y1 = minY
+    y2 = min(maxY, minY + h_percent)
+    top_of_img: ImageArray = img[y1:y2, x1:x2]
+    logger.debug(f"Top of Img: {x1}:{x2},{y1}:{y2}")
+    columns = cast("npt.NDArray[np.int64]", np.sum(top_of_img, axis=0, dtype=np.int64))
 
-    top_left_column = 0
-    for idx, _ in enumerate(columns):
-        sum = np.sum(columns[idx])
-        if sum > 0:
-            top_left_column = idx
-            break
+    positive_top_columns = np.flatnonzero(columns > 0)
+    top_left_column = (
+        cast("int", positive_top_columns[0]) if positive_top_columns.size > 0 else 0
+    )
 
     logger.debug(f"Top Left Col = {top_left_column}")
 
     # Find Bottom Left first Column pixel, starting at bottom row and going up by 10%
-    X1 = 0  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
-    X2 = img_w - 1  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
-    Y1 = min(maxY, (maxY - h_percent))  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
-    Y2 = maxY  # pyright: ignore[reportConstantRedefinition]  # local coordinate variable; ALL_CAPS is historical
-    bottom_of_img: np.ndarray = img[Y1:Y2, X1:X2]
-    logger.debug(f"Bottom of Img: {X1}:{X2},{Y1}:{Y2}")
+    x1 = 0
+    x2 = img_w - 1
+    y1 = min(maxY, maxY - h_percent)
+    y2 = maxY
+    bottom_of_img: ImageArray = img[y1:y2, x1:x2]
+    logger.debug(f"Bottom of Img: {x1}:{x2},{y1}:{y2}")
 
-    columns2: np.ndarray = np.sum(bottom_of_img, axis=0)
+    columns2 = cast(
+        "npt.NDArray[np.int64]", np.sum(bottom_of_img, axis=0, dtype=np.int64)
+    )
 
-    bottom_left_column = 0
-    for idx2, _ in enumerate(columns2):
-        sum = np.sum(columns2[idx2])
-        if sum > 0:
-            bottom_left_column = idx2
-            break
+    positive_bottom_columns = np.flatnonzero(columns2 > 0)
+    bottom_left_column = (
+        cast("int", positive_bottom_columns[0])
+        if positive_bottom_columns.size > 0
+        else 0
+    )
 
     logger.debug(f"Bottom Left Col = {bottom_left_column}")
 

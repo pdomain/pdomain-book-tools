@@ -1,17 +1,21 @@
 # Configure logging
 import logging
+from typing import cast
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
 
-def morph_fill(img: np.ndarray, shape: tuple[int, int] = (6, 6)) -> np.ndarray:
+
+def morph_fill(img: ImageArray, shape: tuple[int, int] = (6, 6)) -> ImageArray:
     """
     Apply close and open morphology to fill
     small holes and save as mask.
     """
     kernel = np.ones(shape, np.uint8)
-    closed: np.ndarray = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)  # pyright: ignore[reportAssignmentType]  # cv2.morphologyEx returns MatLike; ndarray annotation is safe
-    return cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel)  # pyright: ignore[reportReturnType]  # MatLike is ndarray-compatible at runtime
+    closed = cast("ImageArray", cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel))
+    return cast("ImageArray", cv2.morphologyEx(closed, cv2.MORPH_OPEN, kernel))

@@ -1,16 +1,20 @@
 # Configure logging
 import logging
+from typing import cast
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
+
 
 def rescale_image(
-    img: np.ndarray,
+    img: ImageArray,
     target_short_side: int = 1000,
-):
+) -> ImageArray:
     """Resize ``img`` so its short side equals ``target_short_side``.
 
     The original aspect ratio is always preserved. Width and height scale
@@ -21,7 +25,7 @@ def rescale_image(
     downstream by ``map_content_onto_scaled_canvas`` in pd-prep-for-pgdp,
     not at rescale time.
     """
-    height, width = img.shape[:2]
+    height, width = cast("tuple[int, int]", img.shape[:2])
 
     logger.debug(f"height: {height} width: {width}")
 
@@ -41,4 +45,7 @@ def rescale_image(
         else (new_long_side, new_short_side)
     )
 
-    return cv2.resize(src=img, dsize=new_size, interpolation=cv2.INTER_AREA)
+    return cast(
+        "ImageArray",
+        cv2.resize(src=img, dsize=new_size, interpolation=cv2.INTER_AREA),
+    )

@@ -2,15 +2,22 @@ from __future__ import annotations
 
 # Configure logging
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 import cv2
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
+Contour = npt.NDArray[np.int32]
 
-def find_and_draw_contours(img: np.ndarray) -> tuple[np.ndarray, tuple[Any, ...]]:
+
+def find_and_draw_contours(img: ImageArray) -> tuple[ImageArray, tuple[Contour, ...]]:
     """Find external contours in a grayscale image and draw bounding rectangles.
 
     Always returns a 3-channel BGR visualization image regardless of whether
@@ -18,21 +25,26 @@ def find_and_draw_contours(img: np.ndarray) -> tuple[np.ndarray, tuple[Any, ...]
     output shape. When no contours are found, the input is converted to BGR
     and returned unmodified (no rectangles drawn).
     """
-    contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    raw_contours, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = cast("tuple[Contour, ...]", tuple(raw_contours))
     # Always promote to 3-channel BGR so the return type is consistent.
-    out = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) if img.ndim == 2 else img.copy()
+    out = (
+        cast("ImageArray", cv2.cvtColor(img, cv2.COLOR_GRAY2BGR))
+        if img.ndim == 2
+        else img.copy()
+    )
     # TODO: Optimize the rectangle drawing by using Numpy
     if contours:
         for c in contours:
             x, y, w, h = cv2.boundingRect(c)
-            cv2.rectangle(out, (x, y), (x + w, y + h), (125, 255, 0), 4)
+            _ = cv2.rectangle(out, (x, y), (x + w, y + h), (125, 255, 0), 4)
 
-    return out, contours  # pyright: ignore[reportReturnType]  # cv2.findContours returns Sequence[MatLike]; tuple[Any,...] return type is intentional for API compatibility
+    return out, contours
 
 
 def remove_small_contours(
-    img: np.ndarray,
-    contours,
+    img: ImageArray,
+    contours: Sequence[Contour],
     min_w_pct: float = 0.04,
     min_w_pixels: int = 5,
     min_h_pct: float = 0.03,
@@ -40,7 +52,7 @@ def remove_small_contours(
     small_contour_w: int = 10,
     small_contour_h: int = 10,
     nearby_pixel_count: int = 10,
-):
+) -> tuple[ImageArray, ImageArray]:
     """
     Remove small or isolated contours from a grayscale image.
 
@@ -76,12 +88,12 @@ def remove_small_contours(
     # visualization is a separately-allocated BGR image and was already
     # non-mutating; only the grayscale `img` needed the copy.
     work = img.copy()
-    contour_search_img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    contour_search_img = cast("ImageArray", cv2.cvtColor(img, cv2.COLOR_GRAY2BGR))
 
     if not contours:
         return work, contour_search_img
 
-    img_h, img_w = work.shape[:2]
+    img_h, img_w = cast("tuple[int, int]", work.shape[:2])
     pixels_w = max(int(img_w * min_w_pct), min_w_pixels)
     pixels_h = max(int(img_h * min_h_pct), min_h_pixels)
     threshold_sum = 255 * nearby_pixel_count  # constant threshold for nearby pixels
@@ -90,7 +102,7 @@ def remove_small_contours(
         x, y, w, h = cv2.boundingRect(c)
         # Grab the region corresponding to the contour.
         contour_region = work[y : y + h, x : x + w]
-        contour_sum = np.sum(contour_region)
+        contour_sum = int(np.sum(contour_region, dtype=np.int64))
         # Skip if the contour area is already zeroed out.
         if contour_sum == 0:
             continue
@@ -110,16 +122,16 @@ def remove_small_contours(
 
             search_region = work[minY:maxY, minX:maxX]
             # Calculate what the sum would be if the contour were removed.
-            search_sum = np.sum(search_region) - contour_sum
+            search_sum = int(np.sum(search_region, dtype=np.int64)) - contour_sum
 
             if search_sum < threshold_sum:
                 # Remove the contour (set the region to zeros) if not enough nearby pixels.
                 work[y : y + h, x : x + w] = 0
-                cv2.rectangle(
+                _ = cv2.rectangle(
                     contour_search_img, (minX, minY), (maxX, maxY), (0, 255, 0), 1
                 )
             else:
-                cv2.rectangle(
+                _ = cv2.rectangle(
                     contour_search_img, (minX, minY), (maxX, maxY), (0, 0, 255), 1
                 )
 

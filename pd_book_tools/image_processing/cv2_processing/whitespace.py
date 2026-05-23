@@ -1,20 +1,24 @@
 # Configure logging
 import logging
+from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
+
 
 def add_whitespace_percentage(
-    img: np.ndarray,
+    img: ImageArray,
     left_pct: float = 0,
     right_pct: float = 0,
     top_pct: float = 0,
     bottom_pct: float = 0,
-) -> np.ndarray:
+) -> ImageArray:
     """Adds white space as a percentage of the image dimensions."""
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
     left_px = int(w * left_pct)
     right_px = int(w * right_pct)
     top_px = int(h * top_pct)
@@ -24,10 +28,10 @@ def add_whitespace_percentage(
 
 
 def add_whitespace_pixels(
-    img: np.ndarray, left_px: int, right_px: int, top_px: int, bottom_px: int
-) -> np.ndarray:
+    img: ImageArray, left_px: int, right_px: int, top_px: int, bottom_px: int
+) -> ImageArray:
     """Core function that handles the whitespace padding."""
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
     new_h, new_w = h + top_px + bottom_px, w + left_px + right_px
 
     if len(img.shape) == 2:
