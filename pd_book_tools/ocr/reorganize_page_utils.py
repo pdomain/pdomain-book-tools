@@ -17,7 +17,7 @@ import os
 import pathlib
 from dataclasses import dataclass
 from logging import getLogger
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast
 
 import numpy as np
 from cv2 import (
@@ -29,6 +29,7 @@ from cv2 import rectangle as cv2_rectangle
 from numpy import mean as np_mean
 from numpy import median as np_median
 from numpy import std as np_std
+from numpy.typing import NDArray
 
 from pd_book_tools.ocr.block import (
     Block,
@@ -36,11 +37,75 @@ from pd_book_tools.ocr.block import (
     BlockChildType,
     purge_words_from_blocks,
 )
+from pd_book_tools.ocr.word import Word
 
 if TYPE_CHECKING:
-    from pd_book_tools.ocr.word import Word
+    from pd_book_tools.ocr.page import Page
 
 logger = getLogger(__name__)
+
+FloatArray: TypeAlias = NDArray[np.float64]
+BoolArray: TypeAlias = NDArray[np.bool_]
+ImageArray: TypeAlias = NDArray[np.uint8]
+DebugSection: TypeAlias = tuple[str, list[str]]
+StepHKind: TypeAlias = Literal[
+    "single",
+    "two_column",
+    "mixed_column",
+    "floated_flow",
+    "multi_column",
+]
+ColumnSplit: TypeAlias = tuple[list[Block], list[Block]]
+MixedColumnSplit: TypeAlias = tuple[list[Block], list[Block], list[Block]]
+MultiColumnSplit: TypeAlias = tuple[list[list[Block]], list[Block]]
+FloatedFlowSplit: TypeAlias = tuple[
+    list[Block],
+    list[Block],
+    list[Block],
+    list[Block],
+    list[Block],
+]
+HeaderFooterStepResult: TypeAlias = tuple[
+    list[Block], list[Block], list[Block], list[Word], Block | None, Block | None
+]
+
+
+class _StepHDecisionBase(TypedDict):
+    """Required debug payload for Step H column/floated-flow decisions."""
+
+    row_idx: int
+    kind: StepHKind
+    left: list[Block]
+    right: list[Block]
+    spanning: list[Block]
+
+
+class StepHDecision(_StepHDecisionBase, total=False):
+    """Debug payload for Step H column/floated-flow decisions."""
+
+    extra_columns: list[list[Block]]
+
+
+class _BBoxLike(Protocol):
+    """Minimal bbox protocol needed to project debug rectangles."""
+
+    @property
+    def minX(self) -> float: ...  # noqa: N802
+
+    @property
+    def minY(self) -> float: ...  # noqa: N802
+
+    @property
+    def maxX(self) -> float: ...  # noqa: N802
+
+    @property
+    def maxY(self) -> float: ...  # noqa: N802
+
+    @property
+    def width(self) -> float: ...
+
+    @property
+    def height(self) -> float: ...
 
 
 @dataclass(frozen=True)
@@ -80,7 +145,7 @@ def _coord_dims_from_words(
     return coord_w, coord_h
 
 
-def compute_page_metrics(page) -> PageMetrics:
+def compute_page_metrics(page: Page) -> PageMetrics:
     """Compute robust per-page geometric statistics."""
     words = [w for w in page.words if w.bounding_box]
     page_w, page_h = page.resolved_dimensions
@@ -102,7 +167,7 @@ def compute_page_metrics(page) -> PageMetrics:
     median_word_w = float(np_median([w.bounding_box.width for w in words]))
     lines = [l for l in page.lines if l.bounding_box]
     median_line_h = float(
-        np_median([l.bounding_box.height for l in lines] or [median_word_h])
+        np_median([_required_bbox(l).height for l in lines] or [median_word_h])
     )
 
     top_word_min_y = min(w.bounding_box.minY for w in words)
@@ -173,7 +238,7 @@ def _is_weak_noise_line(
     if protect_drop_caps and len(words) == 1:
         only_text = (words[0].text or "").strip()
         if len(only_text) <= 2 and any(c.isalpha() for c in only_text):
-            bb = words[0].bounding_box
+            bb = cast("_BBoxInput | None", words[0].bounding_box)
             if (
                 bb is not None
                 and metrics.median_word_h > 0
@@ -254,7 +319,7 @@ def _line_is_pure_punctuation(line: Block) -> bool:
     return not any(c.isalnum() for c in text)
 
 
-def drop_heuristic_figure_noise(page) -> int:
+def drop_heuristic_figure_noise(page: Page) -> int:
     """Drop OCR lines that look like figure-internal noise \u2014 pure heuristic.  # EM DASH.
 
     Pure-text/geometry fallback for pages reorganized without a layout
@@ -300,7 +365,7 @@ def drop_heuristic_figure_noise(page) -> int:
     ]
     if not all_lines:
         return 0
-    all_lines.sort(key=lambda l: (l.bounding_box.minY, l.bounding_box.minX))
+    all_lines.sort(key=_yx_sort_key)
     # Use the looser (drop-cap-protection-off) classification for
     # plate-shape detection: a body page with a drop cap still has many
     # other strong body lines so the strong-line count exceeds the plate
@@ -326,12 +391,12 @@ def drop_heuristic_figure_noise(page) -> int:
     plate_like = len(strong_lines) <= 5
     group_gap = 8.0 * metrics.median_word_h
     if plate_like:
-        strong_sorted = sorted(strong_lines, key=lambda l: l.bounding_box.minY)
+        strong_sorted = sorted(strong_lines, key=_yx_sort_key)
         n_groups = 1
         for i in range(1, len(strong_sorted)):
             if (
-                strong_sorted[i].bounding_box.minY
-                - strong_sorted[i - 1].bounding_box.maxY
+                _required_bbox(strong_sorted[i]).minY
+                - _required_bbox(strong_sorted[i - 1]).maxY
             ) > group_gap:
                 n_groups += 1
                 if n_groups > 2:
@@ -368,8 +433,8 @@ def drop_heuristic_figure_noise(page) -> int:
         if not cur:
             cur = [i]
             continue
-        prev_max_y = all_lines[cur[-1]].bounding_box.maxY
-        if line.bounding_box.minY - prev_max_y <= cluster_gap:
+        prev_max_y = _required_bbox(all_lines[cur[-1]]).maxY
+        if _required_bbox(line).minY - prev_max_y <= cluster_gap:
             cur.append(i)
         else:
             clusters.append(cur)
@@ -379,17 +444,21 @@ def drop_heuristic_figure_noise(page) -> int:
 
     targets: set[int] = set()
     for cluster in clusters:
-        cluster_y_min = min(all_lines[i].bounding_box.minY for i in cluster)
-        cluster_y_max = max(all_lines[i].bounding_box.maxY for i in cluster)
-        strong_above = [l for l in strong_lines if l.bounding_box.maxY <= cluster_y_min]
-        strong_below = [l for l in strong_lines if l.bounding_box.minY >= cluster_y_max]
+        cluster_y_min = min(_required_bbox(all_lines[i]).minY for i in cluster)
+        cluster_y_max = max(_required_bbox(all_lines[i]).maxY for i in cluster)
+        strong_above = [
+            l for l in strong_lines if _required_bbox(l).maxY <= cluster_y_min
+        ]
+        strong_below = [
+            l for l in strong_lines if _required_bbox(l).minY >= cluster_y_max
+        ]
         up_gap = (
-            cluster_y_min - max(l.bounding_box.maxY for l in strong_above)
+            cluster_y_min - max(_required_bbox(l).maxY for l in strong_above)
             if strong_above
             else float("inf")
         )
         down_gap = (
-            min(l.bounding_box.minY for l in strong_below) - cluster_y_max
+            min(_required_bbox(l).minY for l in strong_below) - cluster_y_max
             if strong_below
             else float("inf")
         )
@@ -423,7 +492,7 @@ def drop_heuristic_figure_noise(page) -> int:
 
     if not targets:
         return 0
-    _purge_words_from_blocks(list(page._items), targets)
+    _purge_words_from_blocks(list(page._items), targets)  # pyright: ignore[reportPrivateUsage]  # purge must operate on the live top-level block list
     page.remove_empty_items()
     page.recompute_bounding_box()
     logger.debug("drop_heuristic_figure_noise: removed %d words", len(targets))
@@ -616,10 +685,10 @@ _SPECIAL_BLOCK_LABELS = {
 
 
 def emit_step_h_debug(
-    page,
-    debug_sections: list[tuple[Any, ...]],
+    page: Page,
+    debug_sections: list[DebugSection],
     debug_squeezed_lines: list[str],
-    step_h_decisions: list[dict[str, Any]],
+    step_h_decisions: list[StepHDecision],
 ) -> None:
     """Append the Step H summary section (and its overlay PNG) to debug_sections."""
     if not layout_debug_enabled():
@@ -637,9 +706,9 @@ def emit_step_h_debug(
     for entry in step_h_decisions:
         step_h_summary.append(
             f"  RB{entry['row_idx']:02d}: kind={entry['kind']} "
-            f"left={len(entry.get('left', []))} "
-            f"right={len(entry.get('right', []))} "
-            f"spanning={len(entry.get('spanning', []))}"
+            + f"left={len(entry['left'])} "
+            + f"right={len(entry['right'])} "
+            + f"spanning={len(entry['spanning'])}"
         )
     png_h = write_step_h_debug_overlay_png(page, step_h_decisions)
     if png_h is not None:
@@ -648,8 +717,8 @@ def emit_step_h_debug(
 
 
 def emit_step_k_debug(
-    page,
-    debug_sections: list[tuple[Any, ...]],
+    page: Page,
+    debug_sections: list[DebugSection],
     final_blocks: list[Block],
 ) -> None:
     """Append the Step K (paragraph splits) overlay to debug_sections."""
@@ -667,8 +736,8 @@ def emit_step_k_debug(
 
 
 def emit_step_l_debug(
-    page,
-    debug_sections: list[tuple[Any, ...]],
+    page: Page,
+    debug_sections: list[DebugSection],
     final_blocks: list[Block],
 ) -> None:
     """Append the Step L summary section (and its overlay PNG) to debug_sections."""
@@ -801,10 +870,10 @@ class ReorganizeDroppedWordsError(RuntimeError):
     def __init__(self, dropped: list[Word], errors: list[str]) -> None:
         super().__init__(
             f"reorganize_page dropped {len(dropped)} word(s); "
-            f"first: {errors[0] if errors else '(none)'}"
+            + f"first: {errors[0] if errors else '(none)'}"
         )
-        self.dropped = dropped
-        self.errors = errors
+        self.dropped: list[Word] = dropped
+        self.errors: list[str] = errors
 
 
 def build_recovered_words_block(dropped: list[Word]) -> Block | None:
@@ -849,7 +918,7 @@ def _format_big_warning(banner: str, lines: list[str]) -> str:
 
 
 def reconcile_dropped_words(
-    page,
+    page: Page,
     pre_words: list[Word],
     final_blocks: list[Block],
 ) -> list[Block]:
@@ -905,14 +974,14 @@ def reconcile_dropped_words(
         getattr(page, "name", None) or f"page-{getattr(page, 'page_index', 0) + 1}"
     )
     banner = f"WARNING: reorganize dropped {len(dropped)} word(s) on {page_label}; recovering."
-    sys.stderr.write(
+    _ = sys.stderr.write(
         _format_big_warning(
             banner,
             errors[:20]
             + ([f"... ({len(errors) - 20} more)"] if len(errors) > 20 else []),
         )
     )
-    sys.stderr.flush()
+    _ = sys.stderr.flush()
 
     recovered = build_recovered_words_block(dropped)
     if recovered is None:
@@ -951,8 +1020,8 @@ def stitch_drop_caps(blocks: list[Block], metrics: PageMetrics) -> list[Block]:
 
 
 def emit_step_dropcap_debug(
-    page,
-    debug_sections: list[tuple[Any, ...]],
+    _page: Page,
+    debug_sections: list[DebugSection],
     final_blocks: list[Block],
 ) -> None:
     """Append a Step DC summary listing every word now tagged ``drop cap``."""
@@ -970,14 +1039,14 @@ def emit_step_dropcap_debug(
                 for w in line.words:
                     if "drop cap" in (w.word_components or []):
                         found += 1
-                        bb = w.bounding_box
+                        bb = cast("_BBoxInput | None", w.bounding_box)
                         if bb is None:
                             continue
                         summary.append(
                             f"  drop cap word={w.text!r} "
-                            f"bb=({bb.minX:.4f},{bb.minY:.4f})-"
-                            f"({bb.maxX:.4f},{bb.maxY:.4f}) "
-                            f"h={bb.height:.4f}"
+                            + f"bb=({bb.minX:.4f},{bb.minY:.4f})-"
+                            + f"({bb.maxX:.4f},{bb.maxY:.4f}) "
+                            + f"h={bb.height:.4f}"
                         )
     if found == 0:
         summary.append("  (no drop caps detected)")
@@ -1055,7 +1124,36 @@ class _LooseBBox:
         return self.maxY - self.minY
 
 
-def _bbox_to_px_rect(bb, image_w: int, image_h: int):
+_BBoxInput: TypeAlias = _BBoxLike | _LooseBBox
+
+
+def _required_bbox(block: Block) -> _BBoxInput:
+    """Return a block bbox in contexts where callers already filtered None."""
+    return cast("_BBoxInput", block.bounding_box)
+
+
+def _debug_overlay_image(page: Page) -> ImageArray | None:
+    base_image = page.cv2_numpy_page_image
+    if base_image is None:
+        return None
+    return cast("ImageArray", base_image.copy())
+
+
+def _image_hw(image: ImageArray) -> tuple[int, int]:
+    return cast("tuple[int, int]", image.shape[:2])
+
+
+def _float_at(values: FloatArray, index: int) -> float:
+    return float(cast("np.float64", values[index]))
+
+
+def _float_max(values: FloatArray) -> float:
+    return float(cast("np.float64", values.max()))
+
+
+def _bbox_to_px_rect(
+    bb: _BBoxInput | None, image_w: int, image_h: int
+) -> tuple[int, int, int, int] | None:
     """Project a bounding box (normalized or pixel) onto an image grid."""
     if bb is None:
         return None
@@ -1085,7 +1183,7 @@ def _bbox_to_px_rect(bb, image_w: int, image_h: int):
 
 
 def write_step_e_debug_overlay_png(
-    page,
+    page: Page,
     header_lines: list[Block],
     footer_lines: list[Block],
     suffix: str = "stepE",
@@ -1095,12 +1193,10 @@ def write_step_e_debug_overlay_png(
     Header lines are framed in orange; footer lines in purple. Other detected
     lines are framed in light gray so the band selection is visually obvious.
     """
-    base_image = page.cv2_numpy_page_image
-    if base_image is None:
+    overlay = _debug_overlay_image(page)
+    if overlay is None:
         return None
-
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
+    image_h, image_w = _image_hw(overlay)
     header_ids = {id(l) for l in header_lines}
     footer_ids = {id(l) for l in footer_lines}
 
@@ -1118,9 +1214,9 @@ def write_step_e_debug_overlay_png(
         else:
             color = (160, 160, 160)
             label = ""
-        cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
+        _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
         if label:
-            cv2_putText(
+            _ = cv2_putText(
                 overlay,
                 label,
                 (x0 + 4, max(12, y0 - 4)),
@@ -1132,13 +1228,13 @@ def write_step_e_debug_overlay_png(
 
     debug_txt_path = layout_debug_output_path(page)
     png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
+    _ = cv2_imwrite(str(png_path), overlay)
     return png_path
 
 
 def write_step_row_blocks_debug_overlay_png(
-    page,
-    row_blocks_block,
+    page: Page,
+    row_blocks_block: Block | None,
     suffix: str,
 ) -> pathlib.Path | None:
     """Write a debug PNG framing each row block in a distinct color.
@@ -1146,12 +1242,13 @@ def write_step_row_blocks_debug_overlay_png(
     Row blocks are the output of vertical region grouping (Step F). Each
     block gets a unique color and a numeric label showing reading order.
     """
-    base_image = page.cv2_numpy_page_image
-    if base_image is None or row_blocks_block is None:
+    if row_blocks_block is None:
         return None
 
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
+    overlay = _debug_overlay_image(page)
+    if overlay is None:
+        return None
+    image_h, image_w = _image_hw(overlay)
 
     palette = [
         (40, 200, 40),
@@ -1163,13 +1260,15 @@ def write_step_row_blocks_debug_overlay_png(
     ]
 
     for idx, rb in enumerate(row_blocks_block.items, start=1):
+        if not isinstance(rb, Block):
+            continue
         rect = _bbox_to_px_rect(rb.bounding_box, image_w, image_h)
         if rect is None:
             continue
         x0, y0, x1, y1 = rect
         color = palette[(idx - 1) % len(palette)]
-        cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
-        cv2_putText(
+        _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
+        _ = cv2_putText(
             overlay,
             f"RB{idx} ({len(rb.lines)} lines)",
             (x0 + 4, max(14, y0 - 6)),
@@ -1181,12 +1280,12 @@ def write_step_row_blocks_debug_overlay_png(
 
     debug_txt_path = layout_debug_output_path(page)
     png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
+    _ = cv2_imwrite(str(png_path), overlay)
     return png_path
 
 
 def write_step_d_debug_overlay_png(
-    page,
+    page: Page,
     pre_split_paragraphs: list[Block],
     post_split_paragraphs: list[Block],
     suffix: str = "stepD",
@@ -1197,12 +1296,10 @@ def write_step_d_debug_overlay_png(
     that came out of Step D's gap-and-height split are framed in red so the
     newly-introduced boundaries jump out.
     """
-    base_image = page.cv2_numpy_page_image
-    if base_image is None:
+    overlay = _debug_overlay_image(page)
+    if overlay is None:
         return None
-
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
+    image_h, image_w = _image_hw(overlay)
 
     pre_line_ids = {
         id(line)
@@ -1228,7 +1325,7 @@ def write_step_d_debug_overlay_png(
         else:
             color = (40, 40, 220)  # red (BGR)
             thickness = 2
-            cv2_putText(
+            _ = cv2_putText(
                 overlay,
                 "SPLIT",
                 (x0 + 4, max(12, y0 - 4)),
@@ -1237,17 +1334,17 @@ def write_step_d_debug_overlay_png(
                 color,
                 1,
             )
-        cv2_rectangle(overlay, (x0, y0), (x1, y1), color, thickness)
+        _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), color, thickness)
 
     debug_txt_path = layout_debug_output_path(page)
     png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
+    _ = cv2_imwrite(str(png_path), overlay)
     return png_path
 
 
 def write_step_h_debug_overlay_png(
-    page,
-    row_block_decisions: list[dict[str, Any]],
+    page: Page,
+    row_block_decisions: list[StepHDecision],
     suffix: str = "stepH",
 ) -> pathlib.Path | None:
     """Write a debug PNG showing column-split decisions per row block.
@@ -1263,12 +1360,13 @@ def write_step_h_debug_overlay_png(
       * spanning / single column → light gray
       * extra columns (multi-column case) → cycled palette
     """
-    base_image = page.cv2_numpy_page_image
-    if base_image is None or not row_block_decisions:
+    if not row_block_decisions:
         return None
 
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
+    overlay = _debug_overlay_image(page)
+    if overlay is None:
+        return None
+    image_h, image_w = _image_hw(overlay)
 
     palette = [
         (40, 200, 40),
@@ -1280,31 +1378,31 @@ def write_step_h_debug_overlay_png(
     ]
 
     for entry in row_block_decisions:
-        row_idx = entry.get("row_idx", 0)
-        kind = entry.get("kind", "single")
-        left = entry.get("left", [])
-        right = entry.get("right", [])
-        spanning = entry.get("spanning", [])
-        extra_columns = entry.get("extra_columns", [])
+        row_idx = entry["row_idx"]
+        kind = entry["kind"]
+        left = entry["left"]
+        right = entry["right"]
+        spanning = entry["spanning"]
+        extra_columns: list[list[Block]] = entry.get("extra_columns", [])
 
         for line in left:
             rect = _bbox_to_px_rect(line.bounding_box, image_w, image_h)
             if rect is None:
                 continue
             x0, y0, x1, y1 = rect
-            cv2_rectangle(overlay, (x0, y0), (x1, y1), (40, 200, 40), 2)
+            _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), (40, 200, 40), 2)
         for line in right:
             rect = _bbox_to_px_rect(line.bounding_box, image_w, image_h)
             if rect is None:
                 continue
             x0, y0, x1, y1 = rect
-            cv2_rectangle(overlay, (x0, y0), (x1, y1), (220, 120, 40), 2)
+            _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), (220, 120, 40), 2)
         for line in spanning:
             rect = _bbox_to_px_rect(line.bounding_box, image_w, image_h)
             if rect is None:
                 continue
             x0, y0, x1, y1 = rect
-            cv2_rectangle(overlay, (x0, y0), (x1, y1), (160, 160, 160), 1)
+            _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), (160, 160, 160), 1)
         for col_idx, col_lines in enumerate(extra_columns):
             color = palette[(col_idx + 3) % len(palette)]
             for line in col_lines:
@@ -1312,7 +1410,7 @@ def write_step_h_debug_overlay_png(
                 if rect is None:
                     continue
                 x0, y0, x1, y1 = rect
-                cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
+                _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
 
         # Label the row block once at the topmost line.
         all_lines = left + right + spanning
@@ -1321,14 +1419,14 @@ def write_step_h_debug_overlay_png(
         if all_lines:
             top_line = min(
                 (l for l in all_lines if l.bounding_box),
-                key=lambda l: l.bounding_box.minY,
+                key=lambda l: _required_bbox(l).minY,
                 default=None,
             )
             if top_line is not None:
                 rect = _bbox_to_px_rect(top_line.bounding_box, image_w, image_h)
                 if rect is not None:
                     x0, y0, _, _ = rect
-                    cv2_putText(
+                    _ = cv2_putText(
                         overlay,
                         f"RB{row_idx}: {kind}",
                         (x0 + 2, max(14, y0 - 6)),
@@ -1340,7 +1438,7 @@ def write_step_h_debug_overlay_png(
 
     debug_txt_path = layout_debug_output_path(page)
     png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
+    _ = cv2_imwrite(str(png_path), overlay)
     return png_path
 
 
@@ -1356,7 +1454,7 @@ _FINAL_BLOCK_COLOR = {
 
 
 def write_step_k_debug_overlay_png(
-    page,
+    page: Page,
     body_paragraph_blocks: list[Block],
     suffix: str = "stepK",
 ) -> pathlib.Path | None:
@@ -1368,12 +1466,13 @@ def write_step_k_debug_overlay_png(
     Special-role blocks (page header/footer, sidenote, poetry, blockquote)
     are framed in light gray since they are emitted as a single paragraph.
     """
-    base_image = page.cv2_numpy_page_image
-    if base_image is None or not body_paragraph_blocks:
+    if not body_paragraph_blocks:
         return None
 
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
+    overlay = _debug_overlay_image(page)
+    if overlay is None:
+        return None
+    image_h, image_w = _image_hw(overlay)
     palette = [
         (60, 200, 80),
         (220, 120, 40),
@@ -1402,11 +1501,11 @@ def write_step_k_debug_overlay_png(
             else:
                 p_idx += 1
                 color = palette[(p_idx - 1) % len(palette)]
-            cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
+            _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 2)
             label = (
                 f"P{p_idx}" if not is_special else (roles[0] if roles else "special")
             )
-            cv2_putText(
+            _ = cv2_putText(
                 overlay,
                 label,
                 (x0 + 4, max(14, y0 - 6)),
@@ -1418,12 +1517,12 @@ def write_step_k_debug_overlay_png(
 
     debug_txt_path = layout_debug_output_path(page)
     png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
+    _ = cv2_imwrite(str(png_path), overlay)
     return png_path
 
 
 def write_step_l_debug_overlay_png(
-    page,
+    page: Page,
     final_blocks: list[Block],
     suffix: str = "stepL",
 ) -> pathlib.Path | None:
@@ -1433,12 +1532,13 @@ def write_step_l_debug_overlay_png(
     ``B<idx>: <role>`` so the reading order baked into ``page.text`` is
     visually obvious.
     """
-    base_image = page.cv2_numpy_page_image
-    if base_image is None or not final_blocks:
+    if not final_blocks:
         return None
 
-    overlay = base_image.copy()
-    image_h, image_w = overlay.shape[:2]
+    overlay = _debug_overlay_image(page)
+    if overlay is None:
+        return None
+    image_h, image_w = _image_hw(overlay)
 
     for idx, block in enumerate(final_blocks, start=1):
         rect = _bbox_to_px_rect(block.bounding_box, image_w, image_h)
@@ -1448,8 +1548,8 @@ def write_step_l_debug_overlay_png(
         roles = block.block_role_labels or []
         role = roles[0] if roles else "paragraph"
         color = _FINAL_BLOCK_COLOR.get(role, (60, 200, 80))
-        cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 3)
-        cv2_putText(
+        _ = cv2_rectangle(overlay, (x0, y0), (x1, y1), color, 3)
+        _ = cv2_putText(
             overlay,
             f"B{idx}: {role}",
             (x0 + 4, max(16, y0 - 8)),
@@ -1461,7 +1561,7 @@ def write_step_l_debug_overlay_png(
 
     debug_txt_path = layout_debug_output_path(page)
     png_path = debug_txt_path.with_name(debug_txt_path.stem + f".{suffix}.png")
-    cv2_imwrite(str(png_path), overlay)
+    _ = cv2_imwrite(str(png_path), overlay)
     return png_path
 
 
@@ -1479,7 +1579,7 @@ def layout_debug_enabled() -> bool:
     }
 
 
-def layout_debug_output_path(page) -> pathlib.Path:
+def layout_debug_output_path(page: Page) -> pathlib.Path:
     explicit_file = os.environ.get("PD_OCR_LAYOUT_DEBUG_FILE", "").strip()
     if explicit_file:
         out_path = pathlib.Path(explicit_file)
@@ -1531,7 +1631,7 @@ def gaps_are_consistent(gaps: list[float]) -> bool:
 
 
 def write_layout_debug_report(
-    page, step_sections: list[tuple[str, list[str]]]
+    page: Page, step_sections: list[DebugSection]
 ) -> pathlib.Path:
     report_lines: list[str] = []
     report_lines.append(
@@ -1545,13 +1645,13 @@ def write_layout_debug_report(
         report_lines.append("")
 
     out_path = layout_debug_output_path(page)
-    out_path.write_text("\n".join(report_lines).rstrip() + "\n", encoding="utf-8")
-    write_layout_debug_index_html(page, out_path)
+    _ = out_path.write_text("\n".join(report_lines).rstrip() + "\n", encoding="utf-8")
+    _ = write_layout_debug_index_html(page, out_path)
     return out_path
 
 
 def write_layout_debug_index_html(
-    page, debug_txt_path: pathlib.Path
+    page: Page, debug_txt_path: pathlib.Path
 ) -> pathlib.Path | None:
     """Write a small index.html alongside the debug PNGs for quick review.
 
@@ -1589,7 +1689,7 @@ def write_layout_debug_index_html(
         parts.append(f'<img src="{png.name}" alt="{suffix}">')
         parts.append("</div>")
     parts.append("</body></html>")
-    index_path.write_text("\n".join(parts), encoding="utf-8")
+    _ = index_path.write_text("\n".join(parts), encoding="utf-8")
     return index_path
 
 
@@ -1601,7 +1701,13 @@ def interval_gap(min1: float, max1: float, min2: float, max2: float) -> float:
 def _cache_bbox_arrays(
     words: list[Word],
 ) -> tuple[
-    list[Word], np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray
+    list[Word],
+    FloatArray,
+    FloatArray,
+    FloatArray,
+    FloatArray,
+    FloatArray,
+    FloatArray,
 ]:
     """Materialize bbox attributes for ``words`` into NumPy arrays.
 
@@ -1618,18 +1724,18 @@ def _cache_bbox_arrays(
     """
     filtered = [w for w in words if w.bounding_box]
     n = len(filtered)
-    minX = np.empty(n, dtype=np.float64)
-    maxX = np.empty(n, dtype=np.float64)
-    minY = np.empty(n, dtype=np.float64)
-    maxY = np.empty(n, dtype=np.float64)
+    minX: FloatArray = np.empty(n, dtype=np.float64)
+    maxX: FloatArray = np.empty(n, dtype=np.float64)
+    minY: FloatArray = np.empty(n, dtype=np.float64)
+    maxY: FloatArray = np.empty(n, dtype=np.float64)
     for i, w in enumerate(filtered):
         bb = w.bounding_box
         minX[i] = bb.minX
         maxX[i] = bb.maxX
         minY[i] = bb.minY
         maxY[i] = bb.maxY
-    height = maxY - minY
-    mid_y = (minY + maxY) * 0.5
+    height: FloatArray = maxY - minY
+    mid_y: FloatArray = (minY + maxY) * 0.5
     return filtered, minX, maxX, minY, maxY, mid_y, height
 
 
@@ -1649,7 +1755,7 @@ def estimate_average_word_distance(words: list[Word], page_width: int) -> float:
     if n < 2:
         return 0.02 * float(page_width)
 
-    bbox_max_x = float(maxX.max())
+    bbox_max_x = _float_max(maxX)
     coord_width = 1.0 if bbox_max_x <= 2.0 else float(page_width)
     max_horizontal_gap = 0.08 * coord_width
 
@@ -1658,29 +1764,28 @@ def estimate_average_word_distance(words: list[Word], page_width: int) -> float:
     # so the search window starts at bb.minX; the gap-cap upper bound is
     # bb.maxX + max_horizontal_gap because gap = other.minX - bb.maxX.
     order = np.argsort(minX, kind="stable")
-    minX_s = minX[order]
-    maxX_s = maxX[order]
-    mid_y_s = mid_y[order]
-    height_s = height[order]
+    minX_s: FloatArray = minX[order]
+    maxX_s: FloatArray = maxX[order]
+    mid_y_s: FloatArray = mid_y[order]
+    height_s: FloatArray = height[order]
 
     gaps: list[float] = []
     for i in range(n):
-        bb_minX = minX_s[i]
-        bb_maxX = maxX_s[i]
-        bb_mid = mid_y_s[i]
-        bb_h = height_s[i]
+        bb_minX = _float_at(minX_s, i)
+        bb_maxX = _float_at(maxX_s, i)
+        bb_mid = _float_at(mid_y_s, i)
+        bb_h = _float_at(height_s, i)
         lo = int(np.searchsorted(minX_s, bb_minX, side="left"))
         hi = int(np.searchsorted(minX_s, bb_maxX + max_horizontal_gap, side="right"))
         nearest_gap: float | None = None
         for j in range(lo, hi):
             if j == i:
                 continue
-            other_h = height_s[j]
+            other_h = _float_at(height_s, j)
             max_h = bb_h if bb_h > other_h else other_h
-            if abs(mid_y_s[j] - bb_mid) > 1.5 * max_h:
+            if abs(_float_at(mid_y_s, j) - bb_mid) > 1.5 * max_h:
                 continue
-            gap = minX_s[j] - bb_maxX
-            gap = max(gap, 0.0)
+            gap = max(_float_at(minX_s, j) - bb_maxX, 0.0)
             if gap <= max_horizontal_gap and (nearest_gap is None or gap < nearest_gap):
                 nearest_gap = gap
         if nearest_gap is not None:
@@ -1710,8 +1815,8 @@ def build_word_seeded_row_blocks(
     if n < 10:
         return None
 
-    bbox_max_x = float(maxX.max())
-    bbox_max_y = float(maxY.max())
+    bbox_max_x = _float_max(maxX)
+    bbox_max_y = _float_max(maxY)
     coord_width = 1.0 if bbox_max_x <= 2.0 else float(page_width)
     coord_height = 1.0 if bbox_max_y <= 2.0 else float(page_height)
 
@@ -1725,12 +1830,12 @@ def build_word_seeded_row_blocks(
     # The Y window is the tighter of the two interval-gap constraints
     # for typical page layouts, so it's the better axis to prune on.
     y_order = np.argsort(minY, kind="stable")
-    minY_s = minY[y_order]
-    maxY_s = maxY[y_order]
-    minX_s = minX[y_order]
-    maxX_s = maxX[y_order]
+    minY_s: FloatArray = minY[y_order]
+    maxY_s: FloatArray = maxY[y_order]
+    minX_s: FloatArray = minX[y_order]
+    maxX_s: FloatArray = maxX[y_order]
 
-    visited = np.zeros(n, dtype=bool)
+    visited: BoolArray = np.zeros(n, dtype=bool)
     components: list[list[Word]] = []
 
     for start in range(n):
@@ -1744,10 +1849,10 @@ def build_word_seeded_row_blocks(
         while stack:
             idx = stack.pop()
             comp_indices.append(idx)
-            bb_minX = minX_s[idx]
-            bb_maxX = maxX_s[idx]
-            bb_minY = minY_s[idx]
-            bb_maxY = maxY_s[idx]
+            bb_minX = _float_at(minX_s, idx)
+            bb_maxX = _float_at(maxX_s, idx)
+            bb_minY = _float_at(minY_s, idx)
+            bb_maxY = _float_at(maxY_s, idx)
 
             # Candidate window: any j whose Y interval can be within
             # y_expand of [bb_minY, bb_maxY]. Since the array is sorted
@@ -1762,16 +1867,16 @@ def build_word_seeded_row_blocks(
                 if visited[j]:
                     continue
                 # Y interval gap (cheap; rejects the majority of pairs).
-                y_gap = bb_minY - maxY_s[j]
+                y_gap = bb_minY - _float_at(maxY_s, j)
                 if y_gap < 0.0:
-                    y_gap = minY_s[j] - bb_maxY
+                    y_gap = _float_at(minY_s, j) - bb_maxY
                     y_gap = max(y_gap, 0.0)
                 if y_gap > y_expand:
                     continue
                 # X interval gap.
-                x_gap = bb_minX - maxX_s[j]
+                x_gap = bb_minX - _float_at(maxX_s, j)
                 if x_gap < 0.0:
-                    x_gap = minX_s[j] - bb_maxX
+                    x_gap = _float_at(minX_s, j) - bb_maxX
                     x_gap = max(x_gap, 0.0)
                 if x_gap > x_expand:
                     continue
@@ -2063,7 +2168,7 @@ def split_mixed_content_lines(paragraphs: list[Block], page_width: int) -> None:
         preferred_split_x = None
         last_split_y = None
         for i, line in enumerate(candidate_lines):
-            neighbor_widths = []
+            neighbor_widths: list[float] = []
             for j in range(max(0, i - 2), min(len(candidate_lines), i + 3)):
                 bb = candidate_lines[j].bounding_box
                 if bb is not None:
@@ -2167,7 +2272,7 @@ def compute_text_paragraph_blocks(lines: list[Block]) -> Block:
     same_band_tolerance = max(2.0 * left_tolerance, 0.01 * median_line_length)
     tight_vertical_gap = 0.75 * median_line_height if median_line_height else 0.0
 
-    blocks = []
+    blocks: list[Block] = []
     current_block = [lines[0]]
     logger.debug("First Paragraph" + str(current_block[0].text[0:10] + "..."))
     for i in range(1, len(lines)):
@@ -2245,7 +2350,7 @@ def compute_text_paragraph_blocks(lines: list[Block]) -> Block:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _yx_sort_key(line: Block):
+def _yx_sort_key(line: Block) -> tuple[float, float]:
     """Sort lines by minY then minX. Stable across normalized/pixel coords."""
     return (
         line.bounding_box.minY if line.bounding_box else 0,
@@ -2268,7 +2373,7 @@ def record_floated_flow_debug_squeezed(
     body_consistent = gaps_are_consistent(body_gaps)
     debug_squeezed_lines.append(
         f"row-{row_idx:03d}: pre={len(pre_lines)} left={len(left_flow)} "
-        f"right={len(right_flow)} body={len(band_body)} post={len(post_lines)}"
+        + f"right={len(right_flow)} body={len(band_body)} post={len(post_lines)}"
     )
     for side_name, side_lines in (("left", left_flow), ("right", right_flow)):
         side_gaps = line_vertical_gaps(side_lines)
@@ -2288,13 +2393,13 @@ def record_floated_flow_debug_squeezed(
         )
         debug_squeezed_lines.append(
             f"  {side_name}: lines={len(side_lines)} med_gap={side_med_gap:.2f} "
-            f"consistent={side_consistent} unchanged_vs_body={spacing_unchanged} "
-            f"candidate={candidate}"
+            + f"consistent={side_consistent} unchanged_vs_body={spacing_unchanged} "
+            + f"candidate={candidate}"
         )
 
 
 def absorb_caption_tails_into_caption(
-    page,
+    page: Page,
     row_block: Block,
     flow_rest: list[Block],
     caption_target: list[Block],
@@ -2369,12 +2474,12 @@ def absorb_caption_tails_into_caption(
 
 
 def expand_floated_flow_row_block(
-    page,
+    page: Page,
     b: Block,
-    floated_flow,
+    floated_flow: FloatedFlowSplit,
     row_idx: int,
     debug_squeezed_lines: list[str],
-    step_h_decisions: list[dict[str, Any]],
+    step_h_decisions: list[StepHDecision],
 ) -> list[Block]:
     """Pipeline Step I \u2014 expand a row block that contains a floated figure."""  # EM DASH
     pre_lines, left_flow, right_flow, band_body, post_lines = floated_flow
@@ -2451,9 +2556,9 @@ def expand_floated_flow_row_block(
 
 
 def expand_mixed_column_row_block(
-    mixed_col_split,
+    mixed_col_split: MixedColumnSplit,
     row_idx: int,
-    step_h_decisions: list[dict[str, Any]],
+    step_h_decisions: list[StepHDecision],
 ) -> list[Block]:
     """Pipeline Step H \u2014 expand a row block whose lines split into two narrow  # EM DASH
     columns plus optional spanning lines.
@@ -2469,7 +2574,7 @@ def expand_mixed_column_row_block(
         left_lines, right_lines = right_lines, left_lines
     logger.debug(
         "Detected mixed two-column+body row block; splitting into "
-        "left (%d lines), right (%d lines), trailing body (%d lines)",
+        + "left (%d lines), right (%d lines), trailing body (%d lines)",
         len(left_lines),
         len(right_lines),
         len(spanning_lines),
@@ -2577,10 +2682,10 @@ def _emit_side_by_side_caption_blocks(
 
 
 def expand_multi_column_row_block(
-    page,
-    multi_col_split,
+    _page: Page,
+    multi_col_split: MultiColumnSplit,
     row_idx: int,
-    step_h_decisions: list[dict[str, Any]],
+    step_h_decisions: list[StepHDecision],
 ) -> Block:
     """Pipeline Step H \u2014 collapse a multi-column row block into a single flow."""  # EM DASH
     column_groups, spanning_lines = multi_col_split
@@ -2604,10 +2709,10 @@ def expand_multi_column_row_block(
 
 
 def expand_simple_two_column_row_block(
-    page,
-    col_split,
+    _page: Page,
+    col_split: ColumnSplit,
     row_idx: int,
-    step_h_decisions: list[dict[str, Any]],
+    step_h_decisions: list[StepHDecision],
 ) -> Block:
     """Pipeline Step H \u2014 collapse a simple two-column row block into a single  # EM DASH
     flow paragraph (left then right).
@@ -2623,7 +2728,7 @@ def expand_simple_two_column_row_block(
         left_lines, right_lines = right_lines, left_lines
     logger.debug(
         "Detected two-column row block; splitting into left (%d lines) and "
-        "right (%d lines) sub-blocks",
+        + "right (%d lines) sub-blocks",
         len(left_lines),
         len(right_lines),
     )
@@ -2641,13 +2746,13 @@ def expand_simple_two_column_row_block(
 
 
 def expand_row_blocks(
-    page,
+    page: Page,
     row_blocks: Block,
     debug_squeezed_lines: list[str],
-) -> tuple[list[Block], list[dict[str, Any]]]:
+) -> tuple[list[Block], list[StepHDecision]]:
     """Pipeline Step H \u2014 dispatch each row block to the right expander."""  # EM DASH
     expanded_row_blocks: list[Block] = []
-    step_h_decisions: list[dict[str, Any]] = []
+    step_h_decisions: list[StepHDecision] = []
     for row_idx, b in enumerate(row_blocks.items, start=1):
         if not isinstance(b, Block):
             continue
@@ -2717,7 +2822,7 @@ SPECIAL_BLOCK_TYPES = frozenset(
 
 
 def classify_and_paragraphize_blocks(
-    page,
+    page: Page,
     expanded_row_blocks: list[Block],
 ) -> list[Block]:
     """Pipeline Step L \u2014 classify each row block (page header/footer, sidenote,  # EM DASH
@@ -2893,7 +2998,7 @@ def reorganize_lines(block: Block) -> None:
         if x_space_between < ten_percent_median_line_length:
             _reorganize_lines_log_debug("Merging Lines.", line.text, next_line.text)
             line.merge(next_line)
-            block.remove_item(next_line)
+            block.remove_item(next_line)  # pyright: ignore[reportUnknownMemberType]  # Block.remove_item has an untyped parameter upstream
             i = i - 1
             continue
         _reorganize_lines_log_debug(
@@ -2907,7 +3012,9 @@ def reorganize_lines(block: Block) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def compute_text_row_blocks(lines: list[Block], tolerance=None) -> Block | None:
+def compute_text_row_blocks(
+    lines: list[Block], tolerance: float | None = None
+) -> Block | None:
     """Step F \u2014 group lines into row blocks by dynamic vertical spacing.  # EM DASH.
 
     Does not mutate the caller's ``lines`` list \u2014 sorts a local copy.  # EM DASH
@@ -2917,8 +3024,11 @@ def compute_text_row_blocks(lines: list[Block], tolerance=None) -> Block | None:
         return None
 
     if tolerance is None:
-        tolerance = 0.2 * np_mean(
-            [line.bounding_box.height if line.bounding_box else 0 for line in lines]
+        tolerance = float(
+            0.2
+            * np_mean(
+                [line.bounding_box.height if line.bounding_box else 0 for line in lines]
+            )
         )
 
     logger.debug("Tolerance: " + str(tolerance))
@@ -2971,7 +3081,7 @@ def compute_text_row_blocks(lines: list[Block], tolerance=None) -> Block | None:
             if prev_bb and curr_bb and prev_bb.overlap_x_amount(curr_bb) <= 0:
                 logger.debug(
                     "Lines have no X overlap \u2014 side-by-side columns, "  # EM DASH
-                    "suppressing paragraph break"
+                    + "suppressing paragraph break"
                 )
                 current_block.append(lines[i])
             else:
@@ -2994,7 +3104,7 @@ def compute_text_row_blocks(lines: list[Block], tolerance=None) -> Block | None:
 
 
 def emit_band_only_blocks(
-    page,
+    page: Page,
     page_header_block: Block | None,
     page_footer_block: Block | None,
 ) -> None:
@@ -3015,8 +3125,8 @@ def emit_band_only_blocks(
 
 
 def run_step_d_split_mixed_content(
-    page,
-    debug_sections: list[tuple[Any, ...]],
+    page: Page,
+    debug_sections: list[DebugSection],
 ) -> None:
     """Step D \u2014 split OCR-merged caption/body lines and emit debug PNG."""  # EM DASH
     debug = layout_debug_enabled()
@@ -3054,9 +3164,9 @@ def run_step_d_split_mixed_content(
 
 
 def run_step_e_extract_header_footer(
-    page,
-    debug_sections: list[tuple[Any, ...]],
-):
+    page: Page,
+    debug_sections: list[DebugSection],
+) -> HeaderFooterStepResult:
     """Step E \u2014 peel page header/footer bands and split body words."""  # EM DASH
     page_metrics = compute_page_metrics(page)
     all_lines = list(page.lines)
@@ -3134,7 +3244,7 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
         kept.append(rb)
     if len(kept) == len(row_blocks.items):
         return row_blocks
-    row_blocks._items = kept  # pyright: ignore[reportAttributeAccessIssue]  # internal mutation; _items setter not exposed publicly
+    row_blocks._items = kept  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]  # internal mutation; _items setter not exposed publicly
     if kept:
         row_blocks.recompute_bounding_box()
     else:
@@ -3143,10 +3253,10 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
 
 
 def run_step_f_row_blocks(
-    page,
+    page: Page,
     body_lines: list[Block],
     body_words: list[Word],
-    debug_sections: list[tuple[Any, ...]],
+    debug_sections: list[DebugSection],
 ) -> Block | None:
     """Step F \u2014 pick between legacy and seeded row-block grouping."""  # EM DASH
     legacy_row_blocks = compute_text_row_blocks(body_lines)
