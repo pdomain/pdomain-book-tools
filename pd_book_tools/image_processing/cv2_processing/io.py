@@ -29,7 +29,7 @@ def read_image(src: pathlib.Path) -> np.ndarray:
     if img is None:
         raise ValueError(
             f"read_image: cv2.imread failed to decode image at {resolved} "
-            "(unsupported format, corrupt file, or permission error)"
+            + "(unsupported format, corrupt file, or permission error)"
         )
     return img
 
@@ -37,10 +37,10 @@ def read_image(src: pathlib.Path) -> np.ndarray:
 def write_jpg(img: np.ndarray, f: pathlib.Path, quality: int = 100) -> None:
     """Write a numpy BGR image to disk as a JPEG with the given quality."""
     fpathstr = str(f.resolve())
-    cv2.imwrite(fpathstr, img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+    _ = cv2.imwrite(fpathstr, img, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
 
 
 def write_png(img: np.ndarray, f: pathlib.Path) -> None:
     """Write a numpy BGR image to disk as a PNG with maximum compression."""
     fpathstr = str(f.resolve())
-    cv2.imwrite(fpathstr, img, [int(cv2.IMWRITE_PNG_COMPRESSION), 9])
+    _ = cv2.imwrite(fpathstr, img, [int(cv2.IMWRITE_PNG_COMPRESSION), 9])

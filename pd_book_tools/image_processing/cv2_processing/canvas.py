@@ -1,7 +1,9 @@
 import logging
 import math
+from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 
 # Re-export `Alignment` from the backend-neutral types module so existing
 # callers (`from pd_book_tools.image_processing.cv2_processing.canvas
@@ -13,16 +15,17 @@ from pd_book_tools.image_processing.types import Alignment
 # Configure logging
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
 
 __all__ = ["Alignment", "map_content_onto_scaled_canvas"]
 
 
 def map_content_onto_scaled_canvas(
-    image: np.ndarray,
+    image: ImageArray,
     force_align: Alignment = Alignment.DEFAULT,
     height_width_ratio: float = 1.65,
     whitespace_add: float = 0.051,
-) -> np.ndarray:
+) -> ImageArray:
     """
     Maps an image onto a larger canvas with a fixed aspect ratio and adjustable alignment.
 
@@ -37,7 +40,7 @@ def map_content_onto_scaled_canvas(
     """
     logger.debug("map_content_onto_scaled_canvas - Start")
 
-    height, width = image.shape[:2]
+    height, width = cast("tuple[int, int]", image.shape[:2])
     logger.debug(f"height={height} width={width}")
 
     # Calculate new canvas size with white space
@@ -45,8 +48,8 @@ def map_content_onto_scaled_canvas(
     logger.debug(f"current_ratio={current_ratio}")
 
     if current_ratio >= height_width_ratio:
-        new_height = math.ceil(height / (1 - (whitespace_add * 2)))
-        new_width = math.ceil(new_height / height_width_ratio)
+        new_height: int = math.ceil(height / (1 - (whitespace_add * 2)))
+        new_width: int = math.ceil(new_height / height_width_ratio)
     else:
         new_width = math.ceil(width / (1 - (whitespace_add * 2)))
         new_height = math.ceil(new_width * height_width_ratio)
@@ -62,14 +65,16 @@ def map_content_onto_scaled_canvas(
         canvas_shape: tuple[int, ...] = (new_height, new_width, image.shape[2])
     else:
         canvas_shape = (new_height, new_width)
-    canvas: np.ndarray = np.full(canvas_shape, 255, dtype=np.uint8)
-    canvas_height, canvas_width = canvas.shape[:2]
+    canvas: ImageArray = np.full(canvas_shape, 255, dtype=np.uint8)
+    canvas_height, canvas_width = cast("tuple[int, int]", canvas.shape[:2])
     logger.debug(f"canvas_height={canvas_height} canvas_width={canvas_width}")
 
     # Determine vertical alignment
     if force_align == Alignment.BOTTOM:
         logger.debug("Aligning to bottom")
-        y_offset = canvas_height - (height + math.ceil(whitespace_add * canvas_height))
+        y_offset: int = canvas_height - (
+            height + math.ceil(whitespace_add * canvas_height)
+        )
     elif force_align == Alignment.CENTER:
         logger.debug("Aligning to center")
         y_offset = int(canvas_height / 2) - int(height / 2)

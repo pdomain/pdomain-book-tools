@@ -1,18 +1,22 @@
 # Configure logging
 import logging
+from typing import cast
 
 import numpy as np
+import numpy.typing as npt
 
 logger = logging.getLogger(__name__)
 
+ImageArray = npt.NDArray[np.uint8]
+
 
 def crop_to_rectangle(
-    img: np.ndarray,
-    minX,
-    maxX,
-    minY,
-    maxY,
-):
+    img: ImageArray,
+    minX: int,
+    maxX: int,
+    minY: int,
+    maxY: int,
+) -> ImageArray:
     """
     Crops an image to the given bounding box coordinates, ensuring they are within bounds.
 
@@ -29,7 +33,7 @@ def crop_to_rectangle(
     log_prefix = "crop_to_rectangle - "
 
     # Get image dimensions
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
 
     # Ensure coordinates are within valid range
     minX = max(0, min(minX, w - 1))
@@ -63,12 +67,12 @@ def crop_to_rectangle(
 
 
 def crop_edges(
-    img: np.ndarray,
+    img: ImageArray,
     top: int = 0,
     bottom: int = 0,
     left: int = 0,
     right: int = 0,
-) -> np.ndarray:
+) -> ImageArray:
     """
     Crops the given image by removing pixels from the specified edges.
 
@@ -95,7 +99,7 @@ def crop_edges(
         if value < 0:
             raise ValueError(f"Crop value {name!r} must be non-negative, got {value}.")
 
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
 
     if top + bottom >= h or left + right >= w:
         raise ValueError("Cropping values exceed image dimensions.")
