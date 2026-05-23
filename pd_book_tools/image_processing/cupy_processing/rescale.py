@@ -76,7 +76,7 @@ def rescale_image_gpu(
 
     logger.debug("rescale_image_gpu: %sx%s -> %sx%s", height, width, new_h, new_w)
 
-    src = cast("CuPyArray", img_cp.astype(cp.float32))
+    src = cast("CuPyArray", img_cp.astype(np.float32))
 
     # Anti-alias before subsampling. Bare bilinear (order=1) zoom aliases on
     # high-frequency content when zoom_factor < 1; cv2 sidesteps this with
@@ -99,7 +99,7 @@ def rescale_image_gpu(
 
     zoom_factors = (zoom_h, zoom_w) if img_cp.ndim == 2 else (zoom_h, zoom_w, 1.0)
     result = zoom_fn(src, zoom_factors, order=1)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in caller
-    return cast("CuPyArray", result.clip(0, 255).astype(cp.uint8))
+    return cast("CuPyArray", result.clip(0, 255).astype(np.uint8))
 
 
 def np_uint8_rescale_image(
