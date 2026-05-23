@@ -11,7 +11,7 @@ DEFAULT_VOCAB_LIBRARY: list[str] = ["multilingual", "currency"]
 DEFAULT_VOCAB_EXTRA_CHARS: str = "⸺¡¿—\u2018\u2019“”\u2032″\u2044"  # LEFT/RIGHT SINGLE QUOTATION MARK, PRIME, FRACTION SLASH
 
 
-def _read_arch_sidecar(pt_file: PathLike[str]) -> str | None:
+def _read_arch_sidecar(pt_file: str | PathLike[str]) -> str | None:
     """Return the architecture name written in a ``<stem>.arch`` sidecar, if any.
 
     The trainer writes a one-line text file alongside each ``.pt`` checkpoint
@@ -29,7 +29,7 @@ def _read_arch_sidecar(pt_file: PathLike[str]) -> str | None:
     return None
 
 
-def _read_vocab_sidecar(pt_file: PathLike[str]) -> str | None:
+def _read_vocab_sidecar(pt_file: str | PathLike[str]) -> str | None:
     """Return the vocab string written in a ``<stem>.vocab`` sidecar, if any."""
     try:
         sidecar = Path(pt_file).with_suffix(".vocab")
@@ -49,7 +49,7 @@ def _detect_recognition_arch(state_dict: Mapping[str, object]) -> str:
     work as before. Prefer ``_read_arch_sidecar`` when an ``.arch`` sidecar is
     available.
     """
-    keys = set(state_dict.keys()) if state_dict else set()
+    keys = set(state_dict.keys()) if state_dict else set[str]()
     if not keys:
         return "crnn_vgg16_bn"
 
@@ -88,7 +88,7 @@ def _detect_detection_arch(state_dict: Mapping[str, object]) -> str:
 
     Defaults to ``db_resnet50`` (the historical hardcoded choice).
     """
-    keys = set(state_dict.keys()) if state_dict else set()
+    keys = set(state_dict.keys()) if state_dict else set[str]()
     if not keys:
         return "db_resnet50"
 
@@ -148,7 +148,7 @@ def _select_torch_device() -> tuple[str, str]:
     return "cpu", "cpu"
 
 
-def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):
+def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # doctr.models has no stubs
     """Resolve a DocTR model factory by name with a safe fallback.
 
     Looks up ``arch_name`` on the (possibly mocked) ``doctr.models``
@@ -167,7 +167,7 @@ def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):
         db_resnet50,
     )
 
-    factory = getattr(doctr_models, arch_name, None) if doctr_models else None
+    factory = getattr(doctr_models, arch_name, None) if doctr_models else None  # pyright: ignore[reportUnknownArgumentType]
     if factory is None:
         fallback = (
             "db_resnet50"
@@ -177,14 +177,14 @@ def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):
             else "crnn_vgg16_bn"
         )
         factory = (
-            getattr(doctr_models, fallback)
+            getattr(doctr_models, fallback)  # pyright: ignore[reportUnknownArgumentType]
             if doctr_models
             else (db_resnet50 if fallback == "db_resnet50" else crnn_vgg16_bn)
         )
-    return factory(**kwargs)
+    return factory(**kwargs)  # pyright: ignore[reportUnknownArgumentType]  # kwargs from unannotated **kwargs param
 
 
-def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):
+def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque DocTR model types
     """Wrap loaded det/reco models into a DocTR ``OCRPredictor``.
 
     Builds the full ``ocr_predictor`` plus the standalone
@@ -222,13 +222,13 @@ def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):
     return full_predictor
 
 
-def _load_det_model(
+def _load_det_model(  # pyright: ignore[reportUnknownParameterType]
     *,
     det_path: Path,
-    torch_load,
+    torch_load,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: torch.load; returns dict[str, Tensor]
     device: str,
     device_nbr: str,
-    build_arch,
+    build_arch,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: arch factory callable
 ):
     """Load and return a DocTR detection model from ``det_path``.
 
@@ -241,27 +241,26 @@ def _load_det_model(
     so the offending file and detected arch surface in the message
     instead of a bare framework error (M-23).
     """
-    det_params = torch_load(det_path, map_location=device_nbr)
-    det_arch_name = _read_arch_sidecar(det_path) or _detect_detection_arch(det_params)
-    det_model = build_arch(det_arch_name, pretrained=False).to(device)
+    det_params = torch_load(det_path, map_location=device_nbr)  # pyright: ignore[reportUnknownVariableType]
+    det_arch_name = _read_arch_sidecar(det_path) or _detect_detection_arch(det_params)  # pyright: ignore[reportUnknownArgumentType]
+    det_model = build_arch(det_arch_name, pretrained=False).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
     try:
-        det_model.load_state_dict(det_params)
+        det_model.load_state_dict(det_params)  # pyright: ignore[reportUnknownMemberType]
     except (RuntimeError, KeyError) as e:
         raise RuntimeError(
-            f"Failed to load DocTR detection checkpoint {det_path} into "
-            f"architecture {det_arch_name!r}: {e}"
+            f"Failed to load DocTR detection checkpoint {det_path} into architecture {det_arch_name!r}: {e}"
         ) from e
-    return det_model
+    return det_model  # pyright: ignore[reportUnknownVariableType]
 
 
-def _load_reco_model(
+def _load_reco_model(  # pyright: ignore[reportUnknownParameterType]
     *,
     reco_path: Path,
     vocab: str,
-    torch_load,
+    torch_load,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: torch.load; returns dict[str, Tensor]
     device: str,
     device_nbr: str,
-    build_arch,
+    build_arch,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: arch factory callable
 ):
     """Load and return a DocTR recognition model from ``reco_path``.
 
@@ -272,9 +271,9 @@ def _load_reco_model(
     ``pretrained_backbone`` kwarg, so a ``TypeError`` triggers a retry
     without it. Load failures are wrapped (M-23).
     """
-    reco_params = torch_load(reco_path, map_location=device_nbr)
+    reco_params = torch_load(reco_path, map_location=device_nbr)  # pyright: ignore[reportUnknownVariableType]
     reco_arch_name = _read_arch_sidecar(reco_path) or _detect_recognition_arch(
-        reco_params
+        reco_params  # pyright: ignore[reportUnknownArgumentType]
     )
     reco_kwargs = {
         "pretrained": False,
@@ -282,26 +281,25 @@ def _load_reco_model(
         "vocab": vocab,
     }
     try:
-        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
+        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
     except TypeError:
-        reco_kwargs.pop("pretrained_backbone", None)
-        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
+        _ = reco_kwargs.pop("pretrained_backbone", None)
+        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
     try:
-        reco_model.load_state_dict(reco_params)
+        reco_model.load_state_dict(reco_params)  # pyright: ignore[reportUnknownMemberType]
     except (RuntimeError, KeyError) as e:
         raise RuntimeError(
-            f"Failed to load DocTR recognition checkpoint {reco_path} into "
-            f"architecture {reco_arch_name!r}: {e}"
+            f"Failed to load DocTR recognition checkpoint {reco_path} into architecture {reco_arch_name!r}: {e}"
         ) from e
-    return reco_model
+    return reco_model  # pyright: ignore[reportUnknownVariableType]
 
 
 def get_finetuned_torch_doctr_predictor(
-    dectection_pt_file: PathLike[str],
-    recognition_pt_file: PathLike[str],
+    dectection_pt_file: str | PathLike[str],
+    recognition_pt_file: str | PathLike[str],
     vocab: str = "",
     pretrained: bool = True,
-    pretrained_backbone: bool = True,
+    pretrained_backbone: bool = True,  # pyright: ignore[reportUnusedParameter]  # public API; _load_reco_model hardcodes pretrained_backbone=False
     device: str | None = None,
 ):
     try:
@@ -312,14 +310,17 @@ def get_finetuned_torch_doctr_predictor(
     import sys as _sys
 
     from doctr.datasets.vocabs import VOCABS
-    from doctr.models import (  # imported to ensure doctr.models is loaded before _doctr_models lookup
+    from doctr.models import (
         crnn_vgg16_bn,
         db_resnet50,
     )
 
+    # Touching these names is intentional: it ensures doctr.models is fully
+    # registered in sys.modules before _doctr_models lookup below (side-effect import).
+    _ = (crnn_vgg16_bn, db_resnet50)
     _doctr_models = _sys.modules.get("doctr.models")
 
-    def _build_arch(arch_name: str, **kwargs):
+    def _build_arch(arch_name: str, **kwargs: object) -> object:
         """Closure adapter: bind ``_doctr_models`` to the module-level helper."""
         return _build_doctr_arch(arch_name, _doctr_models, **kwargs)
 
@@ -340,7 +341,7 @@ def get_finetuned_torch_doctr_predictor(
     logger.info("Using device: %s", device)
 
     # ---- Detection model -------------------------------------------------
-    det_model = _load_det_model(
+    det_model = _load_det_model(  # pyright: ignore[reportUnknownVariableType]
         det_path=det_path,
         torch_load=torch_load,
         device=device,
@@ -361,7 +362,7 @@ def get_finetuned_torch_doctr_predictor(
         )
 
     # ---- Recognition model ----------------------------------------------
-    reco_model = _load_reco_model(
+    reco_model = _load_reco_model(  # pyright: ignore[reportUnknownVariableType]
         reco_path=reco_path,
         vocab=vocab,
         torch_load=torch_load,
@@ -370,4 +371,4 @@ def get_finetuned_torch_doctr_predictor(
         build_arch=_build_arch,
     )
 
-    return _assemble_doctr_predictor(det_model, reco_model, pretrained=pretrained)
+    return _assemble_doctr_predictor(det_model, reco_model, pretrained=pretrained)  # pyright: ignore[reportUnknownArgumentType]
