@@ -62,7 +62,7 @@ except Exception as _heif_exc:  # pragma: no cover - import-time guard
     )
 
 try:
-    import pillow_avif as _pillow_avif  # pyright: ignore[reportMissingTypeStubs]  # import for side-effect (plugin registration)
+    import pillow_avif as _pillow_avif  # pyright: ignore[reportMissingTypeStubs,reportUnusedImport]  # import for side-effect (plugin registration)
 except Exception as _avif_exc:  # pragma: no cover - import-time guard
     logger.debug(
         "pillow-avif-plugin not available; AVIF decode will fail. (%s)",

@@ -136,6 +136,4 @@ class OCRProvenance:
             # returning the input directly is safe and avoids a wasteful
             # ``from_dict(value.to_dict())`` round-trip.
             return value
-        if isinstance(value, dict):
-            return OCRProvenance.from_dict(value)
-        raise TypeError("ocr_provenance must be an OCRProvenance or dict")
+        return OCRProvenance.from_dict(value)

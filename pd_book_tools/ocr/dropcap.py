@@ -279,8 +279,6 @@ def _geometric_gap_candidates(
             # "is" are kept (they're alphabetic).
             first_body_word: Word | None = None
             for w in words_sorted:
-                if w.bounding_box is None:
-                    continue
                 t = (w.text or "").strip()
                 if not t:
                     continue
@@ -490,8 +488,6 @@ def _bboxes_overlap(a: BoundingBox, b: BoundingBox) -> bool:
 
 def _is_cc_overlapping_word(cc_bbox: BoundingBox, word: Word) -> bool:
     """True when ``word``'s bbox overlaps the CC bbox (any overlap)."""
-    if word.bounding_box is None:
-        return False
     wb = word.bounding_box
     if wb.maxX < cc_bbox.minX or wb.minX > cc_bbox.maxX:
         return False
@@ -513,8 +509,6 @@ def _find_existing_cap_word(
         if w is candidate.first_body_word:
             continue
         if not (w.text or "").strip():
-            continue
-        if w.bounding_box is None:
             continue
         # Tiny tokens only — a real cap glyph would be 1-2 chars.
         text = (w.text or "").strip()
@@ -741,8 +735,6 @@ def _looks_like_drop_cap_word(word: Word, metrics: PageMetrics) -> bool:
     same OCR word).
     """
     bb = word.bounding_box
-    if bb is None:
-        return False
     if metrics.median_word_h <= 0:
         return False
     if bb.height < 1.8 * metrics.median_word_h:
@@ -764,8 +756,6 @@ def _next_word_attached_to_drop_cap(
     next to the top of the cap, not its bottom).
     """
     cap_bb = drop_cap.bounding_box
-    if cap_bb is None:
-        return None
     cap_top_y = cap_bb.minY
     cap_mid_x = (cap_bb.minX + cap_bb.maxX) / 2.0
     body_h = max(metrics.median_word_h, 1e-6)

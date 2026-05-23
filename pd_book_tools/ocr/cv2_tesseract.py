@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING, cast
 
 from cv2 import COLOR_BGR2GRAY, COLOR_BGRA2GRAY, cvtColor
 from numpy import ndarray
@@ -6,9 +7,12 @@ from numpy import ndarray
 from pd_book_tools.ocr.document import Document
 from pd_book_tools.ocr.page import Page
 
+if TYPE_CHECKING:
+    from pandas import DataFrame  # pyright: ignore[reportMissingTypeStubs]
+
 try:
     from pytesseract import Output as pytesseract_Output  # pyright: ignore[reportMissingTypeStubs]  # noqa: I001
-    from pytesseract import image_to_data, image_to_string  # pyright: ignore[reportMissingTypeStubs]
+    from pytesseract import image_to_data, image_to_string  # pyright: ignore[reportMissingTypeStubs,reportUnknownVariableType]
 
     _pytesseract_available = True
 except ImportError:
@@ -89,22 +93,28 @@ def tesseract_ocr_cv2_image(
     ]
     config_str = " ".join(config)
 
-    dataframe = image_to_data(  # pyright: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
-        image_grayscale,
-        lang=lang,
-        config=config_str,
-        output_type=pytesseract_Output.DATAFRAME,  # pyright: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
+    dataframe = cast(
+        "DataFrame",
+        image_to_data(  # pyright: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
+            image_grayscale,
+            lang=lang,
+            config=config_str,
+            output_type=pytesseract_Output.DATAFRAME,  # pyright: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
+        ),
     )
-    result_string = image_to_string(  # pyright: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
-        image_grayscale,
-        lang=lang,
-        config=config_str,
-        output_type=pytesseract_Output.STRING,  # pyright: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
+    result_string = cast(
+        "str",
+        image_to_string(  # pyright: ignore[reportOptionalCall]  # guarded by _pytesseract_available check above
+            image_grayscale,
+            lang=lang,
+            config=config_str,
+            output_type=pytesseract_Output.STRING,  # pyright: ignore[reportOptionalMemberAccess]  # guarded by _pytesseract_available
+        ),
     )
 
     ocr_doc = Document.from_tesseract(
-        tesseract_output=dataframe,  # pyright: ignore[reportArgumentType]  # pytesseract stubs return wider type than DataFrame; guarded by _pytesseract_available
-        tesseract_string=result_string,  # pyright: ignore[reportArgumentType]  # pytesseract stubs return wider type than str; guarded by _pytesseract_available
+        tesseract_output=dataframe,
+        tesseract_string=result_string,
         source_path=source_path if source_path else None,
         lang=lang,
         tesseract_config=config_str,
