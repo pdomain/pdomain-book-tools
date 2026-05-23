@@ -1,10 +1,20 @@
+# pyright: reportUnknownMemberType=false
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
 
 # cupyx is part of the CuPy install ([gpu] extra). This guard lets the module
 # load on CPU-only installs; require_cupy() in each function gives the
@@ -18,13 +28,18 @@ except ImportError:  # pragma: no cover - exercised only on CPU-only installs
     uniform_filter = None
     zoom = None
 
+UniformFilterFn = Callable[..., CuPyArray]
+ZoomFn = Callable[..., CuPyArray]
+uniform_filter_fn = cast("UniformFilterFn | None", uniform_filter)
+zoom_fn = cast("ZoomFn | None", zoom)
+
 logger = logging.getLogger(__name__)
 
 
 def rescale_image_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     target_short_side: int = 1000,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     GPU port of cv2_processing.rescale.rescale_image.
 
@@ -40,7 +55,7 @@ def rescale_image_gpu(
     cv2 backend docstring and ROADMAP "Done" for context.
     """
     require_cupy()
-    height, width = img_cp.shape[:2]
+    height, width = cast("tuple[int, int]", img_cp.shape[:2])
 
     short_side = width if height > width else height
     long_side = height if height > width else width
@@ -57,7 +72,7 @@ def rescale_image_gpu(
 
     logger.debug("rescale_image_gpu: %sx%s -> %sx%s", height, width, new_h, new_w)
 
-    src = img_cp.astype(cp.float32)
+    src = cast("CuPyArray", img_cp.astype(cp.float32))
 
     # Anti-alias before subsampling. Bare bilinear (order=1) zoom aliases on
     # high-frequency content when zoom_factor < 1; cv2 sidesteps this with
@@ -76,11 +91,11 @@ def rescale_image_gpu(
             filter_size = (pre_filter_size_h, pre_filter_size_w)
         else:
             filter_size = (pre_filter_size_h, pre_filter_size_w, 1)
-        src = uniform_filter(src, size=filter_size, mode="reflect")  # pyright: ignore[reportOptionalCall,reportArgumentType]  # guarded by require_cupy(); cupyx stubs expect int but tuple is valid
+        src = uniform_filter_fn(src, size=filter_size, mode="reflect")  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy(); import is optional at runtime
 
     zoom_factors = (zoom_h, zoom_w) if img_cp.ndim == 2 else (zoom_h, zoom_w, 1.0)
-    result = zoom(src, zoom_factors, order=1)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in caller
-    return result.clip(0, 255).astype(cp.uint8)
+    result = zoom_fn(src, zoom_factors, order=1)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in caller
+    return cast("CuPyArray", result.clip(0, 255).astype(cp.uint8))
 
 
 def np_uint8_rescale_image(
@@ -93,5 +108,5 @@ def np_uint8_rescale_image(
     cv2 backend docstring and ROADMAP "Done" for context.
     """
     require_cupy()
-    img_cp = cp.asarray(img)
-    return cp.asnumpy(rescale_image_gpu(img_cp, target_short_side))
+    img_cp = cast("CuPyArray", cp.asarray(img))
+    return cast("np.ndarray", cp.asnumpy(rescale_image_gpu(img_cp, target_short_side)))

@@ -1,11 +1,43 @@
+# pyright: reportUnknownMemberType=false
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, TypedDict, Unpack, cast
 
 import numpy as np
 
 from ._cupy_compat import cp, require_cupy
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
+
+SlicePair = tuple[slice, slice]
+
+
+class ContourSizeStats(TypedDict):
+    count: int
+    median_w: float
+    median_h: float
+    mean_w: float
+    mean_h: float
+    p10_w: float
+    p10_h: float
+
+
+class RemoveSmallContoursKwargs(TypedDict, total=False):
+    min_w_pct: float
+    min_w_pixels: int
+    min_h_pct: float
+    min_h_pixels: int
+    nearby_pixel_count: int
+    search_w_pixels: int | None
+    search_h_pixels: int | None
+
 
 # cupyx is part of the CuPy install. Wrap the import so this module loads
 # cleanly on CPU-only installs; require_cupy() in each function gives the
@@ -21,10 +53,27 @@ except ImportError:  # pragma: no cover - exercised only on CPU-only installs
     find_objects = None
     ndimage_label = None
 
+FindObjectsFn = Callable[[CuPyArray], list[SlicePair | None]]
+NdimageLabelFn = Callable[[CuPyArray], tuple[CuPyArray, int]]
+find_objects_fn = cast("FindObjectsFn | None", find_objects)
+ndimage_label_fn = cast("NdimageLabelFn | None", ndimage_label)
+
 logger = logging.getLogger(__name__)
 
 
-def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict[str, Any]:
+def _zero_stats() -> ContourSizeStats:
+    return {
+        "count": 0,
+        "median_w": 0.0,
+        "median_h": 0.0,
+        "mean_w": 0.0,
+        "mean_h": 0.0,
+        "p10_w": 0.0,
+        "p10_h": 0.0,
+    }
+
+
+def contour_size_stats_gpu(img_cp: CuPyArray) -> ContourSizeStats:
     """
     Compute bounding-box size statistics for every connected component in the image.
 
@@ -47,38 +96,23 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict[str, Any]:
     all use characters of a similar or identical size to the body text.
     """
     require_cupy()
-    labeled, n_labels = ndimage_label(img_cp > 0)  # pyright: ignore[reportOptionalCall,reportGeneralTypeIssues]  # guarded by require_cupy(); cupyx stubs mistype return as int
+    labeled, n_labels = ndimage_label_fn(img_cp > 0)  # pyright: ignore[reportOptionalCall,reportOperatorIssue]  # guarded by require_cupy(); import is optional at runtime
     if n_labels == 0:
-        return {
-            "count": 0,
-            "median_w": 0,
-            "median_h": 0,
-            "mean_w": 0,
-            "mean_h": 0,
-            "p10_w": 0,
-            "p10_h": 0,
-        }
+        return _zero_stats()
 
-    objects = find_objects(labeled)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
-    widths = []
-    heights = []
+    objects = find_objects_fn(labeled)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    widths: list[int] = []
+    heights: list[int] = []
     for slices in objects:
         if slices is None:
             continue
+        slices = cast("SlicePair", slices)
         sy, sx = slices
         heights.append(sy.stop - sy.start)
         widths.append(sx.stop - sx.start)
 
     if not widths:
-        return {
-            "count": 0,
-            "median_w": 0,
-            "median_h": 0,
-            "mean_w": 0,
-            "mean_h": 0,
-            "p10_w": 0,
-            "p10_h": 0,
-        }
+        return _zero_stats()
 
     w_arr = np.array(widths, dtype=np.float32)
     h_arr = np.array(heights, dtype=np.float32)
@@ -94,7 +128,7 @@ def contour_size_stats_gpu(img_cp: cp.ndarray) -> dict[str, Any]:
 
 
 def remove_small_contours_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     min_w_pct: float = 0.04,
     min_w_pixels: int = 5,
     min_h_pct: float = 0.03,
@@ -102,7 +136,7 @@ def remove_small_contours_gpu(
     nearby_pixel_count: int = 10,
     search_w_pixels: int | None = None,
     search_h_pixels: int | None = None,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     Remove small, isolated connected components from a grayscale image.
 
@@ -136,11 +170,11 @@ def remove_small_contours_gpu(
     Returns a copy with isolated small components zeroed out.
     """
     require_cupy()
-    labeled, n_labels = ndimage_label(img_cp > 0)  # pyright: ignore[reportOptionalCall,reportGeneralTypeIssues]  # guarded by require_cupy(); cupyx stubs mistype return as int
+    labeled, n_labels = ndimage_label_fn(img_cp > 0)  # pyright: ignore[reportOptionalCall,reportOperatorIssue]  # guarded by require_cupy(); import is optional at runtime
     if n_labels == 0:
         return img_cp.copy()
 
-    img_h, img_w = img_cp.shape[:2]
+    img_h, img_w = cast("tuple[int, int]", img_cp.shape[:2])
     pixels_w = max(int(img_w * min_w_pct), min_w_pixels)
     pixels_h = max(int(img_h * min_h_pct), min_h_pixels)
     threshold_sum = 255 * nearby_pixel_count
@@ -151,12 +185,13 @@ def remove_small_contours_gpu(
     sh = search_h_pixels if search_h_pixels is not None else int(pixels_h * 0.5)
 
     result = img_cp.copy()
-    objects = find_objects(labeled)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    objects = find_objects_fn(labeled)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     for _i, slices in enumerate(objects):
         if slices is None:
             continue
 
+        slices = cast("SlicePair", slices)
         sy, sx = slices
         h_reg = sy.stop - sy.start
         w_reg = sx.stop - sx.start
@@ -182,10 +217,10 @@ def remove_small_contours_gpu(
 
 
 def remove_small_contours_adaptive_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     size_fraction: float = 0.15,
     nearby_pixel_count: int = 10,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     Remove small, isolated components using thresholds derived from the image itself.
 
@@ -223,8 +258,10 @@ def remove_small_contours_adaptive_gpu(
     search_h = max(pixels_h, int(stats["median_h"] * 0.5))
 
     logger.debug(
-        "remove_small_contours_adaptive_gpu: n=%s, median=(%.1fw, %.1fh), "
-        "threshold=(%sw, %sh), search_area=(%sw, %sh)",
+        (
+            "remove_small_contours_adaptive_gpu: n=%s, median=(%.1fw, %.1fh), "
+            "threshold=(%sw, %sh), search_area=(%sw, %sh)"
+        ),
         stats["count"],
         stats["median_w"],
         stats["median_h"],
@@ -246,10 +283,18 @@ def remove_small_contours_adaptive_gpu(
     )
 
 
-def np_uint8_remove_small_contours(img: np.ndarray, **kwargs) -> np.ndarray:
+def np_uint8_remove_small_contours(
+    img: np.ndarray,
+    **kwargs: Unpack[RemoveSmallContoursKwargs],
+) -> np.ndarray:
     """Transfers img to GPU, removes small/isolated contours, returns CPU uint8 array."""
     require_cupy()
-    return cp.asnumpy(remove_small_contours_gpu(cp.asarray(img), **kwargs))
+    return cast(
+        "np.ndarray",
+        cp.asnumpy(
+            remove_small_contours_gpu(cast("CuPyArray", cp.asarray(img)), **kwargs)
+        ),
+    )
 
 
 def np_uint8_remove_small_contours_adaptive(
@@ -259,10 +304,13 @@ def np_uint8_remove_small_contours_adaptive(
 ) -> np.ndarray:
     """Transfers img to GPU, removes noise adaptively, returns CPU uint8 array."""
     require_cupy()
-    return cp.asnumpy(
-        remove_small_contours_adaptive_gpu(
-            cp.asarray(img),
-            size_fraction=size_fraction,
-            nearby_pixel_count=nearby_pixel_count,
-        )
+    return cast(
+        "np.ndarray",
+        cp.asnumpy(
+            remove_small_contours_adaptive_gpu(
+                cast("CuPyArray", cp.asarray(img)),
+                size_fraction=size_fraction,
+                nearby_pixel_count=nearby_pixel_count,
+            )
+        ),
     )

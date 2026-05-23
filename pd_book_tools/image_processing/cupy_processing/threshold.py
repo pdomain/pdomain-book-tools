@@ -1,16 +1,25 @@
+# pyright: reportUnknownMemberType=false
 # Configure logging
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
 from ._cupy_compat import cp, require_cupy
 
+if TYPE_CHECKING:
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
+
 logger = logging.getLogger(__name__)
 
 
-def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
+def otsu_binary_thresh(img_cp_float: CuPyArray) -> CuPyArray:
     """
     Performs Otsu's thresholding on a CuPy GPU array.
 
@@ -31,13 +40,13 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     # Convert to grayscale if it's a color image
     if img_cp_float.ndim == 3 and img_cp_float.shape[2] == 3:
         img_cp_float = (
-            0.2989 * img_cp_float[:, :, 2]
-            + 0.5870 * img_cp_float[:, :, 1]
-            + 0.1140 * img_cp_float[:, :, 0]
+            0.2989 * img_cp_float[:, :, 2]  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on NDArray-like alias
+            + 0.5870 * img_cp_float[:, :, 1]  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on NDArray-like alias
+            + 0.1140 * img_cp_float[:, :, 0]  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on NDArray-like alias
         )
 
     # Ensure input is float32 for precision
-    img_cp_float = img_cp_float.astype(cp.float32)
+    img_cp_float = cast("CuPyArray", img_cp_float.astype(cp.float32))
 
     # Compute histogram (auto-detect range)
     min_val, max_val = img_cp_float.min(), img_cp_float.max()
@@ -52,7 +61,7 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     # treat the uniform value itself as the threshold so the strict-`>`
     # binarization produces an all-zero mask without crashing (review H-15).
     if min_val == max_val:
-        return cp.zeros_like(img_cp_float, dtype=cp.uint8)
+        return cast("CuPyArray", cp.zeros_like(img_cp_float, dtype=cp.uint8))
 
     hist, bin_edges = cp.histogram(img_cp_float, bins=256, range=(min_val, max_val))
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2  # Midpoints of bins
@@ -80,10 +89,13 @@ def otsu_binary_thresh(img_cp_float: cp.ndarray) -> cp.ndarray:
     # Apply binary thresholding. Return uint8 0/255 to match the cv2 backend's
     # `otsu_binary_thresh` contract so downstream code can switch backends
     # without dtype/range surprises (review issue H-16).
-    return cp.where(img_cp_float > otsu_threshold, 255, 0).astype(cp.uint8)
+    return cast(
+        "CuPyArray",
+        cp.where(img_cp_float > otsu_threshold, 255, 0).astype(cp.uint8),
+    )
 
 
-def binary_thresh_gpu(img_cp: cp.ndarray, level: int = 127) -> cp.ndarray:
+def binary_thresh_gpu(img_cp: CuPyArray, level: int = 127) -> CuPyArray:
     """
     Fixed-level binary threshold on a GPU array.
 
@@ -94,18 +106,21 @@ def binary_thresh_gpu(img_cp: cp.ndarray, level: int = 127) -> cp.ndarray:
     Returns uint8 CuPy array.
     """
     require_cupy()
-    return (img_cp > level).astype(cp.uint8) * 255
+    return cast(
+        "CuPyArray",
+        (img_cp > level).astype(cp.uint8) * 255,  # pyright: ignore[reportOperatorIssue]  # CuPy comparison on NDArray-like alias
+    )
 
 
 def np_uint8_binary_thresh(img: np.ndarray, level: int = 127) -> np.ndarray:
     """Transfers img to GPU, applies fixed-level threshold, returns CPU uint8 array."""
     require_cupy()
-    return cp.asnumpy(binary_thresh_gpu(cp.asarray(img), level))
+    return cp.asnumpy(binary_thresh_gpu(cast("CuPyArray", cp.asarray(img)), level))
 
 
 def np_uint8_otsu_binary_thresh(
     img: np.ndarray,
-):
+) -> np.ndarray:
     """Transfers img to GPU, applies Otsu binary threshold, returns CPU uint8 array.
 
     Internally promotes the uint8 input to float32 for Otsu's variance
@@ -114,17 +129,15 @@ def np_uint8_otsu_binary_thresh(
     """
     require_cupy()
     img_float = img.astype(np.float32) / 255.0
-    src = cp.asarray(img_float)
+    src = cast("CuPyArray", cp.asarray(img_float))
 
     cupy_result = otsu_binary_thresh(img_cp_float=src)
 
     # `otsu_binary_thresh` already returns uint8 0/255 (H-16); just move to CPU.
-    uint8_image: np.ndarray = cupy_result.get()
-
-    return uint8_image
+    return cp.asnumpy(cupy_result)
 
 
-def np_uint8_float_binary_thresh(img: np.ndarray):
+def np_uint8_float_binary_thresh(img: np.ndarray) -> np.ndarray:
     """Deprecated alias for :func:`np_uint8_otsu_binary_thresh` (R-30).
 
     The ``_float_`` infix was misleading — the function takes/returns
@@ -136,8 +149,9 @@ def np_uint8_float_binary_thresh(img: np.ndarray):
 
     _w.warn(
         "np_uint8_float_binary_thresh is deprecated; use "
-        "np_uint8_otsu_binary_thresh (the '_float_' infix was misleading — "
-        "the function takes and returns uint8). Will be removed in a future major.",
+        "np_uint8_otsu_binary_thresh "
+        "(the '_float_' infix was misleading - the function takes and returns "
+        "uint8). Will be removed in a future major.",
         DeprecationWarning,
         stacklevel=2,
     )

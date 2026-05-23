@@ -1,29 +1,35 @@
+# pyright: reportUnknownMemberType=false
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ._cupy_compat import cp, require_cupy
 
 if TYPE_CHECKING:
     import numpy as np
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
 
 logger = logging.getLogger(__name__)
 
 
-def split_x_columns_gpu(img_cp: cp.ndarray, x: int) -> tuple[cp.ndarray, cp.ndarray]:
+def split_x_columns_gpu(img_cp: CuPyArray, x: int) -> tuple[CuPyArray, CuPyArray]:
     """Split img_cp into two parts at column index x."""
     require_cupy()
-    _h, w = img_cp.shape[:2]
+    _h, w = cast("tuple[int, int]", img_cp.shape[:2])
     if not (0 <= x <= w):
         raise ValueError(f"Column index x={x} is out of bounds for width={w}")
     return img_cp[:, :x], img_cp[:, x:]
 
 
-def split_y_rows_gpu(img_cp: cp.ndarray, y: int) -> tuple[cp.ndarray, cp.ndarray]:
+def split_y_rows_gpu(img_cp: CuPyArray, y: int) -> tuple[CuPyArray, CuPyArray]:
     """Split img_cp into two parts at row index y."""
     require_cupy()
-    h, _w = img_cp.shape[:2]
+    h, _w = cast("tuple[int, int]", img_cp.shape[:2])
     if not (0 <= y <= h):
         raise ValueError(f"Row index y={y} is out of bounds for height={h}")
     return img_cp[:y, :], img_cp[y:, :]
@@ -32,12 +38,12 @@ def split_y_rows_gpu(img_cp: cp.ndarray, y: int) -> tuple[cp.ndarray, cp.ndarray
 def np_uint8_split_x_columns(img: np.ndarray, x: int) -> tuple[np.ndarray, np.ndarray]:
     """Transfers img to GPU, splits at column x, returns two CPU uint8 arrays."""
     require_cupy()
-    left, right = split_x_columns_gpu(cp.asarray(img), x)
+    left, right = split_x_columns_gpu(cast("CuPyArray", cp.asarray(img)), x)
     return cp.asnumpy(left), cp.asnumpy(right)
 
 
 def np_uint8_split_y_rows(img: np.ndarray, y: int) -> tuple[np.ndarray, np.ndarray]:
     """Transfers img to GPU, splits at row y, returns two CPU uint8 arrays."""
     require_cupy()
-    top, bottom = split_y_rows_gpu(cp.asarray(img), y)
+    top, bottom = split_y_rows_gpu(cast("CuPyArray", cp.asarray(img)), y)
     return cp.asnumpy(top), cp.asnumpy(bottom)

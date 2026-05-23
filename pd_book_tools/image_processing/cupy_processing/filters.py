@@ -1,12 +1,19 @@
+# pyright: reportUnknownMemberType=false
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, cast
 
 from ._cupy_compat import cp, require_cupy
 
 if TYPE_CHECKING:
     import numpy as np
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
 
 # cupyx is part of the CuPy install ([gpu] extra). This guard lets the module
 # load on CPU-only installs; require_cupy() in each function gives the
@@ -22,13 +29,18 @@ except ImportError:  # pragma: no cover - exercised only on CPU-only installs
     median_filter = None
     uniform_filter = None
 
+FilterFn = Callable[..., CuPyArray]
+gaussian_filter_fn = cast("FilterFn | None", gaussian_filter)
+median_filter_fn = cast("FilterFn | None", median_filter)
+uniform_filter_fn = cast("FilterFn | None", uniform_filter)
+
 logger = logging.getLogger(__name__)
 
 
 def gaussian_filter_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     sigma: float = 1.0,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     Apply a Gaussian blur to a 2-D or 3-D uint8 CuPy array.
 
@@ -41,14 +53,17 @@ def gaussian_filter_gpu(
     require_cupy()
     _sigma = (sigma, sigma, 0) if img_cp.ndim == 3 else sigma
 
-    result = gaussian_filter(img_cp.astype(cp.float32), sigma=_sigma)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
-    return cp.rint(result).clip(0, 255).astype(img_cp.dtype)
+    result = gaussian_filter_fn(
+        cast("CuPyArray", img_cp.astype(cp.float32)),
+        sigma=_sigma,
+    )  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    return cast("CuPyArray", cp.rint(result).clip(0, 255).astype(img_cp.dtype))
 
 
 def median_filter_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     size: int = 3,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     Apply a median filter to a 2-D or 3-D uint8 CuPy array.
 
@@ -60,13 +75,16 @@ def median_filter_gpu(
     require_cupy()
     _size = (size, size, 1) if img_cp.ndim == 3 else size
 
-    return median_filter(img_cp, size=_size).astype(img_cp.dtype)  # pyright: ignore[reportOptionalCall,reportArgumentType,reportOptionalMemberAccess]  # guarded by require_cupy(); cupyx stubs mistype size and return
+    return cast(
+        "CuPyArray",
+        median_filter_fn(img_cp, size=_size).astype(img_cp.dtype),  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    )
 
 
 def uniform_filter_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     size: int = 3,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     Apply a uniform (box / mean) filter to a 2-D or 3-D uint8 CuPy array.
 
@@ -78,20 +96,32 @@ def uniform_filter_gpu(
     require_cupy()
     _size = (size, size, 1) if img_cp.ndim == 3 else size
 
-    result = uniform_filter(img_cp.astype(cp.float32), size=_size)  # pyright: ignore[reportOptionalCall,reportArgumentType]  # guarded by require_cupy(); cupyx stubs expect int but tuple is valid
-    return cp.rint(result).clip(0, 255).astype(img_cp.dtype)
+    result = uniform_filter_fn(
+        cast("CuPyArray", img_cp.astype(cp.float32)),
+        size=_size,
+    )  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    return cast("CuPyArray", cp.rint(result).clip(0, 255).astype(img_cp.dtype))
 
 
 def np_uint8_gaussian_filter(img: np.ndarray, sigma: float = 1.0) -> np.ndarray:
     """Transfers img to GPU, applies Gaussian blur, returns CPU uint8 array."""
-    return cp.asnumpy(gaussian_filter_gpu(cp.asarray(img), sigma))
+    return cast(
+        "np.ndarray",
+        cp.asnumpy(gaussian_filter_gpu(cast("CuPyArray", cp.asarray(img)), sigma)),
+    )
 
 
 def np_uint8_median_filter(img: np.ndarray, size: int = 3) -> np.ndarray:
     """Transfers img to GPU, applies median filter, returns CPU uint8 array."""
-    return cp.asnumpy(median_filter_gpu(cp.asarray(img), size))
+    return cast(
+        "np.ndarray",
+        cp.asnumpy(median_filter_gpu(cast("CuPyArray", cp.asarray(img)), size)),
+    )
 
 
 def np_uint8_uniform_filter(img: np.ndarray, size: int = 3) -> np.ndarray:
     """Transfers img to GPU, applies uniform filter, returns CPU uint8 array."""
-    return cp.asnumpy(uniform_filter_gpu(cp.asarray(img), size))
+    return cast(
+        "np.ndarray",
+        cp.asnumpy(uniform_filter_gpu(cast("CuPyArray", cp.asarray(img)), size)),
+    )

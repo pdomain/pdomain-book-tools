@@ -1,8 +1,9 @@
+# pyright: reportUnknownMemberType=false
 from __future__ import annotations
 
 import logging
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ._cupy_compat import cp, require_cupy
 from .edge_finding import find_edges_gpu
@@ -10,6 +11,11 @@ from .rotate import rotate_image_gpu
 
 if TYPE_CHECKING:
     import numpy as np
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +24,9 @@ _rotate_gpu = rotate_image_gpu
 
 
 def auto_deskew_gpu(
-    img_cp: cp.ndarray,
+    img_cp: CuPyArray,
     pct: float = 0.30,
-) -> tuple[cp.ndarray, cp.ndarray, cp.ndarray]:
+) -> tuple[CuPyArray, CuPyArray, CuPyArray]:
     """
     GPU port of cv2_processing.perspective_adjustment.auto_deskew.
 
@@ -32,7 +38,7 @@ def auto_deskew_gpu(
     early-exit path is taken (pct=0 or degenerate image).
     """
     require_cupy()
-    _img_h, img_w = img_cp.shape[:2]
+    _img_h, img_w = cast("tuple[int, int]", img_cp.shape[:2])
 
     _minX, _maxX, minY, maxY = find_edges_gpu(
         img_cp, fuzzy_pct=0, pixel_count_columns=1, pixel_count_rows=1
@@ -41,7 +47,7 @@ def auto_deskew_gpu(
     h_percent = int((maxY - minY) * pct)
     w_ten_percent = int((maxY - minY) * 0.10)
 
-    empty = cp.empty((0, 0), dtype=img_cp.dtype)
+    empty = cast("CuPyArray", cp.empty((0, 0), dtype=img_cp.dtype))
 
     if w_ten_percent == 0 or h_percent == 0:
         logger.debug("auto_deskew_gpu: not deskewing — pct slice is zero")
@@ -92,6 +98,6 @@ def np_uint8_auto_deskew(
 ) -> np.ndarray:
     """Convenience wrapper. Moves to GPU, deskews, returns CPU array."""
     require_cupy()
-    img_cp = cp.asarray(img)
+    img_cp = cast("CuPyArray", cp.asarray(img))
     result_cp, _, _ = auto_deskew_gpu(img_cp, pct)
     return cp.asnumpy(result_cp)
