@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import importlib.resources
 import json
-from typing import TypedDict
+from typing import TypedDict, cast
 
 __all__ = ["SPDX_VALID_IDS", "is_valid_spdx_id"]
 
@@ -48,7 +48,9 @@ def _load_spdx_ids() -> frozenset[str]:
     resource = importlib.resources.files("pd_book_tools.data").joinpath(
         "spdx_licenses.json"
     )
-    data: _SpdxData = json.loads(resource.read_text(encoding="utf-8"))
+    data: _SpdxData = cast(
+        "_SpdxData", json.loads(resource.read_text(encoding="utf-8"))
+    )
     return frozenset(entry["licenseId"] for entry in data["licenses"])
 
 

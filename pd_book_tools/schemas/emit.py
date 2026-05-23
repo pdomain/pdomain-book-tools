@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any
+from typing import cast
 
 from pydantic import TypeAdapter
 
@@ -47,11 +47,11 @@ PUBLIC_MODELS: tuple[type, ...] = (
 )
 
 
-def emit_schemas() -> dict[str, dict[str, Any]]:
+def emit_schemas() -> dict[str, dict[str, object]]:
     """Build {ModelName: json_schema} for every public model."""
-    out: dict[str, dict[str, Any]] = {}
+    out: dict[str, dict[str, object]] = {}
     for cls in PUBLIC_MODELS:
-        out[cls.__name__] = TypeAdapter(cls).json_schema()
+        out[cls.__name__] = cast("dict[str, object]", TypeAdapter(cls).json_schema())
     return out
 
 

@@ -15,7 +15,7 @@ map to ``None`` are dropped.
 from __future__ import annotations
 
 from logging import getLogger
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 import torch
@@ -87,9 +87,11 @@ class PPDocLayoutPlusLDetector:
             device,
         )
         load_kwargs = {"revision": rev} if rev else {}
-        self._processor = RTDetrImageProcessor.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportArgumentType]  # transformers stubs don't match **kwargs spread
-        _loaded_model = RTDetrForObjectDetection.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportArgumentType]  # transformers stubs don't match **kwargs spread
-        self._model = _loaded_model.to(device)  # pyright: ignore[reportArgumentType]  # from_pretrained stubs type result as str | RTDetrForObjectDetection; .to() is valid at runtime
+        processor_cls = cast("Any", RTDetrImageProcessor)  # pyright: ignore[reportAny,reportExplicitAny]
+        model_cls = cast("Any", RTDetrForObjectDetection)  # pyright: ignore[reportAny,reportExplicitAny]
+        self._processor = processor_cls.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportAny]
+        _loaded_model = model_cls.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportAny]
+        self._model = cast("RTDetrForObjectDetection", _loaded_model.to(device))  # pyright: ignore[reportAny]
         _ = self._model.eval()
         self._device = device
         self._conf = float(confidence)
@@ -97,22 +99,27 @@ class PPDocLayoutPlusLDetector:
     @torch.inference_mode()
     def detect(self, source: str | Path | np.ndarray) -> PageLayout:
         img = self._to_pil(source)
-        inputs = self._processor(images=img, return_tensors="pt").to(self._device)
-        outputs = self._model(**inputs)
-        target = torch.tensor([img.size[::-1]]).to(self._device)  # pyright: ignore[reportPrivateImportUsage]  # torch.tensor is public API; stubs mark it private
-        raw_results = self._processor.post_process_object_detection(
-            outputs,
-            target_sizes=target,  # pyright: ignore[reportArgumentType]  # transformers stubs require TensorType; torch.Tensor is accepted at runtime
-            threshold=self._conf,
+        inputs = cast("Any", self._processor(images=img, return_tensors="pt")).to(  # pyright: ignore[reportAny,reportExplicitAny]
+            self._device
         )
-        results = cast("list[dict[str, torch.Tensor]]", raw_results)[0]
-
+        outputs: Any = self._model(**inputs)  # pyright: ignore[reportAny,reportExplicitAny]
+        target = torch.tensor([img.size[::-1]]).to(self._device)  # pyright: ignore[reportPrivateImportUsage]
+        processor = cast("Any", self._processor)  # pyright: ignore[reportAny,reportExplicitAny]
+        raw_results = cast(
+            "list[dict[str, torch.Tensor]]",
+            processor.post_process_object_detection(  # pyright: ignore[reportAny]
+                outputs,
+                target_sizes=target,
+                threshold=self._conf,
+            ),
+        )
+        results = raw_results[0]
         regions: list[LayoutRegion] = []
-        id2label = self._model.config.id2label
+        id2label = cast("dict[int, str]", self._model.config.id2label)
         for score, label, box in zip(
             results["scores"], results["labels"], results["boxes"], strict=False
         ):
-            raw_label = id2label[int(label.item())]  # pyright: ignore[reportOptionalSubscript]  # id2label is always populated for object detection models
+            raw_label = id2label[int(label.item())]
             mapped = PP_DOCLAYOUT_TO_PGDP.get(raw_label)
             if mapped is None:
                 continue
@@ -125,7 +132,9 @@ class PPDocLayoutPlusLDetector:
                     mapped,
                 )
                 continue
-            x1, y1, x2, y2 = (float(v) for v in box.detach().cpu().tolist())
+            coords_any = cast("Any", box.detach().cpu())  # pyright: ignore[reportAny,reportExplicitAny]
+            coords = cast("list[float]", coords_any.tolist())  # pyright: ignore[reportAny]
+            x1, y1, x2, y2 = coords
             regions.append(
                 LayoutRegion(
                     type=region_type,

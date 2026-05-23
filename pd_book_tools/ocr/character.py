@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from pydantic_core import CoreSchema, core_schema
 
@@ -17,6 +17,18 @@ from pd_book_tools.schemas._helpers import (
 
 if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler
+
+
+class _PointDict(TypedDict, total=False):
+    x: float
+    y: float
+    is_normalized: bool | None
+
+
+class _BoundingBoxDict(TypedDict):
+    top_left: _PointDict
+    bottom_right: _PointDict
+    is_normalized: bool | None
 
 
 @dataclass
@@ -62,7 +74,7 @@ class Character:
         else:
             # bb_raw is the dict-serialised form; BoundingBox.from_dict validates it.
             # Cast is needed because bb_raw is typed as object at this point.
-            bounding_box = BoundingBox.from_dict(cast("dict[str, object]", bb_raw))  # type: ignore[arg-type]
+            bounding_box = BoundingBox.from_dict(cast("_BoundingBoxDict", bb_raw))
 
         raw_confidence = data.get("ocr_confidence")
         ocr_confidence = (
