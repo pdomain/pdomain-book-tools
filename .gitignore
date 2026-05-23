@@ -161,6 +161,7 @@ tests/fixtures/layout_regression/expected_text/diff/
 
 # Local git worktrees created for repo-scoped agent work.
 .worktrees/
+.worktree/
 
 
 # CI output log when using AI=1 flag
