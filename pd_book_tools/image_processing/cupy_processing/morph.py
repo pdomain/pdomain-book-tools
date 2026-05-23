@@ -1,4 +1,7 @@
+# pyright: reportMissingTypeStubs=false
 # pyright: reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnnecessaryTypeIgnoreComment=false
 # Configure logging
 from __future__ import annotations
 

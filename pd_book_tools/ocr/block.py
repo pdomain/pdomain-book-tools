@@ -1381,21 +1381,24 @@ def purge_words_from_blocks(blocks: list[Block], targets: set[int]) -> None:
         if block.child_type == BlockChildType.WORDS:
             kept = [w for w in block._items if id(w) not in targets]  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
             if len(kept) != len(block._items):  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
-                block._items = kept  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
+                block.items = kept
                 if kept:
                     block.recompute_bounding_box()
                 else:
                     block.bounding_box = None
         else:
             purge_words_from_blocks(
-                [item for item in block._items if isinstance(item, Block)],
-                targets,  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
+                [item for item in block.items if isinstance(item, Block)],
+                targets,
             )
             # Drop child blocks left empty by the recursive purge — their
             # bounding boxes were cleared to None and would poison the
             # parent's recompute.
-            block._items = [b for b in block._items if not b.is_empty]  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
-            if block._items:  # pyright: ignore[reportPrivateUsage]  # shared internal tree mutation helper
+            kept_blocks = [
+                b for b in block.items if isinstance(b, Block) and not b.is_empty
+            ]
+            block.items = kept_blocks
+            if kept_blocks:
                 block.recompute_bounding_box()
             else:
                 block.bounding_box = None

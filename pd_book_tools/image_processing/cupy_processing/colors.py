@@ -1,4 +1,5 @@
 # pyright: reportUnknownMemberType=false
+# pyright: reportUnnecessaryCast=false
 from __future__ import annotations
 
 import logging

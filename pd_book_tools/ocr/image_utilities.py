@@ -22,6 +22,13 @@ class _HasRefineBoundingBoxes(Protocol):
     ) -> None: ...
 
 
+@runtime_checkable
+class _HasCropBottom(Protocol):
+    """Minimal protocol for Word objects that expose ``crop_bottom``."""
+
+    def crop_bottom(self, image: ndarray) -> None: ...
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -163,7 +170,9 @@ def refine_word_bbox(word: Word, image: ndarray | None, padding_px: int = 1) -> 
         # tests / call sites that monkey-patch ``word.crop_bottom``
         # continue to work. The method itself thin-wraps the free
         # function ``crop_word_bottom`` in production.
-        word.crop_bottom(image)  # pyright: ignore[reportUnknownMemberType]  # word.py typed in W3-B
+        # Use a typed structural view so the unannotated method signature
+        # doesn't leak into callers.
+        cast("_HasCropBottom", cast("object", word)).crop_bottom(image)
         return True
     except Exception:
         logger.debug(

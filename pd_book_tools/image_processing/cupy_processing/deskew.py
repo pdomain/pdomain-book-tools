@@ -1,4 +1,5 @@
 # pyright: reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false
 from __future__ import annotations
 
 import logging
@@ -56,14 +57,14 @@ def auto_deskew_gpu(
     # Top slice: rows [minY, minY+h_percent), cols [0, img_w-1) — matches CPU
     top_slice = img_cp[minY : minY + h_percent, 0 : img_w - 1]
     col_sums_top = cp.sum(top_slice, axis=0)
-    nonzero_top = cp.where(col_sums_top > 0)[0]
-    top_left_column = int(nonzero_top[0]) if nonzero_top.size > 0 else 0
+    nonzero_top = col_sums_top.nonzero()[0]
+    top_left_column = cast("int", nonzero_top[0]) if nonzero_top.size > 0 else 0
 
     # Bottom slice: rows [maxY-h_percent, maxY), cols [0, img_w-1)
     bottom_slice = img_cp[maxY - h_percent : maxY, 0 : img_w - 1]
     col_sums_bot = cp.sum(bottom_slice, axis=0)
-    nonzero_bot = cp.where(col_sums_bot > 0)[0]
-    bottom_left_column = int(nonzero_bot[0]) if nonzero_bot.size > 0 else 0
+    nonzero_bot = col_sums_bot.nonzero()[0]
+    bottom_left_column = cast("int", nonzero_bot[0]) if nonzero_bot.size > 0 else 0
 
     logger.debug(
         f"auto_deskew_gpu: top_left_col={top_left_column}, bottom_left_col={bottom_left_column}"

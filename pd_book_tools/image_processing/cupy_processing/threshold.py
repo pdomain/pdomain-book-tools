@@ -1,4 +1,8 @@
+# pyright: reportAny=false
+# pyright: reportImplicitStringConcatenation=false
+# pyright: reportUnknownArgumentType=false
 # pyright: reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false
 # Configure logging
 from __future__ import annotations
 

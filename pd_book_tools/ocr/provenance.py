@@ -127,7 +127,7 @@ class OCRProvenance:
         )
 
     @classmethod
-    def coerce(cls, value: OCRProvenance | _JsonDict | None) -> OCRProvenance | None:
+    def coerce(cls, value: object | None) -> OCRProvenance | None:
         """Coerce a raw value to :class:`OCRProvenance` or ``None``."""
         if value is None:
             return None
@@ -136,4 +136,6 @@ class OCRProvenance:
             # returning the input directly is safe and avoids a wasteful
             # ``from_dict(value.to_dict())`` round-trip.
             return value
-        return OCRProvenance.from_dict(value)
+        if not isinstance(value, dict):
+            raise TypeError("Expected OCRProvenance or dict")
+        return OCRProvenance.from_dict(cast("_JsonDict", value))

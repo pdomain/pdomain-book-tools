@@ -2998,7 +2998,7 @@ def reorganize_lines(block: Block) -> None:
         if x_space_between < ten_percent_median_line_length:
             _reorganize_lines_log_debug("Merging Lines.", line.text, next_line.text)
             line.merge(next_line)
-            block.remove_item(next_line)  # pyright: ignore[reportUnknownMemberType]  # Block.remove_item has an untyped parameter upstream
+            block.remove_item(next_line)
             i = i - 1
             continue
         _reorganize_lines_log_debug(
@@ -3244,7 +3244,7 @@ def _dedupe_row_blocks(row_blocks: Block | None) -> Block | None:
         kept.append(rb)
     if len(kept) == len(row_blocks.items):
         return row_blocks
-    row_blocks._items = kept  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]  # internal mutation; _items setter not exposed publicly
+    row_blocks.items = kept
     if kept:
         row_blocks.recompute_bounding_box()
     else:
