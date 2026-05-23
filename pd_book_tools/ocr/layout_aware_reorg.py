@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from collections import Counter
 from logging import getLogger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
@@ -49,6 +49,8 @@ from pd_book_tools.ocr.word import Word
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
+
+    from pd_book_tools.ocr.page import Page
 
 logger = getLogger(__name__)
 
@@ -125,7 +127,7 @@ def _word_bbox_in_layout_frame(
     Handles both normalized and pixel-space word bounding boxes. Falls back
     to ``None`` if the word has no bounding box.
     """
-    bbox = word.bounding_box
+    bbox = cast("BoundingBox | None", word.bounding_box)
     if bbox is None:
         return None
     if bbox.is_normalized:
@@ -185,14 +187,15 @@ def words_inside(
     ]
 
 
-def _resolve_dimensions(page) -> tuple[float, float]:
+def _resolve_dimensions(page: Page) -> tuple[float, float]:
     w = float(page.width or 0.0)
     h = float(page.height or 0.0)
     if w > 0 and h > 0:
         return w, h
-    base_image = getattr(page, "cv2_numpy_page_image", None)
+    base_image = page.cv2_numpy_page_image
     if base_image is not None:
-        ih, iw = base_image.shape[:2]
+        ih = int(cast("int", base_image.shape[0]))
+        iw = int(cast("int", base_image.shape[1]))
         return float(iw), float(ih)
     return 0.0, 0.0
 
@@ -206,8 +209,8 @@ def _layout_label(region_type: RegionType) -> str:
 
 
 def tag_words_with_layout(
-    page,
-    layout: PageLayout,
+    page: Page,
+    layout: PageLayout | None,
     confidence_threshold: float = DEFAULT_TAG_CONFIDENCE,
 ) -> int:
     """Annotate each Word's ``word_labels`` with the layout regions it sits in.
@@ -255,10 +258,6 @@ def word_layout_tags(word: Word) -> list[str]:
     ]
 
 
-def _word_has_tag(word: Word, region_type: RegionType) -> bool:
-    return _layout_label(region_type) in word.word_labels
-
-
 # ---------------------------------------------------------------------------
 # Drop pass — uses the tags now
 
@@ -274,8 +273,8 @@ def _purge_word_from_blocks(blocks: list[Block], targets: set[int]) -> None:
 
 
 def drop_layout_regions(
-    page,
-    layout: PageLayout,
+    page: Page,
+    layout: PageLayout | None,
     drop_types: set[RegionType],
     confidence_threshold: float | dict[RegionType, float] = DEFAULT_DROP_CONFIDENCE,
 ) -> int:
@@ -319,7 +318,7 @@ def drop_layout_regions(
 
     if not targets:
         return 0
-    _purge_word_from_blocks(list(page._items), targets)
+    _purge_word_from_blocks(page.items, targets)
     page.remove_empty_items()
     page.recompute_bounding_box()
     logger.debug(
@@ -341,7 +340,7 @@ def _iter_line_blocks(blocks: Iterable[Block]) -> Iterable[Block]:
             yield b
         else:
             yield from _iter_line_blocks(
-                [item for item in b._items if isinstance(item, Block)]
+                [item for item in b.items if isinstance(item, Block)]
             )
 
 
@@ -359,8 +358,8 @@ def _word_has_only_layout_tag(word: Word, tag: str) -> bool:
 
 
 def drop_figure_internal_words(
-    page,
-    layout: PageLayout,
+    page: Page,
+    layout: PageLayout | None,
     confidence_threshold: float | dict[RegionType, float] = DEFAULT_DROP_CONFIDENCE,
 ) -> int:
     """Drop OCR lines that exist *only* inside a high-confidence figure region.
@@ -394,8 +393,8 @@ def drop_figure_internal_words(
         return 0
 
     targets: set[int] = set()
-    for line_block in _iter_line_blocks(list(page._items)):
-        words = [item for item in line_block._items if isinstance(item, Word)]
+    for line_block in _iter_line_blocks(page.items):
+        words = [item for item in line_block.items if isinstance(item, Word)]
         if not words:
             continue
         # Drop only when EVERY word in the line is purely figure-tagged.
@@ -408,7 +407,7 @@ def drop_figure_internal_words(
 
     if not targets:
         return 0
-    _purge_word_from_blocks(list(page._items), targets)
+    _purge_word_from_blocks(page.items, targets)
     page.remove_empty_items()
     page.recompute_bounding_box()
     logger.debug("drop_figure_internal_words: removed %d words", len(targets))
@@ -419,14 +418,6 @@ def drop_figure_internal_words(
 # Geometric sidenote detection — a margin-column heuristic
 
 
-def _word_x_extents(word: Word) -> tuple[float, float, float] | None:
-    """Return ``(left, right, center_x)`` in pixel-or-normalized space."""
-    bb = word.bounding_box
-    if bb is None:
-        return None
-    return float(bb.minX), float(bb.maxX), (float(bb.minX) + float(bb.maxX)) / 2.0
-
-
 def _percentile(sorted_values: Sequence[float], pct: float) -> float:
     if not sorted_values:
         return 0.0
@@ -435,7 +426,7 @@ def _percentile(sorted_values: Sequence[float], pct: float) -> float:
 
 
 def detect_geometric_sidenotes(
-    page,
+    page: Page,
     *,
     min_cluster_words: int = 4,
     min_gap_ratio: float = 0.04,
@@ -475,22 +466,37 @@ def detect_geometric_sidenotes(
     promotes the containing block to ``block_role_labels=["sidenote"]``
     automatically.
     """
-    words = [w for w in page.words if w.bounding_box is not None]
-    if len(words) < min_cluster_words * 2:
+    word_bboxes: list[tuple[Word, BoundingBox]] = []
+    for word in page.words:
+        bbox = cast("BoundingBox | None", word.bounding_box)
+        if bbox is not None:
+            word_bboxes.append((word, bbox))
+
+    if len(word_bboxes) < min_cluster_words * 2:
         return 0
 
     # Resolve the page's horizontal extent. Word coords might be in pixel
     # or normalized space; treat is_normalized words against [0,1].
-    is_norm = words[0].bounding_box.is_normalized
+    is_norm = word_bboxes[0][1].is_normalized
     if is_norm:
         page_w = 1.0
     else:
         page_w, _ = _resolve_dimensions(page)
         if page_w <= 0:
-            page_w = max(float(w.bounding_box.maxX) for w in words)
+            page_w = max(float(bbox.maxX) for _, bbox in word_bboxes)
 
-    extents = [_word_x_extents(w) for w in words]
-    extents = [(e, w) for e, w in zip(extents, words, strict=False) if e is not None]
+    extents: list[tuple[tuple[float, float, float], Word]] = [
+        (
+            (
+                float(bbox.minX),
+                float(bbox.maxX),
+                (float(bbox.minX) + float(bbox.maxX)) / 2.0,
+            ),
+            word,
+        )
+        for word, bbox in word_bboxes
+    ]
+    bbox_by_id = {id(word): bbox for word, bbox in word_bboxes}
 
     rights = sorted(e[1] for e, _ in extents)
     lefts = sorted(e[0] for e, _ in extents)
@@ -521,9 +527,9 @@ def detect_geometric_sidenotes(
             id(w) for w in left_candidates
         }
         body_heights = sorted(
-            float(w.bounding_box.maxY) - float(w.bounding_box.minY)
-            for w in words
-            if id(w) not in margin_ids
+            float(bbox.maxY) - float(bbox.minY)
+            for word, bbox in word_bboxes
+            if id(word) not in margin_ids
         )
         if body_heights:
             body_median_height = _percentile(body_heights, 0.50)
@@ -537,8 +543,8 @@ def detect_geometric_sidenotes(
             continue
         # Reject if the cluster spans most of the page horizontally — that's
         # not a margin column, that's noise across the whole page.
-        cluster_left = min(float(w.bounding_box.minX) for w in cluster)
-        cluster_right = max(float(w.bounding_box.maxX) for w in cluster)
+        cluster_left = min(float(bbox_by_id[id(w)].minX) for w in cluster)
+        cluster_right = max(float(bbox_by_id[id(w)].maxX) for w in cluster)
         if (cluster_right - cluster_left) > max_col_w:
             continue
         # Optional glyph-size gate: real sidenotes use a smaller font than
@@ -546,13 +552,13 @@ def detect_geometric_sidenotes(
         # least max_height_ratio times shorter than the body median.
         if max_height_ratio is not None and body_median_height > 0:
             cluster_heights = sorted(
-                float(w.bounding_box.maxY) - float(w.bounding_box.minY) for w in cluster
+                float(bbox_by_id[id(w)].maxY) - float(bbox_by_id[id(w)].minY)
+                for w in cluster
             )
             cluster_median_height = _percentile(cluster_heights, 0.50)
             if cluster_median_height > max_height_ratio * body_median_height:
                 logger.debug(
-                    "detect_geometric_sidenotes: rejecting %s cluster "
-                    "on glyph-size (median=%.1f, body=%.1f, ratio_bar=%.2f)",
+                    "detect_geometric_sidenotes: rejecting %s cluster on glyph-size (median=%.1f, body=%.1f, ratio_bar=%.2f)",
                     cluster_label,
                     cluster_median_height,
                     body_median_height,
@@ -578,9 +584,9 @@ def detect_geometric_sidenotes(
 
 def _all_words_in_block(block: Block) -> list[Word]:
     if block.child_type == BlockChildType.WORDS:
-        return [item for item in block._items if isinstance(item, Word)]
+        return [item for item in block.items if isinstance(item, Word)]
     out: list[Word] = []
-    for child in block._items:
+    for child in block.items:
         if isinstance(child, Block):
             out.extend(_all_words_in_block(child))
     return out
@@ -615,14 +621,6 @@ def _dominant_layout_info(
         return RegionType(winner_tag), winner_count, pool
     except ValueError:
         return None
-
-
-def _dominant_layout_tag(words: Sequence[Word]) -> RegionType | None:
-    """Return the single most-common non-``text`` ``layout:*`` tag, or
-    ``text`` if that's all there is.
-    """
-    info = _dominant_layout_info(words)
-    return info[0] if info is not None else None
 
 
 # Layout-derived block roles that should NOT be overwritten by a later
@@ -691,7 +689,7 @@ def _block_x_center(block: Block, fallback: float) -> float:
     return (float(bb.minX) + float(bb.maxX)) / 2.0
 
 
-def route_sidenote_reading_order(page) -> int:
+def route_sidenote_reading_order(page: Page) -> int:
     """Stamp ``override_page_sort_order`` on sidenote blocks so left-margin
     notes emit before the body and right-margin notes emit after.
 
@@ -705,8 +703,8 @@ def route_sidenote_reading_order(page) -> int:
     page_w, _ = _resolve_dimensions(page)
     if page_w <= 0:
         # Try to recover from the actual block bboxes.
-        all_xs = []
-        for b in page._items:
+        all_xs: list[float] = []
+        for b in page.items:
             if b.bounding_box is not None:
                 all_xs.append(float(b.bounding_box.minX))
                 all_xs.append(float(b.bounding_box.maxX))
@@ -720,7 +718,7 @@ def route_sidenote_reading_order(page) -> int:
     # preserve their top-to-bottom order (by bbox top edge).
     left_blocks: list[Block] = []
     right_blocks: list[Block] = []
-    for block in page._items:
+    for block in page.items:
         if "sidenote" not in block.block_role_labels:
             continue
         cx = _block_x_center(block, fallback=midline)
@@ -740,7 +738,7 @@ def route_sidenote_reading_order(page) -> int:
         routed += 1
 
     if routed:
-        page._sort_items()
+        page.items = page.items
     return routed
 
 
@@ -752,6 +750,7 @@ def emit_caption_block(
     words: Sequence[Word],
     region_type: RegionType = RegionType.figure,
 ) -> Block | None:
+    _ = region_type
     if not words:
         return None
     line = Block(
@@ -804,8 +803,8 @@ def _empty_illustration_block(
 
 
 def associate_captions(
-    page,
-    layout: PageLayout,
+    page: Page,
+    layout: PageLayout | None,
     confidence_threshold: float = 0.5,
     max_gap_px: int = 80,
     emit_placeholders: bool = True,
@@ -861,7 +860,7 @@ def associate_captions(
         for w in words:
             target_ids.add(id(w))
     if target_ids:
-        _purge_word_from_blocks(list(page._items), target_ids)
+        _purge_word_from_blocks(page.items, target_ids)
         page.remove_empty_items()
 
     captions_attached = 0
@@ -873,7 +872,7 @@ def associate_captions(
             )
             illustration.override_page_sort_order = sort_offset
             sort_offset += 1
-            page._items.append(illustration)
+            page.add_item(illustration)
         if not caption_words:
             continue
         caption_block = emit_caption_block(caption_words, region_type=region.type)
@@ -881,10 +880,10 @@ def associate_captions(
             continue
         caption_block.override_page_sort_order = sort_offset
         sort_offset += 1
-        page._items.append(caption_block)
+        page.add_item(caption_block)
         captions_attached += 1
 
-    page._sort_items()
+    page.items = page.items
     page.recompute_bounding_box()
     return captions_attached
 

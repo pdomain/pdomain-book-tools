@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import pathlib
 import warnings
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import InitVar, dataclass, field
 from enum import Enum
 from hashlib import sha256
@@ -12,13 +12,14 @@ from json import load as json_load
 from logging import getLogger
 from typing import (
     TYPE_CHECKING,
-    Any,
+    cast,
 )
 
 if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler
 
     from pd_book_tools.layout.types import PageLayout
+    from pd_book_tools.ocr.reorganize_page_utils import PageMetrics
 
 from cv2 import (
     COLOR_BGR2RGB as cv2_COLOR_BGR2RGB,  # cv2_ prefix is the project's namespacing convention
@@ -46,6 +47,11 @@ from pd_book_tools.schemas._helpers import (
 
 # Configure logging
 logger = getLogger(__name__)
+
+JsonDict = dict[str, object]
+Color = tuple[int, int, int]
+DebugSections = list[tuple[str, list[str]]]
+StepHDecisions = list[dict[str, object]]
 
 
 class BBoxColors(Enum):
@@ -92,12 +98,12 @@ class Page:
 
     bounding_box: BoundingBox | None = None
     page_labels: list[str] | None = None
-    unmatched_ground_truth_lines: list[Any] | None = None
+    unmatched_ground_truth_lines: list[object] | None = None
     "List of Ground Truth Lines and the line they were found on before an OCR match"
 
     original_ocr_tool_text: str | None = ""
     original_ground_truth_text: str | None = ""
-    ocr_provenance: OCRProvenance | dict[str, Any] | None = None
+    ocr_provenance: OCRProvenance | JsonDict | None = None
 
     # Page metadata fields. These were previously assigned only inside
     # the custom ``__init__``; R-02 declared them as proper fields so
@@ -106,9 +112,9 @@ class Page:
     name: str | None = None
     source: str = "ocr"
     ocr_failed: bool = False
-    provenance_live_ocr: dict[str, Any] | None = None
-    provenance_saved_ocr: dict[str, Any] | None = None
-    provenance_saved: dict[str, Any] | None = None
+    provenance_live_ocr: JsonDict | None = None
+    provenance_saved_ocr: JsonDict | None = None
+    provenance_saved: JsonDict | None = None
 
     # Rotation OCR applied to the source image before recognition. 0
     # means OCR ran on the page as it sat on disk; 90/180/270 mean the
@@ -188,8 +194,7 @@ class Page:
     ) -> None:
         if blocks is None:
             raise TypeError(
-                "Page() missing required argument: 'blocks' (or the "
-                "deprecated alias 'items')."
+                "Page() missing required argument: 'blocks' (or the deprecated alias 'items')."
             )
 
         # Use the property setter for validation + sort.
@@ -206,7 +211,7 @@ class Page:
             self.bounding_box = BoundingBox.union(bboxes) if bboxes else None
 
         if image_array is not None:
-            if not isinstance(image_array, ndarray):
+            if not isinstance(cast("object", image_array), ndarray):
                 raise TypeError("image_array must be a numpy ndarray")
             # Use the setter so refresh_page_images() runs.
             self.cv2_numpy_page_image = image_array
@@ -220,11 +225,10 @@ class Page:
 
         if self.rotation_applied not in (0, 90, 180, 270):
             raise ValueError(
-                "rotation_applied must be one of 0/90/180/270, got "
-                f"{self.rotation_applied}"
+                f"rotation_applied must be one of 0/90/180/270, got {self.rotation_applied}"
             )
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> bool:  # pyright: ignore[reportImplicitOverride]
         """Compare two Pages by their persisted, observable state.
 
         Skips the ndarray image-cache fields (``_cv2_numpy_page_image*``)
@@ -236,7 +240,7 @@ class Page:
             return NotImplemented
         return self.to_dict() == other.to_dict()
 
-    def __hash__(self) -> int:  # pragma: no cover - lists in to_dict are unhashable
+    def __hash__(self) -> int:  # pyright: ignore[reportImplicitOverride]  # pragma: no cover - lists in to_dict are unhashable
         # Pages are mutable containers; explicit unhashable for clarity.
         raise TypeError("Page is mutable and unhashable")
 
@@ -275,7 +279,7 @@ class Page:
         self._sort_items()
         return self._items.copy()
 
-    def add_item(self, item) -> None:
+    def add_item(self, item: object) -> None:
         """Add an item to the page."""
         if not isinstance(item, Block):
             raise TypeError("Item must be of type Block")
@@ -283,7 +287,7 @@ class Page:
         self._sort_items()
         self.recompute_bounding_box()
 
-    def remove_item(self, item) -> None:
+    def remove_item(self, item: Block) -> None:
         """Remove a block from the page."""
         if item in self._items:
             self._items.remove(item)
@@ -292,7 +296,7 @@ class Page:
         else:
             raise ValueError("Item not found in page")
 
-    def remove_line_if_exists(self, line):
+    def remove_line_if_exists(self, line: Block) -> bool:
         """Remove a line from the page if it exists."""
         removed = False
 
@@ -306,9 +310,9 @@ class Page:
                     break
 
         if removed:
-            logger.debug(f"Line {line.text[0:10]}... removed from page")
+            logger.debug("Line %s... removed from page", line.text[0:10])
         else:
-            logger.debug(f"Line {line.text[0:10]}... not found in page")
+            logger.debug("Line %s... not found in page", line.text[0:10])
 
         return removed
 
@@ -334,14 +338,16 @@ class Page:
             logger.debug("Empty blocks removed from page")
 
     @items.setter
-    def items(self, values: Collection[Block]) -> None:
+    def items(self, values: object) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts any collection; getter returns sorted copy
         if not isinstance(values, Collection):
             raise TypeError("items must be a collection")
+        typed_blocks: list[Block] = []
         for block in values:
             if not isinstance(block, Block):
                 raise TypeError("Each item in items must be of type Block")
-        self._items = sorted(  # pyright: ignore[reportAttributeAccessIssue]  # dataclass field; setter assigns outside __init__ but this is correct pattern
-            values,
+            typed_blocks.append(block)
+        self._items = sorted(
+            typed_blocks,
             key=lambda block: (
                 block.override_page_sort_order
                 if block.override_page_sort_order is not None
@@ -356,8 +362,8 @@ class Page:
         return self._cv2_numpy_page_image
 
     @cv2_numpy_page_image.setter
-    def cv2_numpy_page_image(self, value: ndarray) -> None:
-        if value is not None and not isinstance(value, ndarray):
+    def cv2_numpy_page_image(self, value: ndarray | None) -> None:
+        if value is not None and not isinstance(cast("object", value), ndarray):
             raise TypeError("cv2_numpy_page_image must be a numpy ndarray")
         self._cv2_numpy_page_image = value
 
@@ -470,22 +476,25 @@ class Page:
             self._cv2_numpy_page_image.copy()
         )
         for w in self.words:
-            if (
-                "match_score" in w.ground_truth_match_keys
-                and w.ground_truth_match_keys["match_score"] == 100
-            ):
+            raw_match_score = w.ground_truth_match_keys.get("match_score")
+            match_score = (
+                float(raw_match_score)
+                if isinstance(raw_match_score, (int, float))
+                else None
+            )
+            if match_score == 100:
                 continue  # Don't display a box for matched words
 
             if (
                 not w.ground_truth_text
                 or not w.ground_truth_match_keys
-                or "match_score" not in w.ground_truth_match_keys
+                or match_score is None
             ):
                 logger.debug("No ground truth match/match score for word " + w.text)
                 color = BBoxColors.LINE.value
-            elif w.ground_truth_match_keys["match_score"] >= 90:
+            elif match_score >= 90:
                 color = BBoxColors.WORD.value
-            elif w.ground_truth_match_keys["match_score"] >= 70:
+            elif match_score >= 70:
                 color = BBoxColors.DARK_YELLOW.value
             else:
                 color = BBoxColors.PAGE.value
@@ -493,62 +502,79 @@ class Page:
                 self._cv2_numpy_page_image_matched_word_with_colors, w, color
             )
 
-    def _add_rect_recurse(self, items, image, item_add_lambda) -> None:
+    def _add_rect_recurse(
+        self,
+        items: Collection[Block | Word],
+        image: ndarray | None,
+        item_add_lambda: Callable[[Block | Word], bool],
+    ) -> None:
         if image is None:
             return
         for item in items:
             if item_add_lambda(item):
                 self._add_rect(image, item)
-            if hasattr(item, "items") and item.items:
+            if isinstance(item, Block) and item.items:
                 self._add_rect_recurse(item.items, image, item_add_lambda)
 
     @classmethod
-    def _add_rect(cls, image, item, box_color=None) -> None:
-        w, h = image.shape[1], image.shape[0]
+    def _add_rect(
+        cls,
+        image: ndarray,
+        item: Page | Block | Word,
+        box_color: Color | None = None,
+    ) -> None:
+        w, h = int(cast("int", image.shape[1])), int(cast("int", image.shape[0]))
         if not box_color:
             if isinstance(item, Page):
                 box_color = BBoxColors.PAGE.value
             elif isinstance(item, Word):
                 box_color = BBoxColors.WORD.value
-            elif isinstance(item, Block):
-                if item.block_category == BlockCategory.LINE:
-                    box_color = BBoxColors.LINE.value
-                elif item.block_category == BlockCategory.PARAGRAPH:
-                    box_color = BBoxColors.PARAGRAPH.value
-                else:
-                    box_color = BBoxColors.BLOCK.value
+            elif item.block_category == BlockCategory.LINE:
+                box_color = BBoxColors.LINE.value
+            elif item.block_category == BlockCategory.PARAGRAPH:
+                box_color = BBoxColors.PARAGRAPH.value
             else:
-                box_color = BBoxColors.BLACK.value
+                box_color = BBoxColors.BLOCK.value
 
         bbox = item.bounding_box
         # If scaled coordinates
-        if item and item.bounding_box:
-            if item.bounding_box.width < 1 or item.bounding_box.height < 1:
-                bbox = item.bounding_box.scale(width=w, height=h)
+        if bbox is not None:
+            if bbox.width < 1 or bbox.height < 1:
+                bbox = bbox.scale(width=w, height=h)
 
-            if bbox is not None:
-                cv2_rectangle(
-                    img=image,
-                    pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
-                    pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
-                    color=box_color,
-                    thickness=2,
-                )
+            _ = cv2_rectangle(
+                img=image,
+                pt1=(int(bbox.top_left.x), int(bbox.top_left.y)),
+                pt2=(int(bbox.bottom_right.x), int(bbox.bottom_right.y)),
+                color=box_color,
+                thickness=2,
+            )
 
-    def _add_text_recurse(self, items, image, text_attr="text") -> None:
+    def _add_text_recurse(
+        self,
+        items: Collection[Block | Word],
+        image: ndarray | None,
+        text_attr: str = "text",
+    ) -> None:
         if image is None:
             return
         for item in items:
             if isinstance(item, Word):
                 self._add_text_label(image, item, text_attr=text_attr)
-            elif hasattr(item, "items") and item.items:
+            elif item.items:
                 self._add_text_recurse(item.items, image, text_attr=text_attr)
 
     @classmethod
-    def _add_text_label(cls, image, item, text_attr="text", color=None) -> None:
+    def _add_text_label(
+        cls,
+        image: ndarray,
+        item: object,
+        text_attr: str = "text",
+        color: Color | None = None,
+    ) -> None:
         if not isinstance(item, Word):
             raise TypeError("item must be of type Word")
-        w, h = image.shape[1], image.shape[0]
+        w, h = int(cast("int", image.shape[1])), int(cast("int", image.shape[0]))
         if not color:
             color = (255, 0, 0)  # Blue
 
@@ -559,7 +585,7 @@ class Page:
 
         x1 = int(bbox.top_left.x)
         y1 = max(int(bbox.top_left.y), 0)
-        cv2_putText(
+        _ = cv2_putText(
             image,
             getattr(item, text_attr, None) or "",
             (x1, y1 - 5),
@@ -656,17 +682,15 @@ class Page:
         seen: bool | None = None
         for line in self.lines:
             for word in line.words:
-                if word.bounding_box is None:
+                bbox = cast("BoundingBox | None", word.bounding_box)
+                if bbox is None:
                     continue
-                flag = word.bounding_box.is_normalized
+                flag = bbox.is_normalized
                 if seen is None:
                     seen = flag
                 elif seen != flag:
                     raise ValueError(
-                        "Page.is_content_normalized: page contains a mix "
-                        "of normalized and pixel-space word bounding boxes. "
-                        "All words on a page must share one coordinate "
-                        "convention. See docs/review/bugs-low.md L-14."
+                        "Page.is_content_normalized: page contains a mix of normalized and pixel-space word bounding boxes. All words on a page must share one coordinate convention. See docs/review/bugs-low.md L-14."
                     )
         return bool(seen) if seen is not None else False
 
@@ -683,7 +707,8 @@ class Page:
 
         base_image = self.cv2_numpy_page_image
         if base_image is not None:
-            image_height, image_width = base_image.shape[:2]
+            image_height = int(cast("int", base_image.shape[0]))
+            image_width = int(cast("int", base_image.shape[1]))
             return float(image_width), float(image_height)
 
         return 0.0, 0.0
@@ -897,7 +922,7 @@ class Page:
         if target not in items:
             return False
         updated_items = [item for item in items if item is not target]
-        container._items = updated_items  # pyright: ignore[reportAttributeAccessIssue]  # Page|Block union assignment; both have _items
+        container._items = updated_items  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]  # internal fallback mutates Page|Block storage
         return True
 
     def _remove_empty_items_safely(self) -> None:
@@ -942,7 +967,7 @@ class Page:
         if not changed:
             return
 
-        container._items = kept_items  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue]  # Block._items can hold Block|Word; mypy/pyright can't narrow here
+        container._items = kept_items  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]  # Block._items can hold Block|Word; mypy/pyright can't narrow here
 
     def replace_block_with_split_paragraphs(
         self,
@@ -999,8 +1024,7 @@ class Page:
             paragraph_count_before = len(paragraphs)
 
             logger.debug(
-                "merge_paragraphs start: page_type=%s, paragraph_count=%d, "
-                "requested=%s",
+                "merge_paragraphs start: page_type=%s, paragraph_count=%d, requested=%s",
                 type(self).__name__,
                 paragraph_count_before,
                 paragraph_indices,
@@ -1103,8 +1127,7 @@ class Page:
             paragraph_count_before = len(paragraphs)
 
             logger.debug(
-                "split_paragraphs start: page_type=%s, paragraph_count=%d, "
-                "requested=%s",
+                "split_paragraphs start: page_type=%s, paragraph_count=%d, requested=%s",
                 type(self).__name__,
                 paragraph_count_before,
                 paragraph_indices,
@@ -1241,7 +1264,7 @@ class Page:
                     block_category=BlockCategory.PARAGRAPH,
                 ),
             ]
-            parent.items = (  # pyright: ignore[reportAttributeAccessIssue]  # Page|Block union; both have .items setter; list is Collection
+            parent.items = (
                 current_items[:paragraph_idx]
                 + replacement
                 + current_items[paragraph_idx + 1 :]
@@ -1305,8 +1328,7 @@ class Page:
 
             if not all(line in target_paragraph_lines for line in selected_lines):
                 logger.warning(
-                    "Selected lines %s span multiple paragraphs; "
-                    "split requires one paragraph",
+                    "Selected lines %s span multiple paragraphs; split requires one paragraph",
                     unique_indices,
                 )
                 return False
@@ -1321,8 +1343,7 @@ class Page:
 
             if not selected_paragraph_lines or not unselected_paragraph_lines:
                 logger.warning(
-                    "Split-by-selected-lines requires selecting a "
-                    "strict subset of a paragraph"
+                    "Split-by-selected-lines requires selecting a strict subset of a paragraph"
                 )
                 return False
 
@@ -1353,7 +1374,7 @@ class Page:
                     block_category=BlockCategory.PARAGRAPH,
                 ),
             ]
-            parent.items = (  # pyright: ignore[reportAttributeAccessIssue]  # Page|Block union; both have .items setter; list is Collection
+            parent.items = (
                 current_items[:paragraph_idx]
                 + replacement
                 + current_items[paragraph_idx + 1 :]
@@ -1490,8 +1511,7 @@ class Page:
                     if not self._is_geometry_normalization_error(recompute_error):
                         raise
                     logger.warning(
-                        "Skipped source line bbox recompute due to "
-                        "malformed geometry on line %s: %s",
+                        "Skipped source line bbox recompute due to malformed geometry on line %s: %s",
                         line_index,
                         recompute_error,
                     )
@@ -1521,8 +1541,7 @@ class Page:
                     if not self._is_geometry_normalization_error(recompute_error):
                         raise
                     logger.warning(
-                        "Skipped selected line bbox recompute due to "
-                        "malformed geometry on line %s: %s",
+                        "Skipped selected line bbox recompute due to malformed geometry on line %s: %s",
                         line_index,
                         recompute_error,
                     )
@@ -1618,7 +1637,7 @@ class Page:
                         line_count_before - 1,
                     )
                     return False
-                if not isinstance(lines[index], Block):
+                if not isinstance(lines[index], Block):  # pyright: ignore[reportUnnecessaryIsInstance]  # defensive runtime guard
                     logger.warning(
                         "Selected line is not a Block (index=%s, type=%s)",
                         index,
@@ -1645,7 +1664,7 @@ class Page:
                         return False
 
             for index in reversed(unique_indices[1:]):
-                self.remove_line_if_exists(lines[index])
+                _ = self.remove_line_if_exists(lines[index])
 
             try:
                 self.finalize_page_structure()
@@ -1701,7 +1720,7 @@ class Page:
                     return False
 
             for index in reversed(unique_indices):
-                self.remove_line_if_exists(lines[index])
+                _ = self.remove_line_if_exists(lines[index])
 
             lines_after = len(list(self.lines))
             logger.info(
@@ -1724,7 +1743,7 @@ class Page:
                 logger.warning("Word deletion requires selecting at least one word")
                 return False
 
-            validated_by_line: dict[int, list[Any]] = {}
+            validated_by_line: dict[int, list[Word]] = {}
 
             for line_index, word_index in unique_keys:
                 line_words = validated_by_line.get(line_index)
@@ -1814,7 +1833,7 @@ class Page:
                 )
                 return False
 
-            bbox = word.bounding_box
+            bbox = cast("BoundingBox | None", word.bounding_box)
             bbox_width = float(bbox.width if bbox else 0.0)
             if bbox is None or bbox_width <= 0.0:
                 logger.warning(
@@ -1904,7 +1923,7 @@ class Page:
 
             touched_lines: dict[int, Block] = {id(source_line): source_line}
             for split_piece in split_words:
-                piece_bbox = split_piece.bounding_box
+                piece_bbox = cast("BoundingBox | None", split_piece.bounding_box)
                 midpoint_y = (
                     piece_bbox.vertical_midpoint if piece_bbox is not None else None
                 )
@@ -2123,7 +2142,7 @@ class Page:
 
             word.bounding_box = new_bbox
             if refine_after:
-                word.refine_bbox(self.cv2_numpy_page_image)
+                _ = word.refine_bbox(self.cv2_numpy_page_image)
             self.finalize_page_structure()
 
             logger.info(
@@ -2309,7 +2328,7 @@ class Page:
                     source_line_bboxes.append(source_line_original_bbox)
 
                 paragraphs = list(self.paragraphs)
-                target_paragraph = None
+                target_paragraph: Block | None = None
                 for paragraph in paragraphs:
                     if target_line in list(paragraph.lines):
                         target_paragraph = paragraph
@@ -2394,14 +2413,16 @@ class Page:
             ):
                 new_line.bounding_box = Page.first_usable_bbox(source_line_bboxes)
 
-            unique_paragraphs = []
+            unique_paragraphs: list[Block] = []
             for paragraph in containing_paragraphs:
                 if paragraph not in unique_paragraphs:
                     unique_paragraphs.append(paragraph)
 
             if len(unique_paragraphs) == 1 and line_insertion_points:
                 target_paragraph = unique_paragraphs[0]
-                original_paragraph_items = list(target_paragraph.items)
+                original_paragraph_items: list[Block | Word] = list(
+                    target_paragraph.items
+                )
                 paragraph_items = [
                     item
                     for item in original_paragraph_items
@@ -2609,7 +2630,7 @@ class Page:
                 return False
 
             word = line_words[word_index]
-            bbox = word.bounding_box
+            bbox = cast("BoundingBox | None", word.bounding_box)
             if bbox is None:
                 logger.warning(
                     "Word bbox nudge requires an existing bbox for line=%s word=%s",
@@ -2700,9 +2721,10 @@ class Page:
             ocr_provenance=self.ocr_provenance,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonDict:
         """Convert to JSON-serializable dictionary."""
-        result: dict[str, Any] = {
+        ocr_provenance = OCRProvenance.coerce(self.ocr_provenance)
+        result: JsonDict = {
             "type": "Page",
             "width": self.width,
             "height": self.height,
@@ -2710,9 +2732,7 @@ class Page:
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
             "ocr_provenance": (
-                self.ocr_provenance.to_dict()  # pyright: ignore[reportAttributeAccessIssue]  # declared as union for deserialization; coerce() normalizes to OCRProvenance|None at init
-                if self.ocr_provenance is not None
-                else None
+                ocr_provenance.to_dict() if ocr_provenance is not None else None
             ),
         }
         # Include metadata fields when set (omit defaults for compact output)
@@ -2898,13 +2918,13 @@ class Page:
             # the region(s) it sits in. Downstream steps (and post-reorg
             # consumers) see these as ``layout:<type>`` entries in
             # ``word.word_labels``.
-            layout_aware_reorg.tag_words_with_layout(self, layout)
+            _ = layout_aware_reorg.tag_words_with_layout(self, layout)
 
             # Step Layout-1b: geometric fallback — tag clear left/right
             # margin-column words as ``layout:sidenote``. PP-DocLayout
             # often lumps narrow marginalia into the body's wide text
             # region; this catches what the model misses.
-            layout_aware_reorg.detect_geometric_sidenotes(
+            _ = layout_aware_reorg.detect_geometric_sidenotes(
                 self, max_height_ratio=sidenote_max_height_ratio
             )
 
@@ -2940,14 +2960,70 @@ class Page:
             # dispatch on the tags without the library having decided
             # for them.
             if drop_layout_words:
-                layout_aware_reorg.drop_figure_internal_words(self, layout)
+                _ = layout_aware_reorg.drop_figure_internal_words(self, layout)
 
         # Step A — image-based bounding box tightening.
         if self._cv2_numpy_page_image is not None:
             self.refine_bounding_boxes()
 
-        debug_sections: list[tuple[str, list[str]]] = []
+        debug_sections: DebugSections = []
         debug_squeezed_lines: list[str] = []
+        drop_heuristic_figure_noise = cast(
+            "Callable[[Page], int]",
+            reorganize_page_utils.drop_heuristic_figure_noise,
+        )
+        run_step_d_split_mixed_content = cast(
+            "Callable[[Page, DebugSections], None]",
+            reorganize_page_utils.run_step_d_split_mixed_content,
+        )
+        run_step_e_extract_header_footer = cast(
+            "Callable[[Page, DebugSections], tuple[list[Block], list[Block], list[Block], list[Word], Block | None, Block | None]]",
+            reorganize_page_utils.run_step_e_extract_header_footer,
+        )
+        run_step_f_row_blocks = cast(
+            "Callable[[Page, list[Block], list[Word], DebugSections], Block | None]",
+            reorganize_page_utils.run_step_f_row_blocks,
+        )
+        write_layout_debug_report = cast(
+            "Callable[[Page, DebugSections], object]",
+            reorganize_page_utils.write_layout_debug_report,
+        )
+        emit_band_only_blocks = cast(
+            "Callable[[Page, Block | None, Block | None], None]",
+            reorganize_page_utils.emit_band_only_blocks,
+        )
+        expand_row_blocks = cast(
+            "Callable[[Page, Block, list[str]], tuple[list[Block], StepHDecisions]]",
+            reorganize_page_utils.expand_row_blocks,
+        )
+        emit_step_h_debug = cast(
+            "Callable[[Page, DebugSections, list[str], StepHDecisions], None]",
+            reorganize_page_utils.emit_step_h_debug,
+        )
+        classify_and_paragraphize_blocks = cast(
+            "Callable[[Page, list[Block]], list[Block]]",
+            reorganize_page_utils.classify_and_paragraphize_blocks,
+        )
+        compute_page_metrics = cast(
+            "Callable[[Page], PageMetrics]",
+            reorganize_page_utils.compute_page_metrics,
+        )
+        reconcile_dropped_words = cast(
+            "Callable[[Page, list[Word], list[Block]], list[Block]]",
+            reorganize_page_utils.reconcile_dropped_words,
+        )
+        emit_step_k_debug = cast(
+            "Callable[[Page, DebugSections, list[Block]], None]",
+            reorganize_page_utils.emit_step_k_debug,
+        )
+        emit_step_l_debug = cast(
+            "Callable[[Page, DebugSections, list[Block]], None]",
+            reorganize_page_utils.emit_step_l_debug,
+        )
+        emit_step_dropcap_debug = cast(
+            "Callable[[Page, DebugSections, list[Block]], None]",
+            reorganize_page_utils.emit_step_dropcap_debug,
+        )
 
         # Step B — merge OCR-fragmented lines back together.
         for block in self.items:
@@ -2966,7 +3042,7 @@ class Page:
         # flag still controls. Under the default the pipeline does not
         # silently delete OCR words from this geometric fallback.
         if drop_figure_internal_text and drop_layout_words:
-            reorganize_page_utils.drop_heuristic_figure_noise(self)
+            _ = drop_heuristic_figure_noise(self)
 
         # Snapshot the pre-pipeline word set so the post-pipeline reconciler
         # can detect drops and either recover them or hard-fail (strict mode).
@@ -3015,7 +3091,7 @@ class Page:
         self.diagnostic_noise_dropped_count = len(self.diagnostic_noise_dropped_words)
 
         # Step D — split mixed-content (caption + body) OCR lines.
-        reorganize_page_utils.run_step_d_split_mixed_content(self, debug_sections)
+        run_step_d_split_mixed_content(self, debug_sections)
 
         # Step E — peel page header / footer bands.
         (
@@ -3025,27 +3101,23 @@ class Page:
             body_words,
             page_header_block,
             page_footer_block,
-        ) = reorganize_page_utils.run_step_e_extract_header_footer(self, debug_sections)
+        ) = run_step_e_extract_header_footer(self, debug_sections)
 
         # Step F — vertical row-block grouping.
-        row_blocks = reorganize_page_utils.run_step_f_row_blocks(
-            self, body_lines, body_words, debug_sections
-        )
+        row_blocks = run_step_f_row_blocks(self, body_lines, body_words, debug_sections)
 
         if not row_blocks or len(row_blocks.items) == 0:
             logger.debug("No blocks to reorganize")
             if reorganize_page_utils.layout_debug_enabled():
                 debug_sections.append(("Step 2", ["No row blocks to reorganize."]))
-                reorganize_page_utils.write_layout_debug_report(self, debug_sections)
-            reorganize_page_utils.emit_band_only_blocks(
-                self, page_header_block, page_footer_block
-            )
+                _ = write_layout_debug_report(self, debug_sections)
+            emit_band_only_blocks(self, page_header_block, page_footer_block)
             if layout is not None:
                 from pd_book_tools.ocr import layout_aware_reorg
 
-                layout_aware_reorg.bubble_block_roles_from_layout(self._items)
-                layout_aware_reorg.route_sidenote_reading_order(self)
-                layout_aware_reorg.associate_captions(
+                _ = layout_aware_reorg.bubble_block_roles_from_layout(self._items)
+                _ = layout_aware_reorg.route_sidenote_reading_order(self)
+                _ = layout_aware_reorg.associate_captions(
                     self,
                     layout,
                     emit_placeholders=emit_illustration_placeholders,
@@ -3057,15 +3129,13 @@ class Page:
                 reorganize_page_utils.reorganize_lines(block)
 
         # Step H — column / floated-figure expansion of each row block.
-        expanded_row_blocks, step_h_decisions = reorganize_page_utils.expand_row_blocks(
+        expanded_row_blocks, step_h_decisions = expand_row_blocks(
             self, row_blocks, debug_squeezed_lines
         )
-        reorganize_page_utils.emit_step_h_debug(
-            self, debug_sections, debug_squeezed_lines, step_h_decisions
-        )
+        emit_step_h_debug(self, debug_sections, debug_squeezed_lines, step_h_decisions)
 
         # Step L — classify and paragraphize each expanded block.
-        reset_paragraph_blocks = reorganize_page_utils.classify_and_paragraphize_blocks(
+        reset_paragraph_blocks = classify_and_paragraphize_blocks(
             self, expanded_row_blocks
         )
 
@@ -3081,7 +3151,7 @@ class Page:
         # ``pd_book_tools/ocr/dropcap.py``.
         from pd_book_tools.ocr.dropcap import detect_and_stitch_drop_caps
 
-        page_metrics = reorganize_page_utils.compute_page_metrics(self)
+        page_metrics = compute_page_metrics(self)
         reset_paragraph_blocks = detect_and_stitch_drop_caps(
             reset_paragraph_blocks,
             self.cv2_numpy_page_image,
@@ -3098,9 +3168,7 @@ class Page:
         # recover by appending the dropped words as a tagged block + emit a
         # big stderr warning. Re-stamps override_page_sort_order so the
         # recovered block sorts to the very end.
-        final_blocks = reorganize_page_utils.reconcile_dropped_words(
-            self, pre_reorg_words, final_blocks
-        )
+        final_blocks = reconcile_dropped_words(self, pre_reorg_words, final_blocks)
         for idx, block in enumerate(final_blocks):
             block.override_page_sort_order = idx
 
@@ -3110,13 +3178,11 @@ class Page:
         )
         self.refresh_page_images()
 
-        reorganize_page_utils.emit_step_k_debug(self, debug_sections, final_blocks)
-        reorganize_page_utils.emit_step_l_debug(self, debug_sections, final_blocks)
-        reorganize_page_utils.emit_step_dropcap_debug(
-            self, debug_sections, final_blocks
-        )
+        emit_step_k_debug(self, debug_sections, final_blocks)
+        emit_step_l_debug(self, debug_sections, final_blocks)
+        emit_step_dropcap_debug(self, debug_sections, final_blocks)
         if reorganize_page_utils.layout_debug_enabled():
-            reorganize_page_utils.write_layout_debug_report(self, debug_sections)
+            _ = write_layout_debug_report(self, debug_sections)
 
         if layout is not None:
             from pd_book_tools.ocr import layout_aware_reorg
@@ -3125,19 +3191,19 @@ class Page:
             # based on the dominant ``layout:*`` tag inside. Runs *before*
             # caption association so the placeholder illustration / caption
             # blocks emitted by associate_captions don't get re-tagged.
-            layout_aware_reorg.bubble_block_roles_from_layout(self._items)
+            _ = layout_aware_reorg.bubble_block_roles_from_layout(self._items)
 
             # Step Layout-3b: route sidenote blocks — left margin emits at
             # the top of the page, right margin at the bottom — so they
             # don't interleave with body lines.
-            layout_aware_reorg.route_sidenote_reading_order(self)
+            _ = layout_aware_reorg.route_sidenote_reading_order(self)
 
             # Step Layout-4: emit placeholder illustration + caption blocks
             # for high-confidence figure / decoration / table regions.
             # ``emit_illustration_placeholders=False`` suppresses the
             # geometry-only placeholder block (useful for plain-text
             # consumers) without dropping caption OCR words.
-            layout_aware_reorg.associate_captions(
+            _ = layout_aware_reorg.associate_captions(
                 self,
                 layout,
                 emit_placeholders=emit_illustration_placeholders,
@@ -3158,44 +3224,60 @@ class Page:
         self.refresh_page_images()
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> Page:
+    def from_dict(cls, data: Mapping[str, object]) -> Page:
         """Create OCRPage from dictionary."""
         # Resolve source from either "source" or legacy "page_source" key
-        source = data.get("source", data.get("page_source", "ocr"))
+        source = cast("str", data.get("source", data.get("page_source", "ocr")))
         review_raw = data.get("review")
         review = (
             review_raw
             if isinstance(review_raw, ReviewMetadata)
             else (
-                ReviewMetadata.from_dict(review_raw) if review_raw is not None else None
+                ReviewMetadata.from_dict(cast("dict[str, object]", review_raw))
+                if review_raw is not None
+                else None
             )
         )
-        raw_items = data.get("items", [])
+        raw_items = cast("Sequence[object]", data.get("items", []))
         blocks = [
-            item if isinstance(item, Block) else Block.from_dict(item)
+            item
+            if isinstance(item, Block)
+            else Block.from_dict(cast("Mapping[str, object]", item))
             for item in raw_items
         ]
         bb_raw = data.get("bounding_box")
         bounding_box = (
             bb_raw
             if isinstance(bb_raw, BoundingBox)
-            else (BoundingBox.from_dict(bb_raw) if bb_raw else None)
+            else (
+                BoundingBox.from_dict(cast("dict[str, object]", bb_raw))  # pyright: ignore[reportArgumentType]  # accepts serialized bbox dict shape
+                if bb_raw
+                else None
+            )
         )
         return cls(
             blocks=blocks,
-            width=data["width"],
-            height=data["height"],
-            page_index=data["page_index"],
+            width=int(cast("str | float | int", data["width"])),
+            height=int(cast("str | float | int", data["height"])),
+            page_index=int(cast("str | float | int", data["page_index"])),
             bounding_box=bounding_box,
-            ocr_provenance=data.get("ocr_provenance"),
-            image_path=data.get("image_path"),
-            name=data.get("name"),
+            ocr_provenance=cast(
+                "OCRProvenance | JsonDict | None", data.get("ocr_provenance")
+            ),
+            image_path=cast("pathlib.Path | str | None", data.get("image_path")),
+            name=cast("str | None", data.get("name")),
             source=source,
-            ocr_failed=data.get("ocr_failed", False),
-            provenance_live_ocr=data.get("provenance_live_ocr"),
-            provenance_saved_ocr=data.get("provenance_saved_ocr"),
-            provenance_saved=data.get("provenance_saved"),
-            rotation_applied=data.get("rotation_applied", 0),
+            ocr_failed=bool(data.get("ocr_failed", False)),
+            provenance_live_ocr=cast(
+                "JsonDict | None", data.get("provenance_live_ocr")
+            ),
+            provenance_saved_ocr=cast(
+                "JsonDict | None", data.get("provenance_saved_ocr")
+            ),
+            provenance_saved=cast("JsonDict | None", data.get("provenance_saved")),
+            rotation_applied=int(
+                cast("str | float | int", data.get("rotation_applied", 0))
+            ),
             review=review,
         )
 
@@ -3298,13 +3380,14 @@ class Page:
                 "cv2_numpy_page_image is not set. Please set it before calling this method."
             )
         image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
-        img_height, img_width, _ = image.shape
+        img_height = int(cast("int", image.shape[0]))
+        img_width = int(cast("int", image.shape[1]))
 
-        detection_labels = {}
+        detection_labels: dict[str, object] = {}
 
         image_name = f"{prefix}_{self.page_index}.png"
         logger.debug("Writing image: " + str(image_name))
-        cv2_imwrite(
+        _ = cv2_imwrite(
             str(pathlib.Path(detection_image_path, image_name).resolve()),
             image,
             [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
@@ -3334,10 +3417,10 @@ class Page:
         # Read in the JSON file and add the new labels
         try:
             with open(pathlib.Path(detection_path, "labels.json")) as f:
-                existing_detection_labels = json_load(f)
+                existing_detection_labels = cast("dict[str, object]", json_load(f))
         except FileNotFoundError:
             # If the file doesn't exist, create an empty dictionary
-            existing_detection_labels = {}
+            existing_detection_labels: dict[str, object] = {}
 
         # remove existing labels that have prefix + page index
         existing_detection_labels = {
@@ -3358,7 +3441,7 @@ class Page:
         output_path: pathlib.Path,
         prefix: str = "",
         word_filter: Callable[[Word], bool] | None = None,
-        label_formatter: Callable[[Word], Any] | None = None,
+        label_formatter: Callable[[Word], object] | None = None,
     ) -> None:
         """
         Create a text recognition training or validation set from a page
@@ -3408,7 +3491,8 @@ class Page:
                 "cv2_numpy_page_image is not set. Please set it before calling this method."
             )
         image = cv2_cvtColor(self.cv2_numpy_page_image, cv2_COLOR_BGR2RGB)
-        img_height, img_width, _ = image.shape
+        img_height = int(cast("int", image.shape[0]))
+        img_width = int(cast("int", image.shape[1]))
 
         words = self.words
         if word_filter is not None:
@@ -3420,7 +3504,7 @@ class Page:
                 logger.debug("Deleting existing image: " + str(file))
                 file.unlink()
 
-        recognition_labels = {}
+        recognition_labels: dict[str, object] = {}
 
         for word in words:
             if label_formatter is not None:
@@ -3435,7 +3519,7 @@ class Page:
             cropped_image = image[bb.minY : bb.maxY, bb.minX : bb.maxX]
             cropped_image_name = f"{prefix}_{self.page_index}_{bb.minX}_{bb.maxX}_{bb.minY}_{bb.maxY}.png"
             logger.debug("Writing image: " + str(cropped_image_name))
-            cv2_imwrite(
+            _ = cv2_imwrite(
                 str(pathlib.Path(recognition_image_path, cropped_image_name).resolve()),
                 cropped_image,
                 [int(cv2_IMWRITE_PNG_COMPRESSION), 9],
@@ -3445,10 +3529,10 @@ class Page:
         # Read in the JSON file and add the new labels
         try:
             with open(pathlib.Path(recognition_path, "labels.json")) as f:
-                existing_labels = json_load(f)
+                existing_labels = cast("dict[str, object]", json_load(f))
         except FileNotFoundError:
             # If the file doesn't exist, create an empty dictionary
-            existing_labels = {}
+            existing_labels: dict[str, object] = {}
 
         # remove existing labels that have prefix + page index
         existing_labels = {
@@ -3503,7 +3587,7 @@ class Page:
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        source_type: Any,
+        source_type: object,
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         bb_schema = handler.generate_schema(BoundingBox)
@@ -3602,27 +3686,23 @@ class Page:
 # backward-compat surface.
 # ---------------------------------------------------------------------------
 
-_dataclass_generated_page_init = Page.__init__
+_dataclass_generated_page_init: Callable[..., None] = Page.__init__
 
 
 def _page_init_with_deprecation_shim(
     self: Page,
-    *args: Any,
+    *args: object,
     items: Collection[Block] | None = None,
     cv2_numpy_page_image: ndarray | None = None,
-    **kwargs: Any,
+    **kwargs: object,
 ) -> None:
     if items is not None:
         if "blocks" in kwargs and kwargs["blocks"] is not None:
             raise TypeError(
-                "Page() got both 'blocks' and the deprecated alias "
-                "'items' — pass only 'blocks'."
+                "Page() got both 'blocks' and the deprecated alias 'items' — pass only 'blocks'."
             )
         warnings.warn(
-            "Page(items=...) is deprecated; use Page(blocks=...) "
-            "instead. The 'items=' constructor kwarg will be removed "
-            "in v1.0. (The read-side 'page.items' property is "
-            "unchanged.)",
+            "Page(items=...) is deprecated; use Page(blocks=...) instead. The 'items=' constructor kwarg will be removed in v1.0. (The read-side 'page.items' property is unchanged.)",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -3631,16 +3711,10 @@ def _page_init_with_deprecation_shim(
     if cv2_numpy_page_image is not None:
         if "image_array" in kwargs and kwargs["image_array"] is not None:
             raise TypeError(
-                "Page() got both 'image_array' and the deprecated "
-                "alias 'cv2_numpy_page_image' — pass only "
-                "'image_array'."
+                "Page() got both 'image_array' and the deprecated alias 'cv2_numpy_page_image' — pass only 'image_array'."
             )
         warnings.warn(
-            "Page(cv2_numpy_page_image=...) is deprecated; use "
-            "Page(image_array=...) instead. The "
-            "'cv2_numpy_page_image=' constructor kwarg will be "
-            "removed in v1.0. (The read-side "
-            "'page.cv2_numpy_page_image' property is unchanged.)",
+            "Page(cv2_numpy_page_image=...) is deprecated; use Page(image_array=...) instead. The 'cv2_numpy_page_image=' constructor kwarg will be removed in v1.0. (The read-side 'page.cv2_numpy_page_image' property is unchanged.)",
             DeprecationWarning,
             stacklevel=2,
         )

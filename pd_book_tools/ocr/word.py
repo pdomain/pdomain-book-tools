@@ -3,13 +3,16 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import TYPE_CHECKING, Any, ClassVar
+from math import ceil, floor
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import cv2
 import numpy as np
 from numpy import ndarray
 from pydantic_core import CoreSchema, core_schema
-from thefuzz.fuzz import ratio as fuzz_ratio
+from thefuzz.fuzz import (  # pyright: ignore[reportMissingTypeStubs]  # no upstream stubs
+    ratio as _fuzz_ratio_raw,  # pyright: ignore[reportUnknownVariableType]  # no upstream stubs
+)
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
@@ -37,10 +40,16 @@ from pd_book_tools.schemas._helpers import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+
     from pydantic import GetCoreSchemaHandler
 
 # Configure logging
 logger = getLogger(__name__)
+
+Baseline = dict[str, float | str]
+JsonDict = dict[str, object]
+fuzz_ratio = cast("Callable[[str, str], int]", _fuzz_ratio_raw)
 
 
 @dataclass
@@ -83,8 +92,8 @@ class Word:
 
     _ground_truth_text: str | None = None
     ground_truth_bounding_box: BoundingBox | None = None
-    ground_truth_match_keys: dict[str, Any] = field(default_factory=dict)
-    baseline: dict[str, float | str] | None = None
+    ground_truth_match_keys: dict[str, object] = field(default_factory=dict)
+    baseline: Baseline | None = None
 
     # Optional human-review metadata (Word-scope). None when no review pass
     # has touched this word. See pd_book_tools/ocr/review.py.
@@ -105,10 +114,10 @@ class Word:
         text_style_labels: list[str] | None = None,
         text_style_label_scopes: dict[str, str] | None = None,
         word_components: list[str] | None = None,
-        baseline: dict[str, float | str] | None = None,
+        baseline: Baseline | None = None,
         ground_truth_text: str | None = None,
         ground_truth_bounding_box: BoundingBox | None = None,
-        ground_truth_match_keys: dict[str, Any] | None = None,
+        ground_truth_match_keys: dict[str, object] | None = None,
         review: ReviewMetadata | None = None,
         glyph_annotations: GlyphAnnotations | None = None,
     ) -> None:
@@ -172,7 +181,7 @@ class Word:
         return self._ground_truth_text or ""
 
     @ground_truth_text.setter
-    def ground_truth_text(self, value: str | None) -> None:
+    def ground_truth_text(self, value: str | None) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts persisted None; getter exposes legacy str contract
         # R-27: ``None`` is the canonical "no ground truth" value. Normalize
         # empty strings to ``None`` on assignment so the internal state is
         # consistent with what ``to_dict`` serializes (both round-trip as
@@ -269,10 +278,10 @@ class Word:
                 continue
             if desired_flags[attr_name]:
                 style_labels_set.add(style_label)
-                style_scopes.setdefault(style_label, "whole")
+                _ = style_scopes.setdefault(style_label, "whole")
             else:
                 style_labels_set.discard(style_label)
-                style_scopes.pop(style_label, None)
+                _ = style_scopes.pop(style_label, None)
 
         footnote_component = self._resolve_word_component("left_footnote", ())
         if footnote_component is not None:
@@ -353,7 +362,7 @@ class Word:
 
         style_set = set(style_labels)
         style_set.discard(normalized_style)
-        style_scopes.pop(normalized_style, None)
+        _ = style_scopes.pop(normalized_style, None)
 
         ordered_labels = self._ordered_values(style_labels, style_set)
         if not ordered_labels:
@@ -380,7 +389,7 @@ class Word:
         changed = False
         for style_label in candidate_styles:
             if style_label in scopes:
-                scopes.pop(style_label)
+                _ = scopes.pop(style_label)
                 changed = True
 
         if changed:
@@ -390,7 +399,7 @@ class Word:
     def _normalized_style_labels(self) -> list[str]:
         """Return normalized text style labels list."""
         labels = list(self.text_style_labels or [])
-        normalized = []
+        normalized: list[str] = []
         for label in labels:
             try:
                 normalized.append(normalize_text_style_label(str(label)))
@@ -417,7 +426,7 @@ class Word:
     def _normalized_components(self) -> list[str]:
         """Return normalized word components list."""
         components = list(self.word_components or [])
-        normalized = []
+        normalized: list[str] = []
         for component in components:
             try:
                 normalized.append(normalize_word_component(str(component)))
@@ -471,7 +480,7 @@ class Word:
     @property
     def bbox_signature(self) -> tuple[float, float, float, float, bool | None] | None:
         """Return a stable bbox signature for convergence checks."""
-        bbox = self.bounding_box
+        bbox = cast("BoundingBox | None", self.bounding_box)
         if bbox is None:
             return None
         return (
@@ -510,7 +519,7 @@ class Word:
 
         Returns True if the bbox was successfully expanded.
         """
-        bbox = self.bounding_box
+        bbox = cast("BoundingBox | None", self.bounding_box)
         if bbox is None:
             return False
 
@@ -567,13 +576,16 @@ class Word:
             previous_signature
         }
         for _ in range(8):
-            bbox = self.bounding_box
+            bbox = cast("BoundingBox | None", self.bounding_box)
             if bbox is not None and page_image is not None:
                 try:
-                    refined_bbox = bbox.refine(
-                        page_image,
-                        padding_px=0,
-                        expand_beyond_original=True,
+                    refined_bbox = cast(
+                        "BoundingBox | None",
+                        bbox.refine(
+                            page_image,
+                            padding_px=0,
+                            expand_beyond_original=True,
+                        ),
                     )
                     if refined_bbox is not None:
                         self.bounding_box = refined_bbox
@@ -618,7 +630,7 @@ class Word:
             return ""
         return self.ground_truth_text or ""
 
-    def scale(self, width, height):
+    def scale(self, width: int, height: int) -> Word:
         """Return a deep-copied Word with pixel-space bounding box.
 
         Behavior:
@@ -638,7 +650,7 @@ class Word:
         data["bounding_box"] = scaled_bbox.to_dict()
         return Word.from_dict(data)
 
-    def fuzz_score_against(self, ground_truth_text):
+    def fuzz_score_against(self, ground_truth_text: str) -> int:
         """Scores a string as "matching" against a ground truth string.
 
         TODO: Perhaps add loose scoring for curly quotes against straight quotes,
@@ -649,9 +661,9 @@ class Word:
         """
         return fuzz_ratio(self.text, ground_truth_text)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonDict:
         """Convert to JSON-serializable dictionary."""
-        d: dict[str, Any] = {
+        d: JsonDict = {
             "type": "Word",
             "text": self.text,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
@@ -678,42 +690,58 @@ class Word:
         return d
 
     @classmethod
-    def from_dict(cls, dict: dict[str, Any]) -> Word:
+    def from_dict(cls, data: Mapping[str, object]) -> Word:
         """Create OCRWord from dictionary."""
-        review_raw = dict.get("review")
+        review_raw = data.get("review")
         review = (
             review_raw
             if isinstance(review_raw, ReviewMetadata)
             else (
-                ReviewMetadata.from_dict(review_raw) if review_raw is not None else None
+                ReviewMetadata.from_dict(cast("dict[str, object]", review_raw))
+                if review_raw is not None
+                else None
             )
         )
-        bb_raw = dict["bounding_box"]
+        bb_raw = data["bounding_box"]
         bounding_box = (
-            bb_raw if isinstance(bb_raw, BoundingBox) else BoundingBox.from_dict(bb_raw)
+            bb_raw
+            if isinstance(bb_raw, BoundingBox)
+            else BoundingBox.from_dict(cast("dict[str, object]", bb_raw))  # pyright: ignore[reportArgumentType]  # accepts serialized bbox dict shape
         )
-        gt_bb_raw = dict.get("ground_truth_bounding_box")
+        gt_bb_raw = data.get("ground_truth_bounding_box")
         ground_truth_bounding_box = (
             gt_bb_raw
             if isinstance(gt_bb_raw, BoundingBox)
-            else (BoundingBox.from_dict(gt_bb_raw) if gt_bb_raw else None)
+            else (
+                BoundingBox.from_dict(cast("dict[str, object]", gt_bb_raw))  # pyright: ignore[reportArgumentType]  # accepts serialized bbox dict shape
+                if gt_bb_raw
+                else None
+            )
         )
-        ga_raw = dict.get("glyph_annotations")
+        ga_raw = data.get("glyph_annotations")
         glyph_annotations = (
-            GlyphAnnotations.from_dict(ga_raw) if ga_raw is not None else None
+            GlyphAnnotations.from_dict(cast("dict[str, object]", ga_raw))
+            if ga_raw is not None
+            else None
         )
         return Word(
-            text=dict["text"],
+            text=cast("str", data["text"]),
             bounding_box=bounding_box,
-            ocr_confidence=dict.get("ocr_confidence"),
-            word_labels=dict.get("word_labels", []),
-            text_style_labels=dict.get("text_style_labels", []),
-            text_style_label_scopes=dict.get("text_style_label_scopes"),
-            word_components=dict.get("word_components", []),
-            baseline=dict.get("baseline"),
-            ground_truth_text=dict.get("ground_truth_text"),
+            ocr_confidence=cast("float | None", data.get("ocr_confidence")),
+            word_labels=cast("list[str] | None", data.get("word_labels", [])),
+            text_style_labels=cast(
+                "list[str] | None", data.get("text_style_labels", [])
+            ),
+            text_style_label_scopes=cast(
+                "dict[str, str] | None", data.get("text_style_label_scopes")
+            ),
+            word_components=cast("list[str] | None", data.get("word_components", [])),
+            baseline=cast("Baseline | None", data.get("baseline")),
+            ground_truth_text=cast("str | None", data.get("ground_truth_text")),
             ground_truth_bounding_box=ground_truth_bounding_box,
-            ground_truth_match_keys=dict.get("ground_truth_match_keys", {}),
+            ground_truth_match_keys=cast(
+                "dict[str, object] | None", data.get("ground_truth_match_keys", {})
+            ),
             review=review,
             glyph_annotations=glyph_annotations,
         )
@@ -733,10 +761,12 @@ class Word:
         logger.debug(
             f"Refining bounding box for word '{self.text}' with padding {padding_px} pixels"
         )
-        self.refine_bbox(image, padding_px=padding_px)
+        _ = self.refine_bbox(image, padding_px=padding_px)
         return
 
-    def split(self, bbox_split_offset: float, character_split_index: int):
+    def split(
+        self, bbox_split_offset: float, character_split_index: int
+    ) -> tuple[Word, Word]:
         """Split a word into two words at the given indices."""
         logger.debug(
             f"Splitting word '{self.text}' at bbox_split_offset {bbox_split_offset} and character_split_index {character_split_index}"
@@ -827,17 +857,18 @@ class Word:
         if not self.text:
             return []
 
-        img_h, img_w = image.shape[:2]
+        img_h = int(cast("int", image.shape[0]))
+        img_w = int(cast("int", image.shape[1]))
         pixel_bbox = (
             self.bounding_box.scale(img_w, img_h)
             if self.bounding_box.is_normalized
             else self.bounding_box
         )
 
-        min_x = max(0, int(np.floor(pixel_bbox.minX)))
-        min_y = max(0, int(np.floor(pixel_bbox.minY)))
-        max_x = min(img_w, int(np.ceil(pixel_bbox.maxX)))
-        max_y = min(img_h, int(np.ceil(pixel_bbox.maxY)))
+        min_x = max(0, floor(pixel_bbox.minX))
+        min_y = max(0, floor(pixel_bbox.minY))
+        max_x = min(img_w, ceil(pixel_bbox.maxX))
+        max_y = min(img_h, ceil(pixel_bbox.maxY))
         if min_x >= max_x or min_y >= max_y:
             raise ValueError("Word bounding box is out of image bounds")
 
@@ -849,7 +880,8 @@ class Word:
         light_as_ink = ~dark_as_ink
 
         def _runs_from_mask(mask: ndarray) -> list[tuple[int, int]]:
-            columns = np.sum(mask, axis=0) >= min_ink
+            columns_array = cast("ndarray", np.sum(mask, axis=0) >= min_ink)
+            columns = cast("list[bool]", columns_array.tolist())
             mask_runs: list[tuple[int, int]] = []
             run_start: int | None = None
             for idx, has_ink in enumerate(columns):
@@ -890,10 +922,11 @@ class Word:
                 opened = cv2.morphologyEx(foreground, cv2.MORPH_OPEN, kernel)
                 closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
                 dist = cv2.distanceTransform(closed, cv2.DIST_L2, 3)
-                if float(dist.max()) > 0:
-                    sure_fg = dist >= (0.2 * float(dist.max()))
+                dist_max = float(np.max(dist))
+                if dist_max > 0:
+                    sure_fg = cast("ndarray", dist >= (0.2 * dist_max))
                 else:
-                    sure_fg = closed > 0
+                    sure_fg = cast("ndarray", closed > 0)
                 return _runs_from_mask(sure_fg), sure_fg
 
             morph_runs_a, morph_mask_a = _morph_runs_from_foreground(otsu_binary)
@@ -919,9 +952,9 @@ class Word:
                 len(runs),
                 len(self.text),
             )
-            roi_width = max_x - min_x
-            per_char = roi_width / len(self.text)
-            runs = []
+            roi_width: int = max_x - min_x
+            per_char: float = roi_width / len(self.text)
+            runs: list[tuple[int, int]] = []
             for i in range(len(self.text)):
                 left = round(i * per_char)
                 right = round((i + 1) * per_char)
@@ -944,11 +977,15 @@ class Word:
             left, right = runs[idx]
 
             run_mask = chosen_mask[:, left:right]
-            row_has_ink = np.any(run_mask, axis=1) if run_mask.size else np.array([])
+            row_has_ink = (
+                cast("ndarray", np.any(run_mask, axis=1))
+                if run_mask.size
+                else np.array([])
+            )
             if row_has_ink.size and np.any(row_has_ink):
-                row_indices = np.where(row_has_ink)[0]
-                top_rel = int(row_indices[0])
-                bottom_rel = int(row_indices[-1]) + 1
+                row_indices = cast("ndarray", np.where(row_has_ink)[0])
+                top_rel = int(cast("int", row_indices[0]))
+                bottom_rel = int(cast("int", row_indices[-1])) + 1
             else:
                 top_rel = 0
                 bottom_rel = max_y - min_y
@@ -984,9 +1021,9 @@ class Word:
                 [0.35 if c.text in descender_chars else 1.0 for c in characters],
                 dtype=float,
             )
-            median_top = float(np.average(tops, weights=weights))
-            median_bottom = float(np.average(bottoms, weights=weights))
-            median_height = float(np.average(heights, weights=weights))
+            median_top = float(cast("float", np.average(tops, weights=weights)))
+            median_bottom = float(cast("float", np.average(bottoms, weights=weights)))
+            median_height = float(cast("float", np.average(heights, weights=weights)))
             top_delta = 0.2 * median_height
             bottom_delta = 0.1 * median_height
 
@@ -1026,11 +1063,13 @@ class Word:
             dtype=float,
         )
 
-        baseline_y = float(np.average(bottoms, weights=weights))
-        height_ref = float(np.average(heights, weights=weights))
+        baseline_y = float(cast("float", np.average(bottoms, weights=weights)))
+        height_ref = float(cast("float", np.average(heights, weights=weights)))
         residual = bottoms - baseline_y
-        weighted_var = float(np.average(residual * residual, weights=weights))
-        weighted_std = float(np.sqrt(weighted_var))
+        weighted_var = float(
+            cast("float", np.average(residual * residual, weights=weights))
+        )
+        weighted_std = float(cast("float", np.sqrt(weighted_var)))
         confidence = max(0.0, 1.0 - (weighted_std / max(1.0, height_ref)))
 
         self.baseline = {
@@ -1041,7 +1080,7 @@ class Word:
         }
         return self.baseline
 
-    def merge(self, word_to_merge: Word) -> None:
+    def merge(self, word_to_merge: object) -> None:
         """Merge this word with another word."""
         if not isinstance(word_to_merge, Word):
             raise TypeError("word_to_merge must be an instance of Word")
@@ -1123,7 +1162,7 @@ class Word:
             merged_scopes[label] = "part" if "part" in (current, incoming) else "whole"
         self.text_style_label_scopes = merged_scopes
 
-    def crop_bottom(self, img_ndarray) -> None:
+    def crop_bottom(self, img_ndarray: ndarray) -> None:
         """Crop the bottom of the word using bounding box crop_bottom method.
 
         The implementation lives in
@@ -1135,7 +1174,7 @@ class Word:
 
         crop_word_bottom(self, img_ndarray)
 
-    def crop_top(self, img_ndarray) -> None:
+    def crop_top(self, img_ndarray: ndarray) -> None:
         """Crop the top of the word using bounding box crop_top method.
 
         The implementation lives in
@@ -1150,7 +1189,7 @@ class Word:
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        source_type: Any,
+        source_type: object,
         handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
         # Local imports to avoid circulars with the lower-level geometry

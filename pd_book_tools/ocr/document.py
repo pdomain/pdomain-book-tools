@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from logging import getLogger
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
 from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
 from numpy import array, ndarray
@@ -17,7 +17,9 @@ from numpy import array, ndarray
 if TYPE_CHECKING:
     from os import PathLike
 
-    from pandas import DataFrame
+    from pandas import (  # pyright: ignore[reportMissingTypeStubs]  # optional third-party stubs
+        DataFrame,
+    )
     from PIL.Image import Image as PILImage
 
 import contextlib
@@ -31,6 +33,38 @@ from pd_book_tools.ocr.word import Word
 
 # Configure logging
 logger = getLogger(__name__)
+
+JsonDict = dict[str, object]
+
+
+class _DoctrPage(Protocol):
+    def render(self) -> str: ...
+
+
+class _DoctrResult(Protocol):
+    pages: Sequence[_DoctrPage]
+
+    def export(self) -> JsonDict: ...
+
+
+class _DoctrPredictor(Protocol):
+    def __call__(self, images: Sequence[ndarray]) -> _DoctrResult: ...
+
+
+class _HasItem(Protocol):
+    def item(self) -> object: ...
+
+
+class _TesseractRow(Protocol):
+    left: object
+    top: object
+    width: object
+    height: object
+    text: object
+    conf: object
+    line_num: object
+    par_num: object
+    block_num: object
 
 
 @dataclass
@@ -71,15 +105,17 @@ class Document:
         return self._pages.copy()
 
     @pages.setter
-    def pages(self, value: Collection[Page]) -> None:
+    def pages(self, value: object) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts any collection; getter returns sorted copy
         if not isinstance(value, Collection):
             raise TypeError("pages must be a collection")
+        typed_pages: list[Page] = []
         for page in value:
-            if not hasattr(page, "page_index") or not isinstance(page.page_index, int):
+            if not isinstance(getattr(page, "page_index", None), int):
                 raise TypeError(
                     "Each item in pages must have a page_index attribute of type int"
                 )
-        self._pages = list(value)  # pyright: ignore[reportAttributeAccessIssue]  # dataclass field; setter assigns outside __init__
+            typed_pages.append(cast("Page", page))
+        self._pages = typed_pages
         self._sort_pages()
 
     def scale(self, width: int, height: int) -> Document:
@@ -90,7 +126,7 @@ class Document:
             pages=[page.scale(width, height) for page in self.pages],
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> JsonDict:
         """Convert to a JSON-serializable dictionary."""
         return {
             "source_lib": self.source_lib,
@@ -107,15 +143,18 @@ class Document:
             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
 
     @classmethod
-    def from_dict(cls, data) -> Document:
+    def from_dict(cls, data: Mapping[str, object]) -> Document:
         """Create Document from dictionary."""
         return cls(
-            source_lib=data.get("source_lib", ""),
-            source_identifier=data.get("source_identifier", ""),
-            source_path=Path(data.get("source_path"))
+            source_lib=cast("str", data.get("source_lib", "")),
+            source_identifier=cast("str", data.get("source_identifier", "")),
+            source_path=Path(str(data.get("source_path")))
             if data.get("source_path") and data.get("source_path") != "None"
             else None,
-            pages=[Page.from_dict(page) for page in data.get("pages", [])],
+            pages=[
+                Page.from_dict(cast("dict[str, object]", page))
+                for page in cast("Sequence[object]", data.get("pages", []))
+            ],
         )
 
     @classmethod
@@ -123,7 +162,7 @@ class Document:
         cls,
         image: str | PathLike[str] | ndarray | PILImage,
         source_identifier: str = "",
-        predictor=None,
+        predictor: _DoctrPredictor | None = None,
         *,
         auto_rotate: bool = True,
         auto_rotate_threshold: float | None = None,
@@ -149,7 +188,7 @@ class Document:
         :return: Document containing the OCR results.
         """
         if predictor is None:
-            predictor = get_default_doctr_predictor()
+            predictor = cast("_DoctrPredictor", get_default_doctr_predictor())
 
         has_PIL = False
         try:
@@ -247,7 +286,7 @@ class Document:
     @classmethod
     def from_doctr_result(
         cls,
-        doctr_result,
+        doctr_result: _DoctrResult,
         source_path: str | Path | None = None,
         source_identifier: str = "",
     ) -> Document:
@@ -258,7 +297,7 @@ class Document:
         # ``str`` is a ``Sequence[str]`` in Python, passing the whole-document
         # string would silently yield a single character per page. Split into
         # one rendered string per page instead.
-        doctr_output: dict[str, Any] = doctr_result.export()
+        doctr_output = doctr_result.export()
         per_page_text: list[str] = [page.render() for page in doctr_result.pages]
         return cls.from_doctr_output(
             doctr_output=doctr_output,
@@ -268,7 +307,7 @@ class Document:
         )
 
     @staticmethod
-    def _doctr_bbox(geometry: Any) -> BoundingBox | None:
+    def _doctr_bbox(geometry: object) -> BoundingBox | None:
         """Return a ``BoundingBox`` from a DocTR geometry tuple, or ``None``.
 
         DocTR emits geometry as a nested float tuple; absent/falsy geometry
@@ -278,10 +317,12 @@ class Document:
         """
         if not geometry:
             return None
-        return BoundingBox.from_nested_float(geometry)
+        return BoundingBox.from_nested_float(
+            cast("Sequence[Sequence[float]]", geometry)
+        )
 
     @classmethod
-    def _word_from_doctr(cls, word_data: dict[str, Any]) -> Word:
+    def _word_from_doctr(cls, word_data: Mapping[str, object]) -> Word:
         """Build a ``Word`` from a DocTR word dict.
 
         Geometry is guarded (M-16) and ``confidence`` is forwarded as-is so
@@ -289,17 +330,20 @@ class Document:
         ("certain error") — see L-19.
         """
         return Word(
-            text=word_data.get("value", ""),
+            text=cast("str", word_data.get("value", "")),
             bounding_box=cast(
                 "BoundingBox", cls._doctr_bbox(word_data.get("geometry"))
-            ),  # pyright: ignore[reportArgumentType]  # DocTR may return None bbox; Word checks it defensively
-            ocr_confidence=word_data.get("confidence"),
+            ),
+            ocr_confidence=cast("float | None", word_data.get("confidence")),
         )
 
     @classmethod
-    def _line_from_doctr(cls, line_data: dict[str, Any]) -> Block:
+    def _line_from_doctr(cls, line_data: Mapping[str, object]) -> Block:
         """Build a ``Block(LINE)`` of ``Word`` children from a DocTR line dict."""
-        words = [cls._word_from_doctr(w) for w in line_data.get("words", [])]
+        words = [
+            cls._word_from_doctr(cast("Mapping[str, object]", w))
+            for w in cast("Sequence[object]", line_data.get("words", []))
+        ]
         return Block(
             items=words,
             bounding_box=cls._doctr_bbox(line_data.get("geometry")),
@@ -308,7 +352,7 @@ class Document:
         )
 
     @classmethod
-    def _artefact_from_doctr(cls, artefact_data: dict[str, Any]) -> Block:
+    def _artefact_from_doctr(cls, artefact_data: Mapping[str, object]) -> Block:
         """Build a role-labelled artefact ``Block`` from a DocTR artefact dict.
 
         DocTR's block export carries non-text regions (stamps, barcodes, QR
@@ -317,7 +361,7 @@ class Document:
         page-level Blocks tagged ``role="artefact"`` (M-15) so consumers
         can keep, render, or strip them on intent.
         """
-        attrs: dict[str, Any] = {}
+        attrs: dict[str, object] = {}
         if "type" in artefact_data:
             attrs["artefact_type"] = artefact_data["type"]
         if "confidence" in artefact_data:
@@ -332,7 +376,7 @@ class Document:
         )
 
     @classmethod
-    def _block_from_doctr(cls, block_data: dict[str, Any]) -> list[Block]:
+    def _block_from_doctr(cls, block_data: Mapping[str, object]) -> list[Block]:
         """Expand a DocTR block dict into one canonical Block plus artefact siblings.
 
         DocTR's data model is ``pages -> blocks -> lines -> words`` (no
@@ -343,7 +387,10 @@ class Document:
         Artefacts are returned as sibling page-level blocks (M-15).
         """
         block_bbox = cls._doctr_bbox(block_data.get("geometry"))
-        lines = [cls._line_from_doctr(ln) for ln in block_data.get("lines", [])]
+        lines = [
+            cls._line_from_doctr(cast("Mapping[str, object]", ln))
+            for ln in cast("Sequence[object]", block_data.get("lines", []))
+        ]
         # The synthetic PARAGRAPH carries the same geometry as its parent
         # BLOCK because DocTR provides only one grouping level — there is
         # exactly one paragraph per block.
@@ -361,23 +408,30 @@ class Document:
         )
         result: list[Block] = [
             canonical_block,
-            *[cls._artefact_from_doctr(a) for a in block_data.get("artefacts", [])],
+            *[
+                cls._artefact_from_doctr(cast("Mapping[str, object]", a))
+                for a in cast("Sequence[object]", block_data.get("artefacts", []))
+            ],
         ]
         return result
 
     @classmethod
     def _page_from_doctr(
         cls,
-        page_data: dict[str, Any],
+        page_data: Mapping[str, object],
         page_idx: int,
         ocr_provenance: OCRProvenance,
         original_text: Sequence[str] | None,
     ) -> Page:
         """Build a single ``Page`` from a DocTR page dict."""
-        height, width = page_data.get("dimensions", (0, 0))
+        dimensions = cast("Sequence[object]", page_data.get("dimensions", (0, 0)))
+        height = int(cast("str | float | int", dimensions[0]))
+        width = int(cast("str | float | int", dimensions[1]))
         blocks: list[Block] = []
-        for block_data in page_data.get("blocks", []):
-            blocks.extend(cls._block_from_doctr(block_data))
+        for block_data in cast("Sequence[object]", page_data.get("blocks", [])):
+            blocks.extend(
+                cls._block_from_doctr(cast("Mapping[str, object]", block_data))
+            )
 
         original_ocr_tool_text = None
         if original_text is not None and page_idx < len(original_text):
@@ -395,7 +449,7 @@ class Document:
     @classmethod
     def from_doctr_output(
         cls,
-        doctr_output: dict[str, Any],
+        doctr_output: Mapping[str, object],
         original_text: Sequence[str] | None = None,
         source_path: str | Path | None = None,
         source_identifier: str = "",
@@ -411,16 +465,21 @@ class Document:
             pages=[],
         )
 
-        metadata = doctr_output.get("metadata", {})
-        if not isinstance(metadata, dict):
-            metadata = {}
+        metadata_raw = doctr_output.get("metadata", {})
+        metadata = (
+            cast("dict[str, object]", metadata_raw)
+            if isinstance(metadata_raw, dict)
+            else {}
+        )
 
         ocr_provenance = cls._build_ocr_provenance(engine="doctr", metadata=metadata)
 
-        for page_idx, page_data in enumerate(doctr_output.get("pages", [])):
+        for page_idx, page_data in enumerate(
+            cast("Sequence[object]", doctr_output.get("pages", []))
+        ):
             result._pages.append(
                 cls._page_from_doctr(
-                    page_data=page_data,
+                    page_data=cast("Mapping[str, object]", page_data),
                     page_idx=page_idx,
                     ocr_provenance=ocr_provenance,
                     original_text=original_text,
@@ -433,7 +492,7 @@ class Document:
 
     @classmethod
     def _build_ocr_provenance(
-        cls, engine: str, metadata: dict[str, Any]
+        cls, engine: str, metadata: Mapping[str, object]
     ) -> OCRProvenance:
         models = cls._normalize_ocr_models(metadata.get("models"))
 
@@ -460,28 +519,29 @@ class Document:
         )
 
     @classmethod
-    def _normalize_ocr_models(cls, raw_models: Any) -> list[OCRModelProvenance]:
+    def _normalize_ocr_models(cls, raw_models: object) -> list[OCRModelProvenance]:
         if not isinstance(raw_models, list):
             return []
 
         normalized: list[OCRModelProvenance] = []
-        for raw_model in raw_models:
+        for raw_model in cast("Sequence[object]", raw_models):
             if isinstance(raw_model, str) and raw_model:
                 normalized.append(OCRModelProvenance(name=raw_model))
                 continue
 
             if isinstance(raw_model, dict):
-                name = raw_model.get("name") or raw_model.get("model")
+                model_data = cast("Mapping[str, object]", raw_model)
+                name = model_data.get("name") or model_data.get("model")
                 if not isinstance(name, str) or not name:
                     continue
 
                 version_value: str | None = None
-                version = raw_model.get("version")
+                version = model_data.get("version")
                 if isinstance(version, (str, int, float)):
                     version_value = str(version)
 
                 weights_id_value: str | None = None
-                weights_id = raw_model.get("weights_id")
+                weights_id = model_data.get("weights_id")
                 if isinstance(weights_id, (str, int, float)):
                     weights_id_value = str(weights_id)
 
@@ -507,7 +567,7 @@ class Document:
     @classmethod
     def _detect_tesseract_engine_version(cls) -> str:
         try:
-            import pytesseract
+            import pytesseract  # pyright: ignore[reportMissingTypeStubs]  # optional third-party stubs
 
             detected = pytesseract.get_tesseract_version()
             if detected:
@@ -519,24 +579,30 @@ class Document:
     @classmethod
     def from_json_file(cls, file_path: str | Path) -> Document:
         """Load OCR from JSON file."""
-        d: dict[str, Any]
+        d: JsonDict
         with open(file_path, encoding="utf-8") as f:
-            d = json.load(f)
+            d = cast("JsonDict", json.load(f))
         return cls.from_dict(d)
 
     @classmethod
-    def safe_float(cls, val):
+    def _coerce_numpy_scalar(cls, val: object) -> object:
+        if hasattr(val, "item"):
+            with contextlib.suppress(Exception):
+                return cast("_HasItem", val).item()
+        return val
+
+    @classmethod
+    def safe_float(cls, val: object) -> float:
         if val is None:
             return 0.0
-        if hasattr(val, "item"):
-            val = val.item()
+        val = cls._coerce_numpy_scalar(val)
         try:
-            return float(val)
+            return float(cast("str | float | int", val))
         except (TypeError, ValueError):
             return 0.0
 
     @classmethod
-    def _tesseract_text(cls, val) -> str:
+    def _tesseract_text(cls, val: object) -> str:
         """Coerce a Tesseract ``text`` cell to a clean ``str``.
 
         Tesseract's pandas DataFrame uses ``NaN`` for the ``text`` cell on
@@ -552,15 +618,13 @@ class Document:
         """
         if val is None:
             return ""
-        if hasattr(val, "item"):
-            with contextlib.suppress(Exception):
-                val = val.item()
+        val = cls._coerce_numpy_scalar(val)
         if isinstance(val, float) and math.isnan(val):
             return ""
         return str(val)
 
     @classmethod
-    def _tesseract_confidence(cls, val) -> float | None:
+    def _tesseract_confidence(cls, val: object) -> float | None:
         """Convert a Tesseract ``conf`` cell to ``float | None``.
 
         Tesseract uses ``conf = -1`` (and emits empty/rejected rows) to mean
@@ -576,10 +640,9 @@ class Document:
         """
         if val is None:
             return None
-        if hasattr(val, "item"):
-            val = val.item()
+        val = cls._coerce_numpy_scalar(val)
         try:
-            f = float(val)
+            f = float(cast("str | float | int", val))
         except (TypeError, ValueError):
             return None
         if math.isnan(f):
@@ -590,7 +653,7 @@ class Document:
 
     @classmethod
     def _tesseract_filter_level(
-        cls, df: DataFrame, *, level: float, **eq: Any
+        cls, df: DataFrame, *, level: float, **eq: object
     ) -> DataFrame:
         """Return DataFrame rows matching ``level`` and any extra equality filters.
 
@@ -601,13 +664,13 @@ class Document:
         gymnastics and mirrors the ``where(...).dropna(how="all")``
         pattern used previously.
         """
-        mask = df["level"] == level
+        mask = df["level"] == level  # pyright: ignore[reportUnknownVariableType]  # pandas without stubs
         for col, value in eq.items():
-            mask = mask & (df[col] == value)
-        return df.where(mask).dropna(how="all")
+            mask = mask & (df[col] == value)  # pyright: ignore[reportUnknownVariableType]  # pandas without stubs
+        return df.where(mask).dropna(how="all")  # pyright: ignore[reportUnknownMemberType]  # pandas without stubs
 
     @classmethod
-    def _tesseract_bbox(cls, row: Any) -> BoundingBox:
+    def _tesseract_bbox(cls, row: _TesseractRow) -> BoundingBox:
         """Build a ``BoundingBox`` from a Tesseract row's L/T/W/H columns."""
         return BoundingBox.from_ltwh(
             cls.safe_float(row.left),
@@ -617,7 +680,7 @@ class Document:
         )
 
     @classmethod
-    def _word_from_tesseract(cls, word_row: Any) -> Word:
+    def _word_from_tesseract(cls, word_row: _TesseractRow) -> Word:
         """Build a ``Word`` from a Tesseract level-5 row.
 
         ``_tesseract_text`` and ``_tesseract_confidence`` handle the NaN /
@@ -633,11 +696,11 @@ class Document:
     @classmethod
     def _line_from_tesseract(
         cls,
-        line_row: Any,
+        line_row: _TesseractRow,
         df: DataFrame,
         page_num: int,
-        block_num: Any,
-        par_num: Any,
+        block_num: object,
+        par_num: object,
     ) -> Block:
         """Build a ``Block(LINE)`` of ``Word`` children from a Tesseract level-4 row.
 
@@ -654,7 +717,10 @@ class Document:
             par_num=par_num,
             line_num=line_row.line_num,
         )
-        words = [cls._word_from_tesseract(w) for w in word_rows.itertuples()]
+        words = [
+            cls._word_from_tesseract(cast("_TesseractRow", cast("object", w)))
+            for w in word_rows.itertuples()
+        ]
         return Block(
             items=words,
             bounding_box=cls._tesseract_bbox(line_row),
@@ -665,10 +731,10 @@ class Document:
     @classmethod
     def _paragraph_from_tesseract(
         cls,
-        paragraph_row: Any,
+        paragraph_row: _TesseractRow,
         df: DataFrame,
         page_num: int,
-        block_num: Any,
+        block_num: object,
     ) -> Block:
         """Build a ``Block(PARAGRAPH)`` of ``Block(LINE)`` children."""
         line_rows = cls._tesseract_filter_level(
@@ -680,7 +746,7 @@ class Document:
         )
         lines = [
             cls._line_from_tesseract(
-                line_row=line_row,
+                line_row=cast("_TesseractRow", cast("object", line_row)),
                 df=df,
                 page_num=page_num,
                 block_num=block_num,
@@ -698,7 +764,7 @@ class Document:
     @classmethod
     def _block_from_tesseract(
         cls,
-        block_row: Any,
+        block_row: _TesseractRow,
         df: DataFrame,
         page_num: int,
     ) -> Block:
@@ -711,7 +777,7 @@ class Document:
         )
         paragraphs = [
             cls._paragraph_from_tesseract(
-                paragraph_row=paragraph_row,
+                paragraph_row=cast("_TesseractRow", cast("object", paragraph_row)),
                 df=df,
                 page_num=page_num,
                 block_num=block_row.block_num,
@@ -728,7 +794,7 @@ class Document:
     @classmethod
     def _page_from_tesseract(
         cls,
-        page_row: Any,
+        page_row: _TesseractRow,
         df: DataFrame,
         page_idx: int,
         ocr_provenance: OCRProvenance,
@@ -742,7 +808,11 @@ class Document:
         page_num = page_idx + 1
         block_rows = cls._tesseract_filter_level(df, level=2.0, page_num=page_num)
         blocks = [
-            cls._block_from_tesseract(block_row=br, df=df, page_num=page_num)
+            cls._block_from_tesseract(
+                block_row=cast("_TesseractRow", cast("object", br)),
+                df=df,
+                page_num=page_num,
+            )
             for br in block_rows.itertuples()
         ]
         return Page(
@@ -764,11 +834,14 @@ class Document:
         tesseract_config: str | None = None,
     ) -> Document:
         try:
-            from pandas import to_numeric as pd_to_numeric
+            from pandas import (  # pyright: ignore[reportMissingTypeStubs]  # optional third-party stubs
+                to_numeric as _pd_to_numeric,  # pyright: ignore[reportUnknownVariableType]  # optional third-party stubs
+            )
         except ImportError as err:
             raise ImportError(
                 "pandas library is required for from_tesseract function. Please install pandas."
             ) from err
+        pd_to_numeric = cast("Callable[..., object]", _pd_to_numeric)
 
         """Create Document from PyTesseract output (pandas dataframe)"""
         if isinstance(source_path, str):
@@ -781,10 +854,10 @@ class Document:
         # Pre-fix ``models`` was hardcoded to ``[]`` so two runs with
         # different language packs produced byte-identical provenance and
         # consumers could not tell which model produced which output.
-        tesseract_models: list[dict[str, Any]] = []
+        tesseract_models: list[JsonDict] = []
         if lang:
             tesseract_models.append({"name": str(lang)})
-        tesseract_metadata: dict[str, Any] = {
+        tesseract_metadata: JsonDict = {
             "source_lib": "tesseract",
             "engine_version": cls._detect_tesseract_engine_version(),
             "models": tesseract_models,
@@ -821,7 +894,7 @@ class Document:
         for page_idx, page_row in enumerate(page_filtered.itertuples()):
             result._pages.append(
                 cls._page_from_tesseract(
-                    page_row=page_row,
+                    page_row=cast("_TesseractRow", cast("object", page_row)),
                     df=tesseract_output,
                     page_idx=page_idx,
                     ocr_provenance=ocr_provenance,
