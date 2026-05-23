@@ -1,13 +1,29 @@
+# pyright: reportUnknownMemberType=false
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING, cast
 
-from ._cupy_compat import cp, require_cupy
+from ._cupy_compat import require_cupy
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+else:
+    CuPyArray = object
 
 logger = logging.getLogger(__name__)
 
 
-def crop_to_rectangle(img: cp.ndarray, minX, maxX, minY, maxY):
+def crop_to_rectangle(
+    img: CuPyArray,
+    minX: int,
+    maxX: int,
+    minY: int,
+    maxY: int,
+) -> CuPyArray:
     """
     Crops a cupy image to the given bounding box coordinates, ensuring they are within bounds.
 
@@ -25,7 +41,7 @@ def crop_to_rectangle(img: cp.ndarray, minX, maxX, minY, maxY):
     log_prefix = "crop_to_rectangle - "
 
     # Get image dimensions
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
 
     # Ensure coordinates are within valid range
     minX = max(0, min(minX, w - 1))
@@ -59,12 +75,12 @@ def crop_to_rectangle(img: cp.ndarray, minX, maxX, minY, maxY):
 
 
 def crop_edges(
-    img: cp.ndarray,
+    img: CuPyArray,
     top: int = 0,
     bottom: int = 0,
     left: int = 0,
     right: int = 0,
-) -> cp.ndarray:
+) -> CuPyArray:
     """
     Crops the given cupy image by removing pixels from the specified edges.
 
@@ -92,7 +108,7 @@ def crop_edges(
         if value < 0:
             raise ValueError(f"Crop value {name!r} must be non-negative, got {value}.")
 
-    h, w = img.shape[:2]
+    h, w = cast("tuple[int, int]", img.shape[:2])
 
     if top + bottom >= h or left + right >= w:
         raise ValueError("Cropping values exceed image dimensions.")

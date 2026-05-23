@@ -1,13 +1,22 @@
+# pyright: reportUnknownMemberType=false
 # Configure logging
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, cast
 
 from ._cupy_compat import cp, require_cupy
 
 if TYPE_CHECKING:
     import numpy as np
+    import numpy.typing as npt
+
+    CuPyArray = npt.NDArray[np.generic]
+    Shape2D = tuple[int, int]
+else:
+    CuPyArray = object
+    Shape2D = tuple[int, int]
 
 # cupy is an optional [gpu]-extra dependency (see pyproject.toml). This guard
 # lets the module load on CPU-only installs; require_cupy() in each function
@@ -19,13 +28,16 @@ try:
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs
     sliding_window_view = None
 
+SlidingWindowViewFn = Callable[..., CuPyArray]
+sliding_window_view_fn: SlidingWindowViewFn | None = sliding_window_view
+
 logger = logging.getLogger(__name__)
 
 
-def dilate(img: cp.ndarray, kernel: cp.ndarray):
+def dilate(img: CuPyArray, kernel: CuPyArray) -> CuPyArray:
     """Performs dilation using a fully vectorized approach on a cupy image array."""
     require_cupy()
-    kh, kw = kernel.shape
+    kh, kw = cast("Shape2D", kernel.shape)
     pad_h, pad_w = kh // 2, kw // 2
 
     # Pad the image
@@ -33,10 +45,13 @@ def dilate(img: cp.ndarray, kernel: cp.ndarray):
     # (numpy/cupy 'reflect' excludes the edge pixel: dcb|abcd|cba). Constant-0
     # padding silently eroded foreground pixels touching the image border —
     # see M-08 in docs/review/bugs-medium.md.
-    img_padded = cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect")
+    img_padded = cast(
+        "CuPyArray",
+        cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect"),
+    )
 
     # Create sliding windows over the image
-    windows = sliding_window_view(img_padded, (kh, kw))  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    windows = sliding_window_view_fn(img_padded, (kh, kw))  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     # Apply max operation over the windows.
     # NOTE: the only call site (`morph_fill`) builds `kernel` as
@@ -48,13 +63,13 @@ def dilate(img: cp.ndarray, kernel: cp.ndarray):
     # If a non-trivial (non-rectangular) structuring element is ever
     # needed, use `cupyx.scipy.ndimage.grey_dilation` rather than
     # reintroducing a multiplied intermediate.
-    return cp.max(windows, axis=(-2, -1))
+    return cast("CuPyArray", cp.max(windows, axis=(-2, -1)))
 
 
-def erode(img: cp.ndarray, kernel: cp.ndarray):
+def erode(img: CuPyArray, kernel: CuPyArray) -> CuPyArray:
     """Performs erosion using a fully vectorized approach on a cupy image array."""
     require_cupy()
-    kh, kw = kernel.shape
+    kh, kw = cast("Shape2D", kernel.shape)
     pad_h, pad_w = kh // 2, kw // 2
 
     # Pad the image
@@ -62,22 +77,25 @@ def erode(img: cp.ndarray, kernel: cp.ndarray):
     # (numpy/cupy 'reflect' excludes the edge pixel: dcb|abcd|cba). Constant-0
     # padding silently eroded foreground pixels touching the image border —
     # see M-08 in docs/review/bugs-medium.md.
-    img_padded = cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect")
+    img_padded = cast(
+        "CuPyArray",
+        cp.pad(img, ((pad_h, pad_h), (pad_w, pad_w)), mode="reflect"),
+    )
 
     # Create sliding windows over the image
-    windows = sliding_window_view(img_padded, (kh, kw))  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
+    windows = sliding_window_view_fn(img_padded, (kh, kw))  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
 
     # Apply min operation over the windows.
     # Same M-09 optimization as in `dilate`: the only call site builds an
     # all-ones kernel, so multiplying is a no-op that materializes a
     # large intermediate. Reduce over `windows` directly.
-    return cp.min(windows, axis=(-2, -1))
+    return cast("CuPyArray", cp.min(windows, axis=(-2, -1)))
 
 
-def morph_fill(img: cp.ndarray, shape=(6, 6)):
+def morph_fill(img: CuPyArray, shape: Shape2D = (6, 6)) -> CuPyArray:
     """Apply closing followed by opening morphology using fully vectorized operations."""
     require_cupy()
-    kernel = cp.ones(shape, dtype=cp.uint8)
+    kernel = cast("CuPyArray", cp.ones(shape, dtype=cp.uint8))
 
     # Morphological closing (dilate then erode)
     closed = dilate(img, kernel)
@@ -88,7 +106,7 @@ def morph_fill(img: cp.ndarray, shape=(6, 6)):
     return dilate(opened, kernel)
 
 
-def np_uint8_morph_fill(img: np.ndarray, shape=(6, 6)) -> np.ndarray:
+def np_uint8_morph_fill(img: np.ndarray, shape: Shape2D = (6, 6)) -> np.ndarray:
     """Transfers img to GPU, applies morph_fill, returns CPU uint8 array."""
     require_cupy()
-    return cp.asnumpy(morph_fill(cp.asarray(img), shape=shape))
+    return cp.asnumpy(morph_fill(cast("CuPyArray", cp.asarray(img)), shape=shape))
