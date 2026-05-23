@@ -8,6 +8,15 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ---
 
+## [v0.14.1] — 2026-05-23
+
+- **Python 3.11 compat** — `typing.override` import now falls back to
+  `typing_extensions.override` on Python < 3.12 (`typing.override` was
+  added in 3.12; importing it bare caused `ImportError` for any downstream
+  package running on 3.11).
+
+---
+
 ## [v0.14.0] — 2026-05-22
 
 - **PEP 561 `py.typed` marker** — downstream consumers no longer require
