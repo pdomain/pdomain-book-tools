@@ -19,7 +19,7 @@ Key invariants (see spec section 1):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, cast, get_args
 
 if TYPE_CHECKING:
@@ -49,14 +49,11 @@ _BANNED_GT_CODEPOINTS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 
 
-class LigatureKind(str, Enum):
+class LigatureKind(StrEnum):
     """Controlled vocabulary for ligature types found in early-modern printing.
 
     Values are UPPERCASE plain strings so JSON serialization yields bare
     human-readable strings without extra encoding.
-
-    Note: Using ``str, Enum`` base for Python 3.10 compatibility.
-    TODO: switch to ``StrEnum`` once the minimum Python version is 3.11+.
 
     Adding a new value requires a PR with: the printed form (image/fixture
     reference), the GT decomposition, and a note on the corpus it appeared in.

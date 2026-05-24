@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, TypedDict, cast
 
 if TYPE_CHECKING:
@@ -39,7 +39,7 @@ class PageLayoutDict(TypedDict):
     inference_ms: int
 
 
-class RegionType(str, Enum):
+class RegionType(StrEnum):
     """Region categories the reorg / illustration extractor consume.
 
     The full PP-DocLayout 20-label vocabulary is collapsed to this set via
