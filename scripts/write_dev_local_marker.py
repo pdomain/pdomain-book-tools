@@ -50,9 +50,7 @@ def write_marker(venv_dir: Path) -> Path:
         )
 
     target = venv_dir / MARKER_FILENAME
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     body = (
         f"This venv is in dev-local mode (entered {timestamp}).\n"
         "\n"

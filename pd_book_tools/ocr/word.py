@@ -403,7 +403,9 @@ class Word:
         for label in labels:
             try:
                 normalized.append(normalize_text_style_label(str(label)))
-            except ValueError:  # noqa: PERF203  # per-item isolation: one bad label must not abort the pass
+            except (
+                ValueError
+            ):  # per-item isolation: one bad label must not abort the pass
                 logger.debug("Ignoring invalid text style label %r", label)
         if not normalized:
             return ["regular"]
@@ -417,7 +419,9 @@ class Word:
             try:
                 normalized_label = normalize_text_style_label(str(label))
                 normalized[normalized_label] = normalize_text_style_label_scope(scope)
-            except ValueError:  # noqa: PERF203  # per-item isolation: one bad scope must not abort the pass
+            except (
+                ValueError
+            ):  # per-item isolation: one bad scope must not abort the pass
                 logger.debug(
                     "Ignoring invalid text style scope entry %r=%r", label, scope
                 )
@@ -430,7 +434,9 @@ class Word:
         for component in components:
             try:
                 normalized.append(normalize_word_component(str(component)))
-            except ValueError:  # noqa: PERF203  # per-item isolation: one bad component must not abort the pass
+            except (
+                ValueError
+            ):  # per-item isolation: one bad component must not abort the pass
                 logger.debug("Ignoring invalid word component %r", component)
         return normalized
 
