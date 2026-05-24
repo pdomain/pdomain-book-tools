@@ -12,7 +12,7 @@ $(_goals):
 
 else
 
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local dev-local sync-gpu test test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -109,24 +109,9 @@ sync-gpu: ## Sync the [gpu] extra (CuPy) when an NVIDIA GPU is auto-detected; no
 	fi
 
 
-check-dev-local: ## Print whether the venv is in dev-local mode (exit 1 if so, 0 if canonical)
-	@uv run python scripts/check_dev_local.py
-
-dev-local: ## Enter dev-local mode: sync [gpu] extra (if GPU detected) + write .venv/.pd-dev-local marker
-	@if [ ! -d .venv ]; then \
-	  echo "❌ .venv not found. Run 'make install' first to create the venv." >&2; \
-	  exit 1; \
-	fi
-	@$(MAKE) --no-print-directory sync-gpu
-	@uv run python scripts/write_dev_local_marker.py --venv .venv
-	@echo "✅ Venv is now in dev-local mode. 'make upgrade-deps' will refuse;"
-	@echo "   use 'make upgrade-deps-local' to refresh dependencies."
-
-upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if dev-local — see upgrade-deps-local)
-	@if ! uv run python scripts/check_dev_local.py --quiet; then \
-	  uv run python scripts/check_dev_local.py >&2 || true; \
-	  echo "" >&2; \
-	  echo "❌ Refusing to clobber dev-local overrides. Run 'make upgrade-deps-local' instead." >&2; \
+upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if local-dev — see local-upgrade-deps)
+	@if [ -f .venv/.pd-local-mode ]; then \
+	  echo "ERROR: in local-dev mode. Run 'make local-upgrade-deps' instead." >&2; \
 	  exit 1; \
 	fi
 	@echo "⬆️ Upgrading dependency lockfile..."
@@ -135,14 +120,29 @@ upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if dev
 	uv sync --group dev
 	@echo "✅ Dependencies upgraded and environment synced!"
 
-upgrade-deps-local: ## Upgrade dependencies, then restore dev-local overrides ([gpu] extra if GPU detected)
-	@echo "⬆️ Upgrading dependency lockfile (dev-local mode)..."
-	uv lock --upgrade
-	@echo "📦 Syncing canonical baseline first..."
-	uv sync --group dev
-	@echo "🔁 Restoring dev-local overrides..."
-	@$(MAKE) --no-print-directory sync-gpu
-	@echo "✅ Dependencies upgraded; dev-local overrides restored."
+# ─── local-dev workflow (spec #362) ─────────────────────────────────────────
+
+local-dev: ## Switch to local-dev mode (GPU extras active + marker)
+	@./scripts/local-dev.sh
+
+local-check: ## Print local-dev (GPU extras) status
+	@./scripts/local-check.sh
+
+local-upgrade-deps: ## Upgrade deps + re-sync GPU extras (local-mode only)
+	@./scripts/local-upgrade-deps.sh
+
+# Back-compat aliases for legacy target names (deprecated since #362)
+dev-local: ## DEPRECATED: use local-dev
+	@echo "warning: 'dev-local' is deprecated; use 'local-dev'"
+	@$(MAKE) local-dev
+
+check-dev-local: ## DEPRECATED: use local-check
+	@echo "warning: 'check-dev-local' is deprecated; use 'local-check'"
+	@$(MAKE) local-check
+
+upgrade-deps-local: ## DEPRECATED: use local-upgrade-deps
+	@echo "warning: 'upgrade-deps-local' is deprecated; use 'local-upgrade-deps'"
+	@$(MAKE) local-upgrade-deps
 
 lint: ## Run linting checks
 	@echo "🔍 Running linting checks..."

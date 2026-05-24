@@ -166,3 +166,6 @@ tests/fixtures/layout_regression/expected_text/diff/
 
 # CI output log when using AI=1 flag
 .ci-ai.log
+
+# Local-dev mode marker (spec #362)
+.venv/.pd-local-mode
