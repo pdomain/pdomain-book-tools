@@ -172,9 +172,12 @@ def get_detector(
     ``"raise"`` re-raises the underlying exception (network error,
     missing weights, OOM during model load, unknown key) — appropriate
     for CLI flows that should fail fast. ``"log_and_null"`` instead
-    logs a single warning and returns a memoised :class:`NullDetector`
-    so batch callers (e.g. ``pd-prep-for-pgdp``) can survive transient
-    failures and fall back to the geometric reorg path.
+    logs a warning and returns a :class:`NullDetector` so batch callers
+    (e.g. ``pd-prep-for-pgdp``) can survive transient failures and fall
+    back to the geometric reorg path.  The fallback is *not* cached; each
+    failed call retries the build, so callers should hold the returned
+    detector for the duration of their run rather than calling
+    ``get_detector`` per page.
     """
     if on_error not in ("raise", "log_and_null"):
         raise ValueError(
@@ -230,9 +233,15 @@ def get_detector(
                     type(exc).__name__,
                     exc,
                 )
-                wrapped = _TimingDetector(NullDetector())
-                _DETECTOR_CACHE[cache_key] = wrapped
-                return wrapped
+                # Do NOT cache the fallback NullDetector.  Caching it under
+                # the same key as a successful build would mean a later
+                # on_error="raise" call silently receives a NullDetector
+                # instead of the exception it expects (#167).  The caller
+                # requesting soft failure accepts that repeated calls retry
+                # the build each time; for the common batch case the caller
+                # holds the returned detector for the duration of the run
+                # anyway, so the retry cost only occurs on first access.
+                return _TimingDetector(NullDetector())
             raise
         wrapped = _TimingDetector(inner)
         _DETECTOR_CACHE[cache_key] = wrapped

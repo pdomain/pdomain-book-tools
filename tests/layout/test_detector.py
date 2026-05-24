@@ -197,7 +197,7 @@ class TestDetectorFailureHardening:
     """
 
     def teardown_method(self, method):
-        for key in ("failing-x",):
+        for key in ("failing-x", "never-registered-key"):
             with contextlib.suppress(ValueError):
                 unregister_detector(key)
 
@@ -232,12 +232,42 @@ class TestDetectorFailureHardening:
         # Logged once.
         assert any("failing-x" in rec.message for rec in caplog.records)
 
-    def test_on_error_log_and_null_caches_null_so_second_call_does_not_rebuild(self):
+    def test_on_error_log_and_null_does_not_cache_fallback(self):
+        # Remediation (a): fallback NullDetectors must NOT be stored in the
+        # cache so a later on_error="raise" call for the same key is not
+        # silently poisoned (#167).  Two successive log_and_null calls will
+        # each retry the build (and fail again), returning independent
+        # NullDetector wrappers rather than one cached instance.
         register_detector("failing-x", self._failing_factory())
         det_a = get_detector("failing-x", on_error="log_and_null")
         det_b = get_detector("failing-x", on_error="log_and_null")
-        # Same memoised fallback — no rebuild attempt on second call.
-        assert det_a is det_b
+        # Not cached — distinct objects (each is a fresh _TimingDetector).
+        assert det_a is not det_b
+
+    def test_failure_then_raise_gets_exception_not_cached_null(self):
+        """Cache-poisoning regression: a prior log_and_null call must not
+        silently feed a NullDetector to a later on_error='raise' call (#167).
+        """
+        register_detector("failing-x", self._failing_factory())
+        # First call: soft failure, logs and returns NullDetector.
+        _ = get_detector("failing-x", on_error="log_and_null")
+        # Second call with same key + on_error="raise" must NOT return the
+        # cached NullDetector — it must propagate the build error.
+        with pytest.raises(RuntimeError, match="boom"):
+            get_detector("failing-x", on_error="raise")
+
+    def test_unknown_key_log_and_null_then_raise_gets_exception(self):
+        """Unknown-key fallback must not poison a later raise call (#167).
+
+        Before the fix, get_detector(unknown, on_error='log_and_null') cached
+        a NullDetector, and get_detector(unknown, on_error='raise') silently
+        returned it instead of raising ValueError.
+        """
+        # First call: unknown key, soft fallback.
+        _ = get_detector("never-registered-key", on_error="log_and_null")
+        # Second call: same unknown key, strict — must raise, not return null.
+        with pytest.raises(ValueError, match="Unknown layout detector"):
+            get_detector("never-registered-key", on_error="raise")
 
     def test_on_error_invalid_value_raises(self):
         with pytest.raises(ValueError, match="on_error"):
