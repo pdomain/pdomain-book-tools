@@ -996,7 +996,9 @@ class Page:
         for paragraph in paragraphs:
             try:
                 paragraph.recompute_bounding_box()
-            except Exception:  # noqa: PERF203  # try-in-loop: individual failures must not abort the pass
+            except (
+                Exception
+            ):  # try-in-loop: individual failures must not abort the pass
                 logger.debug(
                     "Paragraph bbox recompute fallback skipped for %s",
                     type(paragraph).__name__,
