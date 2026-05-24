@@ -34,6 +34,7 @@ from numpy import ndarray
 from pydantic_core import CoreSchema, core_schema
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
+from pd_book_tools.geometry.image_ops import _pixel_roi_bounds
 from pd_book_tools.ocr import reorganize_page_utils
 from pd_book_tools.ocr.block import Block, BlockCategory
 from pd_book_tools.ocr.ground_truth_matching import update_page_with_ground_truth_text
@@ -3405,15 +3406,43 @@ class Page:
         if word_filter is not None:
             words = [w for w in words if word_filter(w)]
 
+        def _detection_polygon(bbox: BoundingBox) -> list[list[int]]:
+            """Return a four-corner polygon [[x,y], ...] in pixel coordinates.
+
+            For normalized boxes: multiply by image dimensions (existing DocTR
+            contract).  For pixel-space boxes (e.g. from Tesseract): pass
+            through after applying the same floor/ceil/clamp rounding policy
+            used by ``_pixel_roi_bounds`` — no multiplication.
+
+            Both branches produce ``int`` values and use the same rounding
+            policy (floor min, ceil max, clamped to image dims).
+            """
+            if bbox.is_normalized:
+                # Scale normalized coords to pixel space, then clamp.
+                x1, y1, x2, y2 = _pixel_roi_bounds(
+                    bbox.minX * img_width,
+                    bbox.minY * img_height,
+                    bbox.maxX * img_width,
+                    bbox.maxY * img_height,
+                    img_width,
+                    img_height,
+                )
+            else:
+                # Pixel-space: clamp and int-cast without scaling.
+                x1, y1, x2, y2 = _pixel_roi_bounds(
+                    bbox.minX, bbox.minY, bbox.maxX, bbox.maxY, img_width, img_height
+                )
+            return [
+                [x1, y1],
+                [x2, y1],
+                [x2, y2],
+                [x1, y2],
+            ]
+
         detection_labels[image_name] = {
             "img_dimensions": (img_width, img_height),
             "img_hash": image_hash,
-            "polygons": [
-                word.bounding_box.get_four_point_scaled_polygon_list(
-                    img_width, img_height
-                )
-                for word in words
-            ],
+            "polygons": [_detection_polygon(word.bounding_box) for word in words],
         }
 
         # Read in the JSON file and add the new labels
@@ -3517,9 +3546,25 @@ class Page:
                 logger.warning("Skipping word without ground truth text: %s", word.text)
                 continue
 
-            bb = word.bounding_box.scale(width=img_width, height=img_height)
-            cropped_image = image[bb.minY : bb.maxY, bb.minX : bb.maxX]
-            cropped_image_name = f"{prefix}_{self.page_index}_{bb.minX}_{bb.maxX}_{bb.minY}_{bb.maxY}.png"
+            if word.bounding_box.is_normalized:
+                bb = word.bounding_box.scale(width=img_width, height=img_height)
+                ix1, iy1, ix2, iy2 = _pixel_roi_bounds(
+                    bb.minX, bb.minY, bb.maxX, bb.maxY, img_width, img_height
+                )
+            else:
+                # Pixel-space box: clamp and int-cast without scaling.
+                ix1, iy1, ix2, iy2 = _pixel_roi_bounds(
+                    word.bounding_box.minX,
+                    word.bounding_box.minY,
+                    word.bounding_box.maxX,
+                    word.bounding_box.maxY,
+                    img_width,
+                    img_height,
+                )
+            cropped_image = image[iy1:iy2, ix1:ix2]
+            cropped_image_name = (
+                f"{prefix}_{self.page_index}_{ix1}_{ix2}_{iy1}_{iy2}.png"
+            )
             logger.debug("Writing image: " + str(cropped_image_name))
             _ = cv2_imwrite(
                 str(pathlib.Path(recognition_image_path, cropped_image_name).resolve()),
