@@ -27,6 +27,9 @@ the workspace's fixing-specs guide).
 | 07 | [dev-local-upgrade-flow](07-dev-local-upgrade-flow.md) | dev-local mode detection + `make upgrade-deps` guard | Touching the dev-local detection logic, the `[gpu]` extra reapply path, or the `.venv/.pd-dev-local` marker lifecycle |
 | 08 | ~~geometry-repr~~ _(archived — shipped; see `docs/archive/specs/08-geometry-repr.md`)_ | `BoundingBox.__repr__` / `Point.__repr__` contract | Archived 2026-05-22; spec issue #36 closed; implementation landed in PR #50 |
 | 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pd-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
+| — | [page-order-detection](2026-05-24-page-order-detection.md) | `pd_book_tools.page_order` module — `detect_out_of_order_pages` + `SwapProposal` | Implementing Stage 11 of pd-prep-for-pgdp; understanding the three-signal (filename seq, OCR page number, visual hash) confidence model |
+| — | [scannos-module](2026-05-24-scannos-module.md) | `pd_book_tools.scannos` — `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote` | Implementing pd-prep-for-pgdp Stage 13; understanding SQLite (global rules) vs JSON sidecar (per-book candidates) split; promotion evidence trail |
+| — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `pd_book_tools.hyphen_ngrams` — `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction pipeline | Implementing pd-prep-for-pgdp Stage 15 (post-JSON-adapter); understanding download-on-first-use packaging and SQLite schema for Google Books Ngrams hyphen pairs |
 
 ## Anchor stability
 
