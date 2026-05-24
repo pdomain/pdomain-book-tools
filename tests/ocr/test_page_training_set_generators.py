@@ -506,6 +506,251 @@ class TestConvertToTrainingSet:
         assert (output_path / "recognition" / "labels.json").exists()
 
 
+class TestPixelSpaceExport:
+    """Tests for pixel-space (is_normalized=False) bounding box handling in export.
+
+    Regression tests for #166: detection and recognition export paths were
+    unconditionally scaling coordinates, corrupting pixel-space training data.
+    """
+
+    def _make_pixel_word(
+        self,
+        text: str,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        ground_truth: str | None = None,
+    ) -> Word:
+        """Create a Word with pixel-space (non-normalized) bounding box."""
+        word = Word(
+            text=text,
+            bounding_box=BoundingBox.from_ltrb(
+                float(x1), float(y1), float(x2), float(y2), is_normalized=False
+            ),
+            ocr_confidence=0.9,
+        )
+        if ground_truth:
+            word.ground_truth_text = ground_truth
+        return word
+
+    def _make_pixel_page(self, img_h: int = 100, img_w: int = 200) -> Page:
+        """Create a 200x100 page with pixel-space words that stay within image bounds."""
+        # Words at pixel coords: (10,10)-(30,40) and (50,10)-(80,40)
+        # On a 200x100 image these are completely valid, in-bounds coords.
+        w1 = self._make_pixel_word("hello", 10, 10, 30, 40, ground_truth="hello")
+        w2 = self._make_pixel_word("world", 50, 10, 80, 40, ground_truth="world")
+        line = Block(
+            items=[w1, w2],
+            block_category=BlockCategory.LINE,
+            child_type=BlockChildType.WORDS,
+        )
+        para = Block(
+            items=[line],
+            block_category=BlockCategory.PARAGRAPH,
+            child_type=BlockChildType.BLOCKS,
+        )
+        page = Page(width=img_w, height=img_h, page_index=0, blocks=[para])
+        page.cv2_numpy_page_image = np.random.randint(
+            0, 256, (img_h, img_w, 3), dtype=np.uint8
+        )
+        return page
+
+    # ------------------------------------------------------------------
+    # Detection export — pixel-space
+    # ------------------------------------------------------------------
+
+    def test_detection_pixel_space_polygon_coords_are_in_bounds(self, tmp_path):
+        """Detection export with pixel-space boxes must NOT multiply coords by image dims.
+
+        Before fix: word at (10,10)-(30,40) on a 200x100 image was scaled to
+        (2000,1000)-(6000,4000) — completely out of bounds.
+        After fix: coords pass through unchanged (clamped/int-cast only).
+        """
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        page = self._make_pixel_page(img_h=100, img_w=200)
+        page.generate_doctr_detection_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+        with open(output_path / "detection" / "labels.json") as f:
+            labels = json.load(f)
+
+        polygons = labels["test_0.png"]["polygons"]
+        assert len(polygons) == 2
+
+        # All polygon coordinates must be within the image dimensions
+        img_w, img_h = labels["test_0.png"]["img_dimensions"]
+        for poly in polygons:
+            for x, y in poly:
+                assert 0 <= x <= img_w, (
+                    f"x={x} out of bounds [0, {img_w}]; pixel-space coords were wrongly scaled"
+                )
+                assert 0 <= y <= img_h, (
+                    f"y={y} out of bounds [0, {img_h}]; pixel-space coords were wrongly scaled"
+                )
+
+    def test_detection_pixel_space_polygon_values_are_correct(self, tmp_path):
+        """Detection export must produce the original pixel coordinates, not scaled ones."""
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        page = self._make_pixel_page(img_h=100, img_w=200)
+        page.generate_doctr_detection_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+        with open(output_path / "detection" / "labels.json") as f:
+            labels = json.load(f)
+
+        polygons = labels["test_0.png"]["polygons"]
+        first_poly = polygons[0]
+        xs = [pt[0] for pt in first_poly]
+        ys = [pt[1] for pt in first_poly]
+        assert min(xs) == 10, (
+            f"x min {min(xs)} != 10; pixel-space coords were wrongly scaled"
+        )
+        assert max(xs) == 30, (
+            f"x max {max(xs)} != 30; pixel-space coords were wrongly scaled"
+        )
+        assert min(ys) == 10, (
+            f"y min {min(ys)} != 10; pixel-space coords were wrongly scaled"
+        )
+        assert max(ys) == 40, (
+            f"y max {max(ys)} != 40; pixel-space coords were wrongly scaled"
+        )
+
+    # ------------------------------------------------------------------
+    # Recognition export — pixel-space
+    # ------------------------------------------------------------------
+
+    def test_recognition_pixel_space_does_not_raise(self, tmp_path):
+        """Recognition export with pixel-space boxes must not raise ValueError.
+
+        Before fix: bbox.scale() was called unconditionally and raised
+        'ValueError: scale() expected a normalized bounding box'.
+        """
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        page = self._make_pixel_page(img_h=100, img_w=200)
+        # Should not raise — pixel-space boxes must pass through
+        page.generate_doctr_recognition_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+    def test_recognition_pixel_space_writes_correct_crops(self, tmp_path):
+        """Recognition export with pixel-space boxes writes non-empty crops."""
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        page = self._make_pixel_page(img_h=100, img_w=200)
+        page.generate_doctr_recognition_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+        image_files = list((output_path / "recognition" / "images").glob("*.png"))
+        assert len(image_files) == 2
+
+        with open(output_path / "recognition" / "labels.json") as f:
+            labels = json.load(f)
+
+        label_values = list(labels.values())
+        assert "hello" in label_values
+        assert "world" in label_values
+
+    def test_recognition_pixel_space_crop_filename_uses_pixel_coords(self, tmp_path):
+        """Recognition export uses the original pixel coords in the crop filename."""
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        page = self._make_pixel_page(img_h=100, img_w=200)
+        page.generate_doctr_recognition_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+        image_files = sorted((output_path / "recognition" / "images").glob("*.png"))
+        # Filenames encode minX, maxX, minY, maxY — all must be <= image dims
+        img_w, img_h = 200, 100
+        for f in image_files:
+            parts = f.stem.split("_")
+            x1, x2, y1, y2 = (
+                int(parts[-4]),
+                int(parts[-3]),
+                int(parts[-2]),
+                int(parts[-1]),
+            )
+            assert 0 <= x1 <= img_w, f"x1={x1} out of bounds in filename {f.name}"
+            assert 0 <= x2 <= img_w, f"x2={x2} out of bounds in filename {f.name}"
+            assert 0 <= y1 <= img_h, f"y1={y1} out of bounds in filename {f.name}"
+            assert 0 <= y2 <= img_h, f"y2={y2} out of bounds in filename {f.name}"
+
+    # ------------------------------------------------------------------
+    # Normalized parity — confirm existing normalized behavior unchanged
+    # ------------------------------------------------------------------
+
+    def test_detection_normalized_parity(self, tmp_path):
+        """Normalized-space detection export still produces scaled-up polygon coords."""
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        # Word at normalized (0.1, 0.1)-(0.3, 0.4) on 200x100 image
+        # Expected pixel polygon: x in [20,60], y in [10,40]
+        word = Word(
+            text="hello",
+            bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.3, 0.4, is_normalized=True),
+            ocr_confidence=0.9,
+        )
+        word.ground_truth_text = "hello"
+        line = Block(
+            items=[word],
+            block_category=BlockCategory.LINE,
+            child_type=BlockChildType.WORDS,
+        )
+        para = Block(
+            items=[line],
+            block_category=BlockCategory.PARAGRAPH,
+            child_type=BlockChildType.BLOCKS,
+        )
+        page = Page(width=200, height=100, page_index=0, blocks=[para])
+        page.cv2_numpy_page_image = np.zeros((100, 200, 3), dtype=np.uint8)
+
+        page.generate_doctr_detection_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+        with open(output_path / "detection" / "labels.json") as f:
+            labels = json.load(f)
+
+        poly = labels["test_0.png"]["polygons"][0]
+        xs = [pt[0] for pt in poly]
+        ys = [pt[1] for pt in poly]
+        # 0.1 * 200 = 20, 0.3 * 200 = 60; 0.1 * 100 = 10, 0.4 * 100 = 40
+        assert min(xs) == 20
+        assert max(xs) == 60
+        assert min(ys) == 10
+        assert max(ys) == 40
+
+    def test_recognition_normalized_parity(self, tmp_path):
+        """Normalized-space recognition export still produces correct crops."""
+        output_path = tmp_path / "training_set"
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        page = _make_page_with_words(["hello"], normalized=True)
+        page.generate_doctr_recognition_training_set(
+            output_path=output_path, prefix="test"
+        )
+
+        image_files = list((output_path / "recognition" / "images").glob("*.png"))
+        assert len(image_files) == 1
+
+        with open(output_path / "recognition" / "labels.json") as f:
+            labels = json.load(f)
+        assert "hello" in labels.values()
+
+
 class TestTrainingSetGeneratorErrorHandling:
     """Test error handling in training set generators."""
 
