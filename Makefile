@@ -12,7 +12,7 @@ $(_goals):
 
 else
 
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local dev-local sync-gpu test test-verbose test-single test-k coverage lint lint-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps upgrade-deps-local check-dev-local dev-local sync-gpu test test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -164,6 +164,8 @@ lint-check: ## Read-only ruff format+check on all files (no auto-fix; matches Gi
 	@echo "🔍 Checking format and lint (read-only, full repo)..."
 	uv run ruff format --check .
 	uv run ruff check .
+
+format-check: lint-check ## Alias for lint-check (workspace canonical name for read-only format+lint check)
 
 typecheck: ## Run basedpyright at recommended mode (workspace canonical)
 	@echo "🔬 Running basedpyright type check..."
