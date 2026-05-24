@@ -17,9 +17,8 @@ Regression: H-17 in ``docs/review/bugs-high.md``.
 from __future__ import annotations
 
 import sys
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
 
@@ -70,9 +69,9 @@ def test_opencv_headless_not_mixed_with_full() -> None:
 
 
 def test_tomllib_available() -> None:
-    """Sanity check: tomllib is stdlib on 3.11+; this repo targets 3.10+.
+    """Sanity check: tomllib is stdlib on 3.11+; this repo requires >=3.11.
 
-    We rely on tomllib here; if the project's minimum Python ever drops
+    We rely on tomllib here; if the project's minimum Python is ever lowered
     below 3.11 this test surfaces it loudly so we can swap to ``tomli``.
     """
     assert sys.version_info >= (3, 11), (
