@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Last updated**: 2026-05-24
-> **Spec-Issue**: (to be filed)
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#208
 
 Detect pages that are out of sequence in a scanned book and propose
 confident swap pairs for the user to review. The primary consumer is the

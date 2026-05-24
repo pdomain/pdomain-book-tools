@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Last updated**: 2026-05-24
-> **Spec-Issue**: (to be filed)
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#210
 
 Replace the unofficial Google Books JSON n-gram endpoint with a
 pre-indexed, locally-resident SQLite database of hyphen-pair frequency data

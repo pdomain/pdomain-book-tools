@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Last updated**: 2026-05-24
-> **Spec-Issue**: (to be filed)
+> **Spec-Issue**: ConcaveTrillion/pd-book-tools#209
 
 Own the data model, storage, and API for the scannos (scanner
 error corrections) subsystem used across `pd-prep-for-pgdp` and future
