@@ -620,6 +620,119 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
         mock_select.assert_called_once()
 
 
+class _CheckpointSecurityStubs:
+    """Shared stub factory for checkpoint-security test classes."""
+
+    def _make_stubs(self, monkeypatch, tmp_path, *, load_return_value=None):
+        """Common stub factory used across security tests."""
+        det_path = tmp_path / "det.pt"
+        reco_path = tmp_path / "reco.pt"
+        det_path.write_bytes(b"fake")
+        reco_path.write_bytes(b"fake")
+
+        if load_return_value is None:
+            load_return_value = {}
+
+        fake_torch = MagicMock()
+        fake_torch.load = MagicMock(return_value=load_return_value)
+        fake_torch.cuda = MagicMock()
+        fake_torch.cuda.is_available = MagicMock(return_value=False)
+
+        fake_vocabs = MagicMock()
+        fake_vocabs.VOCABS = {"multilingual": "abc"}
+
+        fake_det_model = MagicMock()
+        fake_det_model.to = MagicMock(return_value=fake_det_model)
+        fake_reco_model = MagicMock()
+        fake_reco_model.to = MagicMock(return_value=fake_reco_model)
+
+        fake_models = MagicMock()
+        fake_models.db_resnet50 = MagicMock(return_value=fake_det_model)
+        fake_models.crnn_vgg16_bn = MagicMock(return_value=fake_reco_model)
+        fake_models.detection_predictor = MagicMock(return_value=MagicMock())
+        fake_models.recognition_predictor = MagicMock(return_value=MagicMock())
+        fake_models.ocr_predictor = MagicMock(return_value=MagicMock())
+
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+        monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
+        monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        return det_path, reco_path, fake_torch
+
+
+class TestTorchLoadParameter(_CheckpointSecurityStubs):
+    """Tests for the ``torch_load`` parameter on
+    ``get_finetuned_torch_doctr_predictor`` (#205).
+
+    Covers:
+    - Custom ``torch_load`` callable is accepted and forwarded.
+    - ``torch_load`` is keyword-only (no positional-call breakage).
+    - Default ``torch_load`` uses ``weights_only=True`` (PyTorch >= 2.4;
+      this repo pins >= 2.6).
+    """
+
+    def test_custom_torch_load_is_forwarded(self, monkeypatch, tmp_path):
+        """Passing a custom ``torch_load`` callable must be used instead of the
+        default ``partial(torch.load, weights_only=True)``.
+
+        This lets callers inject a stub for testing or a custom loader for
+        special checkpoint formats.
+        """
+        det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        custom_loader = MagicMock(return_value={})
+
+        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+
+        get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=det_path,
+            recognition_pt_file=reco_path,
+            torch_load=custom_loader,
+        )
+
+        # custom_loader must have been called (twice: det + reco).
+        assert custom_loader.call_count == 2, (
+            f"Expected custom_loader to be called twice, got {custom_loader.call_count}"
+        )
+
+    def test_custom_torch_load_is_keyword_only(self, monkeypatch, tmp_path):
+        """``torch_load`` must be keyword-only so existing positional callers
+        are not broken.
+        """
+        import inspect
+
+        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+
+        sig = inspect.signature(get_finetuned_torch_doctr_predictor)
+        param = sig.parameters.get("torch_load")
+        assert param is not None, "torch_load parameter is missing from the signature"
+        assert param.kind == inspect.Parameter.KEYWORD_ONLY, (
+            "torch_load must be keyword-only (KEYWORD_ONLY) so positional "
+            "callers are not silently broken"
+        )
+
+    def test_default_torch_load_uses_weights_only(self, monkeypatch, tmp_path):
+        """When no custom ``torch_load`` is supplied, the default must use
+        ``weights_only=True`` to prevent arbitrary code execution via
+        pickle (PyTorch >= 2.4 requirement; this repo pins >= 2.6).
+        """
+        det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+
+        get_finetuned_torch_doctr_predictor(
+            dectection_pt_file=det_path,
+            recognition_pt_file=reco_path,
+        )
+
+        for call in fake_torch.load.call_args_list:
+            assert call.kwargs.get("weights_only") is True, (
+                f"Default torch_load must pass weights_only=True; "
+                f"call kwargs were {call.kwargs!r}"
+            )
+
+
 class TestR15ExtractedHelpers:
     """Unit tests for the R-15 finishing extractions:
 

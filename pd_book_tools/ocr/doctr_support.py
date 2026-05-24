@@ -301,11 +301,51 @@ def get_finetuned_torch_doctr_predictor(
     pretrained: bool = True,
     pretrained_backbone: bool = True,  # pyright: ignore[reportUnusedParameter]  # public API; _load_reco_model hardcodes pretrained_backbone=False
     device: str | None = None,
+    *,
+    torch_load=None,  # pyright: ignore[reportMissingParameterType]
 ):
+    """Load a fine-tuned DocTR OCR predictor from local ``.pt`` checkpoint files.
+
+    Parameters
+    ----------
+    dectection_pt_file:
+        Path to the detection model checkpoint (``.pt``).
+    recognition_pt_file:
+        Path to the recognition model checkpoint (``.pt``).
+    vocab:
+        Character vocabulary string. Inferred from the ``.vocab`` sidecar when
+        omitted.
+    pretrained:
+        Passed to the DocTR ``ocr_predictor`` constructor. Does *not* trigger
+        a network download for the detection / recognition weights — those are
+        always loaded from the local ``.pt`` files.
+    pretrained_backbone:
+        Public API parameter; kept for call-site compatibility. The inner
+        loader always passes ``pretrained_backbone=False`` because
+        ``load_state_dict`` immediately overwrites every weight.
+    device:
+        Torch device string (e.g. ``"cpu"``, ``"cuda"``). Defaults to
+        automatic selection (CUDA > MPS > CPU).
+    torch_load:
+        Callable used to deserialize the ``.pt`` checkpoints. Defaults to
+        ``functools.partial(torch.load, weights_only=True)``, which prevents
+        arbitrary code execution via pickle. Requires PyTorch >= 2.4; this
+        repo pins >= 2.6 so the default is always safe.
+
+        Pass a custom callable only when you have a specific need (e.g.
+        injecting a test stub or loading a checkpoint saved with an older
+        format). In that case you are responsible for the security of the
+        deserialization.
+    """
     try:
-        from torch import load as torch_load
+        from torch import load as _torch_load_fn
     except ImportError as err:
         raise ImportError("PyTorch is not available in this environment.") from err
+
+    if torch_load is None:
+        from functools import partial as _partial
+
+        torch_load = _partial(_torch_load_fn, weights_only=True)
 
     import sys as _sys
 
