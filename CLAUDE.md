@@ -15,6 +15,11 @@ on it, so public API changes ripple downstream.
 | `make build AI=1` | `uv build` (hatchling) |
 | `make ci AI=1` | full check including layout-fork-info |
 | `make coverage AI=1` | HTML report under `htmlcov/` |
+| `make local-dev` | switch to local-dev mode (GPU extras active + marker) |
+| `make local-check` | print local-dev mode status (marker + torch location) |
+| `make local-upgrade-deps` | upgrade deps + re-sync GPU extras (local-mode only) |
+
+See [workspace `docs/process/local-dev.md`](../docs/process/local-dev.md) for the canonical local-dev pattern (spec #362).
 
 `AI=1` captures verbose output to `.ci-ai.log`; stdout shows `✅` on pass or
 filtered failure sections on error. Remove `AI=1` only if you need full verbose
