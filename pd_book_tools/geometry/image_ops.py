@@ -15,6 +15,7 @@ free functions here directly; old code calling
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import TYPE_CHECKING, cast
 
@@ -45,18 +46,45 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
+def _pixel_roi_bounds(
+    x1: float, y1: float, x2: float, y2: float, img_w: int, img_h: int
+) -> tuple[int, int, int, int]:
+    """Convert float pixel coords to integer slice bounds, clamped to image dims.
+
+    Rounding policy (conservative on inclusion):
+    - minX / minY: floor  — extends the ROI outward on the low side
+    - maxX / maxY: ceil   — extends the ROI outward on the high side
+
+    The result is always clamped to ``[0, img_w]`` / ``[0, img_h]`` so that
+    numpy slice indices are never out of range.
+    """
+    ix1 = max(0, min(math.floor(x1), img_w))
+    iy1 = max(0, min(math.floor(y1), img_h))
+    ix2 = max(0, min(math.ceil(x2), img_w))
+    iy2 = max(0, min(math.ceil(y2), img_h))
+    return ix1, iy1, ix2, iy2
+
+
 def _extract_roi(
     bbox: BoundingBox, image: MatLike
 ) -> tuple[MatLike, float, float, float, float, int, int, bool]:
     """Return ``(roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized)``.
 
     Scales ``bbox`` to pixel coordinates if it was normalized.
+
+    Pixel coords may be floats (e.g. after ``refine(...,
+    expand_beyond_original=True)``).  The ROI slice uses integer bounds
+    derived via :func:`_pixel_roi_bounds` (floor min, ceil max) so that
+    ``image[iy1:iy2, ix1:ix2]`` never raises ``TypeError: slice indices must
+    be integers``.  The returned ``x1/y1/x2/y2`` values are preserved as
+    floats for downstream arithmetic fidelity.
     """
     img_h, img_w = cast("tuple[int, int]", image.shape[:2])
     original_is_normalized = bool(bbox.is_normalized)
     box = bbox.scale(img_w, img_h) if original_is_normalized else bbox
     x1, y1, x2, y2 = box.to_ltrb()
-    roi = image[y1:y2, x1:x2]
+    ix1, iy1, ix2, iy2 = _pixel_roi_bounds(x1, y1, x2, y2, img_w, img_h)
+    roi = image[iy1:iy2, ix1:ix2]
     return roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized
 
 
@@ -93,6 +121,11 @@ def _connected_content_bbox_from_image_thresh(
 
     Coordinates are in image pixel space and returned as
     ``(x_min, y_min, x_max, y_max)``.
+
+    ``x1/y1/x2/y2`` may be floats (produced by the expand_beyond_original
+    refinement path).  They are converted to integer slice indices via
+    :func:`_pixel_roi_bounds` before indexing ``labels`` to avoid
+    ``TypeError: slice indices must be integers``.
     """
     if x1 >= x2 or y1 >= y2:
         return None
@@ -102,7 +135,9 @@ def _connected_content_bbox_from_image_thresh(
     if num_labels <= 1:
         return None
 
-    roi_labels = labels[y1:y2, x1:x2]
+    thresh_h, thresh_w = cast("tuple[int, int]", thresh.shape[:2])
+    ix1, iy1, ix2, iy2 = _pixel_roi_bounds(x1, y1, x2, y2, thresh_w, thresh_h)
+    roi_labels = labels[iy1:iy2, ix1:ix2]
     touching_labels = {int(label) for label in roi_labels.ravel() if int(label) != 0}
     if not touching_labels:
         return None
