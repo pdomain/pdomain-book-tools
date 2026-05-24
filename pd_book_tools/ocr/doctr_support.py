@@ -222,6 +222,41 @@ def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):  # py
     return full_predictor
 
 
+def _validate_state_dict(obj: object, *, path: str) -> None:
+    """Validate that *obj* looks like a PyTorch state dict.
+
+    Raises :class:`ValueError` when:
+
+    - *obj* is not a :class:`dict` (e.g. a pickled model instance).
+    - Any value in the dict is not a :class:`torch.Tensor` (catches checkpoints
+      that smuggled an arbitrary Python object as a weight tensor).
+
+    An empty dict is accepted (used in unit tests and for fresh models).
+
+    Called immediately after every ``torch.load`` call so that a maliciously or
+    accidentally mis-pickled checkpoint is caught before any code acts on it.
+    Requires PyTorch >= 2.4 (this repo pins >= 2.6) for the complementary
+    ``weights_only=True`` loader defence.
+    """
+    import torch as _torch
+
+    if not isinstance(obj, dict):
+        raise ValueError(
+            f"Checkpoint {path!r} is not a dict (state dict); "
+            f"got {type(obj).__name__!r}. "
+            "Only plain dict state dicts are accepted. "
+            "Ensure the checkpoint was saved with model.state_dict() "
+            "and comes from a trusted source."
+        )
+    for key, value in obj.items():
+        if not isinstance(value, _torch.Tensor):
+            raise ValueError(
+                f"Checkpoint {path!r}: value for key {key!r} is not a "
+                f"torch.Tensor (got {type(value).__name__!r}). "
+                "Only plain dict state dicts with Tensor values are accepted."
+            )
+
+
 def _load_det_model(  # pyright: ignore[reportUnknownParameterType]
     *,
     det_path: Path,
@@ -242,6 +277,7 @@ def _load_det_model(  # pyright: ignore[reportUnknownParameterType]
     instead of a bare framework error (M-23).
     """
     det_params = torch_load(det_path, map_location=device_nbr)  # pyright: ignore[reportUnknownVariableType]
+    _validate_state_dict(det_params, path=str(det_path))
     det_arch_name = _read_arch_sidecar(det_path) or _detect_detection_arch(det_params)  # pyright: ignore[reportUnknownArgumentType]
     det_model = build_arch(det_arch_name, pretrained=False).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
     try:
@@ -272,6 +308,7 @@ def _load_reco_model(  # pyright: ignore[reportUnknownParameterType]
     without it. Load failures are wrapped (M-23).
     """
     reco_params = torch_load(reco_path, map_location=device_nbr)  # pyright: ignore[reportUnknownVariableType]
+    _validate_state_dict(reco_params, path=str(reco_path))
     reco_arch_name = _read_arch_sidecar(reco_path) or _detect_recognition_arch(
         reco_params  # pyright: ignore[reportUnknownArgumentType]
     )

@@ -733,6 +733,124 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
             )
 
 
+class TestStateDictValidator(_CheckpointSecurityStubs):
+    """Tests for the ``_validate_state_dict`` helper and its application (#165).
+
+    Covers:
+    - Validator accepts a normal state dict (all Tensor values).
+    - Validator rejects a non-dict object (e.g. pickled model instance).
+    - Validator rejects a dict with non-Tensor values.
+    - Empty dict is valid (common in unit tests / fresh models).
+    - Validator is applied inside ``_load_det_model`` and ``_load_reco_model``.
+    """
+
+    def test_validate_state_dict_accepts_plain_dict_of_tensors(self, monkeypatch):
+        """``_validate_state_dict`` must not raise for a normal state-dict
+        (all values are ``torch.Tensor`` instances).
+        """
+        fake_tensor = MagicMock(spec=["__class__"])
+        fake_tensor.__class__.__name__ = "Tensor"
+
+        fake_torch = MagicMock()
+        fake_torch.Tensor = type(fake_tensor)
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+
+        # Should not raise.
+        _validate_state_dict({"layer.weight": fake_tensor}, path="model.pt")
+
+    def test_validate_state_dict_rejects_non_dict(self, monkeypatch):
+        """``_validate_state_dict`` must raise ``ValueError`` when the loaded
+        object is not a ``dict`` — e.g. a pickled model instance instead of
+        a state dict.
+        """
+        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+
+        with pytest.raises(ValueError, match="not a dict"):
+            _validate_state_dict("this is a string, not a state dict", path="bad.pt")
+
+    def test_validate_state_dict_rejects_dict_with_non_tensor_value(self, monkeypatch):
+        """``_validate_state_dict`` must raise ``ValueError`` when the dict
+        contains a non-Tensor value — catching checkpoints that smuggled an
+        arbitrary Python object as a "weight".
+        """
+        fake_torch = MagicMock()
+
+        class _FakeTensor:
+            pass
+
+        fake_torch.Tensor = _FakeTensor
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+
+        bad_dict = {"layer.weight": "definitely not a tensor"}
+        with pytest.raises(ValueError, match=r"layer\.weight"):
+            _validate_state_dict(bad_dict, path="bad.pt")
+
+    def test_validate_state_dict_accepts_empty_dict(self, monkeypatch):
+        """An empty dict (no keys) is a valid (empty) state dict and must not
+        raise — some unit tests exercise this path.
+        """
+        fake_torch = MagicMock()
+
+        class _FakeTensor:
+            pass
+
+        fake_torch.Tensor = _FakeTensor
+        monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+
+        # Empty dict is valid (pretrained=False fresh model or test stub).
+        _validate_state_dict({}, path="empty.pt")
+
+    def test_validator_is_applied_to_det_checkpoint(self, monkeypatch, tmp_path):
+        """When the det checkpoint loads a non-dict object, ``_load_det_model``
+        must raise ``ValueError`` before attempting ``load_state_dict``.
+        """
+        det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        custom_loader = MagicMock(return_value="not_a_dict")
+
+        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+
+        with pytest.raises(ValueError, match="not a dict"):
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+                torch_load=custom_loader,
+            )
+
+    def test_validator_is_applied_to_reco_checkpoint(self, monkeypatch, tmp_path):
+        """When the reco checkpoint loads a non-dict object, ``_load_reco_model``
+        must raise ``ValueError``.
+
+        Det load must succeed (returns ``{}``) so we reach the reco load step.
+        """
+        det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
+
+        call_count = 0
+
+        def _custom_loader(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            # First call = det (return valid empty dict), second = reco (bad)
+            if call_count == 1:
+                return {}
+            return "not_a_dict"
+
+        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+
+        with pytest.raises(ValueError, match="not a dict"):
+            get_finetuned_torch_doctr_predictor(
+                dectection_pt_file=det_path,
+                recognition_pt_file=reco_path,
+                torch_load=_custom_loader,
+            )
+
+
 class TestR15ExtractedHelpers:
     """Unit tests for the R-15 finishing extractions:
 
