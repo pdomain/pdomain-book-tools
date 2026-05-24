@@ -43,16 +43,30 @@ def crop_to_rectangle(
     # Get image dimensions
     h, w = cast("tuple[int, int]", img.shape[:2])
 
-    # Ensure coordinates are within valid range
-    minX = max(0, min(minX, w - 1))
-    maxX = max(0, min(maxX, w))
-    minY = max(0, min(minY, h - 1))
-    maxY = max(0, min(maxY, h))
+    # Reject boxes with no overlap BEFORE clamping.  Clamping minX to w-1
+    # would otherwise turn a fully-out-of-bounds box into a 1-pixel edge strip.
+    if minX >= w or maxX <= 0 or minY >= h or maxY <= 0:
+        logger.warning(
+            "%sBox has no overlap with image: minX=%s, maxX=%s, minY=%s, maxY=%s. "
+            "Returning original image.",
+            log_prefix,
+            minX,
+            maxX,
+            minY,
+            maxY,
+        )
+        return img
 
-    # Ensure cropping makes sense
+    # Clamp to [0, w] / [0, h] (not w-1/h-1 for the min coordinates).
+    minX = max(0, minX)
+    maxX = min(maxX, w)
+    minY = max(0, minY)
+    maxY = min(maxY, h)
+
+    # Ensure cropping makes sense after clamping.
     if minX >= maxX or minY >= maxY:
         logger.warning(
-            "%sInvalid crop dimensions: minX=%s, maxX=%s, minY=%s, maxY=%s. Returning original image.",
+            "%sInvalid crop dimensions after clamping: minX=%s, maxX=%s, minY=%s, maxY=%s. Returning original image.",
             log_prefix,
             minX,
             maxX,

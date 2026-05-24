@@ -678,14 +678,21 @@ class BoundingBox:
         x2 = int(pixel_bbox.maxX)
         y2 = int(pixel_bbox.maxY)
 
+        # Reject degenerate (zero-area) boxes before any clamping.
         if x1 >= x2 or y1 >= y2:
             return None
 
-        # Clamp to image bounds
-        x1 = max(0, min(x1, width - 1))
-        y1 = max(0, min(y1, height - 1))
-        x2 = max(x1 + 1, min(x2, width))
-        y2 = max(y1 + 1, min(y2, height))
+        # Reject boxes with no overlap with the image.  Test BEFORE clamping:
+        # clamping minX to width-1 would turn a fully-out-of-bounds box into a
+        # spurious 1-pixel edge strip.
+        if x1 >= width or x2 <= 0 or y1 >= height or y2 <= 0:
+            return None
+
+        # Clamp to [0, width] / [0, height] (not width-1/height-1 for min).
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(x2, width)
+        y2 = min(y2, height)
 
         cropped = image[y1:y2, x1:x2]
         if cropped.size == 0:
