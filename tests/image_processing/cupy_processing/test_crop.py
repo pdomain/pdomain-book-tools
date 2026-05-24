@@ -31,6 +31,22 @@ class TestCupyCropToRectangle:
         assert cropped.shape[0] > 0
         assert cropped.shape[1] > 0
 
+    def test_entirely_right_of_image_returns_original(self, cupy_crop):
+        """#169: box entirely beyond right edge must return original, not a 1-px strip."""
+        crop_mod, cp = cupy_crop
+        img = cp.zeros((10, 10), dtype=cp.uint8)
+        # minX=15 > width=10, so no overlap
+        out = crop_mod.crop_to_rectangle(img, 15, 20, 2, 5)
+        assert out is img
+
+    def test_entirely_below_image_returns_original(self, cupy_crop):
+        """#169: box entirely beyond bottom edge must return original, not a 1-px strip."""
+        crop_mod, cp = cupy_crop
+        img = cp.zeros((10, 10), dtype=cp.uint8)
+        # minY=15 > height=10, so no overlap
+        out = crop_mod.crop_to_rectangle(img, 2, 5, 15, 20)
+        assert out is img
+
 
 class TestCupyCropEdges:
     def test_crop_each_edge(self, cupy_crop):

@@ -36,6 +36,20 @@ class TestCropToRectangle:
         out = crop_to_rectangle(img, minX=0, maxX=5, minY=8, maxY=3)
         assert out is img
 
+    def test_entirely_right_of_image_returns_original(self):
+        """#169: box entirely beyond right edge must return original, not a 1-px strip."""
+        img = np.zeros((10, 10), dtype=np.uint8)
+        # minX=15 > width=10, so no overlap
+        out = crop_to_rectangle(img, minX=15, maxX=20, minY=2, maxY=5)
+        assert out is img
+
+    def test_entirely_below_image_returns_original(self):
+        """#169: box entirely beyond bottom edge must return original, not a 1-px strip."""
+        img = np.zeros((10, 10), dtype=np.uint8)
+        # minY=15 > height=10, so no overlap
+        out = crop_to_rectangle(img, minX=2, maxX=5, minY=15, maxY=20)
+        assert out is img
+
     def test_color_image(self):
         img = np.zeros((10, 10, 3), dtype=np.uint8)
         cropped = crop_to_rectangle(img, minX=1, maxX=4, minY=2, maxY=6)

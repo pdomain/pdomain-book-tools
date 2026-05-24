@@ -931,6 +931,41 @@ class TestCropImage:
         assert crop is not None
         assert crop.shape == (40, 40)
 
+    def test_entirely_right_of_image_returns_none(self):
+        """#169: box entirely beyond right edge must return None, not a 1-px strip."""
+        img = np.zeros((50, 100, 3), dtype=np.uint8)
+        # box starts at x=110, well past the right edge (width=100)
+        bbox = BoundingBox.from_ltrb(110, 10, 150, 40, is_normalized=False)
+        assert bbox.crop_image(img) is None
+
+    def test_entirely_below_image_returns_none(self):
+        """#169: box entirely below bottom edge must return None, not a 1-px strip."""
+        img = np.zeros((50, 100, 3), dtype=np.uint8)
+        # box starts at y=60, well past the bottom edge (height=50)
+        bbox = BoundingBox.from_ltrb(10, 60, 40, 80, is_normalized=False)
+        assert bbox.crop_image(img) is None
+
+    def test_touching_right_edge_exactly_returns_none(self):
+        """#169: box whose minX == image width has zero overlap; must return None."""
+        img = np.zeros((50, 100, 3), dtype=np.uint8)
+        bbox = BoundingBox.from_ltrb(100, 10, 110, 40, is_normalized=False)
+        assert bbox.crop_image(img) is None
+
+    def test_touching_bottom_edge_exactly_returns_none(self):
+        """#169: box whose minY == image height has zero overlap; must return None."""
+        img = np.zeros((50, 100, 3), dtype=np.uint8)
+        bbox = BoundingBox.from_ltrb(10, 50, 40, 60, is_normalized=False)
+        assert bbox.crop_image(img) is None
+
+    def test_partial_overlap_right_still_crops(self):
+        """#169: box that partially overlaps image from the right crops correctly."""
+        img = np.ones((50, 100, 3), dtype=np.uint8) * 7
+        # Box overlaps the last 10 columns (x=90 to 100)
+        bbox = BoundingBox.from_ltrb(90, 10, 120, 40, is_normalized=False)
+        crop = bbox.crop_image(img)
+        assert crop is not None
+        assert crop.shape == (30, 10, 3)
+
 
 # ============================================================================
 # Additional coverage tests

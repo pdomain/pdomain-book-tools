@@ -161,3 +161,64 @@ def test_crop_word_bottom_no_bbox_raises():
     img = _make_text_image()
     with pytest.raises(ValueError, match="Bounding box"):
         crop_word_bottom(word, img)
+
+
+# ---------------------------------------------------------------------------
+# #170: float pixel-space coords must not crash image_ops
+# ---------------------------------------------------------------------------
+
+
+def _make_solid_text_image() -> np.ndarray:
+    """50x50 image with a solid black rectangle of ink (no OTSU ambiguity)."""
+    img = np.full((50, 50), 255, dtype=np.uint8)
+    img[10:40, 5:45] = 0
+    return img
+
+
+def test_refine_bbox_with_float_pixel_coords_does_not_crash():
+    """#170: refine_bbox must not raise TypeError when bbox has float pixel coords.
+
+    refine(..., expand_beyond_original=True) can produce float coordinates
+    via _finalize_pixel_bbox.  Passing such a bbox back into refine_bbox
+    must clamp to int before slicing instead of crashing with
+    'slice indices must be integers'.
+    """
+    img = _make_solid_text_image()
+    # Construct a pixel-space BoundingBox with float coords directly.
+    # This mimics what refine produces when expand_beyond_original=True.
+    bbox = BoundingBox.from_ltrb(2.7, 3.2, 47.9, 48.6, is_normalized=False)
+    # Must not raise TypeError
+    result = refine_bbox(bbox, img, padding_px=0)
+    assert result is not None
+    ltrb = result.to_ltrb()
+    assert ltrb[0] >= 0
+    assert ltrb[1] >= 0
+
+
+def test_refine_bbox_expand_beyond_original_with_float_coords():
+    """#170: the expand_beyond_original path also slices with x1:x2 on labels array.
+
+    _connected_content_bbox_from_image_thresh uses labels[y1:y2, x1:x2] where
+    x1 etc. come from to_ltrb() and may be float.  This must not crash.
+    """
+    img = _make_solid_text_image()
+    bbox = BoundingBox.from_ltrb(4.5, 8.1, 44.3, 38.7, is_normalized=False)
+    # Must not raise TypeError
+    result = refine_bbox(bbox, img, padding_px=1, expand_beyond_original=True)
+    assert result is not None
+
+
+def test_crop_top_bbox_with_float_pixel_coords_does_not_crash():
+    """#170: crop_top_bbox must not raise TypeError for float pixel coords."""
+    img = _make_solid_text_image()
+    bbox = BoundingBox.from_ltrb(1.8, 0.5, 48.2, 49.9, is_normalized=False)
+    result = crop_top_bbox(bbox, img)
+    assert result is not None
+
+
+def test_crop_bottom_bbox_with_float_pixel_coords_does_not_crash():
+    """#170: crop_bottom_bbox must not raise TypeError for float pixel coords."""
+    img = _make_solid_text_image()
+    bbox = BoundingBox.from_ltrb(1.8, 0.5, 48.2, 49.9, is_normalized=False)
+    result = crop_bottom_bbox(bbox, img)
+    assert result is not None
