@@ -10,6 +10,25 @@ Native labels are mapped to :class:`pd_book_tools.layout.types.RegionType`
 via :data:`pd_book_tools.layout._mappings.PP_DOCLAYOUT_TO_PGDP`. Labels that
 map to ``None`` are dropped.
 
+Trust boundary
+--------------
+``checkpoint_path`` is a trust boundary.  Loading weights from an arbitrary
+remote Hugging Face repo or untrusted local directory can execute code at
+``from_pretrained`` time (``trust_remote_code`` is always ``False`` here,
+which helps) and grants the model full access to inference compute.
+
+Safe-use rules enforced at construction time:
+
+* The **default pinned fork** (``CT2534/PP-DocLayout_plus-L`` at a fixed
+  revision) is always allowed.
+* A **local directory path** (any path starting with ``/``, ``.``, ``~``,
+  or a Windows drive letter) is allowed with no extra flags.  Pass
+  ``local_files_only=True`` to guarantee no network access.
+* A **remote custom repo ID** (an ``owner/repo`` string not starting with a
+  path-separator or drive letter) requires the caller to explicitly pass
+  ``trust_remote_checkpoint=True``.  This is intentional friction: callers
+  must acknowledge the trust boundary.
+
 """
 
 from __future__ import annotations
@@ -71,6 +90,21 @@ def _clip_box_to_bounds(
     return x1, y1, x2, y2
 
 
+def _is_local_path(path: str) -> bool:
+    """Return True if *path* looks like a local filesystem path.
+
+    Local paths start with ``/`` (Unix absolute), ``.`` (relative), ``~``
+    (home-dir expansion), or a Windows drive letter (``C:\\``).  Anything
+    else is treated as a Hugging Face repo ID (``owner/repo``).
+    """
+    if path.startswith(("/", ".", "~")):
+        return True
+    # Windows drive letter: "C:\..." or "C:/..."
+    if len(path) >= 3 and path[1] == ":" and path[2] in ("\\/"):  # noqa: SIM103
+        return True
+    return False
+
+
 _ADAPTER_KEY = "pp-doclayout-plus-l"
 
 # Repository hosting the weights. We ship a fork (Apache-2.0; identical bytes
@@ -111,7 +145,55 @@ class PPDocLayoutPlusLDetector:
         confidence: float = 0.5,
         checkpoint_path: str | None = None,
         revision: str | None = None,
+        *,
+        local_files_only: bool = False,
+        trust_remote_checkpoint: bool = False,
     ) -> None:
+        """Initialise the PP-DocLayout_plus-L detector.
+
+        Parameters
+        ----------
+        device:
+            Torch device string (``"cpu"``, ``"cuda"``, etc.).
+        confidence:
+            Minimum detection confidence threshold (0-1).
+        checkpoint_path:
+            Override the default pinned HF fork.  May be a local directory
+            path or a Hugging Face repo ID.
+
+            **Trust boundary:** if this is a remote HF repo ID (not a local
+            path), you must also pass ``trust_remote_checkpoint=True`` to
+            acknowledge that you are loading weights from an external source.
+            See the module docstring for the full security rationale.
+        revision:
+            Git revision (branch, tag, or SHA) to load from the HF repo.
+            Ignored for local directory checkpoints.
+        local_files_only:
+            When ``True``, pass ``local_files_only=True`` to
+            ``from_pretrained``.  This prevents any network access and raises
+            ``OSError`` if the weights are not already cached.  Useful in
+            air-gapped or high-security environments.
+        trust_remote_checkpoint:
+            Must be ``True`` when ``checkpoint_path`` is a remote HF repo ID
+            (not a local path).  This is explicit opt-in friction: callers
+            must acknowledge that they are trusting an external model source.
+            Has no effect for local paths or the built-in default fork.
+        """
+        # ── trust-boundary enforcement ───────────────────────────────────────
+        if (
+            checkpoint_path is not None
+            and not _is_local_path(checkpoint_path)
+            and not trust_remote_checkpoint
+        ):
+            raise ValueError(
+                f"checkpoint_path={checkpoint_path!r} looks like a remote "
+                "Hugging Face repo ID, which is an untrusted model boundary. "
+                "Pass trust_remote_checkpoint=True to explicitly opt in to "
+                "loading from this source.  See the module docstring for the "
+                "security rationale."
+            )
+        # ─────────────────────────────────────────────────────────────────────
+
         repo = checkpoint_path or self.HF_REPO
         # When the user supplies their own ``checkpoint_path``, don't force
         # our pinned revision onto it.
@@ -126,7 +208,11 @@ class PPDocLayoutPlusLDetector:
             f"@{rev}" if rev else "",
             device,
         )
-        load_kwargs = {"revision": rev} if rev else {}
+        load_kwargs: dict[str, Any] = {}
+        if rev:
+            load_kwargs["revision"] = rev
+        if local_files_only:
+            load_kwargs["local_files_only"] = True
         processor_cls = cast("Any", RTDetrImageProcessor)  # pyright: ignore[reportAny,reportExplicitAny]
         model_cls = cast("Any", RTDetrForObjectDetection)  # pyright: ignore[reportAny,reportExplicitAny]
         self._processor = processor_cls.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportAny]

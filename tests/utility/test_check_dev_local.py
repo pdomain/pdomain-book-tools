@@ -205,3 +205,80 @@ def test_cli_quiet_flag_suppresses_output(cdl, tmp_path, monkeypatch, capsys):
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
+
+
+# ---------------------------------------------------------------------------
+# #200: dev-local-aware upgrade-deps guard — marker filename consistency
+# ---------------------------------------------------------------------------
+
+
+class TestMarkerFilenameConsistency:
+    """Regression tests for #200 — upgrade-deps guard uses check_dev_local.py.
+
+    ``local-dev.sh`` writes ``.venv/.pd-local-mode``.
+    ``check_dev_local.py`` must detect the mode regardless of which marker
+    filename is present, so the two-tier Makefile guard works end-to-end.
+    """
+
+    def test_pd_local_mode_marker_detected(self, cdl, tmp_path, monkeypatch):
+        """The .pd-local-mode marker written by local-dev.sh must be detected
+        as dev-local mode (so upgrade-deps refuses when local-dev is active)."""
+        project_root = tmp_path
+        # Write the marker that local-dev.sh creates
+        marker = tmp_path / ".pd-local-mode"
+        marker.touch()
+
+        pkgs = [
+            _pkg("pd-book-tools", editable_location=str(project_root)),
+            _pkg("torch"),
+        ]
+        monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
+        monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
+        monkeypatch.setattr(cdl, "_marker_path", lambda: marker)
+        monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+
+        rc = cdl.main(["--quiet"])
+        assert rc == 1, (
+            "check_dev_local must exit 1 (dev-local) when .pd-local-mode exists, "
+            "so that upgrade-deps refuses rather than clobbering the local-dev venv"
+        )
+
+    def test_gpu_extra_detected_without_marker(self, cdl, tmp_path, monkeypatch):
+        """GPU extra alone (no marker) must still trigger dev-local detection.
+        This covers the two-tier case: editable/GPU probe fires even when the
+        marker file was never written (e.g. if local-dev.sh ran before #200 fix)."""
+        project_root = tmp_path
+        pkgs = [
+            _pkg("pd-book-tools", editable_location=str(project_root)),
+            _pkg("cupy-cuda12x", "14.0.1"),
+        ]
+        monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
+        monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
+        monkeypatch.setattr(
+            cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-absent"
+        )
+        monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+
+        rc = cdl.main(["--quiet"])
+        assert rc == 1, (
+            "GPU extra alone must trigger dev-local detection (two-tier probe)"
+        )
+
+    def test_canonical_venv_exits_zero(self, cdl, tmp_path, monkeypatch):
+        """A clean venv with no GPU extras, no siblings, no marker must allow
+        upgrade-deps to proceed (exit 0)."""
+        project_root = tmp_path
+        pkgs = [
+            _pkg("pd-book-tools", editable_location=str(project_root)),
+            _pkg("torch"),
+            _pkg("numpy"),
+        ]
+        monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
+        monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
+        monkeypatch.setattr(
+            cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-absent"
+        )
+        monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+
+        rc = cdl.main(["--quiet"])
+        assert rc == 0, "Canonical venv must allow upgrade-deps to proceed (exit 0)"
