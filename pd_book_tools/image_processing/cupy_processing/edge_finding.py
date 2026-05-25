@@ -73,10 +73,12 @@ def find_edges_gpu(
     kernel_w = cp.ones((2 * fuzzy_px_w + 1,), dtype=cp.int64)
     kernel_h = cp.ones((2 * fuzzy_px_h + 1,), dtype=cp.int64)
 
-    # convolve1d is the 1-D equivalent of np.convolve(..., mode='same').
-    # mode='nearest' extends borders with the nearest edge value.
-    fuzzy_columns = convolve1d_fn(columns, kernel_w, mode="nearest")  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in callers
-    fuzzy_rows = convolve1d_fn(rows, kernel_h, mode="nearest")  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in callers
+    # convolve1d with mode='constant' (cval=0) matches np.convolve(mode='same'):
+    # both zero-pad outside the array boundary. mode='nearest' would repeat the
+    # edge value, inflating border column/row sums and causing false detections
+    # when content is near the image edge (closes #185).
+    fuzzy_columns = convolve1d_fn(columns, kernel_w, mode="constant", cval=0)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in callers
+    fuzzy_rows = convolve1d_fn(rows, kernel_h, mode="constant", cval=0)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy() in callers
 
     x_indices = cp.where(fuzzy_columns >= pixel_value_col_min)[0]  # pyright: ignore[reportOperatorIssue]  # CuPy comparison on NDArray-like alias
     y_indices = cp.where(fuzzy_rows >= pixel_value_row_min)[0]  # pyright: ignore[reportOperatorIssue]  # CuPy comparison on NDArray-like alias

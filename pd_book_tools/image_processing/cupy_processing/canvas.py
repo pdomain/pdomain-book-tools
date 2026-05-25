@@ -34,7 +34,7 @@ def map_content_onto_scaled_canvas_gpu(
     All geometry computation is scalar (CPU); only canvas allocation and image
     placement run on the GPU.
 
-    img_cp: 2-D uint8 CuPy array (grayscale).
+    img_cp: 2-D uint8 CuPy array (grayscale) or 3-D uint8 array (HxWxC colour).
     """
     require_cupy()
     height, width = cast("tuple[int, int]", img_cp.shape[:2])
@@ -48,7 +48,14 @@ def map_content_onto_scaled_canvas_gpu(
         new_width = math.ceil(width / (1 - (whitespace_add * 2)))
         new_height = math.ceil(new_width * height_width_ratio)
 
-    canvas = cast("CuPyArray", cp.full((new_height, new_width), 255, dtype=cp.uint8))
+    # Mirror CPU canvas shape handling: 2-D (grayscale) input -> 2-D canvas;
+    # 3-channel input -> 3-channel canvas. Without this, a colour image
+    # crashes the placement step with a CuPy broadcast error (closes #184).
+    if img_cp.ndim == 3:
+        canvas_shape: tuple[int, ...] = (new_height, new_width, img_cp.shape[2])
+    else:
+        canvas_shape = (new_height, new_width)
+    canvas = cast("CuPyArray", cp.full(canvas_shape, 255, dtype=cp.uint8))
 
     if force_align == Alignment.BOTTOM:
         y_offset = new_height - (height + math.ceil(whitespace_add * new_height))

@@ -94,3 +94,50 @@ class TestMapContentOntoScaledCanvasGpu:
         out = np_uint8_map_content_onto_scaled_canvas(img)
         assert isinstance(out, np.ndarray)
         assert out.dtype == np.uint8
+
+    def test_color_input_preserves_channels(self, cupy_module):
+        """3-channel GPU input must produce a 3-channel canvas (parity with CPU).
+
+        Before the fix the GPU canvas was always 2-D, so placing a 3-channel
+        image onto it raised a broadcast error (closes #184).
+        """
+        cp = cupy_module
+        from pd_book_tools.image_processing.cupy_processing.canvas import (
+            map_content_onto_scaled_canvas_gpu,
+        )
+
+        img = cp.full((100, 60, 3), 128, dtype=cp.uint8)
+        out = map_content_onto_scaled_canvas_gpu(img)
+        assert out.ndim == 3, (
+            f"expected 3D output for 3-channel input, got shape {out.shape}"
+        )
+        assert out.shape[2] == 3
+
+    def test_color_matches_cpu_parity(self, cupy_module):
+        """GPU and CPU canvas results must be pixel-identical for 3-channel input."""
+        cp = cupy_module
+        from pd_book_tools.image_processing.cupy_processing.canvas import (
+            map_content_onto_scaled_canvas_gpu,
+        )
+        from pd_book_tools.image_processing.cv2_processing.canvas import (
+            map_content_onto_scaled_canvas,
+        )
+
+        rng = np.random.default_rng(7)
+        img_np = rng.integers(0, 256, (80, 60, 3), dtype=np.uint8)
+
+        cpu = map_content_onto_scaled_canvas(img_np)
+        gpu = cp.asnumpy(map_content_onto_scaled_canvas_gpu(cp.asarray(img_np)))
+        np.testing.assert_array_equal(cpu, gpu)
+
+    def test_color_canvas_background_is_white(self, cupy_module):
+        """3-channel canvas border pixels must be white (255, 255, 255)."""
+        cp = cupy_module
+        from pd_book_tools.image_processing.cupy_processing.canvas import (
+            map_content_onto_scaled_canvas_gpu,
+        )
+
+        img = cp.zeros((100, 60, 3), dtype=cp.uint8)  # black content
+        out = map_content_onto_scaled_canvas_gpu(img)
+        corner = cp.asnumpy(out[0, 0])
+        assert (corner == 255).all(), f"expected white corner, got {corner}"
