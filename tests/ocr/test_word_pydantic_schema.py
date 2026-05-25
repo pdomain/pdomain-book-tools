@@ -6,6 +6,11 @@ from pydantic import TypeAdapter
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
+from pd_book_tools.ocr.glyph_annotations import (
+    GlyphAnnotations,
+    LigatureKind,
+    LigatureMark,
+)
 from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
 
@@ -42,6 +47,7 @@ def test_word_json_schema_shape():
         "ground_truth_bounding_box",
         "ground_truth_match_keys",
         "review",
+        "glyph_annotations",
     }
     assert set(props.keys()) == expected_keys
     assert "_text" not in props
@@ -82,3 +88,63 @@ def test_word_validate_from_dict_roundtrip_full():
     assert validated == w
     dumped = adapter.dump_python(validated)
     assert dumped == d
+
+
+# ---------------------------------------------------------------------------
+# Issue #180: glyph_annotations dropped by pydantic round-trip
+# ---------------------------------------------------------------------------
+
+
+def _ga_with_ligature() -> GlyphAnnotations:
+    """Return a non-empty GlyphAnnotations with one ligature mark."""
+    return GlyphAnnotations(
+        ligatures=[LigatureMark(kind=LigatureKind.FI, char_span=(0, 2))],
+        long_s_positions=[],
+        swash=False,
+        source="human",
+    )
+
+
+def test_word_pydantic_roundtrip_preserves_glyph_annotations():
+    """TypeAdapter(Word).validate_python must NOT drop glyph_annotations (closes #180)."""
+    adapter = TypeAdapter(Word)
+    w = Word(
+        text="fi",
+        bounding_box=_bbox(),
+        glyph_annotations=_ga_with_ligature(),
+    )
+    d = w.to_dict()
+    # to_dict must include glyph_annotations
+    assert "glyph_annotations" in d, "to_dict() did not serialize glyph_annotations"
+
+    validated = adapter.validate_python(d)
+    assert isinstance(validated, Word)
+    assert validated.glyph_annotations is not None, (
+        "pydantic validate_python dropped glyph_annotations (issue #180)"
+    )
+    assert validated.glyph_annotations == w.glyph_annotations
+
+
+def test_word_pydantic_roundtrip_preserves_empty_glyph_annotations():
+    """Empty GlyphAnnotations (reviewed-no-glyphs) must also survive round-trip."""
+    adapter = TypeAdapter(Word)
+    w = Word(
+        text="hello",
+        bounding_box=_bbox(),
+        glyph_annotations=GlyphAnnotations(),  # reviewed; no glyphs
+    )
+    d = w.to_dict()
+    validated = adapter.validate_python(d)
+    assert validated.glyph_annotations is not None, (
+        "pydantic validate_python dropped empty GlyphAnnotations"
+    )
+    assert validated.glyph_annotations == w.glyph_annotations
+
+
+def test_word_pydantic_roundtrip_none_glyph_annotations_stays_none():
+    """None glyph_annotations (unreviewed) must remain None after round-trip."""
+    adapter = TypeAdapter(Word)
+    w = Word(text="hello", bounding_box=_bbox(), glyph_annotations=None)
+    d = w.to_dict()
+    validated = adapter.validate_python(d)
+    assert validated.glyph_annotations is None

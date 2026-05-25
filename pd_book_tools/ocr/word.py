@@ -1204,6 +1204,10 @@ class Word:
         review_schema = handler.generate_schema(ReviewMetadata)
         nullable_bb_schema = core_schema.nullable_schema(bb_schema)
         nullable_review_schema = core_schema.nullable_schema(review_schema)
+        # glyph_annotations is a plain dict on the wire; Word.from_dict
+        # delegates to GlyphAnnotations.from_dict to reconstruct the object.
+        # We use nullable any_schema so the raw dict passes through intact.
+        nullable_ga_schema = core_schema.nullable_schema(core_schema.any_schema())
         return core_schema.no_info_after_validator_function(
             function=cls.from_dict,
             schema=core_schema.typed_dict_schema(
@@ -1254,6 +1258,10 @@ class Word:
                     ),
                     "review": core_schema.typed_dict_field(
                         nullable_review_schema,
+                        required=False,
+                    ),
+                    "glyph_annotations": core_schema.typed_dict_field(
+                        nullable_ga_schema,
                         required=False,
                     ),
                 }
