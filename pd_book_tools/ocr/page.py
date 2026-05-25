@@ -3370,6 +3370,7 @@ class Page:
                 }
             }
         """
+        _validate_training_prefix(prefix)
         self.generate_doctr_checks(output_path)
 
         # Create the detection directory
@@ -3509,6 +3510,7 @@ class Page:
                 "image_path_1": "<gt value>",
             }
         """
+        _validate_training_prefix(prefix)
         self.generate_doctr_checks(output_path)
 
         # Create the recognition directory
@@ -3734,6 +3736,44 @@ class Page:
 # ---------------------------------------------------------------------------
 
 _dataclass_generated_page_init: Callable[..., None] = Page.__init__
+
+
+def _validate_training_prefix(prefix: str) -> None:
+    """Reject a training-set ``prefix`` that contains path components.
+
+    A hostile or accidental prefix such as ``"../escape"`` or ``"/etc/passwd"``
+    would let callers write or delete files outside the intended
+    ``images/`` directory.  We restrict ``prefix`` to a plain basename: no
+    ``/``, no ``\\``, and no ``..`` components.
+
+    Parameters
+    ----------
+    prefix:
+        The caller-supplied filename prefix.
+
+    Raises
+    ------
+    ValueError
+        If *prefix* contains ``/``, ``\\``, or ``..`` (path traversal), or
+        starts with an absolute-path indicator.
+    """
+    if not prefix:
+        return  # empty default is always safe
+
+    if "/" in prefix or "\\" in prefix:
+        raise ValueError(
+            f"Prefix must not contain path separators ('/' or '\\\\'); "
+            f"got {prefix!r}. Use a plain basename."
+        )
+    # pathlib.PurePosixPath('..' ).parts == ('..', ) — guard explicitly
+    if ".." in prefix.split("/"):
+        raise ValueError(
+            f"Prefix must not contain '..' path components; got {prefix!r}."
+        )
+    # Guard against absolute paths (Windows drive letters or UNC paths handled
+    # implicitly by the separator check above since they contain '\\' or '/').
+    if pathlib.PurePosixPath(prefix).is_absolute():
+        raise ValueError(f"Prefix must not be an absolute path; got {prefix!r}.")
 
 
 def _page_init_with_deprecation_shim(

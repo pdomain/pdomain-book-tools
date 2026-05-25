@@ -801,3 +801,84 @@ class TestTrainingSetGeneratorErrorHandling:
             page.generate_doctr_recognition_training_set(
                 output_path=output_path, prefix="test"
             )
+
+
+class TestPrefixValidation:
+    """#174: training-set prefix must not contain path separators or be absolute."""
+
+    def test_detection_rejects_prefix_with_slash(self, tmp_path):
+        """Detection generator rejects prefix containing '/'."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_detection_training_set(
+                output_path=tmp_path, prefix="evil/prefix"
+            )
+
+    def test_detection_rejects_prefix_with_backslash(self, tmp_path):
+        """Detection generator rejects prefix containing '\\'."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_detection_training_set(
+                output_path=tmp_path, prefix="evil\\prefix"
+            )
+
+    def test_detection_rejects_absolute_prefix(self, tmp_path):
+        """Detection generator rejects an absolute-path prefix."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_detection_training_set(
+                output_path=tmp_path, prefix="/etc/passwd"
+            )
+
+    def test_detection_rejects_dotdot_prefix(self, tmp_path):
+        """Detection generator rejects prefix containing '..'."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_detection_training_set(
+                output_path=tmp_path, prefix="../escape"
+            )
+
+    def test_recognition_rejects_prefix_with_slash(self, tmp_path):
+        """Recognition generator rejects prefix containing '/'."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_recognition_training_set(
+                output_path=tmp_path, prefix="evil/prefix"
+            )
+
+    def test_recognition_rejects_absolute_prefix(self, tmp_path):
+        """Recognition generator rejects an absolute-path prefix."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_recognition_training_set(
+                output_path=tmp_path, prefix="/etc/passwd"
+            )
+
+    def test_recognition_rejects_dotdot_prefix(self, tmp_path):
+        """Recognition generator rejects prefix containing '..'."""
+        page = _make_page_with_words(["hello"])
+        with pytest.raises(ValueError, match="Prefix"):
+            page.generate_doctr_recognition_training_set(
+                output_path=tmp_path, prefix="../escape"
+            )
+
+    def test_detection_accepts_valid_prefix(self, tmp_path):
+        """Detection generator accepts a plain basename prefix."""
+        page = _make_page_with_words(["hello"])
+        # Should not raise
+        page.generate_doctr_detection_training_set(
+            output_path=tmp_path, prefix="book_001"
+        )
+
+    def test_recognition_accepts_valid_prefix(self, tmp_path):
+        """Recognition generator accepts a plain basename prefix."""
+        page = _make_page_with_words(["hello"])
+        # Should not raise (no GT words but the prefix check happens first)
+        page.generate_doctr_recognition_training_set(
+            output_path=tmp_path, prefix="book_001"
+        )
+
+    def test_empty_prefix_accepted(self, tmp_path):
+        """Empty prefix (the default) is always safe."""
+        page = _make_page_with_words(["hello"])
+        page.generate_doctr_detection_training_set(output_path=tmp_path, prefix="")
