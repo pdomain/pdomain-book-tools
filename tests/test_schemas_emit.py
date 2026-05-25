@@ -64,6 +64,8 @@ def test_public_models_includes_full_set():
     assert names == {
         "Point",
         "BoundingBox",
+        "LayoutRegion",
+        "PageLayout",
         "ReviewMetadata",
         "OCRModelProvenance",
         "OCRProvenance",
@@ -145,3 +147,81 @@ def test_main_runs_via_python_dash_m(tmp_path: object):
     json.dump(schemas1, buf1, indent=2, sort_keys=True)
     json.dump(schemas2, buf2, indent=2, sort_keys=True)
     assert buf1.getvalue() == buf2.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# #175: LayoutRegion and PageLayout must be present in PUBLIC_MODELS
+# ---------------------------------------------------------------------------
+
+
+def test_public_models_includes_layout_region():
+    """LayoutRegion is a documented public API and must appear in PUBLIC_MODELS."""
+    names = {cls.__name__ for cls in PUBLIC_MODELS}
+    assert "LayoutRegion" in names, (
+        "LayoutRegion is documented public API (docs/usage/public-api.md) "
+        "but is missing from PUBLIC_MODELS in schemas/emit.py"
+    )
+
+
+def test_public_models_includes_page_layout():
+    """PageLayout is a documented public API and must appear in PUBLIC_MODELS."""
+    names = {cls.__name__ for cls in PUBLIC_MODELS}
+    assert "PageLayout" in names, (
+        "PageLayout is documented public API (docs/usage/public-api.md) "
+        "but is missing from PUBLIC_MODELS in schemas/emit.py"
+    )
+
+
+def test_emit_layout_region_schema_has_expected_fields():
+    """LayoutRegion schema exposes L, R, T, B, type, confidence, raw_label."""
+    schemas = emit_schemas()
+    assert "LayoutRegion" in schemas
+    props = schemas["LayoutRegion"].get("properties", {})
+    for field in ("L", "R", "T", "B", "type", "confidence", "raw_label"):
+        assert field in props, f"LayoutRegion schema missing field {field!r}"
+
+
+def test_emit_page_layout_schema_has_expected_fields():
+    """PageLayout schema exposes regions, image_width, image_height, detector."""
+    schemas = emit_schemas()
+    assert "PageLayout" in schemas
+    props = schemas["PageLayout"].get("properties", {})
+    for field in ("regions", "image_width", "image_height", "detector"):
+        assert field in props, f"PageLayout schema missing field {field!r}"
+
+
+def test_emit_layout_region_roundtrip():
+    """LayoutRegion round-trips through to_dict/from_dict correctly."""
+    from pd_book_tools.layout.types import LayoutRegion, RegionType
+
+    region = LayoutRegion(
+        type=RegionType.text, L=10, R=200, T=20, B=100, confidence=0.9
+    )
+    d = region.to_dict()
+    restored = LayoutRegion.from_dict(d)
+    assert restored.type == RegionType.text
+    assert restored.L == 10
+    assert restored.R == 200
+    assert restored.T == 20
+    assert restored.B == 100
+    assert abs(restored.confidence - 0.9) < 1e-9
+
+
+def test_emit_page_layout_roundtrip():
+    """PageLayout round-trips through to_dict/from_dict correctly."""
+    from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+
+    layout = PageLayout(
+        regions=[LayoutRegion(type=RegionType.text, L=0, R=100, T=0, B=50)],
+        image_width=800,
+        image_height=1200,
+        detector="test-detector",
+        inference_ms=42,
+    )
+    d = layout.to_dict()
+    restored = PageLayout.from_dict(d)
+    assert restored.image_width == 800
+    assert restored.image_height == 1200
+    assert restored.detector == "test-detector"
+    assert len(restored.regions) == 1
+    assert restored.regions[0].type == RegionType.text

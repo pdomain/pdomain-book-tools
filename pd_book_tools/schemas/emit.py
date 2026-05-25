@@ -24,6 +24,7 @@ from pydantic import TypeAdapter
 
 from pd_book_tools.geometry.bounding_box import BoundingBox
 from pd_book_tools.geometry.point import Point
+from pd_book_tools.layout.types import LayoutRegion, PageLayout
 from pd_book_tools.ocr.block import Block
 from pd_book_tools.ocr.character import Character
 from pd_book_tools.ocr.page import Page
@@ -32,11 +33,13 @@ from pd_book_tools.ocr.review import ReviewMetadata
 from pd_book_tools.ocr.word import Word
 
 # The single source of truth for what counts as a "public" model.
-# Order is intentional: leaf geometry types first, OCR review/provenance
-# next, then composite OCR models.
+# Order is intentional: leaf geometry types first, layout wire types next,
+# then OCR review/provenance, then composite OCR models.
 PUBLIC_MODELS: tuple[type, ...] = (
     Point,
     BoundingBox,
+    LayoutRegion,
+    PageLayout,
     ReviewMetadata,
     OCRModelProvenance,
     OCRProvenance,
