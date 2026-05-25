@@ -135,3 +135,45 @@ class TestFindEdgesGpu:
         assert maxX >= 79
         assert minY <= 20
         assert maxY >= 79
+
+    def test_border_convolution_matches_cpu_zero_padding(self, cupy_module):
+        """GPU convolution boundary mode must match CPU zero-padding contract.
+
+        np.convolve(mode='same') zero-pads outside the array. convolve1d with
+        mode='nearest' repeats the edge value, inflating border column/row sums.
+
+        Concretely: a single 255-valued pixel at column 0, threshold=2 (510).
+        After convolving column sums [255, 0, ...] with kernel [1,1,1]:
+          CPU (zero-pad):  col 0 = 0+255+0 = 255 -- below 510 => no columns
+          GPU (nearest):   col 0 = 255+255+0 = 510 -- AT threshold => col 0 hit
+
+        The GPU was falsely detecting border content that did not meet threshold.
+        Correct fix: use mode='constant' (cval=0) on GPU to match CPU (closes #185).
+        """
+        cp = cupy_module
+        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+            find_edges_gpu,
+        )
+        from pd_book_tools.image_processing.cv2_processing.edge_finding import (
+            find_edges,
+        )
+
+        # Single pixel at the left border.
+        img_np = np.zeros((10, 10), dtype=np.uint8)
+        img_np[0, 0] = 255
+
+        # pixel_count_columns=2 -> threshold = 510.
+        # With fuzzy_px_w=1 the kernel spans 3 positions.
+        kwargs = {
+            "fuzzy_pct": 0,
+            "pixel_count_columns": 2,
+            "pixel_count_rows": 1,
+            "fuzzy_px_w_override": 1,
+            "fuzzy_px_h_override": 0,
+        }
+        cpu = find_edges(img_np, **kwargs)
+        gpu = find_edges_gpu(cp.asarray(img_np), **kwargs)
+
+        assert cpu == gpu, (
+            f"CPU and GPU edge results differ at image border: CPU={cpu} GPU={gpu}"
+        )
