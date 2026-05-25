@@ -197,11 +197,12 @@ build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."
 	uv build
 
-ci: ## Run complete CI pipeline (setup [idempotent], pre-commit, lint-check, typecheck, test, build, layout-fork-info)
+ci: ## Run complete CI pipeline (setup [idempotent], pre-commit, lint-check, format-check, typecheck, test, build, layout-fork-info)
 	@echo "🚀 Running complete CI pipeline..."
 	@$(MAKE) --no-print-directory setup
 	@$(MAKE) --no-print-directory pre-commit-check
 	@$(MAKE) --no-print-directory lint-check
+	@$(MAKE) --no-print-directory format-check
 	@$(MAKE) --no-print-directory typecheck
 	@$(MAKE) --no-print-directory test
 	@$(MAKE) --no-print-directory build
