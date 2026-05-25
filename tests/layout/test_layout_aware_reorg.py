@@ -1106,3 +1106,87 @@ class TestBubbleBlockRolesFromLayout:
         )
         assert associate_captions(page, layout) == 0
         assert not any("illustration" in b.block_role_labels for b in page.items)
+
+
+class TestAssociateCaptionsDuplication:
+    """Regression tests for #178 — caption duplication across nearby figures."""
+
+    def test_caption_not_duplicated_across_nearby_figures(self):
+        """Two nearby figures must not both claim the same wide caption.
+
+        Two overlapping figure regions sit side-by-side (figures overlap each
+        other in x). A single wide caption region spans the full width below
+        both figures — both figures see 100% horizontal overlap with it and
+        both would independently claim it via ``caption_for_figure()``.
+
+        The association pass must deduplicate: the caption block must appear
+        exactly once and every caption word must appear exactly once.
+        """
+        body = _paragraph_block([_line_block([_word("body", 100, 50, 200, 80)])])
+        # Caption words span the full width — inside the wide caption region
+        caption_words_list = [
+            _word("Fig.", 100, 720, 200, 750),
+            _word("1-2.", 210, 720, 350, 750),
+            _word("joint", 360, 720, 500, 750),
+            _word("caption", 510, 720, 650, 750),
+        ]
+        caption_para = _paragraph_block([_line_block(caption_words_list)])
+        page = _make_page([body, caption_para])
+        original_word_texts = {w.text for w in page.words}
+
+        # Both figures share the same bottom (B=700) and the caption sits
+        # just below (T=710). The caption region (L=100..650) overlaps both
+        # figures (fig1 L=100..400 and fig2 L=350..650) fully, so
+        # caption_for_figure() would independently return the same caption
+        # region for each figure without the deduplication fix.
+        layout = PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=300,
+                    B=700,
+                    confidence=0.9,
+                ),
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=350,
+                    R=650,
+                    T=300,
+                    B=700,
+                    confidence=0.9,
+                ),
+                # Wide caption spanning both figures — both claim it without fix
+                LayoutRegion(
+                    type=RegionType.caption,
+                    L=100,
+                    R=650,
+                    T=710,
+                    B=770,
+                    confidence=0.8,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+        attached = associate_captions(page, layout)
+        # Only one caption should be attached (one figure claims it)
+        assert attached == 1
+
+        caption_blocks = [b for b in page.items if "caption" in b.block_role_labels]
+        # The caption must appear exactly once — no duplication
+        assert len(caption_blocks) == 1
+
+        # Every word in the page still present exactly once
+        all_words = list(page.words)
+        all_word_texts = [w.text for w in all_words]
+        assert set(all_word_texts) == original_word_texts
+        # Each word text appears at most once (no duplicate emission)
+        from collections import Counter
+
+        counts = Counter(all_word_texts)
+        duplicated = [t for t, c in counts.items() if c > 1]
+        assert duplicated == [], f"Words duplicated: {duplicated}"

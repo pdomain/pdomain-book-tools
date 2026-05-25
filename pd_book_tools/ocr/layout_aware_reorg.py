@@ -836,7 +836,18 @@ def associate_captions(
         RegionType.table,
     }
 
-    plan: list[tuple[LayoutRegion, list[Word]]] = []
+    # Build the association plan, ensuring each caption region is claimed by
+    # at most one figure. Without this guard, two nearby figures can both
+    # select the same caption region (via caption_for_figure) and emit
+    # duplicate caption blocks — see #178.
+    #
+    # Strategy: first pass collects (figure, caption_region) pairs; second
+    # pass deduplicates by caption_region identity, keeping whichever figure
+    # has the smallest vertical gap to that caption (first-wins on tie).
+    claimed: set[int] = set()  # id(caption_region) for already-claimed regions
+
+    # Phase 1: collect (region, caption_region | None) with gap distance.
+    _raw_pairs: list[tuple[LayoutRegion, LayoutRegion | None, float]] = []
     for region in layout.regions:
         if region.type not in illustration_types:
             continue
@@ -845,12 +856,32 @@ def associate_captions(
         caption_region = caption_for_figure(
             region, layout.regions, max_gap_px=max_gap_px
         )
-        caption_words: list[Word] = []
         if caption_region is not None:
+            # gap = distance from figure bottom to caption top (positive = below)
+            gap = max(0.0, caption_region.T - region.B)
+        else:
+            gap = float("inf")
+        _raw_pairs.append((region, caption_region, gap))
+
+    # Phase 2: sort by gap so the closest figure wins each caption.
+    _raw_pairs.sort(key=lambda t: t[2])
+
+    plan_ordered: list[tuple[LayoutRegion, list[Word]]] = []
+    for region, caption_region, _gap in _raw_pairs:
+        caption_words: list[Word] = []
+        if caption_region is not None and id(caption_region) not in claimed:
+            claimed.add(id(caption_region))
             caption_words = words_inside(
                 caption_region, page.words, page_w, page_h, layout_w, layout_h
             )
-        plan.append((region, caption_words))
+        plan_ordered.append((region, caption_words))
+
+    # Re-sort plan back into layout.regions order so illustration placeholder
+    # sort offsets respect the original document order.
+    region_order = {id(r): i for i, r in enumerate(layout.regions)}
+    plan: list[tuple[LayoutRegion, list[Word]]] = sorted(
+        plan_ordered, key=lambda t: region_order.get(id(t[0]), 0)
+    )
 
     if not plan:
         return 0
