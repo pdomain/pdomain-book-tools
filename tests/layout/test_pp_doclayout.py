@@ -49,27 +49,35 @@ class TestClipBoxToImageBounds:
     def test_right_edge_clipped(self):
         """x2 beyond image width is clamped to image width."""
         clip = self._import_helper()
-        x1, _y1, x2, _y2 = clip(10.0, 20.0, 900.0, 200.0, img_width=800, img_height=1200)
+        x1, _y1, x2, _y2 = clip(
+            10.0, 20.0, 900.0, 200.0, img_width=800, img_height=1200
+        )
         assert x2 == 800.0
         assert x1 == 10.0
 
     def test_bottom_edge_clipped(self):
         """y2 beyond image height is clamped to image height."""
         clip = self._import_helper()
-        _x1, y1, _x2, y2 = clip(10.0, 20.0, 100.0, 1500.0, img_width=800, img_height=1200)
+        _x1, y1, _x2, y2 = clip(
+            10.0, 20.0, 100.0, 1500.0, img_width=800, img_height=1200
+        )
         assert y2 == 1200.0
         assert y1 == 20.0
 
     def test_negative_left_edge_clamped(self):
         """x1 < 0 is clamped to 0."""
         clip = self._import_helper()
-        x1, _y1, _x2, _y2 = clip(-5.0, 0.0, 100.0, 100.0, img_width=800, img_height=1200)
+        x1, _y1, _x2, _y2 = clip(
+            -5.0, 0.0, 100.0, 100.0, img_width=800, img_height=1200
+        )
         assert x1 == 0.0
 
     def test_negative_top_edge_clamped(self):
         """y1 < 0 is clamped to 0."""
         clip = self._import_helper()
-        _x1, y1, _x2, _y2 = clip(0.0, -10.0, 100.0, 100.0, img_width=800, img_height=1200)
+        _x1, y1, _x2, _y2 = clip(
+            0.0, -10.0, 100.0, 100.0, img_width=800, img_height=1200
+        )
         assert y1 == 0.0
 
     def test_fully_out_of_bounds_produces_degenerate(self):
