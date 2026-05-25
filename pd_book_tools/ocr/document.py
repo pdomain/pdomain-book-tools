@@ -119,10 +119,15 @@ class Document:
         self._sort_pages()
 
     def scale(self, width: int, height: int) -> Document:
-        """Return new document with scaled bounding boxes to absolute pixel coordinates."""
+        """Return new document with scaled bounding boxes to absolute pixel coordinates.
+
+        All metadata fields (``source_identifier``, ``source_lib``,
+        ``source_path``) are preserved — only bounding box coordinates change.
+        """
         return Document(
             source_lib=self.source_lib,
             source_path=self.source_path,
+            source_identifier=self.source_identifier,
             pages=[page.scale(width, height) for page in self.pages],
         )
 

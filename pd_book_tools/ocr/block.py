@@ -1007,9 +1007,12 @@ class Block:
         return sum(scores) / len(scores)
 
     def scale(self, width: int, height: int) -> Block:
-        """
-        Return new block with scaled bounding box
-        and scaled children to absolute pixel coordinates.
+        """Return new block with scaled bounding box and scaled children.
+
+        All metadata fields are preserved — only bounding box coordinates
+        change. Fields preserved include ``override_page_sort_order``,
+        ``unmatched_ground_truth_words``, ``additional_block_attributes``,
+        ``base_ground_truth_text``, and ``review``.
         """
         return Block(
             items=[item.scale(width, height) for item in self._items],
@@ -1024,6 +1027,11 @@ class Block:
             line_role_labels=self.line_role_labels,
             line_position_labels=self.line_position_labels,
             baseline=self.baseline,
+            override_page_sort_order=self.override_page_sort_order,
+            unmatched_ground_truth_words=self.unmatched_ground_truth_words,
+            additional_block_attributes=self.additional_block_attributes,
+            base_ground_truth_text=self.base_ground_truth_text,
+            review=self.review,
         )
 
     def fuzz_score_against(self, ground_truth_text: str) -> int:

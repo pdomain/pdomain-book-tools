@@ -2708,9 +2708,14 @@ class Page:
             raise
 
     def scale(self, width: int, height: int) -> Page:
-        """
-        Return new page with scaled bounding box
-        to absolute pixel coordinates.
+        """Return new page with scaled bounding box to absolute pixel coordinates.
+
+        All metadata fields are preserved — only bounding box coordinates and
+        the ``width``/``height`` dimensions change. Fields preserved include
+        ``page_labels``, ``ocr_provenance``, ``image_path``, ``name``,
+        ``source``, ``ocr_failed``, ``provenance_live_ocr``,
+        ``provenance_saved_ocr``, ``provenance_saved``, ``rotation_applied``,
+        and ``review``.
         """
         return Page(
             width=width,
@@ -2722,6 +2727,15 @@ class Page:
             else None,
             page_labels=self.page_labels,
             ocr_provenance=self.ocr_provenance,
+            image_path=self.image_path,
+            name=self.name,
+            source=self.source,
+            ocr_failed=self.ocr_failed,
+            provenance_live_ocr=self.provenance_live_ocr,
+            provenance_saved_ocr=self.provenance_saved_ocr,
+            provenance_saved=self.provenance_saved,
+            rotation_applied=self.rotation_applied,
+            review=self.review,
         )
 
     def to_dict(self) -> JsonDict:
