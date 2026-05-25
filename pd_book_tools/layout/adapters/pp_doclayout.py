@@ -31,6 +31,46 @@ if TYPE_CHECKING:
 logger = getLogger(__name__)
 
 
+def _clip_box_to_bounds(
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    *,
+    img_width: int,
+    img_height: int,
+) -> tuple[float, float, float, float]:
+    """Clip a model-predicted box to the image pixel frame.
+
+    RT-DETR (and similar) can emit coordinates outside the image boundary when
+    the predicted box partially extends beyond the edge. ``LayoutRegion`` already
+    clamps negative coordinates to 0, but it does **not** clamp R/B to the image
+    dimensions — that requires knowledge of the image size, which the adapter
+    holds.
+
+    Parameters
+    ----------
+    x1, y1:
+        Top-left corner of the predicted box (may be negative).
+    x2, y2:
+        Bottom-right corner of the predicted box (may exceed image bounds).
+    img_width, img_height:
+        Pixel dimensions of the source image.
+
+    Returns
+    -------
+    tuple[float, float, float, float]
+        Clipped ``(x1, y1, x2, y2)`` with each coordinate in the valid range.
+        If the clipped box is degenerate (x1 >= x2 or y1 >= y2) the caller
+        should drop it.
+    """
+    x1 = max(0.0, x1)
+    y1 = max(0.0, y1)
+    x2 = min(float(img_width), x2)
+    y2 = min(float(img_height), y2)
+    return x1, y1, x2, y2
+
+
 _ADAPTER_KEY = "pp-doclayout-plus-l"
 
 # Repository hosting the weights. We ship a fork (Apache-2.0; identical bytes
@@ -135,6 +175,19 @@ class PPDocLayoutPlusLDetector:
             coords_any = cast("Any", box.detach().cpu())  # pyright: ignore[reportAny,reportExplicitAny]
             coords = cast("list[float]", coords_any.tolist())  # pyright: ignore[reportAny]
             x1, y1, x2, y2 = coords
+            x1, y1, x2, y2 = _clip_box_to_bounds(
+                x1, y1, x2, y2, img_width=int(img.width), img_height=int(img.height)
+            )
+            # Drop degenerate boxes that became zero-area after clipping.
+            if x1 >= x2 or y1 >= y2:
+                logger.debug(
+                    "Dropping degenerate box after clipping: (%s, %s, %s, %s)",
+                    x1,
+                    y1,
+                    x2,
+                    y2,
+                )
+                continue
             regions.append(
                 LayoutRegion(
                     type=region_type,

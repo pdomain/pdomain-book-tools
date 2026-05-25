@@ -9,7 +9,8 @@ on it, so public API changes ripple downstream.
 | target | does |
 |---|---|
 | `make setup AI=1` | install all deps via uv + pre-commit hooks |
-| `make test AI=1` | `uv run pytest -n auto` |
+| `make test AI=1` | `uv run pytest -n auto` (slow model-download tests excluded by default) |
+| `make test-slow AI=1` | run ALL tests including slow model-download smoke tests (needs network) |
 | `make test-k K='pattern' AI=1` | targeted test run |
 | `make lint AI=1` / `make format AI=1` | ruff check / ruff format |
 | `make build AI=1` | `uv build` (hatchling) |

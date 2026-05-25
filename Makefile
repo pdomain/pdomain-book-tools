@@ -12,7 +12,7 @@ $(_goals):
 
 else
 
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
+.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-slow test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
 
 # Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -67,9 +67,13 @@ reset-full: ## Nuclear option: clear everything and redownload
 	@$(MAKE) --no-print-directory install
 	@echo "💥 Full reset complete! Everything is fresh!"
 
-test: sync-gpu ## Run tests with parallelization
-	@echo "🧪 Running tests (parallelized)..."
+test: sync-gpu ## Run tests with parallelization (slow model-download tests excluded by default)
+	@echo "🧪 Running tests (parallelized, slow tests excluded)..."
 	uv run pytest -n auto -v -ra
+
+test-slow: sync-gpu ## Run ALL tests including slow model-download smoke tests (needs network + disk space)
+	@echo "🧪 Running tests including slow model-download smoke tests..."
+	uv run pytest -n auto -v -ra -m "slow or not slow"
 
 test-verbose: sync-gpu ## Run tests with verbose output and parallelization
 	@echo "🧪 Running tests (verbose mode, parallelized)..."
