@@ -2,7 +2,7 @@
 
 import pytest
 
-from pd_book_tools.ocr.provenance import (
+from pdomain_book_tools.ocr.provenance import (
     UNKNOWN_METADATA_VALUE,
     OCRModelProvenance,
     OCRProvenance,

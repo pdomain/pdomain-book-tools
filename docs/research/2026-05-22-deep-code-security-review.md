@@ -1,6 +1,6 @@
 # Deep Code and Security Review - 2026-05-22
 
-Scope: `pd-book-tools` at `fba1657` (`Merge fix/hf-test-xdist-determinism...`).
+Scope: `pdomain-book-tools` at `fba1657` (`Merge fix/hf-test-xdist-determinism...`).
 
 Method: five read-only subagent reviews plus coordinating spot checks. The review covered OCR/domain models, image and geometry code, layout/schema/public API, external downloads/subprocesses, CI, packaging, and security posture. No production files were edited.
 
@@ -22,44 +22,44 @@ The highest-risk issues are:
 
 ## Filed GitHub issues
 
-The findings below were filed in `ConcaveTrillion/pd-book-tools` on 2026-05-22 using the repo label taxonomy (`kind:*`, `status:backlog`, `priority:*`, `effort:*`, plus area labels where applicable). `bot:ship-issue-ready` was intentionally not applied; several issues need human triage before unattended pickup.
+The findings below were filed in `pdomain/pdomain-book-tools` on 2026-05-22 using the repo label taxonomy (`kind:*`, `status:backlog`, `priority:*`, `effort:*`, plus area labels where applicable). `bot:ship-issue-ready` was intentionally not applied; several issues need human triage before unattended pickup.
 
 | Finding | Issue |
 |---:|---|
-| 1 | [ConcaveTrillion/pd-book-tools#165](https://github.com/ConcaveTrillion/pd-book-tools/issues/165) |
-| 2 | [ConcaveTrillion/pd-book-tools#166](https://github.com/ConcaveTrillion/pd-book-tools/issues/166) |
-| 3 | [ConcaveTrillion/pd-book-tools#167](https://github.com/ConcaveTrillion/pd-book-tools/issues/167) |
-| 4 | [ConcaveTrillion/pd-book-tools#168](https://github.com/ConcaveTrillion/pd-book-tools/issues/168) |
-| 5 | [ConcaveTrillion/pd-book-tools#169](https://github.com/ConcaveTrillion/pd-book-tools/issues/169) |
-| 6 | [ConcaveTrillion/pd-book-tools#170](https://github.com/ConcaveTrillion/pd-book-tools/issues/170) |
-| 7 | [ConcaveTrillion/pd-book-tools#171](https://github.com/ConcaveTrillion/pd-book-tools/issues/171) |
-| 8 | [ConcaveTrillion/pd-book-tools#172](https://github.com/ConcaveTrillion/pd-book-tools/issues/172) |
-| 9 | [ConcaveTrillion/pd-book-tools#173](https://github.com/ConcaveTrillion/pd-book-tools/issues/173) |
-| 10 | [ConcaveTrillion/pd-book-tools#174](https://github.com/ConcaveTrillion/pd-book-tools/issues/174) |
-| 11 | [ConcaveTrillion/pd-book-tools#175](https://github.com/ConcaveTrillion/pd-book-tools/issues/175) |
-| 12 | [ConcaveTrillion/pd-book-tools#176](https://github.com/ConcaveTrillion/pd-book-tools/issues/176) |
-| 13 | [ConcaveTrillion/pd-book-tools#177](https://github.com/ConcaveTrillion/pd-book-tools/issues/177) |
-| 14 | [ConcaveTrillion/pd-book-tools#178](https://github.com/ConcaveTrillion/pd-book-tools/issues/178) |
-| 15 | [ConcaveTrillion/pd-book-tools#179](https://github.com/ConcaveTrillion/pd-book-tools/issues/179) |
-| 16 | [ConcaveTrillion/pd-book-tools#180](https://github.com/ConcaveTrillion/pd-book-tools/issues/180) |
-| 17 | [ConcaveTrillion/pd-book-tools#181](https://github.com/ConcaveTrillion/pd-book-tools/issues/181) |
-| 18 | [ConcaveTrillion/pd-book-tools#182](https://github.com/ConcaveTrillion/pd-book-tools/issues/182) |
-| 19 | [ConcaveTrillion/pd-book-tools#183](https://github.com/ConcaveTrillion/pd-book-tools/issues/183) |
-| 20 | [ConcaveTrillion/pd-book-tools#184](https://github.com/ConcaveTrillion/pd-book-tools/issues/184) |
-| 21 | [ConcaveTrillion/pd-book-tools#185](https://github.com/ConcaveTrillion/pd-book-tools/issues/185) |
-| 22 | [ConcaveTrillion/pd-book-tools#186](https://github.com/ConcaveTrillion/pd-book-tools/issues/186) |
-| 23 | [ConcaveTrillion/pd-book-tools#187](https://github.com/ConcaveTrillion/pd-book-tools/issues/187) |
-| 24 | [ConcaveTrillion/pd-book-tools#188](https://github.com/ConcaveTrillion/pd-book-tools/issues/188) |
-| 25 | [ConcaveTrillion/pd-book-tools#189](https://github.com/ConcaveTrillion/pd-book-tools/issues/189) |
-| 26 | [ConcaveTrillion/pd-book-tools#190](https://github.com/ConcaveTrillion/pd-book-tools/issues/190) |
-| 27 | [ConcaveTrillion/pd-book-tools#191](https://github.com/ConcaveTrillion/pd-book-tools/issues/191) |
-| 28 | [ConcaveTrillion/pd-book-tools#192](https://github.com/ConcaveTrillion/pd-book-tools/issues/192) |
-| 29 | [ConcaveTrillion/pd-book-tools#193](https://github.com/ConcaveTrillion/pd-book-tools/issues/193) |
-| 30 | [ConcaveTrillion/pd-book-tools#194](https://github.com/ConcaveTrillion/pd-book-tools/issues/194) |
-| 31 | [ConcaveTrillion/pd-book-tools#195](https://github.com/ConcaveTrillion/pd-book-tools/issues/195) |
-| 32 | [ConcaveTrillion/pd-book-tools#196](https://github.com/ConcaveTrillion/pd-book-tools/issues/196) |
-| 33 | [ConcaveTrillion/pd-book-tools#197](https://github.com/ConcaveTrillion/pd-book-tools/issues/197) |
-| 34 | [ConcaveTrillion/pd-book-tools#198](https://github.com/ConcaveTrillion/pd-book-tools/issues/198) |
+| 1 | [pdomain/pdomain-book-tools#165](https://github.com/pdomain/pdomain-book-tools/issues/165) |
+| 2 | [pdomain/pdomain-book-tools#166](https://github.com/pdomain/pdomain-book-tools/issues/166) |
+| 3 | [pdomain/pdomain-book-tools#167](https://github.com/pdomain/pdomain-book-tools/issues/167) |
+| 4 | [pdomain/pdomain-book-tools#168](https://github.com/pdomain/pdomain-book-tools/issues/168) |
+| 5 | [pdomain/pdomain-book-tools#169](https://github.com/pdomain/pdomain-book-tools/issues/169) |
+| 6 | [pdomain/pdomain-book-tools#170](https://github.com/pdomain/pdomain-book-tools/issues/170) |
+| 7 | [pdomain/pdomain-book-tools#171](https://github.com/pdomain/pdomain-book-tools/issues/171) |
+| 8 | [pdomain/pdomain-book-tools#172](https://github.com/pdomain/pdomain-book-tools/issues/172) |
+| 9 | [pdomain/pdomain-book-tools#173](https://github.com/pdomain/pdomain-book-tools/issues/173) |
+| 10 | [pdomain/pdomain-book-tools#174](https://github.com/pdomain/pdomain-book-tools/issues/174) |
+| 11 | [pdomain/pdomain-book-tools#175](https://github.com/pdomain/pdomain-book-tools/issues/175) |
+| 12 | [pdomain/pdomain-book-tools#176](https://github.com/pdomain/pdomain-book-tools/issues/176) |
+| 13 | [pdomain/pdomain-book-tools#177](https://github.com/pdomain/pdomain-book-tools/issues/177) |
+| 14 | [pdomain/pdomain-book-tools#178](https://github.com/pdomain/pdomain-book-tools/issues/178) |
+| 15 | [pdomain/pdomain-book-tools#179](https://github.com/pdomain/pdomain-book-tools/issues/179) |
+| 16 | [pdomain/pdomain-book-tools#180](https://github.com/pdomain/pdomain-book-tools/issues/180) |
+| 17 | [pdomain/pdomain-book-tools#181](https://github.com/pdomain/pdomain-book-tools/issues/181) |
+| 18 | [pdomain/pdomain-book-tools#182](https://github.com/pdomain/pdomain-book-tools/issues/182) |
+| 19 | [pdomain/pdomain-book-tools#183](https://github.com/pdomain/pdomain-book-tools/issues/183) |
+| 20 | [pdomain/pdomain-book-tools#184](https://github.com/pdomain/pdomain-book-tools/issues/184) |
+| 21 | [pdomain/pdomain-book-tools#185](https://github.com/pdomain/pdomain-book-tools/issues/185) |
+| 22 | [pdomain/pdomain-book-tools#186](https://github.com/pdomain/pdomain-book-tools/issues/186) |
+| 23 | [pdomain/pdomain-book-tools#187](https://github.com/pdomain/pdomain-book-tools/issues/187) |
+| 24 | [pdomain/pdomain-book-tools#188](https://github.com/pdomain/pdomain-book-tools/issues/188) |
+| 25 | [pdomain/pdomain-book-tools#189](https://github.com/pdomain/pdomain-book-tools/issues/189) |
+| 26 | [pdomain/pdomain-book-tools#190](https://github.com/pdomain/pdomain-book-tools/issues/190) |
+| 27 | [pdomain/pdomain-book-tools#191](https://github.com/pdomain/pdomain-book-tools/issues/191) |
+| 28 | [pdomain/pdomain-book-tools#192](https://github.com/pdomain/pdomain-book-tools/issues/192) |
+| 29 | [pdomain/pdomain-book-tools#193](https://github.com/pdomain/pdomain-book-tools/issues/193) |
+| 30 | [pdomain/pdomain-book-tools#194](https://github.com/pdomain/pdomain-book-tools/issues/194) |
+| 31 | [pdomain/pdomain-book-tools#195](https://github.com/pdomain/pdomain-book-tools/issues/195) |
+| 32 | [pdomain/pdomain-book-tools#196](https://github.com/pdomain/pdomain-book-tools/issues/196) |
+| 33 | [pdomain/pdomain-book-tools#197](https://github.com/pdomain/pdomain-book-tools/issues/197) |
+| 34 | [pdomain/pdomain-book-tools#198](https://github.com/pdomain/pdomain-book-tools/issues/198) |
 
 ## Critical / High
 
@@ -67,10 +67,10 @@ The findings below were filed in `ConcaveTrillion/pd-book-tools` on 2026-05-22 u
 
 Evidence:
 
-- `pd_book_tools/ocr/doctr_support.py:244`
-- `pd_book_tools/ocr/doctr_support.py:275`
-- `pd_book_tools/hf/models.py:37`
-- `pd_book_tools/hf/download.py:89`
+- `pdomain_book_tools/ocr/doctr_support.py:244`
+- `pdomain_book_tools/ocr/doctr_support.py:275`
+- `pdomain_book_tools/hf/models.py:37`
+- `pdomain_book_tools/hf/download.py:89`
 
 `get_finetuned_torch_doctr_predictor()` calls `torch_load(det_path, map_location=...)` and `torch_load(reco_path, map_location=...)` on caller-provided checkpoint files. The default Hugging Face OCR resolution also downloads `.pt` checkpoints with `revision=None`, so the default source is mutable.
 
@@ -93,9 +93,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/page.py:3322`
-- `pd_book_tools/geometry/bounding_box.py:118`
-- `pd_book_tools/ocr/page.py:3433`
+- `pdomain_book_tools/ocr/page.py:3322`
+- `pdomain_book_tools/geometry/bounding_box.py:118`
+- `pdomain_book_tools/ocr/page.py:3433`
 
 Detection export always calls `word.bounding_box.get_four_point_scaled_polygon_list(img_width, img_height)`, and that helper multiplies coordinates by image dimensions. Pixel-space boxes such as `(10,10)-(20,20)` on a 100px image become `(1000,1000)-(2000,2000)`. Recognition export unconditionally calls `bbox.scale(...)`, which is invalid for pixel-space boxes.
 
@@ -114,9 +114,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/layout/registry.py:176`
-- `pd_book_tools/layout/registry.py:179`
-- `pd_book_tools/layout/registry.py:199`
+- `pdomain_book_tools/layout/registry.py:176`
+- `pdomain_book_tools/layout/registry.py:179`
+- `pdomain_book_tools/layout/registry.py:199`
 
 When `get_detector(..., on_error="log_and_null")` catches a build failure, it caches a `NullDetector` under the same cache key used by later `on_error="raise"` calls.
 
@@ -135,8 +135,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/layout/registry.py:242`
-- `pd_book_tools/layout/registry.py:245`
+- `pdomain_book_tools/layout/registry.py:242`
+- `pdomain_book_tools/layout/registry.py:245`
 
 `register_detector()` only evicts cached entries when replacing a previous user factory. If `get_detector("custom-x", on_error="log_and_null")` ran before registration, a fallback can remain cached after the first real registration.
 
@@ -152,9 +152,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/geometry/bounding_box.py:638`
-- `pd_book_tools/image_processing/cv2_processing/crop.py:35`
-- `pd_book_tools/image_processing/cupy_processing/crop.py:31`
+- `pdomain_book_tools/geometry/bounding_box.py:638`
+- `pdomain_book_tools/image_processing/cv2_processing/crop.py:35`
+- `pdomain_book_tools/image_processing/cupy_processing/crop.py:31`
 
 `crop_image()` and both `crop_to_rectangle()` backends clamp `minX/minY` to `width - 1` / `height - 1` before testing final overlap. A box entirely beyond the right or bottom edge can become a 1-pixel strip at the image border.
 
@@ -173,9 +173,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/geometry/image_ops.py:58`
-- `pd_book_tools/geometry/image_ops.py:59`
-- `pd_book_tools/geometry/image_ops.py:102`
+- `pdomain_book_tools/geometry/image_ops.py:58`
+- `pdomain_book_tools/geometry/image_ops.py:59`
+- `pdomain_book_tools/geometry/image_ops.py:102`
 
 Pixel-space `BoundingBox` supports float coordinates, and `refine(..., expand_beyond_original=True)` can produce them. `_extract_roi()` and `_connected_content_bbox_from_image_thresh()` use those floats directly as NumPy slice bounds.
 
@@ -257,9 +257,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/page.py:3304`
-- `pd_book_tools/ocr/page.py:3417`
-- `pd_book_tools/ocr/page.py:3435`
+- `pdomain_book_tools/ocr/page.py:3304`
+- `pdomain_book_tools/ocr/page.py:3417`
+- `pdomain_book_tools/ocr/page.py:3435`
 
 Training-set image names are built directly from caller-provided `prefix`. Prefixes containing path separators or absolute-path syntax can affect where paths resolve. The recognition path also deletes matching files based on that prefix.
 
@@ -279,7 +279,7 @@ Evidence:
 
 - `docs/usage/public-api.md:52`
 - `docs/usage/public-api.md:57`
-- `pd_book_tools/schemas/emit.py:37`
+- `pdomain_book_tools/schemas/emit.py:37`
 
 `LayoutRegion` and `PageLayout` are documented public API and have `to_dict()`/`from_dict()`, but `PUBLIC_MODELS` omits them.
 
@@ -297,9 +297,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/layout/types.py:61`
-- `pd_book_tools/layout/types.py:111`
-- `pd_book_tools/layout/types.py:155`
+- `pdomain_book_tools/layout/types.py:61`
+- `pdomain_book_tools/layout/types.py:111`
+- `pdomain_book_tools/layout/types.py:155`
 
 Direct construction with `type="text"` succeeds, but `to_dict()` later expects `self.type.value`. Confidence accepts NaN, infinity, or out-of-range values.
 
@@ -318,9 +318,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/layout/adapters/pp_doclayout.py:123`
-- `pd_book_tools/layout/adapters/pp_doclayout.py:125`
-- `pd_book_tools/layout/adapters/pp_doclayout.py:136`
+- `pdomain_book_tools/layout/adapters/pp_doclayout.py:123`
+- `pdomain_book_tools/layout/adapters/pp_doclayout.py:125`
+- `pdomain_book_tools/layout/adapters/pp_doclayout.py:136`
 
 The adapter converts model boxes directly into `LayoutRegion`. `LayoutRegion` clamps negative coordinates but not `R/B` beyond `image_width/image_height`.
 
@@ -338,9 +338,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/layout_aware_reorg.py:840`
-- `pd_book_tools/ocr/layout_aware_reorg.py:846`
-- `pd_book_tools/ocr/layout_aware_reorg.py:879`
+- `pdomain_book_tools/ocr/layout_aware_reorg.py:840`
+- `pdomain_book_tools/ocr/layout_aware_reorg.py:846`
+- `pdomain_book_tools/ocr/layout_aware_reorg.py:879`
 
 Each illustration region independently calls `caption_for_figure()`. Two nearby illustration regions can select the same caption words; words are purged once, then emitted multiple times as new caption blocks.
 
@@ -357,8 +357,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/layout/registry.py:163`
-- `pd_book_tools/layout/registry.py:179`
+- `pdomain_book_tools/layout/registry.py:163`
+- `pdomain_book_tools/layout/registry.py:179`
 
 Custom detector kwargs are folded into a tuple for cache lookup. Passing a dict/list value causes `_DETECTOR_CACHE.get(cache_key)` to raise `TypeError` before the factory sees it.
 
@@ -374,8 +374,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/word.py:676`
-- `pd_book_tools/ocr/word.py:1150`
+- `pdomain_book_tools/ocr/word.py:676`
+- `pdomain_book_tools/ocr/word.py:1150`
 
 `Word.to_dict()` serializes `glyph_annotations`, but the pydantic schema omits it. A subagent verified `TypeAdapter(Word).validate_python(w.to_dict())` accepts the extra key and returns a `Word` with `glyph_annotations is None`.
 
@@ -393,8 +393,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/block.py:1053`
-- `pd_book_tools/ocr/block.py:1288`
+- `pdomain_book_tools/ocr/block.py:1053`
+- `pdomain_book_tools/ocr/block.py:1288`
 
 Runtime serialization emits `list[tuple[int, str]]`, but the schema declares a string list.
 
@@ -411,10 +411,10 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/page.py:2726`
-- `pd_book_tools/ocr/page.py:2728`
-- `pd_book_tools/ocr/page.py:2730`
-- `pd_book_tools/ocr/page.py:3557`
+- `pdomain_book_tools/ocr/page.py:2726`
+- `pdomain_book_tools/ocr/page.py:2728`
+- `pdomain_book_tools/ocr/page.py:2730`
+- `pdomain_book_tools/ocr/page.py:3557`
 
 `Page.to_dict()` emits `provenance_live_ocr`, `provenance_saved_ocr`, and `provenance_saved` as dicts, but the pydantic schema declares nullable strings.
 
@@ -431,9 +431,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/document.py:85`
-- `pd_book_tools/ocr/page.py:2685`
-- `pd_book_tools/ocr/block.py:1006`
+- `pdomain_book_tools/ocr/document.py:85`
+- `pdomain_book_tools/ocr/page.py:2685`
+- `pdomain_book_tools/ocr/block.py:1006`
 
 `Document.scale()` omits `source_identifier`; `Page.scale()` omits metadata such as image path/name/source/rotation/review/provenance/failure fields; `Block.scale()` omits sort override, unmatched GT words, additional attributes, base GT text, and review.
 
@@ -451,9 +451,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/image_processing/cupy_processing/canvas.py:44`
-- `pd_book_tools/image_processing/cupy_processing/canvas.py:55`
-- `pd_book_tools/image_processing/cv2_processing/canvas.py:61`
+- `pdomain_book_tools/image_processing/cupy_processing/canvas.py:44`
+- `pdomain_book_tools/image_processing/cupy_processing/canvas.py:55`
+- `pdomain_book_tools/image_processing/cv2_processing/canvas.py:61`
 
 CPU allocates a channel-aware canvas. GPU always allocates a 2-D canvas and assigns the input into it.
 
@@ -470,8 +470,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/image_processing/cv2_processing/edge_finding.py:48`
-- `pd_book_tools/image_processing/cupy_processing/edge_finding.py:55`
+- `pdomain_book_tools/image_processing/cv2_processing/edge_finding.py:48`
+- `pdomain_book_tools/image_processing/cupy_processing/edge_finding.py:55`
 
 CPU uses `np.convolve(..., mode="same")`, while GPU uses `convolve1d(..., mode="nearest")`.
 
@@ -564,9 +564,9 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/layout/adapters/pp_doclayout.py:70`
-- `pd_book_tools/layout/adapters/pp_doclayout.py:85`
-- `pd_book_tools/layout/adapters/pp_doclayout.py:86`
+- `pdomain_book_tools/layout/adapters/pp_doclayout.py:70`
+- `pdomain_book_tools/layout/adapters/pp_doclayout.py:85`
+- `pdomain_book_tools/layout/adapters/pp_doclayout.py:86`
 
 `checkpoint_path` can be a local directory or Hugging Face repo ID and is passed directly to `from_pretrained()`. `trust_remote_code` is not enabled, which helps, but model/config/artifact loading remains a trust and resource boundary.
 
@@ -585,8 +585,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/image_processing/formats.py:248`
-- `pd_book_tools/image_processing/formats.py:251`
+- `pdomain_book_tools/image_processing/formats.py:248`
+- `pdomain_book_tools/image_processing/formats.py:251`
 
 `is_image_file()` accepts a file by extension alone after warning.
 
@@ -605,10 +605,10 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/image_processing/cv2_processing/crop.py:90`
-- `pd_book_tools/image_processing/cv2_processing/crop.py:93`
-- `pd_book_tools/image_processing/cupy_processing/crop.py:87`
-- `pd_book_tools/image_processing/cupy_processing/crop.py:90`
+- `pdomain_book_tools/image_processing/cv2_processing/crop.py:90`
+- `pdomain_book_tools/image_processing/cv2_processing/crop.py:93`
+- `pdomain_book_tools/image_processing/cupy_processing/crop.py:87`
+- `pdomain_book_tools/image_processing/cupy_processing/crop.py:90`
 
 Negative edge values pass the dimension check and feed Python slicing.
 
@@ -625,8 +625,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/ocr/word.py:131`
-- `pd_book_tools/ocr/block.py:227`
+- `pdomain_book_tools/ocr/word.py:131`
+- `pdomain_book_tools/ocr/block.py:227`
 
 `Word.__init__` stores `ground_truth_match_keys` by reference, and `Block.__init__` stores `additional_block_attributes` by reference.
 
@@ -716,8 +716,8 @@ Remediation:
 
 Evidence:
 
-- `pd_book_tools/licenses.py:15`
-- `pd_book_tools/data/spdx_licenses.json:1`
+- `pdomain_book_tools/licenses.py:15`
+- `pdomain_book_tools/data/spdx_licenses.json:1`
 - `LICENSE:1`
 
 The module says SPDX data is vendored from `license-list-data`, but the data file begins directly with data and the repository license only covers the project.
@@ -732,7 +732,7 @@ Remediation:
 
 ## Areas checked with no issue found
 
-- `pd_book_tools/image_processing/external_tools.py` uses argument lists with `shell=False`; no direct shell injection was found in those subprocess calls.
+- `pdomain_book_tools/image_processing/external_tools.py` uses argument lists with `shell=False`; no direct shell injection was found in those subprocess calls.
 - JSON file loading/saving uses `json`, not pickle; the security concern in those paths is path policy, not deserialization execution.
 - `rebox_word`, `add_word_to_page`, `nudge_word_bbox`, and most `layout_aware_reorg` frame conversion paths explicitly branch on normalized versus pixel coordinates.
 

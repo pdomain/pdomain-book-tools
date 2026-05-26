@@ -25,7 +25,7 @@ import inspect
 
 import pytest
 
-from pd_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.page import Page
 
 
 def test_constructor_signature_pin():

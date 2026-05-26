@@ -2,16 +2,16 @@
 
 > **Status**: Draft
 > **Last updated**: 2026-05-24
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#210
+> **Spec-Issue**: pdomain/pdomain-book-tools#210
 
 Replace the unofficial Google Books JSON n-gram endpoint with a
 pre-indexed, locally-resident SQLite database of hyphen-pair frequency data
 extracted from the Google Books Ngrams corpus. The adapter interface
-(`HyphenNgramsClient`) is already named in the `pd-prep-for-pgdp` design
+(`HyphenNgramsClient`) is already named in the `pdomain-prep-for-pgdp` design
 handoff spec; Stage 15 slices (`S15-A` through `S15-F`) ship JSON-first via
 that interface and migrate to SQLite once this spec lands.
 
-Background reading: `pd-ui/docs/templates/design_handoff_pd_ui/wf05/NOTES.md`
+Background reading: `pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf05/NOTES.md`
 documents both paths (live API and pre-indexed SQLite) and the rationale for
 preferring local indexing.
 
@@ -25,12 +25,12 @@ Related specs:
 
 ## 1. TL;DR
 
-Add `pd_book_tools.hyphen_ngrams` exposing a `HyphenNgramsClient` protocol
+Add `pdomain_book_tools.hyphen_ngrams` exposing a `HyphenNgramsClient` protocol
 and two implementations:
 
 - `JsonApiClient` — the existing fallback that calls the unofficial
   Google Books JSON endpoint (V0, ships first, already in
-  `pd-prep-for-pgdp`).
+  `pdomain-prep-for-pgdp`).
 - `SqliteClient` — the new local implementation that queries a
   pre-indexed ~50 MB SQLite file derived from the raw Google Books Ngrams
   corpus dump (V1, this spec).
@@ -47,7 +47,7 @@ callers switch by construction only.
 When a book is scanned and OCR'd, end-of-line hyphens appear throughout.
 Some hyphens are grammatical (compound words: "well-known") and some are
 purely typographic line-break artefacts (the word "re-" / "turn" spans two
-lines). The `pd-prep-for-pgdp` Stage 15 Hyphen Join workbench helps the
+lines). The `pdomain-prep-for-pgdp` Stage 15 Hyphen Join workbench helps the
 user decide, for each hyphenated pair `(word_a, word_b)`, whether to join
 the words, keep the hyphen, or leave them separate.
 
@@ -80,9 +80,9 @@ fraction of the full corpus. A pre-extraction pipeline can:
 This removes the runtime internet dependency and enables sub-millisecond
 local lookups.
 
-### 2.4 Adapter interface in pd-prep-for-pgdp
+### 2.4 Adapter interface in pdomain-prep-for-pgdp
 
-The `pd-prep-for-pgdp` plan introduces `HyphenNgramsClient` as a
+The `pdomain-prep-for-pgdp` plan introduces `HyphenNgramsClient` as a
 structural protocol (duck-typed, no `abc.ABC`). Stage 15 ships with
 `JsonApiClient` satisfying that protocol; this spec adds `SqliteClient`
 as a drop-in replacement.
@@ -94,7 +94,7 @@ as a drop-in replacement.
 ### Goals
 
 - Define `HyphenNgramsClient` as a Python `typing.Protocol` in
-  `pd_book_tools.hyphen_ngrams` so both implementations are type-safe.
+  `pdomain_book_tools.hyphen_ngrams` so both implementations are type-safe.
 - Implement `SqliteClient` querying a locally-cached SQLite file.
 - Implement an extraction pipeline (`scripts/build_hyphen_ngrams_db.py`)
   that downloads the relevant Google Books Ngrams bigram files and
@@ -105,14 +105,14 @@ as a drop-in replacement.
 - Choose and document a packaging strategy for the SQLite file (see §5).
 - Keep `JsonApiClient` as a fallback for users who cannot or do not want
   to download the SQLite file.
-- Expose a CLI entry point `pd-book-tools build-hyphen-db` that runs the
+- Expose a CLI entry point `pdomain-book-tools build-hyphen-db` that runs the
   extraction pipeline.
 
 ### Non-Goals
 
 - Full Google Books Ngrams download (we only extract hyphen bigrams, not
   the full corpus).
-- The `pd-prep-for-pgdp` FastAPI routes that call this client — those belong
+- The `pdomain-prep-for-pgdp` FastAPI routes that call this client — those belong
   to the S15-* slices.
 - Diacritic normalisation or lemmatisation of the corpus entries — V1 does
   exact-match lookup only.
@@ -144,16 +144,16 @@ as a drop-in replacement.
 Fragile, rate-limited, internet-dependent. Rejected as a long-term
 strategy; retained only as a fallback.
 
-### O-B: Embed the SQLite file in the pd-book-tools wheel
+### O-B: Embed the SQLite file in the pdomain-book-tools wheel
 
-A 50 MB file inside the wheel means every pip-install of pd-book-tools
+A 50 MB file inside the wheel means every pip-install of pdomain-book-tools
 downloads it, even for users who never use the Hyphen Join feature. The wheel
 would exceed PyPI's 100 MB soft limit. Rejected.
 
-### O-C: Separate optional data wheel (`pd-book-tools-hyphen-data`)
+### O-C: Separate optional data wheel (`pdomain-book-tools-hyphen-data`)
 
 Publish a companion wheel containing only the SQLite file. Installs on
-demand via `pip install pd-book-tools[hyphen-data]`. Clean separation of
+demand via `pip install pdomain-book-tools[hyphen-data]`. Clean separation of
 code and data; wheel can be re-published when the corpus snapshot is
 refreshed. Complicates the pd-index release pipeline (two wheels to
 publish per release instead of one). Viable; see §6 decision.
@@ -163,13 +163,13 @@ publish per release instead of one). Viable; see §6 decision.
 `SqliteClient` lazily downloads the database on first query and caches it
 at `platformdirs` user-data path. No new wheel or pip extra needed. User
 sees a one-time download delay (~50 MB). The download URL is versioned (a
-GitHub Release asset URL pinned in the pd-book-tools source). This matches
+GitHub Release asset URL pinned in the pdomain-book-tools source). This matches
 the pattern used by `spacy` and `stanza` for language models. Selected as
 the primary mechanism for V1.
 
-### O-E: Require user to run `pd-book-tools build-hyphen-db` manually
+### O-E: Require user to run `pdomain-book-tools build-hyphen-db` manually
 
-Power-user path only; not user-friendly for the `pd-prep-for-pgdp`
+Power-user path only; not user-friendly for the `pdomain-prep-for-pgdp`
 desktop audience. Retained as an advanced option alongside O-D.
 
 ---
@@ -183,13 +183,13 @@ as a fallback when neither is available.
 Module layout:
 
 ```text
-pd_book_tools/
+pdomain_book_tools/
   hyphen_ngrams/
     __init__.py        # re-exports HyphenNgramsClient, SqliteClient,
                        # JsonApiClient, default_db_path, ensure_db
     _protocol.py       # HyphenNgramsClient Protocol + FreqResult dataclass
     _sqlite_client.py  # SqliteClient
-    _json_api_client.py # JsonApiClient (moved from pd-prep-for-pgdp)
+    _json_api_client.py # JsonApiClient (moved from pdomain-prep-for-pgdp)
     _paths.py          # default_db_path() via platformdirs
     _downloader.py     # ensure_db(force=False) — lazy download logic
 
@@ -249,18 +249,18 @@ and comparable across decades.
 ### 6.3 Download URL convention
 
 The SQLite file is published as a GitHub Release asset on the
-`ConcaveTrillion/pd-book-tools` repository under the tag
+`pdomain/pdomain-book-tools` repository under the tag
 `hyphen-data-v{YYYYMMDD}` (independent of the code release tag). The URL
 template:
 
 ```text
-https://github.com/ConcaveTrillion/pd-book-tools/releases/download/
+https://github.com/pdomain/pdomain-book-tools/releases/download/
     hyphen-data-{snapshot_date}/hyphen_ngrams_{snapshot_date}.db
 ```
 
 The URL is hard-coded in `_downloader.py` as a module constant
 `HYPHEN_DB_URL` so it can be updated without touching the API surface.
-`ensure_db()` checks `~/.local/share/pd-suite/hyphen-ngrams/<snapshot_date>.db`
+`ensure_db()` checks `~/.local/share/pdomain-suite/hyphen-ngrams/<snapshot_date>.db`
 before downloading; if found, returns the cached path immediately.
 
 ### 6.4 Extraction pipeline overview
@@ -295,8 +295,8 @@ it is expected to take 30–60 minutes on a single core with adequate disk.
    - `query(word_a, word_b, *, start_year, end_year)` — returns
      `FreqResult | None` from a single parameterised SELECT.
 5. Write `_json_api_client.py` — migrate the existing V0 implementation
-   from `pd-prep-for-pgdp`. The `pd-prep-for-pgdp` import becomes an alias
-   pointing at pd-book-tools once this ships.
+   from `pdomain-prep-for-pgdp`. The `pdomain-prep-for-pgdp` import becomes an alias
+   pointing at pdomain-book-tools once this ships.
 6. Write `__init__.py` re-exporting the public surface.
 7. Write `scripts/build_hyphen_ngrams_db.py` with streaming TSV parser.
 8. Build the first database snapshot and publish as a GitHub Release asset
@@ -329,7 +329,7 @@ created at test time via `pytest` `tmp_path`; they do not require the full
 
 - **Q-HN-1**: Should `ensure_db` block the calling thread during download
   (synchronous `requests.get`) or be an `async def` that the FastAPI route
-  can `await`? For V1, synchronous is simpler; the `pd-prep-for-pgdp`
+  can `await`? For V1, synchronous is simpler; the `pdomain-prep-for-pgdp`
   router can call it in a startup lifespan event or offload to a thread.
 - **Q-HN-2**: The Google Books Ngrams 2-gram files are large (~20 GB
   compressed). The extraction pipeline streams and filters rather than
@@ -343,8 +343,8 @@ created at test time via `pytest` `tmp_path`; they do not require the full
   but the `metadata` table should reserve a key for `community_list_version`
   to support it later.
 - **Q-HN-4**: The `JsonApiClient` is currently implemented inside
-  `pd-prep-for-pgdp`. Migration to pd-book-tools requires a deprecation shim
-  in `pd-prep-for-pgdp` (re-export from the new location). The timing of
+  `pdomain-prep-for-pgdp`. Migration to pdomain-book-tools requires a deprecation shim
+  in `pdomain-prep-for-pgdp` (re-export from the new location). The timing of
   that shim relative to the S15-A slice needs coordination.
 - **Q-HN-5**: Frequency normalisation: relative frequency (chosen above) vs.
   raw count vs. Zipf score. The `wf05/NOTES.md` prototype renders the values

@@ -1,4 +1,4 @@
-"""Tests for :mod:`pd_book_tools.hf`."""
+"""Tests for :mod:`pdomain_book_tools.hf`."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest import mock
 
 import pytest
 
-from pd_book_tools.hf import (
+from pdomain_book_tools.hf import (
     DEFAULT_DET_FILENAME,
     DEFAULT_HF_REPO,
     DEFAULT_RECO_FILENAME,
@@ -21,7 +21,7 @@ from pd_book_tools.hf import (
     short_revision,
     suppress_hf_unauth_warning,
 )
-from pd_book_tools.hf import models as hf_models_module
+from pdomain_book_tools.hf import models as hf_models_module
 
 
 def test_constants_match_canonical_repo_layout():
@@ -109,7 +109,7 @@ def test_hf_download_silent_on_warm_cache(caplog, tmp_path):
         _CACHED_NO_EXIST=sentinel,
     )
     with (
-        caplog.at_level(logging.INFO, logger="pd_book_tools.hf.download"),
+        caplog.at_level(logging.INFO, logger="pdomain_book_tools.hf.download"),
         mock.patch.dict(
             "sys.modules",
             {
@@ -134,7 +134,7 @@ def test_hf_download_logs_on_cold_cache(caplog, tmp_path):
         _CACHED_NO_EXIST=object(),
     )
     with (
-        caplog.at_level(logging.INFO, logger="pd_book_tools.hf.download"),
+        caplog.at_level(logging.INFO, logger="pdomain_book_tools.hf.download"),
         mock.patch.dict(
             "sys.modules",
             {

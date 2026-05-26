@@ -2,11 +2,11 @@
 
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 
 @pytest.fixture

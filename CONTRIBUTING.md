@@ -1,6 +1,6 @@
-# Contributing to pd-book-tools
+# Contributing to pdomain-book-tools
 
-Thank you for your interest in contributing to pd-book-tools!
+Thank you for your interest in contributing to pdomain-book-tools!
 
 ## Development Setup
 
@@ -9,8 +9,8 @@ Thank you for your interest in contributing to pd-book-tools!
 2. **Clone and set up the project**:
 
    ```bash
-   git clone https://github.com/ConcaveTrillion/pd-book-tools.git
-   cd pd-book-tools
+   git clone https://github.com/pdomain/pdomain-book-tools.git
+   cd pdomain-book-tools
    make install  # This installs deps + sets up pre-commit
    ```
 

@@ -1,7 +1,7 @@
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.character import Character
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.character import Character
 
 
 def test_character_to_dict_round_trip():

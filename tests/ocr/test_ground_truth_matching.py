@@ -1,19 +1,19 @@
 """Tests for ground truth matching functionality."""
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.ground_truth_matching import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.ground_truth_matching import (
     WordDiffOpCodes,
     try_matching_combined_words,
     update_line_with_ground_truth_replace_words,
     update_page_with_ground_truth_text,
 )
-from pd_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
+from pdomain_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
     CharacterGroups,
 )
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_line(text_words, y):
@@ -258,7 +258,7 @@ class TestGroundTruthMatching:
         ground_truth_tuple = ("The", "Founding", "of", "the", "Government")
 
         # Call the function to update the line with ground truth
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             update_line_with_ground_truth,
         )
 

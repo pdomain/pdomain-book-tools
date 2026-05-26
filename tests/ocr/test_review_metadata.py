@@ -1,8 +1,8 @@
-"""Tests for the ReviewMetadata dataclass on pd_book_tools.ocr.review."""
+"""Tests for the ReviewMetadata dataclass on pdomain_book_tools.ocr.review."""
 
 from __future__ import annotations
 
-from pd_book_tools.ocr.review import ReviewMetadata
+from pdomain_book_tools.ocr.review import ReviewMetadata
 
 
 def test_review_metadata_defaults():

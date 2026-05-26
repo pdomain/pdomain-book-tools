@@ -1,7 +1,7 @@
 {
   "source_lib": "doctr",
   "source_identifier": "",
-  "source_path": "/workspaces/ocr-container/pd-book-tools/tests/fixtures/layout_regression/inputs/plate-rio-harbour-photo.png",
+  "source_path": "/workspaces/ocr-container/pdomain-book-tools/tests/fixtures/layout_regression/inputs/plate-rio-harbour-photo.png",
   "pages": [
     {
       "type": "Page",

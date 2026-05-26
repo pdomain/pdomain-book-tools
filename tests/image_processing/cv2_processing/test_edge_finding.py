@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from pd_book_tools.image_processing.cv2_processing.edge_finding import find_edges
+from pdomain_book_tools.image_processing.cv2_processing.edge_finding import find_edges
 
 
 class TestFindEdges:

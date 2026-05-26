@@ -54,7 +54,7 @@ Word level is the best-effort fallback.** Reasoning is in 3.3 below.
 ### 3.1 Block-level: WordReferenceLines per word, computed line-aware
 
 ```python
-# pd_book_tools/ocr/reference_lines.py  (new module)
+# pdomain_book_tools/ocr/reference_lines.py  (new module)
 
 @dataclass(frozen=True)
 class WordReferenceLines:
@@ -99,7 +99,7 @@ documented convention.
 ### 3.2 Block / Page entry points
 
 ```python
-# pd_book_tools/ocr/block.py
+# pdomain_book_tools/ocr/block.py
 
 def estimate_word_reference_lines(
     self,
@@ -120,7 +120,7 @@ def estimate_word_reference_lines(
     Side effects: also stores the result on each `Word` (see 3.4).
     """
 
-# pd_book_tools/ocr/page.py
+# pdomain_book_tools/ocr/page.py
 
 def estimate_word_reference_lines(
     self,
@@ -137,7 +137,7 @@ on the page entry point so call sites compose.
 ### 3.3 Word-level: best-effort, used by the line-level estimator and as fallback
 
 ```python
-# pd_book_tools/ocr/word.py
+# pdomain_book_tools/ocr/word.py
 
 def estimate_reference_lines(
     self,
@@ -261,7 +261,7 @@ The descender character set used for weighting is upgraded to the
 broadened set the bottom-crop spec proposes:
 
 ```python
-# pd_book_tools/ocr/reference_lines.py
+# pdomain_book_tools/ocr/reference_lines.py
 DEFAULT_DESCENDER_CHARS: frozenset[str] = frozenset({
     "g", "j", "p", "q", "y",
     "J", "Q",
@@ -448,7 +448,7 @@ helper.
 
 ## Consequences
 
-- Adds `pd_book_tools/ocr/reference_lines.py` (new module).
+- Adds `pdomain_book_tools/ocr/reference_lines.py` (new module).
 - `word.py` and `block.py` import `DEFAULT_DESCENDER_CHARS` from there;
   three inline set literals are removed.
 - `Word` gains a `reference_lines` attribute (not serialized).
@@ -464,6 +464,6 @@ for the full list (Q-RL-1 through Q-RL-10).
 - [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md) — Audit + gap analysis
 - [06c-word-reference-lines-testing.md](06c-word-reference-lines-testing.md) — Testing, open questions, decisions
 - [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md) — Parent forwarding stub (archived)
-- `pd_book_tools/ocr/reference_lines.py` — new module (to be created)
-- `pd_book_tools/ocr/word.py` — `estimate_reference_lines`, `estimate_baseline_from_image`
-- `pd_book_tools/ocr/block.py` — `estimate_word_reference_lines`
+- `pdomain_book_tools/ocr/reference_lines.py` — new module (to be created)
+- `pdomain_book_tools/ocr/word.py` — `estimate_reference_lines`, `estimate_baseline_from_image`
+- `pdomain_book_tools/ocr/block.py` — `estimate_word_reference_lines`

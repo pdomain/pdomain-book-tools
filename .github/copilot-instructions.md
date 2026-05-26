@@ -1,4 +1,4 @@
-# Copilot Project Instructions: pd-book-tools
+# Copilot Project Instructions: pdomain-book-tools
 
 Copilot-specific adapter for this repository.
 

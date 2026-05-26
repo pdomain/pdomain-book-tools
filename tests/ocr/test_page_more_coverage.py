@@ -3,11 +3,11 @@
 import numpy as np
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr import reorganize_page_utils
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr import reorganize_page_utils
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
@@ -228,9 +228,9 @@ class TestGenerateDoctrChecksEdgeCases:
         page = Page(width=100, height=100, page_index=0, blocks=[])
         page.cv2_numpy_page_image = np.zeros((100, 100, 3), dtype=np.uint8)
         # Add a word so items is not empty
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.word import Word
 
         word = Word(
             text="hi",
@@ -261,9 +261,9 @@ class TestGenerateDoctrChecksEdgeCases:
 class TestComputeTextRowBlocksWithTolerance:
     def test_with_explicit_tolerance_covers_false_branch(self):
         """Line 2821->2826 False branch: tolerance is provided explicitly (not None)."""
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.word import Word
 
         def make_word(text, x1, y1, x2, y2):
             return Word(
@@ -292,9 +292,9 @@ class TestComputeTextRowBlocksWithTolerance:
 class TestReorganizeLinesSwapBranch:
     def test_line_swap_when_second_has_lower_x(self):
         """Line 2772: swap line and next_line when line.minX > next_line.minX."""
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.word import Word
 
         def make_word(text, x1, y1, x2, y2):
             return Word(
@@ -333,10 +333,10 @@ class TestMoveWordToLineException:
         """Lines 554-556: When add_item raises, word is restored to source_line."""
         from unittest.mock import patch
 
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.page import Page
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.word import Word
 
         bb = BoundingBox.from_ltrb(0, 0, 50, 20)
         word = Word(text="hello", bounding_box=bb, ocr_confidence=0.9)
@@ -361,10 +361,10 @@ class TestClosestLineByYRangeThenX:
 
     def test_skips_line_with_null_bbox(self):
         """Line 581: Line with None bbox is skipped."""
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.page import Page
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.word import Word
 
         # fallback_line has valid bbox
         bb = BoundingBox.from_ltrb(0, 0, 100, 20)
@@ -394,10 +394,10 @@ class TestClosestLineByYRangeThenX:
 
     def test_closest_line_by_vertical_midpoint_false_branch(self):
         """Line 617->612 False branch: second line not closer than first."""
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.page import Page
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.word import Word
 
         bb1 = BoundingBox.from_ltrb(
             0, 10, 100, 20
@@ -435,7 +435,7 @@ class TestFinalizePageStructureExceptions:
 
         import pytest
 
-        from pd_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.page import Page
 
         page = Page(width=1000, height=1000, page_index=0, blocks=[])
 
@@ -455,7 +455,7 @@ class TestFinalizePageStructureExceptions:
 
         import pytest
 
-        from pd_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.page import Page
 
         page = Page(width=1000, height=1000, page_index=0, blocks=[])
 
@@ -475,10 +475,10 @@ class TestRecomputeParagraphBboxes:
         """Lines 805-806: Exception in paragraph.recompute_bounding_box is swallowed."""
         from unittest.mock import patch
 
-        from pd_book_tools.geometry.bounding_box import BoundingBox
-        from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-        from pd_book_tools.ocr.page import Page
-        from pd_book_tools.ocr.word import Word
+        from pdomain_book_tools.geometry.bounding_box import BoundingBox
+        from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+        from pdomain_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.word import Word
 
         bb = BoundingBox.from_ltrb(0, 0, 100, 20)
         word = Word(text="a", bounding_box=bb, ocr_confidence=0.9)

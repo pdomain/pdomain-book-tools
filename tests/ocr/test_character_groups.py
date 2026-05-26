@@ -14,7 +14,7 @@ These tests lock the expected ordered values so a future refactor can't
 silently regress to set-based dedup.
 """
 
-from pd_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
+from pdomain_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
     CharacterGroups,
 )
 

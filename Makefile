@@ -14,11 +14,11 @@ else
 
 .PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-slow test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
 
-# Layout-detector fork sync (see pd_book_tools/layout/adapters/pp_doclayout.py)
+# Layout-detector fork sync (see pdomain_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
 HF_LAYOUT_FORK     ?= CT2534/PP-DocLayout_plus-L
 HF_LAYOUT_MIRROR   ?= /tmp/pp-doclayout-mirror
-HF_LAYOUT_ADAPTER  := pd_book_tools/layout/adapters/pp_doclayout.py
+HF_LAYOUT_ADAPTER  := pdomain_book_tools/layout/adapters/pp_doclayout.py
 
 # Auto-detect a usable NVIDIA GPU (nvidia-smi present and succeeds) and not in CI.
 # When detected, GPU_EXTRA expands to "--extra gpu"; otherwise it is empty.
@@ -99,7 +99,7 @@ test-k: sync-gpu ## Run tests by pytest -k expression (usage: make test-k K='pat
 
 coverage: sync-gpu ## Run tests with coverage report (parallelized)
 	@echo "🧪 Running tests with coverage (parallelized)..."
-	uv run pytest --cov=pd_book_tools --cov-report=html --cov-report=xml -n auto -v -ra
+	uv run pytest --cov=pdomain_book_tools --cov-report=html --cov-report=xml -n auto -v -ra
 	@echo "📊 Coverage report generated in htmlcov/index.html"
 	@uv run python scripts/coverage_reporter.py
 
@@ -114,7 +114,7 @@ sync-gpu: ## Sync the [gpu] extra (CuPy) when an NVIDIA GPU is auto-detected; no
 
 
 upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if local-dev — see local-upgrade-deps)
-	@# Two-tier dev-local detection (spec #200 / pd-ocr-cli canonical pattern):
+	@# Two-tier dev-local detection (spec #200 / pdomain-ocr-cli canonical pattern):
 	@#   1. check_dev_local.py — probes editable installs, [gpu] extras, env var,
 	@#      and the .pd-dev-local marker written by write_dev_local_marker.py.
 	@#   2. Fast marker fallback — also check .venv/.pd-local-mode (written by
@@ -191,7 +191,7 @@ format-check: lint-check ## Alias for lint-check (workspace canonical name for r
 
 typecheck: ## Run basedpyright at recommended mode (workspace canonical)
 	@echo "🔬 Running basedpyright type check..."
-	uv run basedpyright pd_book_tools --level error
+	uv run basedpyright pdomain_book_tools --level error
 
 build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."

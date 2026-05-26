@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.perspective_adjustment import (
+from pdomain_book_tools.image_processing.cv2_processing.perspective_adjustment import (
     auto_deskew,
 )
 

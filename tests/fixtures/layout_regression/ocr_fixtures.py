@@ -35,7 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "inputs"
 
-# Make the local pd_book_tools package importable when this script is run
+# Make the local pdomain_book_tools package importable when this script is run
 # directly without an installed editable build.
 PACKAGE_ROOT = ROOT.parents[2]  # tests/fixtures/layout_regression -> tests -> repo
 if str(PACKAGE_ROOT) not in sys.path:
@@ -43,7 +43,7 @@ if str(PACKAGE_ROOT) not in sys.path:
 
 
 def _ocr_one(case: str, predictor) -> None:
-    from pd_book_tools.ocr.document import Document
+    from pdomain_book_tools.ocr.document import Document
 
     png = INPUT_DIR / f"{case}.png"
     out = INPUT_DIR / f"{case}.json"
@@ -86,7 +86,7 @@ def main() -> None:
 
     # Lazy import: don't pay the DocTR import cost when the user just wants
     # --help.
-    from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
+    from pdomain_book_tools.ocr.doctr_support import get_default_doctr_predictor
 
     print("Loading default DocTR predictor (cached after first run)...")
     t0 = time.perf_counter()

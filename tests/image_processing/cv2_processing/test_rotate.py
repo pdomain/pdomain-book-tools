@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.rotate import (
+from pdomain_book_tools.image_processing.cv2_processing.rotate import (
     rotate_image,
 )
 

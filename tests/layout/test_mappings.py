@@ -1,4 +1,4 @@
-"""Tests for ``pd_book_tools.layout._mappings``.
+"""Tests for ``pdomain_book_tools.layout._mappings``.
 
 Asserts the contract of ``PP_DOCLAYOUT_TO_PGDP``: native PP-DocLayout
 labels for header / footer / page_number / footnote are preserved as
@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from pd_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
-from pd_book_tools.layout.types import RegionType
+from pdomain_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
+from pdomain_book_tools.layout.types import RegionType
 
 
 @pytest.mark.parametrize(
@@ -59,7 +59,7 @@ def test_reference_label_is_not_mapped_to_list():
 
 def test_mappings_module_comment_does_not_claim_dropped():
     """L-11: the page-chrome comment must not claim the regions are dropped here."""
-    src = Path("pd_book_tools/layout/_mappings.py").read_text(encoding="utf-8")
+    src = Path("pdomain_book_tools/layout/_mappings.py").read_text(encoding="utf-8")
     assert "dropped before reorg" not in src, (
         "L-11 regression: the 'Page chrome — dropped before reorg' comment is "
         "false because the mapping preserves header/footer/footnote as typed "

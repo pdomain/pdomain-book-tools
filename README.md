@@ -1,4 +1,4 @@
-# pd-book-tools
+# pdomain-book-tools
 
 Python tools for working with public domain book scans.
 
@@ -25,21 +25,21 @@ Python tools for working with public domain book scans.
 The default install is CPU-only and works on Linux (CPU), macOS, and CI:
 
 ```bash
-pip install pd-book-tools
+pip install pdomain-book-tools
 ```
 
 For the optional CuPy/CUDA-12 acceleration (Linux + NVIDIA GPU only),
 install with the `gpu` extra:
 
 ```bash
-pip install 'pd-book-tools[gpu]'
+pip install 'pdomain-book-tools[gpu]'
 ```
 
 This pulls in `cupy-cuda12x` and `opencv-cuda`, which require a
 CUDA 12 toolkit and a compatible NVIDIA driver. The CPU pipeline
-(`pd_book_tools.image_processing.cv2_processing.*`) remains the
+(`pdomain_book_tools.image_processing.cv2_processing.*`) remains the
 fallback when the extra is not installed; calling any
-`pd_book_tools.image_processing.cupy_processing.*` function without
+`pdomain_book_tools.image_processing.cupy_processing.*` function without
 the extra raises a clear `ImportError` pointing back at the install
 command above.
 
@@ -154,8 +154,8 @@ make reset-full  # Nuclear option: clear everything
 ### Geometry primitives
 
 ```python
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
 
 bbox = BoundingBox(top_left=Point(10, 20), bottom_right=Point(110, 70))
 print(bbox.width, bbox.height, bbox.area)
@@ -164,9 +164,9 @@ print(bbox.width, bbox.height, bbox.area)
 ### OCR word model
 
 ```python
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.ocr.word import Word
 
 word = Word(
    text="Example",
@@ -180,7 +180,7 @@ print(word.text, word.ground_truth_text)
 ### PGDP preprocessing
 
 ```python
-from pd_book_tools.pgdp.pgdp_results import PGDPResults
+from pdomain_book_tools.pgdp.pgdp_results import PGDPResults
 
 results = PGDPResults("001.png", "Some -- raw [*proof note*] text")
 print(results.processed_page_text)
@@ -189,7 +189,7 @@ print(results.processed_page_text)
 ### OCR a page (with auto-rotate)
 
 ```python
-from pd_book_tools.ocr.document import Document
+from pdomain_book_tools.ocr.document import Document
 
 doc = Document.from_image_ocr_via_doctr("page.png")
 page = doc.pages[0]
@@ -226,18 +226,18 @@ a fixture and regenerating after a pipeline change is in
 ## Emitting JSON Schema for downstream codegen
 
 ```sh
-uv run python -m pd_book_tools.schemas.emit > schemas.json
+uv run python -m pdomain_book_tools.schemas.emit > schemas.json
 ```
 
 The output is a single JSON document, keyed by public model class name
 (`ReviewMetadata`, ...), whose values are JSON-Schema documents produced
-by `pydantic.TypeAdapter`. Downstream consumers (`pd-ocr-ops`, `pd-ui`
+by `pydantic.TypeAdapter`. Downstream consumers (`pdomain-ocr-ops`, `pdomain-ui`
 codegen) re-run this command against a pinned wheel and feed the output
 to `openapi-typescript` or equivalent to keep TypeScript types in sync
 with the Python source of truth.
 
 The set of public models lives in
-`pd_book_tools/schemas/emit.py::PUBLIC_MODELS`. Add new models there.
+`pdomain_book_tools/schemas/emit.py::PUBLIC_MODELS`. Add new models there.
 
 ## License
 

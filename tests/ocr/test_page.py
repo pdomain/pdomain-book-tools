@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr import reorganize_page_utils
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr import reorganize_page_utils
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
+from pdomain_book_tools.ocr.word import Word
 
 # ============================================================================
 # Basic Page construction & serialization
@@ -1213,7 +1213,7 @@ def test_page_detect_mixed_column_split_with_trailing_body_lines():
         bb = lines[idx].bounding_box
         lines[idx].bounding_box = BoundingBox.from_ltrb(40, bb.minY, 920, bb.maxY)
 
-    from pd_book_tools.ocr.reorganize_page_utils import _detect_mixed_column_split
+    from pdomain_book_tools.ocr.reorganize_page_utils import _detect_mixed_column_split
 
     split = _detect_mixed_column_split(lines, page_width=1000)
     assert split is not None

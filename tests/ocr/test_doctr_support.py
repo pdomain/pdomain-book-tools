@@ -19,7 +19,7 @@ class TestGetDefaultDoctrPredictor:
         # Ensure the import inside the function fails by removing doctr.models
         monkeypatch.setitem(sys.modules, "doctr.models", None)
 
-        from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import get_default_doctr_predictor
 
         with pytest.raises(ImportError, match="docTR library is required"):
             get_default_doctr_predictor()
@@ -33,7 +33,7 @@ class TestGetDefaultDoctrPredictor:
         fake_module.ocr_predictor = MagicMock(return_value=fake_predictor)
 
         with patch.dict(sys.modules, {"doctr.models": fake_module}):
-            from pd_book_tools.ocr.doctr_support import get_default_doctr_predictor
+            from pdomain_book_tools.ocr.doctr_support import get_default_doctr_predictor
 
             result = get_default_doctr_predictor()
 
@@ -52,7 +52,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         # Force the inline `from torch import load` to fail
         monkeypatch.setitem(sys.modules, "torch", None)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -91,7 +91,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -133,7 +133,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -172,7 +172,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -220,7 +220,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -265,7 +265,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -322,7 +322,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -384,7 +384,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -441,7 +441,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -509,7 +509,7 @@ class TestGetFinetunedTorchDoctrPredictor:
         monkeypatch.setitem(sys.modules, "doctr.datasets.vocabs", fake_vocabs)
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import (
+        from pdomain_book_tools.ocr.doctr_support import (
             get_finetuned_torch_doctr_predictor,
         )
 
@@ -571,7 +571,7 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
         """
         det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
-        from pd_book_tools.ocr import doctr_support
+        from pdomain_book_tools.ocr import doctr_support
 
         with patch.object(doctr_support, "_select_torch_device") as mock_select:
             doctr_support.get_finetuned_torch_doctr_predictor(
@@ -586,7 +586,7 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
         """When device='cpu', torch.load must receive map_location='cpu'."""
         det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
-        from pd_book_tools.ocr import doctr_support
+        from pdomain_book_tools.ocr import doctr_support
 
         with patch.object(doctr_support, "_select_torch_device"):
             doctr_support.get_finetuned_torch_doctr_predictor(
@@ -605,7 +605,7 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
         """Omitting device= must call _select_torch_device (existing behaviour)."""
         det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
-        from pd_book_tools.ocr import doctr_support
+        from pdomain_book_tools.ocr import doctr_support
 
         with patch.object(
             doctr_support,
@@ -683,7 +683,9 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
 
         custom_loader = MagicMock(return_value={})
 
-        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
 
         get_finetuned_torch_doctr_predictor(
             dectection_pt_file=det_path,
@@ -702,7 +704,9 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
         """
         import inspect
 
-        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
 
         sig = inspect.signature(get_finetuned_torch_doctr_predictor)
         param = sig.parameters.get("torch_load")
@@ -719,7 +723,9 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
         """
         det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
-        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
 
         get_finetuned_torch_doctr_predictor(
             dectection_pt_file=det_path,
@@ -755,7 +761,7 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         fake_torch.Tensor = type(fake_tensor)
         monkeypatch.setitem(sys.modules, "torch", fake_torch)
 
-        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+        from pdomain_book_tools.ocr.doctr_support import _validate_state_dict
 
         # Should not raise.
         _validate_state_dict({"layer.weight": fake_tensor}, path="model.pt")
@@ -765,7 +771,7 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         object is not a ``dict`` — e.g. a pickled model instance instead of
         a state dict.
         """
-        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+        from pdomain_book_tools.ocr.doctr_support import _validate_state_dict
 
         with pytest.raises(ValueError, match="not a dict"):
             _validate_state_dict("this is a string, not a state dict", path="bad.pt")
@@ -783,7 +789,7 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         fake_torch.Tensor = _FakeTensor
         monkeypatch.setitem(sys.modules, "torch", fake_torch)
 
-        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+        from pdomain_book_tools.ocr.doctr_support import _validate_state_dict
 
         bad_dict = {"layer.weight": "definitely not a tensor"}
         with pytest.raises(ValueError, match=r"layer\.weight"):
@@ -801,7 +807,7 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         fake_torch.Tensor = _FakeTensor
         monkeypatch.setitem(sys.modules, "torch", fake_torch)
 
-        from pd_book_tools.ocr.doctr_support import _validate_state_dict
+        from pdomain_book_tools.ocr.doctr_support import _validate_state_dict
 
         # Empty dict is valid (pretrained=False fresh model or test stub).
         _validate_state_dict({}, path="empty.pt")
@@ -814,7 +820,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
 
         custom_loader = MagicMock(return_value="not_a_dict")
 
-        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
 
         with pytest.raises(ValueError, match="not a dict"):
             get_finetuned_torch_doctr_predictor(
@@ -841,7 +849,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
                 return {}
             return "not_a_dict"
 
-        from pd_book_tools.ocr.doctr_support import get_finetuned_torch_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import (
+            get_finetuned_torch_doctr_predictor,
+        )
 
         with pytest.raises(ValueError, match="not a dict"):
             get_finetuned_torch_doctr_predictor(
@@ -866,7 +876,7 @@ class TestR15ExtractedHelpers:
         monkeypatch.setitem(sys.modules, "torch", fake_torch)
         monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
 
-        from pd_book_tools.ocr.doctr_support import _select_torch_device
+        from pdomain_book_tools.ocr.doctr_support import _select_torch_device
 
         assert _select_torch_device() == ("cuda", "cuda:0")
 
@@ -877,7 +887,7 @@ class TestR15ExtractedHelpers:
         monkeypatch.setitem(sys.modules, "torch", fake_torch)
         monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
 
-        from pd_book_tools.ocr.doctr_support import _select_torch_device
+        from pdomain_book_tools.ocr.doctr_support import _select_torch_device
 
         assert _select_torch_device() == ("mps", "mps")
 
@@ -889,7 +899,7 @@ class TestR15ExtractedHelpers:
         monkeypatch.setitem(sys.modules, "torch", fake_torch)
         monkeypatch.setitem(sys.modules, "torch.cuda", fake_torch.cuda)
 
-        from pd_book_tools.ocr.doctr_support import _select_torch_device
+        from pdomain_book_tools.ocr.doctr_support import _select_torch_device
 
         assert _select_torch_device() == ("cpu", "cpu")
 
@@ -906,7 +916,7 @@ class TestR15ExtractedHelpers:
         fake_doctr_models.db_resnet50 = MagicMock()
         monkeypatch.setitem(sys.modules, "doctr.models", fake_doctr_models)
 
-        from pd_book_tools.ocr.doctr_support import _build_doctr_arch
+        from pdomain_book_tools.ocr.doctr_support import _build_doctr_arch
 
         result = _build_doctr_arch("parseq", fake_models_mod, vocab="abc")
         assert result is sentinel
@@ -929,7 +939,7 @@ class TestR15ExtractedHelpers:
         fake_doctr_models = MagicMock()
         monkeypatch.setitem(sys.modules, "doctr.models", fake_doctr_models)
 
-        from pd_book_tools.ocr.doctr_support import _build_doctr_arch
+        from pdomain_book_tools.ocr.doctr_support import _build_doctr_arch
 
         # 'mystery_arch' isn't a detection-style name → fallback to crnn_vgg16_bn
         result = _build_doctr_arch("mystery_arch", stub, vocab="x")
@@ -951,7 +961,7 @@ class TestR15ExtractedHelpers:
         fake_doctr_models = MagicMock()
         monkeypatch.setitem(sys.modules, "doctr.models", fake_doctr_models)
 
-        from pd_book_tools.ocr.doctr_support import _build_doctr_arch
+        from pdomain_book_tools.ocr.doctr_support import _build_doctr_arch
 
         # name contains 'resnet' → should fall back to db_resnet50
         result = _build_doctr_arch("custom_resnet50_v2", stub)
@@ -971,7 +981,7 @@ class TestR15ExtractedHelpers:
 
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 
-        from pd_book_tools.ocr.doctr_support import _assemble_doctr_predictor
+        from pdomain_book_tools.ocr.doctr_support import _assemble_doctr_predictor
 
         det_model = MagicMock(name="det_model")
         reco_model = MagicMock(name="reco_model")

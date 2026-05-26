@@ -5,7 +5,7 @@ import pytest
 
 @pytest.fixture
 def cupy_crop(cupy_module):
-    from pd_book_tools.image_processing.cupy_processing import crop as crop_mod
+    from pdomain_book_tools.image_processing.cupy_processing import crop as crop_mod
 
     return crop_mod, cupy_module
 

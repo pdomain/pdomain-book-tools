@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pydantic import TypeAdapter
 
-from pd_book_tools.geometry.point import Point
+from pdomain_book_tools.geometry.point import Point
 
 
 def test_point_type_adapter_does_not_raise():
     # Before the hook was added, TypeAdapter(Point) raised
     # ``pydantic.errors.PydanticSchemaGenerationError: Unable to generate
-    # pydantic-core schema for <class 'pd_book_tools.geometry.point.Point'>``.
+    # pydantic-core schema for <class 'pdomain_book_tools.geometry.point.Point'>``.
     adapter = TypeAdapter(Point)
     assert adapter is not None
 

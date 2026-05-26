@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`pd_book_tools.ocr.rotation`.
+"""Unit tests for :mod:`pdomain_book_tools.ocr.rotation`.
 
 These tests exercise the orientation-detection logic with stub OCR
 callables, so they're fast and don't require the DocTR predictor.
@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from pd_book_tools.ocr.rotation import (
+from pdomain_book_tools.ocr.rotation import (
     DEFAULT_CONFIDENCE_THRESHOLD,
     detect_best_rotation,
     rotate_image,
@@ -177,13 +177,13 @@ class TestDetectBestRotation:
 
 class TestPageRotationAppliedField:
     def test_default_zero(self):
-        from pd_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.page import Page
 
         page = Page(width=10, height=10, page_index=0, blocks=[])
         assert page.rotation_applied == 0
 
     def test_invalid_value_rejected(self):
-        from pd_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.page import Page
 
         with pytest.raises(ValueError, match="rotation_applied"):
             Page(
@@ -195,7 +195,7 @@ class TestPageRotationAppliedField:
             )
 
     def test_round_trip_through_dict(self):
-        from pd_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.page import Page
 
         page = Page(
             width=10,
@@ -211,7 +211,7 @@ class TestPageRotationAppliedField:
 
     def test_zero_omitted_from_dict(self):
         # Default 0 isn't serialized, keeping existing JSONs unchanged.
-        from pd_book_tools.ocr.page import Page
+        from pdomain_book_tools.ocr.page import Page
 
         page = Page(width=10, height=10, page_index=0, blocks=[])
         assert "rotation_applied" not in page.to_dict()

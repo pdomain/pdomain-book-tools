@@ -16,12 +16,12 @@ Both are diagnostic-only outputs intended for CLI consumption, not used
 by any production logic.
 """
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
-from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 PAGE_W = 1000
 PAGE_H = 1500

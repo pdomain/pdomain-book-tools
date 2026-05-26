@@ -2,9 +2,9 @@
 
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.ground_truth_matching import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.ground_truth_matching import (
     LineDiffOpCodes,
     WordDiffOpCodes,
     _build_current_work_gt_line_from_prev,
@@ -21,9 +21,9 @@ from pd_book_tools.ocr.ground_truth_matching import (
     update_page_match_unmatched_lines_best_effort,
     update_page_with_ground_truth_text,
 )
-from pd_book_tools.ocr.ground_truth_matching_helpers.match_type import MatchType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.ground_truth_matching_helpers.match_type import MatchType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_word(text, x=0, y=0):
@@ -533,7 +533,7 @@ class TestMatchDifferentLineCountsDedup:
         Two OCR lines, three GT lines where OCR line 0 matches both GT 0 and GT 1.
         After GT 0 is matched to OCR 0, GT 1 share the same OCR line so is skipped.
         """
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             LineDiffOpCodes,
             update_page_match_difflib_lines_replace_different_line_count,
         )
@@ -610,7 +610,7 @@ class TestReplaceWordsBreakAndContinue:
         """Line 831: break when to_match_gt_word_nbrs is empty during OCR loop.
         Triggered when more OCR words than GT words in the replace range.
         """
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             update_line_with_ground_truth_replace_words,
         )
 
@@ -642,7 +642,7 @@ class TestUpdatePageWithGroundTruthUnknownLineTag:
         """Invalid line_tag in opcode raises ValueError."""
         import difflib
 
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             update_page_with_ground_truth_text,
         )
 
@@ -659,7 +659,7 @@ class TestUpdatePageWithGroundTruthUnknownLineTag:
 class TestInitializeUnmatchedGroundTruthWords:
     def test_initializes_unmatched_list_on_insert_word_op(self):
         """Line 420: initialize unmatched_ground_truth_words when None during insert op."""
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             update_line_with_ground_truth,
         )
 
@@ -685,7 +685,7 @@ class TestInitializeUnmatchedGroundTruthWords:
 class TestUpdateCombinedWordsWithExistingUnmatched:
     def test_combined_words_preserves_existing_unmatched(self):
         """Combined word update preserves unmatched words added in same function."""
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             update_line_with_ground_truth,
         )
 
@@ -731,7 +731,7 @@ class TestShouldConsiderLineEndSoftWrapEdgeCases:
 class TestUnmatchedGroundTruthWordsAppend:
     def test_append_to_initialized_unmatched_list(self):
         """Line 866: append to unmatched_ground_truth_words when already initialized."""
-        from pd_book_tools.ocr.ground_truth_matching import (
+        from pdomain_book_tools.ocr.ground_truth_matching import (
             update_line_with_ground_truth,
         )
 

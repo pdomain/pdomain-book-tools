@@ -1,6 +1,6 @@
 # Specs
 
-Architecture decisions and planning specs for `pd-book-tools`. These are
+Architecture decisions and planning specs for `pdomain-book-tools`. These are
 the durable, citable references that issues, code comments, and
 downstream pd-* repos point at when they need the rationale behind a
 behaviour or knob.
@@ -16,8 +16,8 @@ the workspace's fixing-specs guide).
 | # | Spec | Subsystem | When to read |
 |---|---|---|---|
 | 01 | [page-model](01-page-model.md) | `Page.to_dict()` / `Page.from_dict` and the `Block` / `Word` / `BoundingBox` JSON form | Authoring a new downstream consumer, debugging a `from_dict` round-trip, looking up the `block_role_labels` / `line_role_labels` vocabulary, disambiguating `PageLayout` from the page tree |
-| 02 | [rotation](02-rotation.md) | `Document.from_image_ocr_via_doctr` auto-rotate path and `pd_book_tools/ocr/rotation.py` | Tuning the upright-confidence threshold, debugging unexpected rotation, reasoning about `Page.rotation_applied` and the rotated-frame coordinate convention |
-| 03 | [reorganize-pipeline](03-reorganize-pipeline.md) | `Page.reorganize_page` and `pd_book_tools/ocr/reorganize_page_utils.py` | Adding fixtures, tuning header/footer/column/float detection, adding a new pipeline step, debugging unexpected reading-order output |
+| 02 | [rotation](02-rotation.md) | `Document.from_image_ocr_via_doctr` auto-rotate path and `pdomain_book_tools/ocr/rotation.py` | Tuning the upright-confidence threshold, debugging unexpected rotation, reasoning about `Page.rotation_applied` and the rotated-frame coordinate convention |
+| 03 | [reorganize-pipeline](03-reorganize-pipeline.md) | `Page.reorganize_page` and `pdomain_book_tools/ocr/reorganize_page_utils.py` | Adding fixtures, tuning header/footer/column/float detection, adding a new pipeline step, debugging unexpected reading-order output |
 | 04 | [layout-regression-fixtures](04-layout-regression-fixtures.md) | `tests/fixtures/layout_regression/` | Adding a new fixture page, regenerating OCR / layout / reorganize artifacts, understanding what each existing fixture stresses |
 | 05 | [glyph-annotations](05-glyph-annotations.md) | Glyph-level annotation data model (planning) | Designing annotation surfaces above the Word level — drop caps, small caps, italics, ligatures, accents |
 | 06 | ~~word-reference-lines~~ _(archived — superseded; split into 06a/06b/06c; see `docs/archive/specs/06-word-reference-lines.md`)_ | Per-word baseline / x-height / cap-height / ascender / descender reference geometry (planning) | Archived 2026-05-23; superseded by the three child specs below |
@@ -26,10 +26,10 @@ the workspace's fixing-specs guide).
 | 06c | [word-reference-lines-testing](06c-word-reference-lines-testing.md) | Testing approach, bottom-crop interaction, open questions (Q-RL-1 to Q-RL-10), decisions required | Writing tests, answering open questions before implementation, bottom-crop sequencing decisions |
 | 07 | [dev-local-upgrade-flow](07-dev-local-upgrade-flow.md) | dev-local mode detection + `make upgrade-deps` guard | Touching the dev-local detection logic, the `[gpu]` extra reapply path, or the `.venv/.pd-dev-local` marker lifecycle |
 | 08 | ~~geometry-repr~~ _(archived — shipped; see `docs/archive/specs/08-geometry-repr.md`)_ | `BoundingBox.__repr__` / `Point.__repr__` contract | Archived 2026-05-22; spec issue #36 closed; implementation landed in PR #50 |
-| 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pd-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
-| — | [page-order-detection](2026-05-24-page-order-detection.md) | `pd_book_tools.page_order` module — `detect_out_of_order_pages` + `SwapProposal` | Implementing Stage 11 of pd-prep-for-pgdp; understanding the three-signal (filename seq, OCR page number, visual hash) confidence model |
-| — | [scannos-module](2026-05-24-scannos-module.md) | `pd_book_tools.scannos` — `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote` | Implementing pd-prep-for-pgdp Stage 13; understanding SQLite (global rules) vs JSON sidecar (per-book candidates) split; promotion evidence trail |
-| — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `pd_book_tools.hyphen_ngrams` — `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction pipeline | Implementing pd-prep-for-pgdp Stage 15 (post-JSON-adapter); understanding download-on-first-use packaging and SQLite schema for Google Books Ngrams hyphen pairs |
+| 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pdomain-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
+| — | [page-order-detection](2026-05-24-page-order-detection.md) | `pdomain_book_tools.page_order` module — `detect_out_of_order_pages` + `SwapProposal` | Implementing Stage 11 of pdomain-prep-for-pgdp; understanding the three-signal (filename seq, OCR page number, visual hash) confidence model |
+| — | [scannos-module](2026-05-24-scannos-module.md) | `pdomain_book_tools.scannos` — `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote` | Implementing pdomain-prep-for-pgdp Stage 13; understanding SQLite (global rules) vs JSON sidecar (per-book candidates) split; promotion evidence trail |
+| — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `pdomain_book_tools.hyphen_ngrams` — `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction pipeline | Implementing pdomain-prep-for-pgdp Stage 15 (post-JSON-adapter); understanding download-on-first-use packaging and SQLite schema for Google Books Ngrams hyphen pairs |
 
 ## Anchor stability
 

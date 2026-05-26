@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pd_book_tools.image_processing.cv2_processing.canvas import (
+from pdomain_book_tools.image_processing.cv2_processing.canvas import (
     Alignment,
     map_content_onto_scaled_canvas,
 )

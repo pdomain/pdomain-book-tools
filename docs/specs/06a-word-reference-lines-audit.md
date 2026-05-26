@@ -4,7 +4,7 @@
 > **Last updated**: 2026-05-21
 > **Split from**: [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md)
 
-Audit of existing baseline-estimation code in `pd-book-tools` and gap
+Audit of existing baseline-estimation code in `pdomain-book-tools` and gap
 analysis of the four reference lines (top, x-height, baseline, bottom).
 This is part 1 of a three-part split of the original
 `06-word-reference-lines.md` spec (914 lines, exceeded the 800-line cap).
@@ -17,7 +17,7 @@ This is part 1 of a three-part split of the original
 
 ## TL;DR
 
-The `pd-book-tools` package has partial baseline support (one of four
+The `pdomain-book-tools` package has partial baseline support (one of four
 reference lines) via `Word.estimate_baseline_from_image` and
 `Block.estimate_baseline_from_image`. Top-line, x-height, and descender
 bottom are entirely missing. The descender character set is duplicated in
@@ -26,7 +26,7 @@ three places. This part documents exactly what exists and what gaps remain.
 ## Context
 
 Author intent: extend the existing baseline-estimation surface in
-`pd-book-tools` from a single per-word/per-line **baseline** estimate
+`pdomain-book-tools` from a single per-word/per-line **baseline** estimate
 to a richer set of four reference lines per word and per line:
 
 1. **top-line** (cap-line / ascender top — the highest ink row, with
@@ -54,7 +54,7 @@ single, well-tested abstraction.
   or `Block.estimate_baseline_from_image`.
 - Descender character set must be deduplicated — it currently appears in
   three places.
-- New module (`reference_lines.py`) must live in `pd_book_tools/ocr/`.
+- New module (`reference_lines.py`) must live in `pdomain_book_tools/ocr/`.
 
 ## Decision
 
@@ -67,7 +67,7 @@ for decisions requested.
 
 ### 1.1 Word.estimate_baseline_from_image
 
-Location: `pd_book_tools/ocr/word.py:961`.
+Location: `pdomain_book_tools/ocr/word.py:961`.
 
 Signature:
 
@@ -80,7 +80,7 @@ def estimate_baseline_from_image(
 What it actually does:
 
 - Calls `self.split_into_characters_from_whitespace(image)`
-  (`pd_book_tools/ocr/word.py:768`) to get a list of `Character`
+  (`pdomain_book_tools/ocr/word.py:768`) to get a list of `Character`
   objects whose individual `bounding_box` heights came from
   per-character vertical extents inside the binarized ROI.
 - Computes a weighted average of the per-character `bounding_box.maxY`
@@ -124,7 +124,7 @@ Per-word, not per-line.
 
 ### 1.2 Block.estimate_baseline_from_image
 
-Location: `pd_book_tools/ocr/block.py:1000`.
+Location: `pdomain_book_tools/ocr/block.py:1000`.
 
 Signature:
 
@@ -158,7 +158,7 @@ a per-line baseline plus one horizontal per-word baseline per word.
 
 ### 1.3 The descender heuristic in split_into_characters_from_whitespace
 
-Location: `pd_book_tools/ocr/word.py:927-958`.
+Location: `pdomain_book_tools/ocr/word.py:927-958`.
 
 When a word is split into 2+ characters, the function does _not_
 compute a baseline as such, but it does:
@@ -180,11 +180,11 @@ not directly exposed.
 
 Defined inline in three places:
 
-- `pd_book_tools/ocr/word.py:937` — used in
+- `pdomain_book_tools/ocr/word.py:937` — used in
   `split_into_characters_from_whitespace`.
-- `pd_book_tools/ocr/word.py:974` — used in
+- `pdomain_book_tools/ocr/word.py:974` — used in
   `estimate_baseline_from_image`.
-- `pd_book_tools/ocr/block.py:1017` — used in
+- `pdomain_book_tools/ocr/block.py:1017` — used in
   `Block.estimate_baseline_from_image`.
 
 All three copies are the literal `{"p", "g", "j", "q", "Q"}`. The
@@ -199,7 +199,7 @@ bottom-crop tool use the same source of truth.
 
 Greps across the package
 (`grep -rnE "x_height|cap_height|ascender|topline|centerline|mean_line"`
-on `pd_book_tools/`) returned only the descender-related references
+on `pdomain_book_tools/`) returned only the descender-related references
 above. There is no:
 
 - top-line / cap-line estimator.
@@ -215,7 +215,7 @@ the binarized ROI.
 ### 1.6 The page level
 
 `Page.refine_bounding_boxes` exists at
-`pd_book_tools/ocr/page.py:3055`, but **there is no
+`pdomain_book_tools/ocr/page.py:3055`, but **there is no
 `Page.estimate_baseline_from_image` or any page-level
 reference-line aggregation.** A caller wanting per-line baselines for
 every line on a page must iterate blocks themselves.
@@ -261,5 +261,5 @@ for the full open-questions list (Q-RL-1 through Q-RL-10).
 - [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md) — API design, heuristics, parameters
 - [06c-word-reference-lines-testing.md](06c-word-reference-lines-testing.md) — Testing, open questions, decisions
 - [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md) — Parent forwarding stub (archived)
-- `pd_book_tools/ocr/word.py` — `estimate_baseline_from_image`, `split_into_characters_from_whitespace`
-- `pd_book_tools/ocr/block.py` — `Block.estimate_baseline_from_image`
+- `pdomain_book_tools/ocr/word.py` — `estimate_baseline_from_image`, `split_into_characters_from_whitespace`
+- `pdomain_book_tools/ocr/block.py` — `Block.estimate_baseline_from_image`

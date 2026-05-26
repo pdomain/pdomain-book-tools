@@ -2,13 +2,13 @@
 
 > **Status**: Draft
 > **Last updated**: 2026-05-24
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#208
+> **Spec-Issue**: pdomain/pdomain-book-tools#208
 
 Detect pages that are out of sequence in a scanned book and propose
 confident swap pairs for the user to review. The primary consumer is the
-`pd-prep-for-pgdp` Stage 11 (`/projects/:id/page-order`) introduced in the
-`pd-ui` design handoff. The UI component that renders each detected swap is
-`SwapRow` at `pd-ui/docs/templates/design_handoff_pd_ui/wf09/pages-tab.jsx:414-487`.
+`pdomain-prep-for-pgdp` Stage 11 (`/projects/:id/page-order`) introduced in the
+`pdomain-ui` design handoff. The UI component that renders each detected swap is
+`SwapRow` at `pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf09/pages-tab.jsx:414-487`.
 
 Related specs:
 
@@ -20,10 +20,10 @@ Related specs:
 
 ## 1. TL;DR
 
-Add `pd_book_tools.page_order` exposing:
+Add `pdomain_book_tools.page_order` exposing:
 
 ```python
-from pd_book_tools.page_order import detect_out_of_order_pages, SwapProposal
+from pdomain_book_tools.page_order import detect_out_of_order_pages, SwapProposal
 
 proposals: list[SwapProposal] = detect_out_of_order_pages(pages)
 ```
@@ -37,14 +37,14 @@ page number, and perceptual-hash visual similarity.
 
 ## 2. Context
 
-### 2.1 Why page-order detection belongs in pd-book-tools
+### 2.1 Why page-order detection belongs in pdomain-book-tools
 
 Page reordering is a common artifact of physical scanning workflows —
 scanners mis-feed, operators grab pages in the wrong order, and older
 digitisation batches have known sorting errors. Every pd-* consumer that works
 with multi-page documents needs the same logic. Centralising it in the
-foundation library avoids duplication across `pd-prep-for-pgdp`,
-`pd-ocr-cli`, and future tools.
+foundation library avoids duplication across `pdomain-prep-for-pgdp`,
+`pdomain-ocr-cli`, and future tools.
 
 ### 2.2 What the design handoff specifies
 
@@ -58,9 +58,9 @@ The `wf09/pages-tab.jsx` prototype shows:
 - Accept / Skip controls per row; an "Apply all high-confidence" shortcut.
 
 The backend that powers `SwapRow` is `GET /projects/:id/page-order/proposals`
-(new route in `pd-prep-for-pgdp`). That route calls
+(new route in `pdomain-prep-for-pgdp`). That route calls
 `detect_out_of_order_pages` and serialises the result. This spec owns the
-detection side; `pd-prep-for-pgdp` owns the route and serialisation.
+detection side; `pdomain-prep-for-pgdp` owns the route and serialisation.
 
 ### 2.3 Signals available
 
@@ -95,7 +95,7 @@ detection side; `pd-prep-for-pgdp` owns the route and serialisation.
 - Multi-page cycle detection (A→B→C misorderings involving three or more
   pages) — V1 targets pairwise swaps only.
 - Duplex / recto-verso detection.
-- Integration with the pd-prep-for-pgdp FastAPI router — that is owned by the
+- Integration with the pdomain-prep-for-pgdp FastAPI router — that is owned by the
   downstream slice `S11-B`.
 
 ---
@@ -111,7 +111,7 @@ detection side; `pd-prep-for-pgdp` owns the route and serialisation.
 - The perceptual hash algorithm must be deterministic and stable across Python
   versions so that stored proposals can be compared to re-runs.
 - Public API (`SwapProposal` fields, function signature) must be stable once
-  shipped — `pd-prep-for-pgdp` serialises the return directly.
+  shipped — `pdomain-prep-for-pgdp` serialises the return directly.
 
 ---
 
@@ -145,7 +145,7 @@ can add votes without changing the tier logic.
 
 ## 6. Decision
 
-Implement O-C. The module is `pd_book_tools/page_order.py`. The public
+Implement O-C. The module is `pdomain_book_tools/page_order.py`. The public
 surface is:
 
 ```python
@@ -187,7 +187,7 @@ access can use typed helpers in the same module.
 ### 7.1 File layout
 
 ```text
-pd_book_tools/
+pdomain_book_tools/
   page_order.py          # public module
   _page_order_impl/
     __init__.py
@@ -225,8 +225,8 @@ by list index of the first page.
 ### 7.3 `__init__` exports
 
 ```python
-# pd_book_tools/__init__.py — add to public re-exports
-from pd_book_tools.page_order import (
+# pdomain_book_tools/__init__.py — add to public re-exports
+from pdomain_book_tools.page_order import (
     SwapProposal,
     detect_out_of_order_pages,
 )
@@ -275,4 +275,4 @@ significant enough to justify it.
   `thumbnail_a_b64: str` field, or should the FastAPI route build thumbnails
   independently from `Page.image_array`? Leaning toward route-owns-thumbnails
   to keep `SwapProposal` data-only, but needs alignment with the
-  `pd-prep-for-pgdp` slice owner.
+  `pdomain-prep-for-pgdp` slice owner.

@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "inputs"
 
-# Make the local pd_book_tools package importable when this script is run
+# Make the local pdomain_book_tools package importable when this script is run
 # directly (e.g. from the repo root) without an installed editable build.
 PACKAGE_ROOT = ROOT.parents[2]  # tests/fixtures/layout_regression -> tests -> repo
 if str(PACKAGE_ROOT) not in sys.path:
@@ -40,7 +40,7 @@ def dump_case(case_name: str) -> str:
 
     import cv2
 
-    from pd_book_tools.ocr.document import Document
+    from pdomain_book_tools.ocr.document import Document
 
     doc = Document.from_dict(json.loads(json_path.read_text(encoding="utf-8")))
     page = doc.pages[0]

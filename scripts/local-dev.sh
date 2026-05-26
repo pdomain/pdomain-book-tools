@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# scripts/local-dev.sh — toggle pd-book-tools into local-dev mode.
+# scripts/local-dev.sh — toggle pdomain-book-tools into local-dev mode.
 #
-# pd-book-tools is the foundation lib (no siblings); local-dev here means
+# pdomain-book-tools is the foundation lib (no siblings); local-dev here means
 # "GPU extras active + marker present" per spec §5.3.
 #
 # Two markers are written for compatibility with both the shell scripts

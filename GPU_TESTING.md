@@ -1,6 +1,6 @@
 # GPU Testing Strategy
 
-This document explains how GPU/CUDA functionality is tested in pd-book-tools
+This document explains how GPU/CUDA functionality is tested in pdomain-book-tools
 while remaining compatible with CI environments like GitHub Actions that
 don't have GPU access.
 
@@ -194,7 +194,7 @@ class TestCupyMorphology:
         cp = cupy_module
 
         # Import actual module to test
-        from pd_book_tools.image_processing.cupy_processing.morph import dilate_image
+        from pdomain_book_tools.image_processing.cupy_processing.morph import dilate_image
 
         # Create kernel
         kernel = cp.ones((3, 3), dtype=cp.uint8)

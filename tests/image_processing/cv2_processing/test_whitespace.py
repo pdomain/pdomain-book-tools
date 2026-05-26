@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from pd_book_tools.image_processing.cv2_processing.whitespace import (
+from pdomain_book_tools.image_processing.cv2_processing.whitespace import (
     add_whitespace_percentage,
     add_whitespace_pixels,
 )

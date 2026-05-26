@@ -1,10 +1,10 @@
 # Changelog
 
-All notable changes to `pd-book-tools` are documented here.
+All notable changes to `pdomain-book-tools` are documented here.
 
 Version tags follow [Semantic Versioning](https://semver.org/).
 GitHub Releases (with attached wheel + sdist) are at
-<https://github.com/ConcaveTrillion/pd-book-tools/releases>.
+<https://github.com/pdomain/pdomain-book-tools/releases>.
 
 ---
 
@@ -20,7 +20,7 @@ GitHub Releases (with attached wheel + sdist) are at
 ## [v0.14.0] — 2026-05-22
 
 - **PEP 561 `py.typed` marker** — downstream consumers no longer require
-  `# pyright: ignore[reportMissingTypeStubs]` on `from pd_book_tools...`
+  `# pyright: ignore[reportMissingTypeStubs]` on `from pdomain_book_tools...`
   imports. Part of workspace-wide `reportMissingTypeStubs` cleanup.
 
 ---
@@ -29,13 +29,13 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ### Added
 
-- **Glyph-level annotations data model** (`pd_book_tools.ocr.glyph_annotations`)
+- **Glyph-level annotations data model** (`pdomain_book_tools.ocr.glyph_annotations`)
   — `GlyphAnnotations` dataclass with per-word side-channel metadata for
   ligatures, drop-caps, and special-character vocabulary. Closes #41.
   - `LigatureKind` enum with uppercased values; `LONG_ST` replaces the old
     `long_st` name; `OE` and `AE` entries added. Closes #163.
   - `source` provenance field on `GlyphAnnotations` (commit e0fb16d).
-- **Shared SPDX license allowlist** (`pd_book_tools.licenses`) — common
+- **Shared SPDX license allowlist** (`pdomain_book_tools.licenses`) — common
   list of approved SPDX identifiers, shared across pd-* tooling. Closes #162.
 
 ### Fixed — security review batches (#176 / #179 / #181 / #182 / #192 / #193)
@@ -70,5 +70,5 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [v0.12.0] — (prior release)
 
-See the [v0.12.0 GitHub Release](https://github.com/ConcaveTrillion/pd-book-tools/releases/tag/v0.12.0)
+See the [v0.12.0 GitHub Release](https://github.com/pdomain/pdomain-book-tools/releases/tag/v0.12.0)
 for the full set of changes included in that tag.

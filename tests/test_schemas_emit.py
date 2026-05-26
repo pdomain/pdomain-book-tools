@@ -1,4 +1,4 @@
-"""Tests for ``pd_book_tools.schemas.emit``: JSON-Schema emission CLI."""
+"""Tests for ``pdomain_book_tools.schemas.emit``: JSON-Schema emission CLI."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING
 
-from pd_book_tools.schemas.emit import PUBLIC_MODELS, emit_schemas, main
+from pdomain_book_tools.schemas.emit import PUBLIC_MODELS, emit_schemas, main
 
 if TYPE_CHECKING:
     import pytest
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 def _run_emit() -> dict:
     """Invoke the CLI in the current uv environment, parse JSON stdout."""
     proc = subprocess.run(
-        [sys.executable, "-m", "pd_book_tools.schemas.emit"],
+        [sys.executable, "-m", "pdomain_book_tools.schemas.emit"],
         capture_output=True,
         text=True,
         check=True,
@@ -136,7 +136,7 @@ def test_main_writes_json_to_stdout(capsys: pytest.CaptureFixture[str]):
 
 
 def test_main_runs_via_python_dash_m(tmp_path: object):
-    # Sanity check: ``python -m pd_book_tools.schemas.emit`` produces
+    # Sanity check: ``python -m pdomain_book_tools.schemas.emit`` produces
     # parseable JSON. We don't shell out here — main([]) is already
     # tested above — but we verify json.dump's output is deterministic
     # by emitting twice and comparing.
@@ -192,7 +192,7 @@ def test_emit_page_layout_schema_has_expected_fields():
 
 def test_emit_layout_region_roundtrip():
     """LayoutRegion round-trips through to_dict/from_dict correctly."""
-    from pd_book_tools.layout.types import LayoutRegion, RegionType
+    from pdomain_book_tools.layout.types import LayoutRegion, RegionType
 
     region = LayoutRegion(
         type=RegionType.text, L=10, R=200, T=20, B=100, confidence=0.9
@@ -209,7 +209,7 @@ def test_emit_layout_region_roundtrip():
 
 def test_emit_page_layout_roundtrip():
     """PageLayout round-trips through to_dict/from_dict correctly."""
-    from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+    from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
 
     layout = PageLayout(
         regions=[LayoutRegion(type=RegionType.text, L=0, R=100, T=0, B=50)],

@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.document import Document
-from pd_book_tools.ocr.reorganize_page_utils import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.document import Document
+from pdomain_book_tools.ocr.reorganize_page_utils import (
     build_word_seeded_row_blocks,
     validate_word_preservation,
 )
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.word import Word
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"
@@ -48,7 +48,7 @@ def test_preface_dropcap_is_tagged_and_stitched() -> None:
     """
     import cv2
 
-    from pd_book_tools.ocr.document import Document
+    from pdomain_book_tools.ocr.document import Document
 
     case = "preface-with-drop-cap"
     doc = Document.from_dict(
@@ -311,8 +311,8 @@ def test_reorganize_page_expected_text_outputs(
     # its own copy in its own timestamped folder.
     layout_json_path = INPUT_DIR / f"{case_name}.layout.json"
     if debug_pngs_enabled and layout_json_path.exists():
-        from pd_book_tools.layout.types import PageLayout
-        from pd_book_tools.layout.visualize import draw_layout_overlay
+        from pdomain_book_tools.layout.types import PageLayout
+        from pdomain_book_tools.layout.visualize import draw_layout_overlay
 
         layout = PageLayout.from_dict(
             json.loads(layout_json_path.read_text(encoding="utf-8"))

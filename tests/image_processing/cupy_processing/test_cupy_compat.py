@@ -3,10 +3,10 @@
 Regression for L-40: ``cupy-cuda12x`` is in ``[project.optional-dependencies]``
 under the ``gpu`` extra, so a CPU-only install must be able to:
 
-  1. Import ``pd_book_tools.image_processing.cupy_processing`` and every
+  1. Import ``pdomain_book_tools.image_processing.cupy_processing`` and every
      submodule under it without raising ``ImportError`` at module load time.
   2. Get a clear, actionable ``ImportError`` (mentioning ``pip install
-     pd-book-tools[gpu]``) when calling any GPU function without cupy
+     pdomain-book-tools[gpu]``) when calling any GPU function without cupy
      installed.
 
 These tests simulate the "cupy not installed" state by forcing the import
@@ -28,23 +28,23 @@ import pytest
 # Module names to scrub from sys.modules between simulations so each reload
 # re-runs the top-level import code with the current ``import cupy`` shim.
 _CUPY_PROCESSING_MODULES = [
-    "pd_book_tools.image_processing.cupy_processing",
-    "pd_book_tools.image_processing.cupy_processing._cupy_compat",
-    "pd_book_tools.image_processing.cupy_processing.canvas",
-    "pd_book_tools.image_processing.cupy_processing.colors",
-    "pd_book_tools.image_processing.cupy_processing.color_to_gray",
-    "pd_book_tools.image_processing.cupy_processing.contours",
-    "pd_book_tools.image_processing.cupy_processing.crop",
-    "pd_book_tools.image_processing.cupy_processing.deskew",
-    "pd_book_tools.image_processing.cupy_processing.edge_finding",
-    "pd_book_tools.image_processing.cupy_processing.filters",
-    "pd_book_tools.image_processing.cupy_processing.invert",
-    "pd_book_tools.image_processing.cupy_processing.morph",
-    "pd_book_tools.image_processing.cupy_processing.rescale",
-    "pd_book_tools.image_processing.cupy_processing.rotate",
-    "pd_book_tools.image_processing.cupy_processing.split",
-    "pd_book_tools.image_processing.cupy_processing.threshold",
-    "pd_book_tools.image_processing.cupy_processing.whitespace",
+    "pdomain_book_tools.image_processing.cupy_processing",
+    "pdomain_book_tools.image_processing.cupy_processing._cupy_compat",
+    "pdomain_book_tools.image_processing.cupy_processing.canvas",
+    "pdomain_book_tools.image_processing.cupy_processing.colors",
+    "pdomain_book_tools.image_processing.cupy_processing.color_to_gray",
+    "pdomain_book_tools.image_processing.cupy_processing.contours",
+    "pdomain_book_tools.image_processing.cupy_processing.crop",
+    "pdomain_book_tools.image_processing.cupy_processing.deskew",
+    "pdomain_book_tools.image_processing.cupy_processing.edge_finding",
+    "pdomain_book_tools.image_processing.cupy_processing.filters",
+    "pdomain_book_tools.image_processing.cupy_processing.invert",
+    "pdomain_book_tools.image_processing.cupy_processing.morph",
+    "pdomain_book_tools.image_processing.cupy_processing.rescale",
+    "pdomain_book_tools.image_processing.cupy_processing.rotate",
+    "pdomain_book_tools.image_processing.cupy_processing.split",
+    "pdomain_book_tools.image_processing.cupy_processing.threshold",
+    "pdomain_book_tools.image_processing.cupy_processing.whitespace",
 ]
 
 
@@ -91,7 +91,7 @@ def cupy_unavailable(monkeypatch):
 def test_cupy_compat_imports_without_cupy(cupy_unavailable):
     """``_cupy_compat`` itself must import cleanly with cupy missing."""
     compat = importlib.import_module(
-        "pd_book_tools.image_processing.cupy_processing._cupy_compat"
+        "pdomain_book_tools.image_processing.cupy_processing._cupy_compat"
     )
     assert compat.cp is None
     assert compat.cupy_available() is False
@@ -100,12 +100,12 @@ def test_cupy_compat_imports_without_cupy(cupy_unavailable):
 def test_require_cupy_raises_with_install_hint(cupy_unavailable):
     """``require_cupy()`` must raise ImportError mentioning the gpu extra."""
     compat = importlib.import_module(
-        "pd_book_tools.image_processing.cupy_processing._cupy_compat"
+        "pdomain_book_tools.image_processing.cupy_processing._cupy_compat"
     )
     with pytest.raises(ImportError) as excinfo:
         compat.require_cupy()
     msg = str(excinfo.value)
-    assert "pd-book-tools[gpu]" in msg
+    assert "pdomain-book-tools[gpu]" in msg
     assert "CuPy" in msg or "cupy" in msg.lower()
 
 
@@ -132,9 +132,9 @@ def test_calling_gpu_function_without_cupy_raises_install_hint(cupy_unavailable)
     import numpy as np
 
     deskew = importlib.import_module(
-        "pd_book_tools.image_processing.cupy_processing.deskew"
+        "pdomain_book_tools.image_processing.cupy_processing.deskew"
     )
     img = np.zeros((10, 10), dtype=np.uint8)
     with pytest.raises(ImportError) as excinfo:
         deskew.np_uint8_auto_deskew(img)
-    assert "pd-book-tools[gpu]" in str(excinfo.value)
+    assert "pdomain-book-tools[gpu]" in str(excinfo.value)

@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.word import Word
 
 
 def test_block_initialization(sample_block1):
@@ -250,7 +250,7 @@ def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1):
 
 def test_remove_ground_truth_empty_block():
     """Test remove_ground_truth method on an empty block"""
-    from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+    from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 
     empty_block = Block(
         items=[],
@@ -1029,7 +1029,7 @@ class TestR05PurgeWordsFromBlocks:
         ), [w1, w2, w3, w4]
 
     def test_shared_helper_drops_targeted_words(self):
-        from pd_book_tools.ocr.block import purge_words_from_blocks
+        from pdomain_book_tools.ocr.block import purge_words_from_blocks
 
         outer, words = self._build_tree()
         targets = {id(words[1]), id(words[2])}
@@ -1042,9 +1042,11 @@ class TestR05PurgeWordsFromBlocks:
         assert [w.text for w in line2_words] == ["d"]
 
     def test_legacy_wrappers_match_shared_helper(self):
-        from pd_book_tools.ocr.block import purge_words_from_blocks
-        from pd_book_tools.ocr.layout_aware_reorg import _purge_word_from_blocks
-        from pd_book_tools.ocr.reorganize_page_utils import _purge_words_from_blocks
+        from pdomain_book_tools.ocr.block import purge_words_from_blocks
+        from pdomain_book_tools.ocr.layout_aware_reorg import _purge_word_from_blocks
+        from pdomain_book_tools.ocr.reorganize_page_utils import (
+            _purge_words_from_blocks,
+        )
 
         # Build three independent trees, target the same word in each.
         trees = [self._build_tree() for _ in range(3)]
@@ -1062,7 +1064,7 @@ class TestR05PurgeWordsFromBlocks:
             assert [w.text for w in line_words] == ["a"]
 
     def test_empty_descendants_clear_parent_bbox(self):
-        from pd_book_tools.ocr.block import purge_words_from_blocks
+        from pdomain_book_tools.ocr.block import purge_words_from_blocks
 
         outer, words = self._build_tree()
         # Drop ALL words in para1 — line should empty, para1 should be
@@ -1222,7 +1224,7 @@ def test_block_text_two_drop_caps_in_one_line_each_fuse_their_neighbour():
 
 def test_block_does_not_alias_additional_block_attributes():
     """Block.__init__ must copy additional_block_attributes, not store by reference."""
-    from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+    from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 
     caller_dict = {"key": "value"}
     block = Block(

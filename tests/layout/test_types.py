@@ -7,7 +7,7 @@ on them as a serialization contract.
 
 import pytest
 
-from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
 
 
 def _region(**kwargs) -> LayoutRegion:

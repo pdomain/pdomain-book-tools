@@ -1,8 +1,8 @@
 """Coverage tests for block.py edge cases and error paths."""
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_word(text, x=0, y=0, w=60, h=20):

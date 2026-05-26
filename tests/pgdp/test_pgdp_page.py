@@ -3,7 +3,7 @@ import pathlib
 
 import pytest
 
-from pd_book_tools.pgdp.pgdp_results import PGDPExport, PGDPResults
+from pdomain_book_tools.pgdp.pgdp_results import PGDPExport, PGDPResults
 
 
 def test_remove_proofer_notes():

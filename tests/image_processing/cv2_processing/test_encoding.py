@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.encoding import (
+from pdomain_book_tools.image_processing.cv2_processing.encoding import (
     encode_bgr_image_as_png,
 )
 

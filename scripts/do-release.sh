@@ -22,7 +22,7 @@
 #
 # Defaults to BUMP=minor.
 #
-# Branch: defaults to `main` (pd-book-tools' default branch).
+# Branch: defaults to `main` (pdomain-book-tools' default branch).
 #
 # Escape hatches:
 #   FORCE=1     skip the three repo-state guards (dirty tree / branch /
@@ -149,5 +149,5 @@ git push origin "$RELEASE_BRANCH" --follow-tags
 
 echo ""
 echo "✅ Released $VERSION."
-echo "   Watch the release workflow: https://github.com/ConcaveTrillion/pd-book-tools/actions"
-echo "   Release page (once workflow finishes): https://github.com/ConcaveTrillion/pd-book-tools/releases/tag/$VERSION"
+echo "   Watch the release workflow: https://github.com/pdomain/pdomain-book-tools/actions"
+echo "   Release page (once workflow finishes): https://github.com/pdomain/pdomain-book-tools/releases/tag/$VERSION"

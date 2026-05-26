@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from pd_book_tools.image_processing.cv2_processing.invert import invert_image
+from pdomain_book_tools.image_processing.cv2_processing.invert import invert_image
 
 
 class TestInvertImage:

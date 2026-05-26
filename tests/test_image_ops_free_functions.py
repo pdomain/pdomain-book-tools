@@ -1,8 +1,8 @@
 """Free-function image-op tests (R-01 / R-03).
 
 The R-01/R-03 deprecation-overlap shape: free functions in
-``pd_book_tools.geometry.image_ops`` (BoundingBox-level) and
-``pd_book_tools.ocr.image_utilities`` (Word/Block/Page-level) are the
+``pdomain_book_tools.geometry.image_ops`` (BoundingBox-level) and
+``pdomain_book_tools.ocr.image_utilities`` (Word/Block/Page-level) are the
 canonical surface; the corresponding methods are preserved as thin
 wrappers for backward compatibility.
 
@@ -19,18 +19,18 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.image_ops import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.image_ops import (
     crop_bottom_bbox,
     crop_top_bbox,
     refine_bbox,
 )
-from pd_book_tools.ocr.image_utilities import (
+from pdomain_book_tools.ocr.image_utilities import (
     crop_word_bottom,
     crop_word_top,
     refine_word_bbox,
 )
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_text_image() -> np.ndarray:

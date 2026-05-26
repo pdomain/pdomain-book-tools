@@ -1,7 +1,7 @@
 """Regression locks for the MatchType enum surface.
 
 L-21: ``WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION`` was a placeholder member with
-zero consumers in pd_book_tools, the test suite, or any sibling pd-* repo.
+zero consumers in pdomain_book_tools, the test suite, or any sibling pd-* repo.
 The orphaned ``"TODO: ..."`` string following it was an expression, not a
 docstring, so the intent was not even captured. Removed in the L-21 fix.
 
@@ -14,7 +14,7 @@ re-added without a corresponding consumer.
 
 import pytest
 
-from pd_book_tools.ocr.ground_truth_matching_helpers.match_type import MatchType
+from pdomain_book_tools.ocr.ground_truth_matching_helpers.match_type import MatchType
 
 
 def test_word_nearly_equal_due_to_punctuation_not_present():

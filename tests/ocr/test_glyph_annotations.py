@@ -1,15 +1,15 @@
 """Tests for GlyphAnnotations, LigatureKind, and LigatureMark.
 
-Spec: pd-book-tools/docs/specs/05-glyph-annotations.md
-Issue: ConcaveTrillion/pd-book-tools#41
-Plan: ConcaveTrillion/pd-book-tools#163
+Spec: pdomain-book-tools/docs/specs/05-glyph-annotations.md
+Issue: pdomain/pdomain-book-tools#41
+Plan: pdomain/pdomain-book-tools#163
 """
 
 from __future__ import annotations
 
 import pytest
 
-from pd_book_tools.ocr.glyph_annotations import (
+from pdomain_book_tools.ocr.glyph_annotations import (
     GlyphAnnotations,
     LigatureKind,
     LigatureMark,
@@ -374,9 +374,9 @@ def test_glyph_annotations_roundtrip_empty():
 
 def _make_word(text: str, gt: str | None = None):
     """Helper: build a minimal Word-like object."""
-    from pd_book_tools.geometry.bounding_box import BoundingBox
-    from pd_book_tools.geometry.point import Point
-    from pd_book_tools.ocr.word import Word
+    from pdomain_book_tools.geometry.bounding_box import BoundingBox
+    from pdomain_book_tools.geometry.point import Point
+    from pdomain_book_tools.ocr.word import Word
 
     bb = BoundingBox(top_left=Point(0, 0), bottom_right=Point(10, 10))
     word = Word(text=text, bounding_box=bb)
@@ -530,7 +530,7 @@ def test_word_to_dict_includes_empty_glyph_annotations():
 
 def test_word_from_dict_roundtrip_without_glyph_annotations():
     """Old-style dicts (no glyph_annotations key) load with glyph_annotations=None."""
-    from pd_book_tools.ocr.word import Word
+    from pdomain_book_tools.ocr.word import Word
 
     word = _make_word("stand")
     d = word.to_dict()
@@ -540,7 +540,7 @@ def test_word_from_dict_roundtrip_without_glyph_annotations():
 
 
 def test_word_from_dict_roundtrip_with_glyph_annotations():
-    from pd_book_tools.ocr.word import Word
+    from pdomain_book_tools.ocr.word import Word
 
     word = _make_word("stand", "stand")
     ga = GlyphAnnotations(
@@ -556,7 +556,7 @@ def test_word_from_dict_roundtrip_with_glyph_annotations():
 
 def test_word_from_dict_roundtrip_with_empty_glyph_annotations():
     """Empty-but-set GlyphAnnotations() round-trips correctly (not collapsed to None)."""
-    from pd_book_tools.ocr.word import Word
+    from pdomain_book_tools.ocr.word import Word
 
     word = _make_word("stand")
     word.glyph_annotations = GlyphAnnotations()

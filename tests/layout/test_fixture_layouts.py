@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from pd_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
-from pd_book_tools.layout.geometry import caption_for_figure
-from pd_book_tools.layout.types import PageLayout, RegionType
+from pdomain_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
+from pdomain_book_tools.layout.geometry import caption_for_figure
+from pdomain_book_tools.layout.types import PageLayout, RegionType
 
 FIXTURES_DIR = (
     Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression" / "inputs"

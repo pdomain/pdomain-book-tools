@@ -36,7 +36,7 @@ upgrade-deps: ## Upgrade dependencies and sync local environment
 
 `uv sync --group dev` (no extras, no overrides) silently reverts a venv
 that was put into **dev-local mode** — editable sibling pd-* checkouts
-(`pd-book-tools` linked from a local working copy by the consuming
+(`pdomain-book-tools` linked from a local working copy by the consuming
 repo), `[gpu]` extras pinned, doctr-from-git, etc. — back to the
 canonical published / CPU baseline. The user discovers this only when
 their next test run uses the published wheel instead of the working
@@ -67,8 +67,8 @@ detect whether the current venv is in dev-local vs canonical mode
    the preferred mechanism.
 
    In this repo, the key package downstream repos probe is
-   **`pd-book-tools`** itself (a downstream venv is "in dev-local
-   mode" when its `pd-book-tools` install points at a local sibling
+   **`pdomain-book-tools`** itself (a downstream venv is "in dev-local
+   mode" when its `pdomain-book-tools` install points at a local sibling
    checkout). For *this* repo's own venv, the equivalent question is
    "is doctr / opencv-python / cupy / any sibling-style editable
    override in place?" — see §4 for the in-repo check.
@@ -88,8 +88,8 @@ Default behavior when dev-local mode is detected: **refuse with a
 clear message.** Example:
 
 ```text
-make: *** venv is in dev-local mode (pd-book-tools editable from
-       /workspaces/ocr-container/pd-book-tools, [gpu] extra active).
+make: *** venv is in dev-local mode (pdomain-book-tools editable from
+       /workspaces/ocr-container/pdomain-book-tools, [gpu] extra active).
        Refusing to clobber it with `uv sync --group dev`.
 
        Run `make upgrade-deps-local` to upgrade and restore dev-local
@@ -127,16 +127,16 @@ NOT rely on GNU-specific `grep`/`sed` flags or Linux-only paths.
 
 This is the load-bearing part of this spec for sibling repos:
 
-**Downstream pd-* repos (`pd-ocr-cli`, `pd-ocr-labeler`,
-`pd-ocr-labeler-spa`, `pd-ocr-trainer`, `pd-prep-for-pgdp`) probe
-`uv pip show pd-book-tools` and look for an `Editable project
+**Downstream pd-* repos (`pdomain-ocr-cli`, `pd-ocr-labeler`,
+`pdomain-ocr-labeler-spa`, `pd-ocr-trainer`, `pdomain-prep-for-pgdp`) probe
+`uv pip show pdomain-book-tools` and look for an `Editable project
 location:` line.** If present, the venv is treated as dev-local.
 
 For that probe to be meaningful, **the `make dev-local` recipe in
 *this* repo, and any equivalent in downstream repos that installs
-`pd-book-tools` from a local checkout, MUST install `pd-book-tools`
-editably** (`uv pip install -e ../pd-book-tools` or equivalent).
-A non-editable `uv pip install ../pd-book-tools` would still pull
+`pdomain-book-tools` from a local checkout, MUST install `pdomain-book-tools`
+editably** (`uv pip install -e ../pdomain-book-tools` or equivalent).
+A non-editable `uv pip install ../pdomain-book-tools` would still pull
 from the local checkout but would not surface the
 `Editable project location` field, breaking the detection contract
 silently.
@@ -199,7 +199,7 @@ final implementation.
 ## 7. References
 
 - Workspace memory:
-  `/workspaces/ocr-container/.claude/agent-memory/pd-book-tools/release_strategy_self_hosted_index.md`
+  `/workspaces/ocr-container/.claude/agent-memory/pdomain-book-tools/release_strategy_self_hosted_index.md`
 - Current `upgrade-deps` recipe: `Makefile:97-102`.
 - Conditional GPU sync precedent: `Makefile:87-95` (`sync-gpu`).
 

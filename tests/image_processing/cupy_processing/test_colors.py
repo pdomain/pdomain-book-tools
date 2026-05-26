@@ -9,7 +9,7 @@ import pytest
 class TestBgrToGrayGpu:
     def test_output_shape_and_dtype(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
         )
 
@@ -20,7 +20,7 @@ class TestBgrToGrayGpu:
 
     def test_white_stays_white(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
         )
 
@@ -30,7 +30,7 @@ class TestBgrToGrayGpu:
 
     def test_black_stays_black(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
         )
 
@@ -44,7 +44,7 @@ class TestBgrToGrayGpu:
         pytest.importorskip("cv2")
         import cv2
 
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
         )
 
@@ -55,7 +55,7 @@ class TestBgrToGrayGpu:
         assert np.max(np.abs(cpu - gpu)) <= 1
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             np_uint8_bgr_to_gray,
         )
 
@@ -71,7 +71,7 @@ class TestBgrToGrayGpu:
 class TestGrayToBgrGpu:
     def test_output_shape_and_dtype(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             gray_to_bgr_gpu,
         )
 
@@ -82,7 +82,7 @@ class TestGrayToBgrGpu:
 
     def test_channels_are_equal(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             gray_to_bgr_gpu,
         )
 
@@ -94,7 +94,7 @@ class TestGrayToBgrGpu:
         assert cp.array_equal(out[:, :, 2], img)
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             np_uint8_gray_to_bgr,
         )
 
@@ -109,7 +109,9 @@ class TestGrayToBgrGpu:
 class TestBgrToRgbGpu:
     def test_channel_order_reversed(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import bgr_to_rgb_gpu
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
+            bgr_to_rgb_gpu,
+        )
 
         img = cp.zeros((5, 5, 3), dtype=cp.uint8)
         img[:, :, 0] = 10  # B
@@ -122,7 +124,7 @@ class TestBgrToRgbGpu:
 
     def test_round_trip_is_identity(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_rgb_gpu,
             rgb_to_bgr_gpu,
         )
@@ -136,7 +138,9 @@ class TestBgrToRgbGpu:
         pytest.importorskip("cv2")
         import cv2
 
-        from pd_book_tools.image_processing.cupy_processing.colors import bgr_to_rgb_gpu
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
+            bgr_to_rgb_gpu,
+        )
 
         rng = np.random.default_rng(7)
         img_np = rng.integers(0, 256, (20, 20, 3), dtype=np.uint8)
@@ -145,7 +149,7 @@ class TestBgrToRgbGpu:
         np.testing.assert_array_equal(cpu, gpu)
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.colors import (
+        from pdomain_book_tools.image_processing.cupy_processing.colors import (
             np_uint8_bgr_to_rgb,
         )
 

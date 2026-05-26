@@ -2,13 +2,13 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#26
+> **Spec-Issue**: pdomain/pdomain-book-tools#26
 
-How `pd-book-tools` decides whether a page image needs to be rotated before
+How `pdomain-book-tools` decides whether a page image needs to be rotated before
 OCR, and what the resulting `Page` records about that decision.
 
 The implementation lives in
-[`pd_book_tools/ocr/rotation.py`](../../pd_book_tools/ocr/rotation.py).
+[`pdomain_book_tools/ocr/rotation.py`](../../pdomain_book_tools/ocr/rotation.py).
 `Document.from_image_ocr_via_doctr` consumes it as the default code path
 (opt out with `auto_rotate=False`).
 
