@@ -57,7 +57,7 @@ def test_canonical_mode_returns_canonical(cdl, tmp_path):
     dev` of this lockfile should produce this shape."""
     project_root = tmp_path
     pkgs = [
-        _pkg("pd-book-tools", editable_location=str(project_root)),
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
         _pkg("torch"),
         _pkg("python-doctr", "1.0.2"),
     ]
@@ -72,7 +72,7 @@ def test_gpu_extra_flags_dev_local(cdl, tmp_path):
     would uninstall it."""
     project_root = tmp_path
     pkgs = [
-        _pkg("pd-book-tools", editable_location=str(project_root)),
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
         _pkg("cupy-cuda12x", "14.0.1"),
     ]
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
@@ -85,10 +85,10 @@ def test_sibling_editable_flags_dev_local(cdl, tmp_path):
     dev-local. This is the canonical downstream signal — the spec
     §3 contract."""
     project_root = tmp_path
-    sibling_root = tmp_path.parent / "pd-ocr-cli"
+    sibling_root = tmp_path.parent / "pdomain-ocr-cli"
     pkgs = [
-        _pkg("pd-book-tools", editable_location=str(project_root)),
-        _pkg("pd-ocr-cli", editable_location=str(sibling_root)),
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
+        _pkg("pdomain-ocr-cli", editable_location=str(sibling_root)),
     ]
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
     assert result.is_dev_local is True
@@ -99,7 +99,7 @@ def test_project_root_editable_does_not_flag(cdl, tmp_path):
     """The project's own editable install is normal (every dev venv has
     it) — it MUST NOT count as a dev-local override."""
     project_root = tmp_path
-    pkgs = [_pkg("pd-book-tools", editable_location=str(project_root))]
+    pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
     assert result.is_dev_local is False
 
@@ -110,7 +110,7 @@ def test_marker_file_flags_dev_local(cdl, tmp_path):
     project_root = tmp_path
     marker = tmp_path / ".pd-dev-local"
     marker.write_text("dev-local since 2026-05-07\n")
-    pkgs = [_pkg("pd-book-tools", editable_location=str(project_root))]
+    pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=marker)
     assert result.is_dev_local is True
     assert any("marker" in r.lower() for r in result.reasons)
@@ -119,7 +119,7 @@ def test_marker_file_flags_dev_local(cdl, tmp_path):
 def test_env_var_flags_dev_local(cdl, tmp_path, monkeypatch):
     """Spec §2.2.3: ``PD_DEV_LOCAL=1`` is the last-resort opt-in flag."""
     project_root = tmp_path
-    pkgs = [_pkg("pd-book-tools", editable_location=str(project_root))]
+    pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     monkeypatch.setenv("PD_DEV_LOCAL", "1")
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
     assert result.is_dev_local is True
@@ -130,7 +130,7 @@ def test_env_var_zero_does_not_flag(cdl, tmp_path, monkeypatch):
     """``PD_DEV_LOCAL=0`` (or any falsey value) MUST NOT flag — only
     truthy values opt in."""
     project_root = tmp_path
-    pkgs = [_pkg("pd-book-tools", editable_location=str(project_root))]
+    pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     monkeypatch.setenv("PD_DEV_LOCAL", "0")
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
     assert result.is_dev_local is False
@@ -141,10 +141,10 @@ def test_multiple_signals_collect_all_reasons(cdl, tmp_path):
     reasons appear in the report so the user understands what would
     be clobbered."""
     project_root = tmp_path
-    sibling_root = tmp_path.parent / "pd-ocr-cli"
+    sibling_root = tmp_path.parent / "pdomain-ocr-cli"
     pkgs = [
-        _pkg("pd-book-tools", editable_location=str(project_root)),
-        _pkg("pd-ocr-cli", editable_location=str(sibling_root)),
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
+        _pkg("pdomain-ocr-cli", editable_location=str(sibling_root)),
         _pkg("cupy-cuda12x", "14.0.1"),
     ]
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
@@ -162,7 +162,7 @@ def test_cli_exit_zero_when_canonical(cdl, tmp_path, monkeypatch, capsys):
     use ``if scripts/check_dev_local.py; then ... ; fi``-style logic.
     Spec §2.4 — canonical-mode behavior unchanged."""
     project_root = tmp_path
-    pkgs = [_pkg("pd-book-tools", editable_location=str(project_root))]
+    pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
     monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
     monkeypatch.setattr(cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-missing")
@@ -175,10 +175,10 @@ def test_cli_exit_one_when_dev_local(cdl, tmp_path, monkeypatch):
     """``check_dev_local`` exits 1 when dev-local so the Makefile can
     branch and refuse to run a clobbering ``uv sync``."""
     project_root = tmp_path
-    sibling_root = tmp_path.parent / "pd-ocr-cli"
+    sibling_root = tmp_path.parent / "pdomain-ocr-cli"
     pkgs = [
-        _pkg("pd-book-tools", editable_location=str(project_root)),
-        _pkg("pd-ocr-cli", editable_location=str(sibling_root)),
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
+        _pkg("pdomain-ocr-cli", editable_location=str(sibling_root)),
     ]
     monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
     monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
@@ -193,7 +193,7 @@ def test_cli_quiet_flag_suppresses_output(cdl, tmp_path, monkeypatch, capsys):
     can be used purely for its exit code."""
     project_root = tmp_path
     pkgs = [
-        _pkg("pd-book-tools", editable_location=str(project_root)),
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
         _pkg("cupy-cuda12x", "14.0.1"),
     ]
     monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
@@ -229,7 +229,7 @@ class TestMarkerFilenameConsistency:
         marker.touch()
 
         pkgs = [
-            _pkg("pd-book-tools", editable_location=str(project_root)),
+            _pkg("pdomain-book-tools", editable_location=str(project_root)),
             _pkg("torch"),
         ]
         monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
@@ -249,7 +249,7 @@ class TestMarkerFilenameConsistency:
         marker file was never written (e.g. if local-dev.sh ran before #200 fix)."""
         project_root = tmp_path
         pkgs = [
-            _pkg("pd-book-tools", editable_location=str(project_root)),
+            _pkg("pdomain-book-tools", editable_location=str(project_root)),
             _pkg("cupy-cuda12x", "14.0.1"),
         ]
         monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
@@ -269,7 +269,7 @@ class TestMarkerFilenameConsistency:
         upgrade-deps to proceed (exit 0)."""
         project_root = tmp_path
         pkgs = [
-            _pkg("pd-book-tools", editable_location=str(project_root)),
+            _pkg("pdomain-book-tools", editable_location=str(project_root)),
             _pkg("torch"),
             _pkg("numpy"),
         ]

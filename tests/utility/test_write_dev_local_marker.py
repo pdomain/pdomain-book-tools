@@ -119,7 +119,7 @@ def test_write_marker_round_trips_with_check_dev_local(wm, tmp_path):
     project_root = tmp_path
     pkgs = [
         {
-            "name": "pd-book-tools",
+            "name": "pdomain-book-tools",
             "version": "0.0.0",
             "editable_project_location": str(project_root),
         }

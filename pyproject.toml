@@ -6,7 +6,7 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "pd-book-tools"
+name = "pdomain-book-tools"
 dynamic = ["version"]
 description = "Python tools for working with public domain book scans"
 authors = [
@@ -24,7 +24,7 @@ dependencies = [
     "opencv-contrib-python>=4.12.0.88",
     "pandas>=2.2.3",
     # Pillow was previously a transitive dep (via matplotlib / others). It is
-    # now declared directly because pd_book_tools owns its image-format
+    # now declared directly because pdomain_book_tools owns its image-format
     # contract: pillow-heif / pillow-avif-plugin both register decoders with
     # Pillow at import time, so we need an explicit version contract.
     "Pillow>=10.0",
@@ -52,7 +52,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # CUDA-12-only GPU acceleration. Opt-in to avoid breaking CPU-only installs
-# (CI, macOS, CPU-only Linux). Install with: pip install 'pd-book-tools[gpu]'
+# (CI, macOS, CPU-only Linux). Install with: pip install 'pdomain-book-tools[gpu]'
 gpu = [
     "cupy-cuda12x>=13.4.1",
     "opencv-cuda>=0.0.2",
@@ -71,16 +71,16 @@ dev = [
 
 
 [project.urls]
-Homepage = "https://github.com/ConcaveTrillion/pd-book-tools"
-Repository = "https://github.com/ConcaveTrillion/pd-book-tools"
+Homepage = "https://github.com/pdomain/pdomain-book-tools"
+Repository = "https://github.com/pdomain/pdomain-book-tools"
 
 [tool.hatch.version]
 source = "vcs"
 
 # Generated at build time; do not edit. Tracked in .gitignore.
-# Importable as `from pd_book_tools._version import __version__, version`.
+# Importable as `from pdomain_book_tools._version import __version__, version`.
 [tool.hatch.build.hooks.vcs]
-version-file = "pd_book_tools/_version.py"
+version-file = "pdomain_book_tools/_version.py"
 
 [tool.uv.sources]
 # Pin to an immutable commit SHA — do not use a bare branch/tag reference.
@@ -89,7 +89,7 @@ version-file = "pd_book_tools/_version.py"
 python-doctr = { git = "https://github.com/mindee/doctr.git", rev = "390330ebe4fe25f214d84df89dc0f9b4dcdbf447" }
 
 [tool.coverage.run]
-source = ["pd_book_tools"]
+source = ["pdomain_book_tools"]
 branch = true
 omit = [
     "*/tests/*",
@@ -217,7 +217,7 @@ ignore = [
 convention = "google"
 
 [tool.ruff.lint.isort]
-known-first-party = ["pd_book_tools"]
+known-first-party = ["pdomain_book_tools"]
 
 [tool.ruff.lint.per-file-ignores]
 # Tests: assert is the idiom (S101); magic numbers common (PLR2004); no
@@ -254,60 +254,60 @@ known-first-party = ["pd_book_tools"]
 "tests/utility/test_timing.py" = ["N802"]
 "tests/hf/test_hf.py" = ["N818"]  # _NotFound: test-internal sentinel, not a public API
 # Enum members are list-typed values; RUF012 incorrectly treats them as mutable class attributes
-"pd_book_tools/ocr/ground_truth_matching_helpers/character_groups.py" = ["RUF012"]
+"pdomain_book_tools/ocr/ground_truth_matching_helpers/character_groups.py" = ["RUF012"]
 # Heavy OCR pipeline files: annotation debt (ANN) + docstring debt (D) +
 # logging string-concatenation (G003/G004) + BLE/TRY patterns not touched
 # in this rollout. Add individually as each file gets a focused pass.
-"pd_book_tools/ocr/page.py" = ["N811", "E402", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
-"pd_book_tools/ocr/reorganize_page_utils.py" = ["N803", "N806", "N811", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
-"pd_book_tools/ocr/ground_truth_matching.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "PLW0603"]
-"pd_book_tools/geometry/bounding_box.py" = ["N802", "F401", "ANN", "D", "G003", "G004", "S108"]
-"pd_book_tools/ocr/document.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
-"pd_book_tools/pgdp/pgdp_results.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
-"pd_book_tools/ocr/doctr_support.py" = ["F401", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
-"pd_book_tools/ocr/word.py" = ["ANN", "D", "G003", "G004", "PERF401", "BLE001"]
-"pd_book_tools/geometry/point.py" = ["N806", "ANN", "D"]
-"pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "S108"]
-"pd_book_tools/ocr/block.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
-"pd_book_tools/ocr/image_utilities.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY"]
-"pd_book_tools/layout/types.py" = ["ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/color_to_gray.py" = ["N806", "ANN", "D", "G003", "G004"]
-"pd_book_tools/hf/download.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "S110"]
-"pd_book_tools/hf/models.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY"]
-"pd_book_tools/image_processing/cv2_processing/canvas.py" = ["ANN", "D", "G003", "G004"]
-"pd_book_tools/image_processing/cv2_processing/edge_finding.py" = ["N806", "ANN", "D", "G003", "G004"]
-"pd_book_tools/image_processing/cv2_processing/rescale.py" = ["ANN", "D", "G003", "G004"]
-"pd_book_tools/utility/timing.py" = ["N803", "ANN", "D", "G003", "G004"]
-"pd_book_tools/image_processing/cupy_processing/deskew.py" = ["N806", "ANN", "D", "G003", "G004"]
-"pd_book_tools/ocr/dropcap.py" = ["N806", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
-"pd_book_tools/ocr/layout_aware_reorg.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
-"pd_book_tools/layout/registry.py" = ["ANN", "D", "G003", "G004"]
-"pd_book_tools/layout/visualize.py" = ["ANN", "D", "G003", "G004"]
-"pd_book_tools/ocr/cv2_tesseract.py" = ["N816", "ANN", "D", "G003", "G004"]
-"pd_book_tools/ocr/review.py" = ["ANN", "D"]
-"pd_book_tools/layout/geometry.py" = ["N806", "ANN", "D", "G003", "G004"]
-"pd_book_tools/image_processing/formats.py" = ["F401", "ANN", "D", "BLE001"]
-"pd_book_tools/image_processing/external_tools.py" = ["N803", "ANN", "D", "G003", "G004", "BLE001", "S607"]
-"pd_book_tools/utility/ipynb_widgets.py" = ["ANN", "D"]
-"pd_book_tools/image_processing/cv2_processing/contours.py" = ["N806", "ANN", "D", "G003", "G004"]
-"pd_book_tools/image_processing/cv2_processing/crop.py" = ["N803", "N806", "ANN", "D"]
-"pd_book_tools/image_processing/cv2_processing/rotate.py" = ["N803", "N806", "ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/contours.py" = ["N806", "ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/crop.py" = ["N803", "N806", "ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/edge_finding.py" = ["N806", "ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/filters.py" = ["ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/morph.py" = ["ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/rescale.py" = ["ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/rotate.py" = ["ANN", "D"]
-"pd_book_tools/image_processing/cupy_processing/threshold.py" = ["ANN", "D"]
-"pd_book_tools/layout/adapters/pp_doclayout.py" = ["ANN", "D"]
-"pd_book_tools/layout/_mappings.py" = ["ANN", "D"]
-"pd_book_tools/ocr/ground_truth_matching_helpers/match_helpers.py" = ["ANN", "D", "PERF401"]
-"pd_book_tools/pgdp/pgdp_page_image.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "S314", "S307"]
+"pdomain_book_tools/ocr/page.py" = ["N811", "E402", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
+"pdomain_book_tools/ocr/reorganize_page_utils.py" = ["N803", "N806", "N811", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
+"pdomain_book_tools/ocr/ground_truth_matching.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "PLW0603"]
+"pdomain_book_tools/geometry/bounding_box.py" = ["N802", "F401", "ANN", "D", "G003", "G004", "S108"]
+"pdomain_book_tools/ocr/document.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pdomain_book_tools/pgdp/pgdp_results.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
+"pdomain_book_tools/ocr/doctr_support.py" = ["F401", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pdomain_book_tools/ocr/word.py" = ["ANN", "D", "G003", "G004", "PERF401", "BLE001"]
+"pdomain_book_tools/geometry/point.py" = ["N806", "ANN", "D"]
+"pdomain_book_tools/image_processing/cv2_processing/perspective_adjustment.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "S108"]
+"pdomain_book_tools/ocr/block.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
+"pdomain_book_tools/ocr/image_utilities.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pdomain_book_tools/layout/types.py" = ["ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/color_to_gray.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/hf/download.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "S110"]
+"pdomain_book_tools/hf/models.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pdomain_book_tools/image_processing/cv2_processing/canvas.py" = ["ANN", "D", "G003", "G004"]
+"pdomain_book_tools/image_processing/cv2_processing/edge_finding.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/image_processing/cv2_processing/rescale.py" = ["ANN", "D", "G003", "G004"]
+"pdomain_book_tools/utility/timing.py" = ["N803", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/image_processing/cupy_processing/deskew.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/ocr/dropcap.py" = ["N806", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
+"pdomain_book_tools/ocr/layout_aware_reorg.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
+"pdomain_book_tools/layout/registry.py" = ["ANN", "D", "G003", "G004"]
+"pdomain_book_tools/layout/visualize.py" = ["ANN", "D", "G003", "G004"]
+"pdomain_book_tools/ocr/cv2_tesseract.py" = ["N816", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/ocr/review.py" = ["ANN", "D"]
+"pdomain_book_tools/layout/geometry.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/image_processing/formats.py" = ["F401", "ANN", "D", "BLE001"]
+"pdomain_book_tools/image_processing/external_tools.py" = ["N803", "ANN", "D", "G003", "G004", "BLE001", "S607"]
+"pdomain_book_tools/utility/ipynb_widgets.py" = ["ANN", "D"]
+"pdomain_book_tools/image_processing/cv2_processing/contours.py" = ["N806", "ANN", "D", "G003", "G004"]
+"pdomain_book_tools/image_processing/cv2_processing/crop.py" = ["N803", "N806", "ANN", "D"]
+"pdomain_book_tools/image_processing/cv2_processing/rotate.py" = ["N803", "N806", "ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/contours.py" = ["N806", "ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/crop.py" = ["N803", "N806", "ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/edge_finding.py" = ["N806", "ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/filters.py" = ["ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/morph.py" = ["ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/rescale.py" = ["ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/rotate.py" = ["ANN", "D"]
+"pdomain_book_tools/image_processing/cupy_processing/threshold.py" = ["ANN", "D"]
+"pdomain_book_tools/layout/adapters/pp_doclayout.py" = ["ANN", "D"]
+"pdomain_book_tools/layout/_mappings.py" = ["ANN", "D"]
+"pdomain_book_tools/ocr/ground_truth_matching_helpers/match_helpers.py" = ["ANN", "D", "PERF401"]
+"pdomain_book_tools/pgdp/pgdp_page_image.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "S314", "S307"]
 
 [tool.basedpyright]
 # Include source, tests, and scripts. Match the layout this repo uses.
-include = ["pd_book_tools", "tests", "scripts"]
+include = ["pdomain_book_tools", "tests", "scripts"]
 exclude = ["**/__pycache__", "**/.venv", "**/node_modules"]
 
 # "recommended" is the workspace-canonical strict mode per 2026-05-17 decisions.
@@ -316,7 +316,7 @@ exclude = ["**/__pycache__", "**/.venv", "**/node_modules"]
 typeCheckingMode = "recommended"
 # Warnings are gated via a baseline file (.basedpyright/baseline.json) that grandfathers
 # the ~3365 existing warnings from CuPy/cv2/DocTR stub gaps. New warnings beyond the
-# baseline will fail CI. Regenerate the baseline with: uv run basedpyright pd_book_tools --writebaseline
+# baseline will fail CI. Regenerate the baseline with: uv run basedpyright pdomain_book_tools --writebaseline
 failOnWarnings = true
 
 # Import cycles are structural (geometry↔OCR protocol types, etc.) and
@@ -342,7 +342,7 @@ addopts = [
     "-ra",                       # show short summary of all non-pass outcomes
     "--strict-markers",          # fail on unknown markers
     "--strict-config",           # fail on unknown pytest config keys
-    "--cov=pd_book_tools",
+    "--cov=pdomain_book_tools",
     "--cov-branch",              # measure branch coverage (gates except-path testing)
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html",

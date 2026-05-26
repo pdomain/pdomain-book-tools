@@ -1,4 +1,4 @@
-"""GPU tests for pd-book-tools.
+"""GPU tests for pdomain-book-tools.
 
 This module contains tests for GPU/CUDA functionality that automatically skip
 when GPU hardware or dependencies are not available, making them CI-friendly.

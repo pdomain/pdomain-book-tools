@@ -7,7 +7,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.rescale import (
+from pdomain_book_tools.image_processing.cv2_processing.rescale import (
     rescale_image,
 )
 
@@ -37,7 +37,7 @@ class TestRescaleImage:
     def test_signature_has_no_aspect_ratio_param(self):
         # The deprecated `aspect_ratio` parameter was removed entirely.
         # Aspect-shape control is applied downstream via
-        # `map_content_onto_scaled_canvas` (in pd-prep-for-pgdp), not at
+        # `map_content_onto_scaled_canvas` (in pdomain-prep-for-pgdp), not at
         # rescale time. Any future re-introduction must use a new name
         # (e.g. `long_side_clamp`) — see ROADMAP "Done" entry.
         params = inspect.signature(rescale_image).parameters

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pydantic import TypeAdapter
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
 
 
 def _bbox() -> BoundingBox:

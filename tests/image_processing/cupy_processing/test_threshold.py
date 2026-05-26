@@ -6,7 +6,9 @@ import pytest
 
 @pytest.fixture
 def cupy_threshold(cupy_module):
-    from pd_book_tools.image_processing.cupy_processing import threshold as thresh_mod
+    from pdomain_book_tools.image_processing.cupy_processing import (
+        threshold as thresh_mod,
+    )
 
     return thresh_mod, cupy_module
 

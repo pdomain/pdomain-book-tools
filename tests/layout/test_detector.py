@@ -10,14 +10,14 @@ import contextlib
 import numpy as np
 import pytest
 
-from pd_book_tools.layout.detector import ContourDetector, NullDetector
-from pd_book_tools.layout.registry import (
+from pdomain_book_tools.layout.detector import ContourDetector, NullDetector
+from pdomain_book_tools.layout.registry import (
     clear_detector_cache,
     get_detector,
     register_detector,
     unregister_detector,
 )
-from pd_book_tools.layout.types import PageLayout, RegionType
+from pdomain_book_tools.layout.types import PageLayout, RegionType
 
 
 @pytest.fixture(autouse=True)
@@ -149,7 +149,7 @@ class TestRegistry:
         # through a single _build invocation.
         import threading
 
-        from pd_book_tools.layout import registry as registry_mod
+        from pdomain_book_tools.layout import registry as registry_mod
 
         clear_detector_cache()
         build_calls = {"n": 0}
@@ -190,7 +190,7 @@ class TestDetectorFailureHardening:
     """Detector failure hardening (ROADMAP `Detector failure hardening`).
 
     ``get_detector(..., on_error=...)`` lets batch callers (e.g.
-    ``pd-prep-for-pgdp``) survive transient build failures (network,
+    ``pdomain-prep-for-pgdp``) survive transient build failures (network,
     OOM, missing weights) by falling back to a ``NullDetector`` instead
     of aborting a long-running run. Default stays ``"raise"`` so the
     CLI's existing fail-fast behaviour is preserved.
@@ -221,7 +221,9 @@ class TestDetectorFailureHardening:
         import logging
 
         register_detector("failing-x", self._failing_factory())
-        with caplog.at_level(logging.WARNING, logger="pd_book_tools.layout.registry"):
+        with caplog.at_level(
+            logging.WARNING, logger="pdomain_book_tools.layout.registry"
+        ):
             det = get_detector("failing-x", on_error="log_and_null")
         # Wrapped in _TimingDetector but exposes a NullDetector inner.
         assert det is not None
@@ -276,7 +278,9 @@ class TestDetectorFailureHardening:
     def test_unknown_key_with_log_and_null_still_falls_back(self, caplog):
         import logging
 
-        with caplog.at_level(logging.WARNING, logger="pd_book_tools.layout.registry"):
+        with caplog.at_level(
+            logging.WARNING, logger="pdomain_book_tools.layout.registry"
+        ):
             det = get_detector("nonexistent-detector", on_error="log_and_null")
         layout = det.detect(_blank_page(50, 80))
         assert layout.regions == []
@@ -303,7 +307,7 @@ class TestDetectorFailureHardening:
             marker = sentinel
 
             def detect(self, source):
-                from pd_book_tools.layout.types import LayoutResult
+                from pdomain_book_tools.layout.types import LayoutResult
 
                 return LayoutResult(regions=[], image_width=1, image_height=1)
 
@@ -322,7 +326,7 @@ class TestDetectorFailureHardening:
         callers (``_TimingDetector`` wrapping the user inner) propagate so
         the consumer can decide whether to swallow per-page exceptions.
         """
-        from pd_book_tools.layout.registry import _TimingDetector
+        from pdomain_book_tools.layout.registry import _TimingDetector
 
         class _Boom:
             def detect(self, source):

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pd_book_tools.image_processing.cv2_processing.split import (
+from pdomain_book_tools.image_processing.cv2_processing.split import (
     split_x_columns,
     split_y_rows,
 )

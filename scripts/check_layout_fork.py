@@ -29,7 +29,7 @@ UPSTREAM = "PaddlePaddle/PP-DocLayout_plus-L_safetensors"
 FORK = "CT2534/PP-DocLayout_plus-L"
 ADAPTER = (
     Path(__file__).resolve().parents[1]
-    / "pd_book_tools/layout/adapters/pp_doclayout.py"
+    / "pdomain_book_tools/layout/adapters/pp_doclayout.py"
 )
 
 

@@ -9,7 +9,7 @@ import pytest
 class TestAddWhitespacePixelsGpu:
     def test_output_shape_increases_correctly(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
         )
 
@@ -21,7 +21,7 @@ class TestAddWhitespacePixelsGpu:
 
     def test_border_is_white(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
         )
 
@@ -34,7 +34,7 @@ class TestAddWhitespacePixelsGpu:
 
     def test_original_content_preserved(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
         )
 
@@ -48,7 +48,7 @@ class TestAddWhitespacePixelsGpu:
 
     def test_color_image_supported(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
         )
 
@@ -61,10 +61,10 @@ class TestAddWhitespacePixelsGpu:
 
     def test_matches_cpu_reference(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cv2_processing.whitespace import (
             add_whitespace_pixels,
         )
 
@@ -76,7 +76,7 @@ class TestAddWhitespacePixelsGpu:
 
     def test_zero_padding_is_noop(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
         )
 
@@ -90,7 +90,7 @@ class TestAddWhitespacePixelsGpu:
 class TestAddWhitespacePercentageGpu:
     def test_percentage_converts_to_pixels(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_percentage_gpu,
         )
 
@@ -105,7 +105,7 @@ class TestAddWhitespacePercentageGpu:
 @pytest.mark.cupy
 class TestNpUint8AddWhitespacePixels:
     def test_returns_numpy_array(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.whitespace import (
+        from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             np_uint8_add_whitespace_pixels,
         )
 

@@ -40,7 +40,7 @@ _GPU_EXTRA_PACKAGES = frozenset({"cupy-cuda12x", "opencv-cuda"})
 
 # This package is the project itself; its editable install is normal in
 # every dev venv and MUST NOT be flagged as dev-local on its own.
-_THIS_PROJECT_NAME = "pd-book-tools"
+_THIS_PROJECT_NAME = "pdomain-book-tools"
 
 
 @dataclass(frozen=True)

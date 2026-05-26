@@ -1373,7 +1373,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pd-book-tools"
+name = "pdomain-book-tools"
 source = { editable = "." }
 dependencies = [
     { name = "huggingface-hub" },

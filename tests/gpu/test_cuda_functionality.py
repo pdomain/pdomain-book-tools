@@ -1,4 +1,4 @@
-"""GPU functionality tests for pd-book-tools.
+"""GPU functionality tests for pdomain-book-tools.
 
 This module contains comprehensive tests for GPU/CUDA functionality including:
 - CuPy-based image processing operations (dilate, erode, morph_fill)
@@ -122,7 +122,7 @@ class TestCupyProcessing:
 
         # Import the actual module we want to test
         try:
-            from pd_book_tools.image_processing.cupy_processing.morph import (
+            from pdomain_book_tools.image_processing.cupy_processing.morph import (
                 dilate,
                 erode,
                 morph_fill,

@@ -5,7 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
-from pd_book_tools.image_processing.cv2_processing.contours import (
+from pdomain_book_tools.image_processing.cv2_processing.contours import (
     find_and_draw_contours,
     remove_small_contours,
 )
@@ -74,7 +74,7 @@ class TestFindAndDrawContours:
         output pixel has B == G == R == original_gray_value across the
         entire image, including non-zero intensities.
         """
-        from pd_book_tools.image_processing.cv2_processing import contours as mod
+        from pdomain_book_tools.image_processing.cv2_processing import contours as mod
 
         # Distinct non-zero grayscale intensities so the channel-equality
         # check is non-trivial (an all-zero image trivially satisfies it).
@@ -317,7 +317,7 @@ class TestRemoveSmallContours:
         must remain documented so future maintainers don't quietly delete
         the escape-hatch contract.
         """
-        from pd_book_tools.image_processing.cv2_processing.contours import (
+        from pdomain_book_tools.image_processing.cv2_processing.contours import (
             remove_small_contours as cv2_fn,
         )
 

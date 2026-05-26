@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.review import ReviewMetadata
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.review import ReviewMetadata
+from pdomain_book_tools.ocr.word import Word
 
 
 def _bbox():

@@ -7,8 +7,8 @@ test with ``pytest.mark.slow`` so ``-m 'not slow'`` skips it.
 import numpy as np
 import pytest
 
-from pd_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
-from pd_book_tools.layout.types import LayoutRegion, RegionType
+from pdomain_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
+from pdomain_book_tools.layout.types import LayoutRegion, RegionType
 
 
 def test_mapping_targets_are_known_region_types():
@@ -36,7 +36,7 @@ class TestClipBoxToImageBounds:
     """
 
     def _import_helper(self):
-        from pd_book_tools.layout.adapters.pp_doclayout import _clip_box_to_bounds
+        from pdomain_book_tools.layout.adapters.pp_doclayout import _clip_box_to_bounds
 
         return _clip_box_to_bounds
 
@@ -100,7 +100,7 @@ class TestAdapterClipsOutOfBoundsBoxes:
         img_width, img_height = 800, 1200
 
         # Directly simulate the clip-and-build logic
-        from pd_book_tools.layout.adapters.pp_doclayout import _clip_box_to_bounds
+        from pdomain_book_tools.layout.adapters.pp_doclayout import _clip_box_to_bounds
 
         x1, y1, x2, y2 = _clip_box_to_bounds(
             10.0, 20.0, 900.0, 1500.0, img_width=img_width, img_height=img_height
@@ -124,7 +124,7 @@ def test_smoke_load_and_infer_blank_page():
     Marked slow because the first call downloads ~132 MB; skip with
     ``-m 'not slow'``.
     """
-    from pd_book_tools.layout.adapters.pp_doclayout import (
+    from pdomain_book_tools.layout.adapters.pp_doclayout import (
         PPDocLayoutPlusLDetector,
     )
 
@@ -158,7 +158,9 @@ class TestCheckpointTrustBoundary:
     """
 
     def _get_cls(self):
-        from pd_book_tools.layout.adapters.pp_doclayout import PPDocLayoutPlusLDetector
+        from pdomain_book_tools.layout.adapters.pp_doclayout import (
+            PPDocLayoutPlusLDetector,
+        )
 
         return PPDocLayoutPlusLDetector
 
@@ -167,7 +169,9 @@ class TestCheckpointTrustBoundary:
         without raising and passes local_files_only to from_pretrained."""
         from unittest import mock
 
-        from pd_book_tools.layout.adapters.pp_doclayout import PPDocLayoutPlusLDetector
+        from pdomain_book_tools.layout.adapters.pp_doclayout import (
+            PPDocLayoutPlusLDetector,
+        )
 
         sentinel = object()
 
@@ -184,11 +188,11 @@ class TestCheckpointTrustBoundary:
 
         with (
             mock.patch(
-                "pd_book_tools.layout.adapters.pp_doclayout.RTDetrImageProcessor.from_pretrained",
+                "pdomain_book_tools.layout.adapters.pp_doclayout.RTDetrImageProcessor.from_pretrained",
                 side_effect=fake_from_pretrained,
             ),
             mock.patch(
-                "pd_book_tools.layout.adapters.pp_doclayout.RTDetrForObjectDetection.from_pretrained",
+                "pdomain_book_tools.layout.adapters.pp_doclayout.RTDetrForObjectDetection.from_pretrained",
                 side_effect=fake_from_pretrained,
             ),
         ):
@@ -204,7 +208,9 @@ class TestCheckpointTrustBoundary:
     def test_remote_custom_repo_without_opt_in_raises(self):
         """Passing a remote HF repo ID as checkpoint_path (non-local path)
         without ``trust_remote_checkpoint=True`` must raise ValueError."""
-        from pd_book_tools.layout.adapters.pp_doclayout import PPDocLayoutPlusLDetector
+        from pdomain_book_tools.layout.adapters.pp_doclayout import (
+            PPDocLayoutPlusLDetector,
+        )
 
         # HF repo IDs look like "owner/repo" — no leading "/" or "."
         with pytest.raises(ValueError, match="trust_remote_checkpoint"):
@@ -214,7 +220,9 @@ class TestCheckpointTrustBoundary:
         """With trust_remote_checkpoint=True, a remote HF repo ID is allowed."""
         from unittest import mock
 
-        from pd_book_tools.layout.adapters.pp_doclayout import PPDocLayoutPlusLDetector
+        from pdomain_book_tools.layout.adapters.pp_doclayout import (
+            PPDocLayoutPlusLDetector,
+        )
 
         def fake_from_pretrained(repo_id, **kwargs):
             m = mock.MagicMock()
@@ -225,11 +233,11 @@ class TestCheckpointTrustBoundary:
 
         with (
             mock.patch(
-                "pd_book_tools.layout.adapters.pp_doclayout.RTDetrImageProcessor.from_pretrained",
+                "pdomain_book_tools.layout.adapters.pp_doclayout.RTDetrImageProcessor.from_pretrained",
                 side_effect=fake_from_pretrained,
             ),
             mock.patch(
-                "pd_book_tools.layout.adapters.pp_doclayout.RTDetrForObjectDetection.from_pretrained",
+                "pdomain_book_tools.layout.adapters.pp_doclayout.RTDetrForObjectDetection.from_pretrained",
                 side_effect=fake_from_pretrained,
             ),
         ):
@@ -244,7 +252,9 @@ class TestCheckpointTrustBoundary:
         The default constructor must not raise even without any special flags."""
         from unittest import mock
 
-        from pd_book_tools.layout.adapters.pp_doclayout import PPDocLayoutPlusLDetector
+        from pdomain_book_tools.layout.adapters.pp_doclayout import (
+            PPDocLayoutPlusLDetector,
+        )
 
         def fake_from_pretrained(repo_id, **kwargs):
             m = mock.MagicMock()
@@ -255,11 +265,11 @@ class TestCheckpointTrustBoundary:
 
         with (
             mock.patch(
-                "pd_book_tools.layout.adapters.pp_doclayout.RTDetrImageProcessor.from_pretrained",
+                "pdomain_book_tools.layout.adapters.pp_doclayout.RTDetrImageProcessor.from_pretrained",
                 side_effect=fake_from_pretrained,
             ),
             mock.patch(
-                "pd_book_tools.layout.adapters.pp_doclayout.RTDetrForObjectDetection.from_pretrained",
+                "pdomain_book_tools.layout.adapters.pp_doclayout.RTDetrForObjectDetection.from_pretrained",
                 side_effect=fake_from_pretrained,
             ),
         ):

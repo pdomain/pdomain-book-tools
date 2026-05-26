@@ -1,13 +1,13 @@
 """Tests for Block.review (optional ReviewMetadata cluster).
 
 Block covers both block-scope and line-scope review semantics, since
-'Line' in the pd-book-tools model is a Block with block_category=LINE."""
+'Line' in the pdomain-book-tools model is a Block with block_category=LINE."""
 
 from __future__ import annotations
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.review import ReviewMetadata
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.review import ReviewMetadata
 
 
 def _bbox():

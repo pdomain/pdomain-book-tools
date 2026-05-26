@@ -10,9 +10,9 @@ import pandas as pd
 import pytest
 from cv2 import imread
 
-from pd_book_tools.ocr.cv2_tesseract import tesseract_ocr_cv2_image
-from pd_book_tools.ocr.document import Document
-from pd_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.cv2_tesseract import tesseract_ocr_cv2_image
+from pdomain_book_tools.ocr.document import Document
+from pdomain_book_tools.ocr.page import Page
 
 # Check if pytesseract is available for integration tests
 _pytesseract_available = importlib.util.find_spec("pytesseract") is not None
@@ -57,9 +57,9 @@ class TestTesseractOcrCv2Image:
         """Mock Tesseract string output."""
         return "test\n"
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_with_grayscale_image(
         self,
         mock_from_tesseract,
@@ -109,10 +109,10 @@ class TestTesseractOcrCv2Image:
             tesseract_config=expected_config,
         )
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.cvtColor")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.cvtColor")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_with_color_image(
         self,
         mock_from_tesseract,
@@ -150,9 +150,9 @@ class TestTesseractOcrCv2Image:
         mock_image_to_data.assert_called_once()
         mock_image_to_string.assert_called_once()
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_with_empty_source_path(
         self,
         mock_from_tesseract,
@@ -188,9 +188,9 @@ class TestTesseractOcrCv2Image:
             tesseract_config="--oem 3 -c textord_noise_rej=1 --dpi 300",
         )
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_default_source_path(
         self,
         mock_from_tesseract,
@@ -250,9 +250,9 @@ class TestTesseractOcrCv2Image:
         # We'd need to refactor the function to make this more testable
         assert len(expected_config_parts) == 3
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_config_no_textord_noise_debug(
         self,
         mock_from_tesseract,
@@ -283,9 +283,9 @@ class TestTesseractOcrCv2Image:
                 f"textord_noise_debug must not be in default config; got: {cfg!r}"
             )
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_dpi_parameter_overrides_default(
         self,
         mock_from_tesseract,
@@ -312,9 +312,9 @@ class TestTesseractOcrCv2Image:
             assert "--dpi 150" in cfg
             assert "--dpi 300" not in cfg
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_dpi_default_preserves_300(
         self,
         mock_from_tesseract,
@@ -340,9 +340,9 @@ class TestTesseractOcrCv2Image:
             cfg = mock_call.call_args[1]["config"]
             assert "--dpi 300" in cfg
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_dpi_600(
         self,
         mock_from_tesseract,
@@ -397,9 +397,9 @@ class TestM20InputShapeDispatch:
             }
         )
 
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_data")
-    @patch("pd_book_tools.ocr.cv2_tesseract.image_to_string")
-    @patch("pd_book_tools.ocr.document.Document.from_tesseract")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_data")
+    @patch("pdomain_book_tools.ocr.cv2_tesseract.image_to_string")
+    @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_rgba_input_drops_alpha_and_calls_tesseract(
         self,
         mock_from_tesseract,
@@ -476,7 +476,7 @@ class TestImportError:
 
         source_file = (
             Path(__file__).parent.parent.parent
-            / "pd_book_tools"
+            / "pdomain_book_tools"
             / "ocr"
             / "cv2_tesseract.py"
         )
@@ -490,7 +490,9 @@ class TestImportError:
         raises a clear ImportError with helpful guidance."""
         import numpy as np
 
-        with patch("pd_book_tools.ocr.cv2_tesseract._pytesseract_available", False):
+        with patch(
+            "pdomain_book_tools.ocr.cv2_tesseract._pytesseract_available", False
+        ):
             image = np.zeros((10, 10), dtype=np.uint8)
             with pytest.raises(
                 ImportError,

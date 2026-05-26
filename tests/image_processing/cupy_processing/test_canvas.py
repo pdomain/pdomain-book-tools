@@ -9,7 +9,7 @@ import pytest
 class TestMapContentOntoScaledCanvasGpu:
     def test_canvas_larger_than_input(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
 
@@ -19,7 +19,7 @@ class TestMapContentOntoScaledCanvasGpu:
 
     def test_output_is_uint8(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
 
@@ -29,7 +29,7 @@ class TestMapContentOntoScaledCanvasGpu:
 
     def test_canvas_background_is_white(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
 
@@ -42,10 +42,10 @@ class TestMapContentOntoScaledCanvasGpu:
         cp = cupy_module
         import math
 
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.canvas import Alignment
+        from pdomain_book_tools.image_processing.cv2_processing.canvas import Alignment
 
         img = cp.full((100, 60), 42, dtype=cp.uint8)
         out = map_content_onto_scaled_canvas_gpu(img, force_align=Alignment.TOP)
@@ -57,10 +57,10 @@ class TestMapContentOntoScaledCanvasGpu:
 
     def test_alignment_bottom_places_lower(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.canvas import Alignment
+        from pdomain_book_tools.image_processing.cv2_processing.canvas import Alignment
 
         img = cp.full((100, 60), 50, dtype=cp.uint8)
         top = map_content_onto_scaled_canvas_gpu(img, force_align=Alignment.TOP)
@@ -71,10 +71,10 @@ class TestMapContentOntoScaledCanvasGpu:
     def test_matches_cpu_output(self, cupy_module):
         """GPU and CPU outputs should be pixel-identical."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.canvas import (
+        from pdomain_book_tools.image_processing.cv2_processing.canvas import (
             map_content_onto_scaled_canvas,
         )
 
@@ -86,7 +86,7 @@ class TestMapContentOntoScaledCanvasGpu:
         np.testing.assert_array_equal(cpu, gpu)
 
     def test_np_uint8_wrapper_returns_ndarray(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             np_uint8_map_content_onto_scaled_canvas,
         )
 
@@ -102,7 +102,7 @@ class TestMapContentOntoScaledCanvasGpu:
         image onto it raised a broadcast error (closes #184).
         """
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
 
@@ -116,10 +116,10 @@ class TestMapContentOntoScaledCanvasGpu:
     def test_color_matches_cpu_parity(self, cupy_module):
         """GPU and CPU canvas results must be pixel-identical for 3-channel input."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.canvas import (
+        from pdomain_book_tools.image_processing.cv2_processing.canvas import (
             map_content_onto_scaled_canvas,
         )
 
@@ -133,7 +133,7 @@ class TestMapContentOntoScaledCanvasGpu:
     def test_color_canvas_background_is_white(self, cupy_module):
         """3-channel canvas border pixels must be white (255, 255, 255)."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.canvas import (
+        from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
         )
 

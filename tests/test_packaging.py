@@ -1,4 +1,4 @@
-"""Packaging regression tests for pd-book-tools.
+"""Packaging regression tests for pdomain-book-tools.
 
 These don't exercise the running library — they assert invariants about
 ``pyproject.toml`` itself. The OpenCV PyPI ecosystem ships four mutually

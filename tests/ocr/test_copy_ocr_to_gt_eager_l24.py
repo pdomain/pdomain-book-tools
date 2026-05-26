@@ -10,11 +10,11 @@ when the first word's call already returns True).
 
 from unittest.mock import patch
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_word(x: float, text: str, gt: str | None = None) -> Word:

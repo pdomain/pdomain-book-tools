@@ -1,4 +1,4 @@
-from pd_book_tools.geometry import BoundingBox, Point
+from pdomain_book_tools.geometry import BoundingBox, Point
 
 
 def test_bounding_box_repr_format():

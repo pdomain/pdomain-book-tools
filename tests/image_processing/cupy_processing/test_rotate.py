@@ -11,7 +11,7 @@ import pytest
 class TestRotateImageGpu:
     def test_zero_angle_returns_original(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -21,7 +21,7 @@ class TestRotateImageGpu:
 
     def test_canvas_expands_for_45_degrees(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -35,7 +35,7 @@ class TestRotateImageGpu:
 
     def test_cw_and_ccw_produce_same_canvas_size(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -46,7 +46,7 @@ class TestRotateImageGpu:
 
     def test_output_dtype_preserved(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -56,7 +56,7 @@ class TestRotateImageGpu:
 
     def test_color_image_shape(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -68,7 +68,7 @@ class TestRotateImageGpu:
     def test_border_fill_cval(self, cupy_module):
         """Corners of a rotated image should fill with cval."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -83,7 +83,7 @@ class TestRotateImageGpu:
         pytest.importorskip("cv2")
         import cv2
 
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             rotate_image_gpu,
         )
 
@@ -100,7 +100,7 @@ class TestRotateImageGpu:
         assert abs(result.shape[1] - new_w) <= 1
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.rotate import (
+        from pdomain_book_tools.image_processing.cupy_processing.rotate import (
             np_uint8_rotate_image,
         )
 

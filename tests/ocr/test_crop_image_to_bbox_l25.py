@@ -10,9 +10,9 @@ import logging
 import numpy as np
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
-from pd_book_tools.ocr.image_utilities import crop_image_to_bbox
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.ocr.image_utilities import crop_image_to_bbox
 
 
 class _BBoxStub:
@@ -57,7 +57,9 @@ def test_expected_exception_types_still_swallowed(caplog, exc_type):
     returning None and only debug-log."""
     page = np.zeros((100, 100, 3), dtype=np.uint8)
     el = _Element(_BBoxStub(exc_type("boom")))
-    with caplog.at_level(logging.DEBUG, logger="pd_book_tools.ocr.image_utilities"):
+    with caplog.at_level(
+        logging.DEBUG, logger="pdomain_book_tools.ocr.image_utilities"
+    ):
         result = crop_image_to_bbox(el, page, label="test")
     assert result is None
     assert any("Error cropping image for test" in rec.message for rec in caplog.records)

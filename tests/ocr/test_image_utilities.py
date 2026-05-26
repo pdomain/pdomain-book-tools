@@ -6,9 +6,9 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.image_utilities import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.image_utilities import (
     crop_image_to_bbox,
     get_cropped_block_image,
     get_cropped_encoded_image,
@@ -16,7 +16,7 @@ from pd_book_tools.ocr.image_utilities import (
     get_cropped_word_image,
     get_encoded_image,
 )
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.word import Word
 
 
 class TestCropImageToBbox:
@@ -129,7 +129,7 @@ class TestGetEncodedImage:
         """Mock PNG encoded data."""
         return b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\n"
 
-    @patch("pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
+    @patch("pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
     def test_get_encoded_image_success(
         self, mock_encode, sample_image, mock_encoded_png
     ):
@@ -154,7 +154,7 @@ class TestGetEncodedImage:
         # Verify encode function was called correctly
         mock_encode.assert_called_once_with(sample_image)
 
-    @patch("pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
+    @patch("pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
     def test_get_encoded_image_grayscale(self, mock_encode, mock_encoded_png):
         """Test encoding with grayscale image."""
         # Create grayscale image
@@ -170,7 +170,7 @@ class TestGetEncodedImage:
         assert data_src.startswith("data:image/png;base64,")
         mock_encode.assert_called_once_with(gray_img)
 
-    @patch("pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
+    @patch("pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
     def test_get_encoded_image_empty_encoding(self, mock_encode, sample_image):
         """Test handling of empty encoded data."""
         # Setup mock to return empty bytes
@@ -191,7 +191,7 @@ class TestGetEncodedImage:
         expected_b64 = base64.b64encode(test_bytes).decode("utf-8")
 
         with patch(
-            "pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
+            "pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
         ) as mock_encode:
             mock_encode.return_value = test_bytes
             sample_img = np.zeros((5, 5, 3), dtype=np.uint8)
@@ -220,7 +220,7 @@ class TestGetCroppedEncodedImageScaledBbox:
         """Create a scaled (pixel) bounding box."""
         return BoundingBox.from_ltrb(5, 5, 15, 15, is_normalized=False)
 
-    @patch("pd_book_tools.ocr.image_utilities.get_encoded_image")
+    @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
     def test_cropping_with_scaled_bbox(
         self, mock_get_encoded, sample_image, scaled_bbox
     ):
@@ -252,7 +252,7 @@ class TestGetCroppedEncodedImageScaledBbox:
         assert b64_string == "mock_b64"
         assert data_src == "mock_data_src"
 
-    @patch("pd_book_tools.ocr.image_utilities.get_encoded_image")
+    @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
     def test_cropping_edge_bbox(self, mock_get_encoded, sample_image):
         """Test cropping with bounding box at image edges."""
         # Bbox that covers the entire image
@@ -269,7 +269,7 @@ class TestGetCroppedEncodedImageScaledBbox:
         # Should return the entire image
         np.testing.assert_array_equal(cropped_img, sample_image)
 
-    @patch("pd_book_tools.ocr.image_utilities.get_encoded_image")
+    @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
     def test_cropping_single_pixel_bbox(self, mock_get_encoded):
         """Test cropping with single pixel bounding box."""
         img = np.random.randint(0, 255, (10, 10, 3), dtype=np.uint8)
@@ -312,7 +312,7 @@ class TestGetCroppedEncodedImage:
         pixel_bbox = BoundingBox.from_ltrb(20, 40, 180, 160, is_normalized=False)
 
         with patch(
-            "pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
+            "pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
         ) as mock_encode:
             mock_encode.return_value = b"pixel_png_data"
 
@@ -337,7 +337,7 @@ class TestGetCroppedEncodedImage:
             assert isinstance(b64_string, str)
             assert data_src.startswith("data:image/png;base64,")
 
-    @patch("pd_book_tools.ocr.image_utilities.get_encoded_image")
+    @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
     def test_cropping_with_normalized_bbox(
         self, mock_get_encoded, sample_image, normalized_bbox
     ):
@@ -399,7 +399,7 @@ class TestGetCroppedWordImage:
         bbox = BoundingBox.from_ltrb(0.2, 0.3, 0.8, 0.7, is_normalized=True)
         return Word(text="test_word", bounding_box=bbox, ocr_confidence=0.95)
 
-    @patch("pd_book_tools.ocr.image_utilities.get_cropped_encoded_image")
+    @patch("pdomain_book_tools.ocr.image_utilities.get_cropped_encoded_image")
     def test_get_cropped_word_image(self, mock_get_cropped, sample_word):
         """Test cropping image for a Word."""
         img = np.random.randint(0, 255, (100, 200, 3), dtype=np.uint8)
@@ -472,7 +472,7 @@ class TestGetCroppedBlockImage:
             # No bounding_box provided, and no items to compute one from
         )
 
-    @patch("pd_book_tools.ocr.image_utilities.get_cropped_encoded_image")
+    @patch("pdomain_book_tools.ocr.image_utilities.get_cropped_encoded_image")
     def test_get_cropped_block_image_success(
         self, mock_get_cropped, sample_block_with_bbox
     ):
@@ -573,7 +573,7 @@ class TestImageUtilitiesIntegration:
 
         # This should work without mocking to test the actual integration
         with patch(
-            "pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
+            "pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
         ) as mock_encode:
             mock_encode.return_value = b"test_png_data"
 
@@ -631,7 +631,7 @@ class TestImageUtilitiesIntegration:
         )
 
         with patch(
-            "pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
+            "pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
         ) as mock_encode:
             mock_encode.return_value = b"tiny_png"
 
@@ -649,7 +649,7 @@ class TestImageUtilitiesIntegration:
         norm_bbox = BoundingBox.from_ltrb(0.2, 0.4, 0.8, 0.8, is_normalized=True)
 
         with patch(
-            "pd_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
+            "pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png"
         ) as mock_encode:
             mock_encode.return_value = b"consistent_png"
 

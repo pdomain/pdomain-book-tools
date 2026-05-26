@@ -71,12 +71,12 @@ if str(PACKAGE_ROOT) not in sys.path:
 
 
 def _draw_overlay(png_path: Path, layout, dest: Path) -> None:
-    """Thin wrapper around :func:`pd_book_tools.layout.visualize.draw_layout_overlay`.
+    """Thin wrapper around :func:`pdomain_book_tools.layout.visualize.draw_layout_overlay`.
 
     Kept as a local name for backwards-compat with anyone shelling out to
     this script directly; new callers should import the public helper.
     """
-    from pd_book_tools.layout.visualize import (
+    from pdomain_book_tools.layout.visualize import (
         draw_layout_overlay,
     )
 
@@ -85,7 +85,7 @@ def _draw_overlay(png_path: Path, layout, dest: Path) -> None:
 
 
 def regenerate(case_name: str, detector_key: str, run_dir: Path) -> Path:
-    from pd_book_tools.layout import get_detector
+    from pdomain_book_tools.layout import get_detector
 
     png_path = INPUT_DIR / f"{case_name}.png"
     if not png_path.exists():

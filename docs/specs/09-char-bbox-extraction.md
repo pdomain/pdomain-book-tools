@@ -6,10 +6,10 @@
 
 Extract per-character bounding boxes from a word image crop and the
 associated OCR text string. The primary consumer is the
-`pd-ocr-labeler-spa` CharFixer feature, which lets a human reviewer
+`pdomain-ocr-labeler-spa` CharFixer feature, which lets a human reviewer
 drag individual character boxes into their correct positions before
 saving a correction. The extracted boxes are also useful for training-
-data pipelines in `pd-ocr-synth` and `pd-ocr-trainer` that need
+data pipelines in `pdomain-ocr-synth` and `pd-ocr-trainer` that need
 character-level alignment signals.
 
 This spec relates to:
@@ -65,7 +65,7 @@ word-level crop already isolated by the upstream pipeline, so
 cross-line merging is avoided; however the ascender-to-line-above risk
 remains when the crop is loose.
 
-**Drop-caps.** The drop-cap pipeline (see `pd_book_tools/ocr/dropcap.py`)
+**Drop-caps.** The drop-cap pipeline (see `pdomain_book_tools/ocr/dropcap.py`)
 already isolates the initial letter into its own `Word` with
 `word_components = ["drop cap"]`. When the input `Word` is a drop cap,
 the extraction must not attempt connected-component decomposition across
@@ -373,12 +373,12 @@ font sizes (9–14 pt body copy).
 
 ## 6. Module Location and API
 
-New file: `pd_book_tools/ocr/char_extraction.py`
+New file: `pdomain_book_tools/ocr/char_extraction.py`
 
-Public surface (importable from `pd_book_tools.ocr`):
+Public surface (importable from `pdomain_book_tools.ocr`):
 
 ```python
-from pd_book_tools.ocr.char_extraction import (
+from pdomain_book_tools.ocr.char_extraction import (
     CharBbox,
     CharExtractionConfig,
     CharExtractionResult,
@@ -411,7 +411,7 @@ a transient call-site parameter, not persisted in OCR snapshots.
 well for widely-spaced characters but fails silently for touching or
 diacritic-bearing characters. The new `extract_char_bboxes` function:
 
-- Supersedes it for all production uses in `pd-ocr-labeler-spa`.
+- Supersedes it for all production uses in `pdomain-ocr-labeler-spa`.
 - Does NOT replace it in `word.py` immediately; the old method remains
   as a lower-dependency fallback (it has no cv2 connected-component
   dependency beyond what is already imported).
@@ -451,14 +451,14 @@ diacritic-bearing characters. The new `extract_char_bboxes` function:
 
 ## 8. Open Questions
 
-**Q1 — Ligature sub-division UX.** Should `pd-ocr-labeler-spa` CharFixer
+**Q1 — Ligature sub-division UX.** Should `pdomain-ocr-labeler-spa` CharFixer
 show ligature characters as one merged box or two sub-boxes? The policy
 in §3.6 (`split_ligature_blobs=False` default) favours a merged box, but
 the labeler could override this per session. This needs a UX decision
 from the labeler spec owner before the CharFixer implementation lands.
 
 **Q2 — DocTR CTC alignment access.** The current `run_page_ocr` pipeline
-in `pd_book_tools/ocr/doctr_support.py` does not expose per-character
+in `pdomain_book_tools/ocr/doctr_support.py` does not expose per-character
 column positions. Accessing the CTC alignment requires either:
 
   (a) Patching the doctr fork to return logit-level alignment alongside

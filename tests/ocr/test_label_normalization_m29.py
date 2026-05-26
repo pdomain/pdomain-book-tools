@@ -12,12 +12,12 @@ constructor, normalization helper, `update_style_attributes`, deserialization â€
 produces the same canonical representation.
 """
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.label_normalization import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.label_normalization import (
     normalize_text_style_label_scopes,
     normalize_text_style_labels,
 )
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.word import Word
 
 
 class TestNormalizeTextStyleLabelsStripsRegular:

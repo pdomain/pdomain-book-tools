@@ -24,7 +24,7 @@ class TestRescaleImageGpuAntialias:
         the alternating signal to ~mid-gray (the area average), so std
         must be small even though the source is high-frequency."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -45,7 +45,7 @@ class TestRescaleImageGpuAntialias:
         after rescaling — the anti-alias pre-filter must not introduce
         bias. Tolerance covers float32 round-trip + uint8 quantization."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -62,7 +62,7 @@ class TestRescaleImageGpuAntialias:
         blur it. Verify a constant-valued input survives unchanged
         (float32/uint8 round-trip aside) and shape grows correctly."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -79,7 +79,7 @@ class TestRescaleImageGpuAntialias:
         erases foreground content — the no-silent-data-loss invariant
         applied to image content."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -98,7 +98,7 @@ class TestRescaleImageGpuAntialias:
         """3-channel input still gets per-spatial-axis anti-aliasing
         without cross-channel mixing."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 

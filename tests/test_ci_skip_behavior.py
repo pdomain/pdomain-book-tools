@@ -67,7 +67,7 @@ class TestIsCiEnvironment:
 
 
 # Minimal conftest mirroring the production helper + marker so the inner
-# pytest doesn't need to import the full pd_book_tools test suite.
+# pytest doesn't need to import the full pdomain_book_tools test suite.
 _INNER_CONFTEST = textwrap.dedent(
     """
     import os

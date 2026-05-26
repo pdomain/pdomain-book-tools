@@ -5,7 +5,7 @@ import pytest
 
 @pytest.fixture
 def cupy_morph(cupy_module):
-    from pd_book_tools.image_processing.cupy_processing import morph as morph_mod
+    from pdomain_book_tools.image_processing.cupy_processing import morph as morph_mod
 
     return morph_mod, cupy_module
 

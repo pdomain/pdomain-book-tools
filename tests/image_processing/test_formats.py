@@ -1,7 +1,7 @@
-"""Tests for ``pd_book_tools.image_processing.formats``.
+"""Tests for ``pdomain_book_tools.image_processing.formats``.
 
 The formats module centralises image-format identification for downstream
-pd-* tools (pd-ocr-cli, pd-ocr-labeler, ...). It must support both
+pd-* tools (pdomain-ocr-cli, pd-ocr-labeler, ...). It must support both
 extension-based gating (cheap) and magic-byte sniffing (correct), with a
 warning when the two disagree.
 """
@@ -11,7 +11,7 @@ import pathlib
 
 import pytest
 
-from pd_book_tools.image_processing.formats import (
+from pdomain_book_tools.image_processing.formats import (
     SUPPORTED_IMAGE_SUFFIXES,
     is_image_file,
 )
@@ -125,7 +125,7 @@ class TestExtensionMagicMismatch:
         accepted — the file is a real image, just misnamed.
         """
         path = _write(tmp_path, "scan.png", JP2_BOX_SIG)
-        with caplog.at_level(logging.WARNING, logger="pd_book_tools"):
+        with caplog.at_level(logging.WARNING, logger="pdomain_book_tools"):
             result = is_image_file(path)
         assert result is True
         # The warning should name the path and the actual detected format.
@@ -135,7 +135,7 @@ class TestExtensionMagicMismatch:
 
     def test_matching_extension_and_magic_does_not_warn(self, tmp_path, caplog):
         path = _write(tmp_path, "ok.png", PNG_SIG)
-        with caplog.at_level(logging.WARNING, logger="pd_book_tools"):
+        with caplog.at_level(logging.WARNING, logger="pdomain_book_tools"):
             assert is_image_file(path) is True
         warnings = [r for r in caplog.records if r.levelno >= logging.WARNING]
         assert warnings == []
@@ -182,7 +182,7 @@ class TestEdgeCases:
 
     def test_known_extension_but_bogus_bytes_warns(self, tmp_path, caplog):
         path = _write(tmp_path, "pretend.png", b"\x00" * 16)
-        with caplog.at_level(logging.WARNING, logger="pd_book_tools"):
+        with caplog.at_level(logging.WARNING, logger="pdomain_book_tools"):
             is_image_file(path)
         joined = " ".join(rec.getMessage() for rec in caplog.records)
         assert "pretend.png" in joined
@@ -203,7 +203,7 @@ class TestBundledPluginRoundTrip:
         # Importing the formats module is what registers the plugins with
         # Pillow. The test module already imports it at the top, but be
         # explicit so this test documents its dependency.
-        import pd_book_tools.image_processing.formats  # imported for side-effect (plugin registration)
+        import pdomain_book_tools.image_processing.formats  # imported for side-effect (plugin registration)
 
     def test_avif_round_trip_via_pillow(self, tmp_path):
         self._ensure_formats_imported()

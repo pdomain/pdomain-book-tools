@@ -9,7 +9,7 @@ import pytest
 class TestGaussianFilterGpu:
     def test_output_shape_and_dtype_grayscale(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
         )
 
@@ -20,7 +20,7 @@ class TestGaussianFilterGpu:
 
     def test_output_shape_and_dtype_color(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
         )
 
@@ -32,7 +32,7 @@ class TestGaussianFilterGpu:
     def test_uniform_image_unchanged(self, cupy_module):
         """Blurring a constant image should return the same constant value."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
         )
 
@@ -43,7 +43,7 @@ class TestGaussianFilterGpu:
     def test_blur_reduces_sharp_edge(self, cupy_module):
         """A hard edge should become softer after Gaussian blur."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
         )
 
@@ -56,7 +56,7 @@ class TestGaussianFilterGpu:
     def test_channels_filtered_independently(self, cupy_module):
         """Each colour channel should be blurred without bleeding into others."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
         )
 
@@ -68,7 +68,7 @@ class TestGaussianFilterGpu:
         assert cp.all(out[:, :, 2] == 0)
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             np_uint8_gaussian_filter,
         )
 
@@ -84,7 +84,7 @@ class TestGaussianFilterGpu:
 class TestMedianFilterGpu:
     def test_output_shape_and_dtype(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
         )
 
@@ -96,7 +96,7 @@ class TestMedianFilterGpu:
     def test_removes_single_bright_pixel(self, cupy_module):
         """Median filter should suppress a single salt pixel."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
         )
 
@@ -107,7 +107,7 @@ class TestMedianFilterGpu:
 
     def test_uniform_image_unchanged(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
         )
 
@@ -117,7 +117,7 @@ class TestMedianFilterGpu:
 
     def test_color_image_per_channel(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
         )
 
@@ -129,7 +129,7 @@ class TestMedianFilterGpu:
         assert int(out[10, 10, 2]) == 0  # R unaffected
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             np_uint8_median_filter,
         )
 
@@ -145,7 +145,7 @@ class TestMedianFilterGpu:
 class TestUniformFilterGpu:
     def test_output_shape_and_dtype(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
         )
 
@@ -156,7 +156,7 @@ class TestUniformFilterGpu:
 
     def test_uniform_image_unchanged(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
         )
 
@@ -167,7 +167,7 @@ class TestUniformFilterGpu:
     def test_averages_neighbourhood(self, cupy_module):
         """A 3\u00d73 box filter over a step edge should produce intermediate values."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
         )
 
@@ -180,7 +180,7 @@ class TestUniformFilterGpu:
 
     def test_color_image_per_channel(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
         )
 
@@ -195,7 +195,7 @@ class TestUniformFilterGpu:
         assert int(out[10, 10, 2]) == 180
 
     def test_np_wrapper_returns_numpy(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.filters import (
+        from pdomain_book_tools.image_processing.cupy_processing.filters import (
             np_uint8_uniform_filter,
         )
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-Forward-looking work in pd-book-tools. Excludes anything that's better
+Forward-looking work in pdomain-book-tools. Excludes anything that's better
 tracked in a consuming-app roadmap (the layout-fine-tune workflow lives
 in [`ocr-container/docs/SPEC-layout-training.md`](../../docs/SPEC-layout-training.md)
 because it spans pd-ocr-labeler + pd-ocr-trainer; this file holds the
@@ -29,7 +29,7 @@ question 3 sketched a heuristic: "if a `figure` is small (<5 % of
 page), positioned at top or bottom, and contains no detected text
 words, reclassify as `decoration`."
 
-This belongs in `pd_book_tools/layout/geometry.py` as
+This belongs in `pdomain_book_tools/layout/geometry.py` as
 `postclassify_decoration(layout, page) -> PageLayout` and runs as a
 late pass in `Page.reorganize_page` after `tag_words_with_layout`
 (so we know which words fall inside the figure region). Cheap; helps
@@ -59,7 +59,7 @@ behaviour.
 Reorganize-level pass-through shipped:
 `Page.reorganize_page(sidenote_max_height_ratio=…)` threads through
 to Step Layout-1b. Default `None` preserves legacy behaviour; callers
-opt in by passing a float. A pd-ocr-cli flag remains a downstream
+opt in by passing a float. A pdomain-ocr-cli flag remains a downstream
 follow-up tracked in that repo's roadmap; it can wire straight onto
 this kwarg without further changes here.
 
@@ -106,7 +106,7 @@ the glyph-size work, not standalone.
 
 The PLAN's "open follow-up" on page-rotation detection (sideways
 plates, upside-down scans, the Peutinger map fixture) shipped as
-`pd_book_tools/ocr/rotation.py`. Documented in
+`pdomain_book_tools/ocr/rotation.py`. Documented in
 `docs/specs/02-rotation.md`. **No further work tracked here.**
 
 ## Open — developer tooling
@@ -128,7 +128,7 @@ the `[gpu]` extra via `make sync-gpu`. Spec
 `.venv/.pd-dev-local` marker via `scripts/write_dev_local_marker.py`.
 Lifecycle is anchored to the venv — `make remove-venv` deletes the
 marker automatically. Downstream `pd-*` repos can now tell users
-"run `make dev-local` in pd-book-tools first" with a stable contract.
+"run `make dev-local` in pdomain-book-tools first" with a stable contract.
 
 Still open:
 

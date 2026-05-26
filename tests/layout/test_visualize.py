@@ -1,13 +1,13 @@
-"""Tests for ``pd_book_tools.layout.visualize.draw_layout_overlay``."""
+"""Tests for ``pdomain_book_tools.layout.visualize.draw_layout_overlay``."""
 
 import inspect
 
 import numpy as np
 import pytest
 
-from pd_book_tools.layout import visualize as visualize_module
-from pd_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
-from pd_book_tools.layout.visualize import draw_layout_overlay
+from pdomain_book_tools.layout import visualize as visualize_module
+from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
+from pdomain_book_tools.layout.visualize import draw_layout_overlay
 
 
 def test_text_color_comment_does_not_claim_cyan():

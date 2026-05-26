@@ -2,7 +2,7 @@
 status: active
 synced: ~
 milestone: ~
-repo: pd-book-tools
+repo: pdomain-book-tools
 created: 2026-05-22
 ---
 
@@ -10,7 +10,7 @@ created: 2026-05-22
 
 ## Background
 
-`pd-book-tools` adopted a `basedpyright` baseline file (`.basedpyright/baseline.json`)
+`pdomain-book-tools` adopted a `basedpyright` baseline file (`.basedpyright/baseline.json`)
 that grandfathers 3365 warnings so CI stays green while `failOnWarnings = true` gates
 _new_ code. This plan tracks burning down the own-code warnings in waves — cheapest
 mechanical wins first, heavy annotation-design work later.

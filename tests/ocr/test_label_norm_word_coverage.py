@@ -1,11 +1,11 @@
 """Coverage tests for label_normalization.py and word.py edge cases."""
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr.label_normalization import (
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.label_normalization import (
     normalize_text_style_label_scope,
     normalize_text_style_label_scopes,
 )
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_word(text, x=0, y=0, w=60, h=20):

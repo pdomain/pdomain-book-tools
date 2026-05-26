@@ -4,9 +4,9 @@ from pathlib import Path
 import pytest
 from pandas import DataFrame
 
-from pd_book_tools.ocr.document import Document
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
+from pdomain_book_tools.ocr.document import Document
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 
 
 @pytest.fixture
@@ -194,7 +194,7 @@ def test_document_from_doctr_output_matches_tesseract_nesting_depth(
     Both adapters must produce the same canonical depth and category
     sequence so consumers can iterate uniformly.
     """
-    from pd_book_tools.ocr.block import BlockCategory
+    from pdomain_book_tools.ocr.block import BlockCategory
 
     doctr_doc = Document.from_doctr_output(sample_doctr_output)
     tess_doc = Document.from_tesseract(sample_tesseract_output)
@@ -237,7 +237,7 @@ def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
     (non-text regions: stamps, barcodes, QR codes, figures). The adapter
     previously iterated only ``"lines"``, silently discarding artefacts.
 
-    pd-book-tools' invariant is that OCR-derived content is never silently
+    pdomain-book-tools' invariant is that OCR-derived content is never silently
     dropped — even non-text regions must be preserved with a role label so
     consumers can choose to keep, render, or strip them.
 
@@ -247,7 +247,7 @@ def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
     ``confidence`` are preserved in ``additional_block_attributes`` so the
     artefact's classification (e.g. ``"barcode"``) is not lost.
     """
-    from pd_book_tools.ocr.block import BlockCategory, BlockChildType
+    from pdomain_book_tools.ocr.block import BlockCategory, BlockChildType
 
     doctr_output = {
         "metadata": {},
@@ -481,7 +481,7 @@ def test_document_from_tesseract_treats_conf_minus_one_as_none():
 
     # And the rotation-detection style mean-confidence aggregation must
     # exclude the sentinel rather than averaging it in.
-    from pd_book_tools.ocr.rotation import _mean_confidence
+    from pdomain_book_tools.ocr.rotation import _mean_confidence
 
     mean_conf, count = _mean_confidence(doc)
     assert count == 1

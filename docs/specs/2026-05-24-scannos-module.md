@@ -2,14 +2,14 @@
 
 > **Status**: Draft
 > **Last updated**: 2026-05-24
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#209
+> **Spec-Issue**: pdomain/pdomain-book-tools#209
 
 Own the data model, storage, and API for the scannos (scanner
-error corrections) subsystem used across `pd-prep-for-pgdp` and future
+error corrections) subsystem used across `pdomain-prep-for-pgdp` and future
 pd-* tools. This module gates all Stage 13 slices (`S13-A` through `S13-D`)
-in the `pd-prep-for-pgdp` design-handoff plan. The UI components it backs are
+in the `pdomain-prep-for-pgdp` design-handoff plan. The UI components it backs are
 designed in
-`pd-ui/docs/templates/design_handoff_pd_ui/wf05b/scanno-configure.jsx`
+`pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf05b/scanno-configure.jsx`
 and `wf05b/scanno-promote.jsx`; the domain model and design rationale appear
 in `wf05b/DISCUSSION.md`.
 
@@ -24,7 +24,7 @@ Related specs:
 
 ## 1. TL;DR
 
-Add `pd_book_tools.scannos` owning:
+Add `pdomain_book_tools.scannos` owning:
 
 1. `ScannoRule` — a rule in the global library (e.g. "tbe" → "the").
 2. `ScannoCandidate` — a per-book occurrence flagged by a rule or by OCR
@@ -70,15 +70,15 @@ The `wf05b` prototype shows three surfaces:
 are separate entities with an explicit promotion step, rather than a single
 mutable record. This spec adopts that model.
 
-### 2.3 Why pd-book-tools owns the schema
+### 2.3 Why pdomain-book-tools owns the schema
 
 The rule library and candidate store are consumed by:
 
-- `pd-prep-for-pgdp` (Stage 13 slices)
-- Potentially `pd-ocr-cli` (automatic scanno flagging in plain-text output)
-- Potentially `pd-ocr-labeler-spa` (inline token highlights during review)
+- `pdomain-prep-for-pgdp` (Stage 13 slices)
+- Potentially `pdomain-ocr-cli` (automatic scanno flagging in plain-text output)
+- Potentially `pdomain-ocr-labeler-spa` (inline token highlights during review)
 
-Centralising the schema and storage layer in pd-book-tools prevents each
+Centralising the schema and storage layer in pdomain-book-tools prevents each
 downstream tool from independently inventing its own format and migration path.
 
 ---
@@ -111,7 +111,7 @@ downstream tool from independently inventing its own format and migration path.
 - Regex scanning in V1 (`match: 'regex'`) — the schema defines it for
   forward compatibility, but the `scan_page` implementation in V1 supports
   only `'literal'` and `'word-final'`. Regex support is a V2 item.
-- The UI (FastAPI routes, React components) — those belong to `pd-prep-for-pgdp`
+- The UI (FastAPI routes, React components) — those belong to `pdomain-prep-for-pgdp`
   slices `S13-A` through `S13-D`.
 - Multi-user collaboration or online sync of the global library.
 
@@ -166,7 +166,7 @@ carries `<book-id>-scanno-candidates.json`; the global library lives at the
 Implement O-C. Module layout:
 
 ```text
-pd_book_tools/
+pdomain_book_tools/
   scannos/
     __init__.py           # re-exports ScannoRule, ScannoCandidate, RuleLibrary,
                           # CandidateStore, scan_page, promote
@@ -254,9 +254,9 @@ promote(
 ) -> ScannoRule
 
 # Default path
-from pd_book_tools.scannos import default_library_path
+from pdomain_book_tools.scannos import default_library_path
 path: Path = default_library_path()
-# → ~/.local/share/pd-suite/scannos/rules.db  (or platform equivalent)
+# → ~/.local/share/pdomain-suite/scannos/rules.db  (or platform equivalent)
 ```
 
 ### 6.4 SQLite schema
@@ -309,7 +309,7 @@ WAL mode is enabled at `PRAGMA journal_mode=WAL` on first open.
    - In both cases, update `candidate.status = 'promoted'` and `store.save()`.
 6. Write `_paths.py` with `default_library_path()`.
 7. Write `__init__.py` re-exporting the public surface.
-8. Bundle an empty `rules.db` under `pd_book_tools/scannos/data/empty_rules.db`
+8. Bundle an empty `rules.db` under `pdomain_book_tools/scannos/data/empty_rules.db`
    for first-run initialisation (copy-on-first-open to the user data dir).
 
 ---

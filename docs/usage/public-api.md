@@ -1,14 +1,14 @@
 # Public API
 
-This page lists the **supported public API** of `pd-book-tools`.
-Submodule paths (e.g. `pd_book_tools.ocr.page`) are not part of the
+This page lists the **supported public API** of `pdomain-book-tools`.
+Submodule paths (e.g. `pdomain_book_tools.ocr.page`) are not part of the
 supported API and may relocate in future versions — import the names
 below from the documented entry points.
 
-## Top-level package — `pd_book_tools`
+## Top-level package — `pdomain_book_tools`
 
 ```python
-from pd_book_tools import (
+from pdomain_book_tools import (
     BoundingBox,
     Point,
     Page,
@@ -25,34 +25,34 @@ Importing the top-level package eagerly imports the OCR / layout /
 geometry stack (`cv2`, `numpy`, DocTR, transformers). If you need a
 lighter import surface, import the specific subpackage below.
 
-## Geometry — `pd_book_tools.geometry`
+## Geometry — `pdomain_book_tools.geometry`
 
 ```python
-from pd_book_tools.geometry import BoundingBox, Point
+from pdomain_book_tools.geometry import BoundingBox, Point
 ```
 
 Note: `BoundingBox` exposes image-processing helper methods
 (`refine`, `crop_top`, `crop_bottom`) for backward compatibility.
 Their canonical implementation lives in
-`pd_book_tools.geometry.image_ops` — call those free functions
+`pdomain_book_tools.geometry.image_ops` — call those free functions
 directly in new code.
 
-## OCR data model — `pd_book_tools.ocr.*`
+## OCR data model — `pdomain_book_tools.ocr.*`
 
 The OCR submodule layout is intentionally not pinned as public API
 beyond the re-exports above. New code should prefer the top-level
 imports.
 
 Image-processing helpers for `Word` and `Block` live as free
-functions in `pd_book_tools.ocr.image_utilities` (e.g.
+functions in `pdomain_book_tools.ocr.image_utilities` (e.g.
 `refine_word_bbox(word, image)`); the corresponding methods on
 `Word` / `Block` are thin wrappers preserved for backward
 compatibility.
 
-## Layout — `pd_book_tools.layout`
+## Layout — `pdomain_book_tools.layout`
 
 ```python
-from pd_book_tools.layout import (
+from pdomain_book_tools.layout import (
     RegionType,
     LayoutRegion,
     PageLayout,
@@ -70,16 +70,16 @@ from pd_book_tools.layout import (
 )
 ```
 
-## PGDP — `pd_book_tools.pgdp`
+## PGDP — `pdomain_book_tools.pgdp`
 
 ```python
-from pd_book_tools.pgdp import PGDPResults, PGDPExport
+from pdomain_book_tools.pgdp import PGDPResults, PGDPExport
 ```
 
-## Utility — `pd_book_tools.utility`
+## Utility — `pdomain_book_tools.utility`
 
 ```python
-from pd_book_tools.utility import timing, ipynb_widgets
+from pdomain_book_tools.utility import timing, ipynb_widgets
 ```
 
 ## Stability

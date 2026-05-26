@@ -6,7 +6,7 @@ import pytest
 
 @pytest.fixture
 def cupy_color_to_gray(cupy_module):
-    from pd_book_tools.image_processing.cupy_processing import color_to_gray as mod
+    from pdomain_book_tools.image_processing.cupy_processing import color_to_gray as mod
 
     return mod, cupy_module
 
@@ -100,7 +100,7 @@ class TestNpUint8FloatColorToGray:
         input must raise rather than silently mis-handle."""
         # Lazy import: this test does not need cupy/CUDA — the dtype check
         # runs before any cp.asarray call. Skip only if numpy is missing.
-        from pd_book_tools.image_processing.cupy_processing import (
+        from pdomain_book_tools.image_processing.cupy_processing import (
             color_to_gray as mod,
         )
 
@@ -113,7 +113,7 @@ class TestNpUint8FloatColorToGray:
     def test_rejects_float64_input(self):
         """M-17 regression: float64 input is also rejected (same silent-collapse
         risk as float32)."""
-        from pd_book_tools.image_processing.cupy_processing import (
+        from pdomain_book_tools.image_processing.cupy_processing import (
             color_to_gray as mod,
         )
 

@@ -2,11 +2,11 @@
 
 import pytest
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.ocr import reorganize_page_utils
-from pd_book_tools.ocr.block import Block, BlockCategory, BlockChildType
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.word import Word
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr import reorganize_page_utils
+from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.word import Word
 
 
 def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:

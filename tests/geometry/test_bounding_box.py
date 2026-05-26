@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from shapely.geometry import box  # type: ignore
 
-from pd_book_tools.geometry.bounding_box import BoundingBox
-from pd_book_tools.geometry.point import Point
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.geometry.point import Point
 
 # various ways to initialize
 
@@ -1012,7 +1012,7 @@ def test_has_usable_coordinates_propagates_real_errors():
     """
     from unittest.mock import PropertyMock, patch
 
-    from pd_book_tools.geometry.bounding_box import BoundingBox
+    from pdomain_book_tools.geometry.bounding_box import BoundingBox
 
     bb = BoundingBox.from_ltrb(0, 0, 10, 10)
     with (
@@ -1032,7 +1032,7 @@ def test_has_usable_coordinates_rejects_nan_and_inf():
     import math
     from unittest.mock import PropertyMock, patch
 
-    from pd_book_tools.geometry.bounding_box import BoundingBox
+    from pdomain_book_tools.geometry.bounding_box import BoundingBox
 
     bb = BoundingBox.from_ltrb(0, 0, 10, 10)
     assert bb.has_usable_coordinates is True
@@ -1052,7 +1052,7 @@ def test_has_usable_coordinates_rejects_nan_and_inf():
 
 def test_from_points_with_dict_input():
     """Line 221: BoundingBox.from_points accepts dict with x/y keys."""
-    from pd_book_tools.geometry.bounding_box import BoundingBox
+    from pdomain_book_tools.geometry.bounding_box import BoundingBox
 
     bb = BoundingBox.from_points([{"x": 0, "y": 0}, {"x": 10, "y": 10}])
     assert bb.minX == 0
@@ -1063,7 +1063,7 @@ def test_from_points_with_shapely_point():
     """Lines 223-224: BoundingBox.from_points accepts shapely Point objects."""
     from shapely.geometry import Point as ShapelyPoint
 
-    from pd_book_tools.geometry.bounding_box import BoundingBox
+    from pdomain_book_tools.geometry.bounding_box import BoundingBox
 
     bb = BoundingBox.from_points([ShapelyPoint(0, 0), ShapelyPoint(10, 10)])
     assert bb.minX == 0
@@ -1073,7 +1073,7 @@ def test_from_points_with_shapely_point():
 def test_require_same_coords_preserves_metadata():
     """R-21: ``_require_same_coords`` uses ``functools.wraps`` so decorated
     methods keep their ``__name__`` / ``__doc__`` / ``__qualname__``."""
-    from pd_book_tools.geometry.bounding_box import BoundingBox
+    from pdomain_book_tools.geometry.bounding_box import BoundingBox
 
     assert BoundingBox.intersects.__name__ == "intersects"
     assert BoundingBox.intersection.__name__ == "intersection"

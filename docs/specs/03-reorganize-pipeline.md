@@ -2,7 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#27
+> **Spec-Issue**: pdomain/pdomain-book-tools#27
 
 How `Page.reorganize_page` turns a page of OCR output (a tree of `Block` /
 `Line` / `Word` objects) into the ordered, classified block structure used by
@@ -15,7 +15,7 @@ interleaved by Y, body text that wraps around a floated figure flows
 correctly, and special blocks (sidenotes, poetry, blockquotes) are tagged.
 
 The implementation lives almost entirely in
-[`pd_book_tools/ocr/reorganize_page_utils.py`](../../pd_book_tools/ocr/reorganize_page_utils.py).
+[`pdomain_book_tools/ocr/reorganize_page_utils.py`](../../pdomain_book_tools/ocr/reorganize_page_utils.py).
 `Page.reorganize_page` is a thin orchestration shim that calls named module
 functions in pipeline order.
 
@@ -339,7 +339,7 @@ approaches exist:
 
 We use approach 2.
 
-#### Step DC fallback — cursive / decorative caps (`pd_book_tools.ocr.dropcap`)
+#### Step DC fallback — cursive / decorative caps (`pdomain_book_tools.ocr.dropcap`)
 
 `stitch_block_drop_caps` (the block-cap path) requires the OCR model
 to have *recognised* the cap glyph as a 1–2 character Word.

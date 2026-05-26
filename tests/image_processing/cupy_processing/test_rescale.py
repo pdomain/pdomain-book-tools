@@ -9,7 +9,7 @@ import pytest
 class TestRescaleImageGpu:
     def test_portrait_short_side_becomes_target(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -20,7 +20,7 @@ class TestRescaleImageGpu:
 
     def test_landscape_short_side_becomes_target(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -31,7 +31,7 @@ class TestRescaleImageGpu:
 
     def test_output_is_uint8(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -41,7 +41,7 @@ class TestRescaleImageGpu:
 
     def test_color_image_preserves_channels(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
 
@@ -54,10 +54,12 @@ class TestRescaleImageGpu:
         """GPU output shape must exactly match CPU reference."""
         cp = cupy_module
         pytest.importorskip("cv2")
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.rescale import rescale_image
+        from pdomain_book_tools.image_processing.cv2_processing.rescale import (
+            rescale_image,
+        )
 
         img_np = np.zeros((400, 200), dtype=np.uint8)
         cpu_out = rescale_image(img_np, target_short_side=100)
@@ -66,7 +68,7 @@ class TestRescaleImageGpu:
         assert cpu_out.shape == tuple(gpu_out.shape)
 
     def test_np_uint8_rescale_image_wrapper(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.rescale import (
+        from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             np_uint8_rescale_image,
         )
 

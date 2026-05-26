@@ -6,11 +6,11 @@ from unittest.mock import patch
 
 import pytest
 
-from pd_book_tools.image_processing.external_tools import run_gegl_c2g, run_optipng
+from pdomain_book_tools.image_processing.external_tools import run_gegl_c2g, run_optipng
 
 
 class TestRunOptipng:
-    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    @patch("pdomain_book_tools.image_processing.external_tools.subprocess.run")
     def test_invokes_optipng_with_expected_args(self, mock_run, tmp_path):
         """run_optipng should invoke 'optipng -o7 <abs path>'."""
         src = tmp_path / "image.png"
@@ -27,7 +27,7 @@ class TestRunOptipng:
         assert kwargs["shell"] is False
         assert kwargs["check"] is True
 
-    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    @patch("pdomain_book_tools.image_processing.external_tools.subprocess.run")
     def test_propagates_subprocess_failure(self, mock_run, tmp_path):
         """A non-zero exit must surface as CalledProcessError."""
         mock_run.side_effect = subprocess.CalledProcessError(
@@ -40,7 +40,7 @@ class TestRunOptipng:
 
 
 class TestRunGeglC2g:
-    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    @patch("pdomain_book_tools.image_processing.external_tools.subprocess.run")
     def test_invokes_gegl_c2g_with_expected_args(self, mock_run, tmp_path):
         """run_gegl_c2g should invoke gegl with -- c2g and the optional options string."""
         source = tmp_path / "in.png"
@@ -62,7 +62,7 @@ class TestRunGeglC2g:
         assert kwargs["shell"] is False
         assert kwargs["check"] is True
 
-    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    @patch("pdomain_book_tools.image_processing.external_tools.subprocess.run")
     def test_default_options_empty_string(self, mock_run, tmp_path):
         source = pathlib.Path(tmp_path / "a.png")
         target = pathlib.Path(tmp_path / "b.png")
@@ -73,7 +73,7 @@ class TestRunGeglC2g:
         assert args[-1] == "c2g"
         assert "" not in args
 
-    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    @patch("pdomain_book_tools.image_processing.external_tools.subprocess.run")
     def test_multi_flag_options_are_shlex_split(self, mock_run, tmp_path):
         """M-06: multi-token c2gOptions must be split into separate argv entries."""
         source = tmp_path / "in.png"
@@ -90,7 +90,7 @@ class TestRunGeglC2g:
         assert tail == ["--samples", "4", "--iterations", "10"]
         assert "--samples 4 --iterations 10" not in args
 
-    @patch("pd_book_tools.image_processing.external_tools.subprocess.run")
+    @patch("pdomain_book_tools.image_processing.external_tools.subprocess.run")
     def test_quoted_options_preserve_spaces(self, mock_run, tmp_path):
         """shlex.split must respect quoted multi-word values."""
         source = tmp_path / "in.png"

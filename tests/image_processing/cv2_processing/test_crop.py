@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from pd_book_tools.image_processing.cv2_processing.crop import (
+from pdomain_book_tools.image_processing.cv2_processing.crop import (
     crop_edges,
     crop_to_rectangle,
 )

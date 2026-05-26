@@ -9,7 +9,7 @@ import pytest
 class TestFindEdgesGpu:
     def test_blank_image_returns_full_extents(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
 
@@ -22,7 +22,7 @@ class TestFindEdgesGpu:
 
     def test_central_block_detected(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
 
@@ -38,7 +38,7 @@ class TestFindEdgesGpu:
 
     def test_returns_python_ints(self, cupy_module):
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
 
@@ -58,7 +58,7 @@ class TestFindEdgesGpu:
         detected.
         """
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
 
@@ -83,7 +83,7 @@ class TestFindEdgesGpu:
     def test_fuzzy_px_override_zero(self, cupy_module):
         """fuzzy_px_w_override=0 should be respected (not treated as falsy)."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
 
@@ -102,10 +102,10 @@ class TestFindEdgesGpu:
     def test_matches_cpu_reference(self, cupy_module):
         """GPU result must be within ±2 pixels of the CPU reference on the same image."""
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cv2_processing.edge_finding import (
             find_edges,
         )
 
@@ -121,7 +121,7 @@ class TestFindEdgesGpu:
             assert abs(cpu_val - gpu_val) <= 2, f"CPU={cpu} GPU={gpu}"
 
     def test_np_uint8_find_edges_wrapper(self, cupy_module):
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             np_uint8_find_edges,
         )
 
@@ -151,10 +151,10 @@ class TestFindEdgesGpu:
         Correct fix: use mode='constant' (cval=0) on GPU to match CPU (closes #185).
         """
         cp = cupy_module
-        from pd_book_tools.image_processing.cupy_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
         )
-        from pd_book_tools.image_processing.cv2_processing.edge_finding import (
+        from pdomain_book_tools.image_processing.cv2_processing.edge_finding import (
             find_edges,
         )
 

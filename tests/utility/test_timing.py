@@ -6,10 +6,10 @@ import warnings
 
 import pytest
 
-from pd_book_tools.utility.timing import (
+from pdomain_book_tools.utility.timing import (
     func_log_excution_time as _deprecated_alias,
 )
-from pd_book_tools.utility.timing import (
+from pdomain_book_tools.utility.timing import (
     func_log_execution_time,
 )
 
@@ -180,7 +180,7 @@ class TestFuncLogExecutionTime:
         the counter incremented; post-fix the call is gated by
         ``logger.isEnabledFor(logLevel)`` and the counter stays at 0.
         """
-        from pd_book_tools.utility import timing as timing_mod
+        from pdomain_book_tools.utility import timing as timing_mod
 
         call_count = {"n": 0}
         original_stack = timing_mod.inspect.stack
@@ -211,7 +211,7 @@ class TestFuncLogExecutionTime:
         the gated ``inspect.stack`` call still happens (otherwise the
         ``called from {caller}`` log line would lose its caller info).
         """
-        from pd_book_tools.utility import timing as timing_mod
+        from pdomain_book_tools.utility import timing as timing_mod
 
         call_count = {"n": 0}
         original_stack = timing_mod.inspect.stack

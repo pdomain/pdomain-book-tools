@@ -6,7 +6,7 @@ import pytest
 @pytest.fixture
 def cupy_invert(cupy_module):
     """Import the cupy invert module only when cupy is available."""
-    from pd_book_tools.image_processing.cupy_processing import invert as invert_mod
+    from pdomain_book_tools.image_processing.cupy_processing import invert as invert_mod
 
     return invert_mod, cupy_module
 

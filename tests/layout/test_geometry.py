@@ -1,15 +1,15 @@
-"""Tests for the region-adjacency helpers in ``pd_book_tools.layout.geometry``."""
+"""Tests for the region-adjacency helpers in ``pdomain_book_tools.layout.geometry``."""
 
 import pytest
 
-from pd_book_tools.layout.geometry import (
+from pdomain_book_tools.layout.geometry import (
     caption_for_figure,
     contains,
     horizontal_overlap_ratio,
     iou,
     region_reading_order,
 )
-from pd_book_tools.layout.types import LayoutRegion, RegionType
+from pdomain_book_tools.layout.types import LayoutRegion, RegionType
 
 
 def R(L, T, R_, B, type_=RegionType.text):

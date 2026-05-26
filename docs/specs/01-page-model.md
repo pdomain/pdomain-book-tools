@@ -2,13 +2,13 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#24
+> **Spec-Issue**: pdomain/pdomain-book-tools#24
 
 This document is the user-facing reference for the JSON form of a
-processed page produced by pd-book-tools. It describes what the keys
+processed page produced by pdomain-book-tools. It describes what the keys
 mean, what the value vocabularies are, and where the format is and
-isn't stable. Downstream consumers (`pd-ocr-cli`, `pd-ocr-labeler`,
-`pd-prep-for-pgdp`) all read this format back via `Page.from_dict`.
+isn't stable. Downstream consumers (`pdomain-ocr-cli`, `pd-ocr-labeler`,
+`pdomain-prep-for-pgdp`) all read this format back via `Page.from_dict`.
 
 For maintainers: this doc is gated by
 [`tests/test_page_model_doc.py`](../../tests/test_page_model_doc.py),
@@ -19,12 +19,12 @@ allowed-set together.
 
 ## Where the format lives in code
 
-- `Page.to_dict()` — `pd_book_tools/ocr/page.py` (around line 2661).
+- `Page.to_dict()` — `pdomain_book_tools/ocr/page.py` (around line 2661).
 - `Page.from_dict(...)` — same file, around line 3091.
-- `Block.to_dict()` / `Block.from_dict()` — `pd_book_tools/ocr/block.py`.
-- `Word.to_dict()` / `Word.from_dict()` — `pd_book_tools/ocr/word.py`.
+- `Block.to_dict()` / `Block.from_dict()` — `pdomain_book_tools/ocr/block.py`.
+- `Word.to_dict()` / `Word.from_dict()` — `pdomain_book_tools/ocr/word.py`.
 - `BoundingBox.to_dict()` / `BoundingBox.from_dict()` —
-  `pd_book_tools/geometry/bounding_box.py`.
+  `pdomain_book_tools/geometry/bounding_box.py`.
 - Allowed label vocabularies — `Block.ALLOWED_BLOCK_ROLE_LABELS`,
   `Block.ALLOWED_LINE_ROLE_LABELS`, plus the `*_POSITION_LABELS` siblings
   and the `*_ALIASES` maps that fold legacy strings onto canonical ones.
@@ -46,10 +46,10 @@ Every level except `Word` may carry a `BoundingBox`; words always do.
 `Block` is intentionally recursive because different OCR engines emit
 different levels of nesting:
 
-- DocTR emits page → block → line → word; pd-book-tools represents this
+- DocTR emits page → block → line → word; pdomain-book-tools represents this
   as `Block(child_type=BLOCKS) → Block(child_type=BLOCKS, block_category=PARAGRAPH) → Block(child_type=WORDS, block_category=LINE) → Word`.
 - Tesseract's nesting flattens to a similar tree via the per-level
-  helpers in `pd_book_tools/ocr/cv2_tesseract.py`.
+  helpers in `pdomain_book_tools/ocr/cv2_tesseract.py`.
 - After `Page.reorganize_page` runs, the canonical shape is
   `Page → Block(PARAGRAPH) → Block(LINE) → Word` — but the data model
   does not enforce a single shape and downstream code MUST traverse
@@ -93,7 +93,7 @@ otherwise to keep the JSON compact):
   preserved as a geometry-only artefact.
 - `provenance_live_ocr`, `provenance_saved_ocr`, `provenance_saved` —
   audit trail across save/load cycles.
-- `rotation_applied` — present when `pd_book_tools/ocr/rotation.py`
+- `rotation_applied` — present when `pdomain_book_tools/ocr/rotation.py`
   rotated the page during ingestion. See
   [`02-rotation.md`](02-rotation.md) for the rotated-frame coordinate
   convention.
@@ -153,7 +153,7 @@ Allowed values:
 - `illustration` — geometry-only block representing a figure region.
   Carries `bounding_box` but `items: []`. Emission is gated by
   `Page.reorganize_page(emit_illustration_placeholders=...)`; pass
-  `False` for plain-text consumers (e.g. pd-ocr-cli's `.txt` output)
+  `False` for plain-text consumers (e.g. pdomain-ocr-cli's `.txt` output)
   that don't want placeholder blocks.
 - `decoration` — ornamental woodcut, fleuron, or chapter headpiece.
   Same geometry-only emission rules as `illustration`.
@@ -161,7 +161,7 @@ Allowed values:
   caption words (no silent drops) regardless of placeholder emission.
 - `figure` — text inside a figure region (rare; usually replaced by
   `illustration` after the reorg pipeline).
-- `table` — tabular region; pd-book-tools detects but does not
+- `table` — tabular region; pdomain-book-tools detects but does not
   serialise into PGDP table syntax (manual step).
 - `footnote` — note text at the bottom of the page.
 - `title`, `section`, `list`, `formula` — layout-derived roles bubbled
@@ -212,7 +212,7 @@ values flag lines on the boundary of a detected multi-column layout.
 - `word_labels` — caller-controlled freeform labels. The reorg
   pipeline's `layout:*` tags (e.g. `layout:figure`, `layout:sidenote`)
   live here. See
-  [`pd_book_tools/ocr/layout_aware_reorg.py`](../../pd_book_tools/ocr/layout_aware_reorg.py)
+  [`pdomain_book_tools/ocr/layout_aware_reorg.py`](../../pdomain_book_tools/ocr/layout_aware_reorg.py)
   for the `layout:` prefix convention used by
   `tag_words_with_layout`.
 - `text_style_labels` — italic / bold / small-caps style hints (when
@@ -221,11 +221,11 @@ values flag lines on the boundary of a detected multi-column layout.
   spans.
 - `word_components` — sub-word component tags. Allowed values are
   defined by `ALLOWED_COMPONENTS` in
-  [`pd_book_tools/ocr/label_normalization.py`](../../pd_book_tools/ocr/label_normalization.py):
+  [`pdomain_book_tools/ocr/label_normalization.py`](../../pdomain_book_tools/ocr/label_normalization.py):
   `superscript`, `subscript`, `footnote marker`, `drop cap`,
   `drop cap unrecovered`. The drop-cap tags are set by Step DC of the
   reorganize pipeline (see
-  [`pd_book_tools/ocr/dropcap.py`](../../pd_book_tools/ocr/dropcap.py)):
+  [`pdomain_book_tools/ocr/dropcap.py`](../../pdomain_book_tools/ocr/dropcap.py)):
   - `drop cap` — this Word *is* the decorative initial glyph (e.g. the
     oversized "R" in "READER!"). It is kept as its own Word at the
     front of the body line, with its own bounding box and OCR
@@ -268,7 +268,7 @@ absent.
 ## Layout vs page model — two separate trees
 
 `PageLayout` and `LayoutRegion` (defined in
-`pd_book_tools/layout/types.py`) are a **separate** structure from the
+`pdomain_book_tools/layout/types.py`) are a **separate** structure from the
 page model. They describe what a layout detector saw on the page and
 are consumed by `Page.reorganize_page(layout=...)` as a hint — they
 are NOT part of `Page.to_dict()` output.
@@ -288,7 +288,7 @@ placeholder blocks).
 
 The mapping `RegionType` → `block_role_labels` is defined by
 `_REGION_TO_BLOCK_ROLE` in
-[`pd_book_tools/ocr/layout_aware_reorg.py`](../../pd_book_tools/ocr/layout_aware_reorg.py)
+[`pdomain_book_tools/ocr/layout_aware_reorg.py`](../../pdomain_book_tools/ocr/layout_aware_reorg.py)
 (roughly: `text` → `paragraph`, `header` → `page header`, `footer` →
 `page footer`, the rest pass through unchanged). `RegionType.abandoned`
 intentionally has no block-role mapping; it exists so layout-derived
@@ -297,12 +297,12 @@ without poisoning the page tree.
 
 ## Role labels are advisory, not formatting
 
-pd-book-tools attaches role labels but does **not** render them into
+pdomain-book-tools attaches role labels but does **not** render them into
 `Page.text`. Turning labels into PGDP markup, `[Illustration: …]`
 strings, footnote anchors, etc. is the consuming app's job:
 
-- `pd-prep-for-pgdp` does the PGDP mapping from `block_role_labels`.
-- `pd-ocr-cli`'s `.txt` output is plain reading-order text and ignores
+- `pdomain-prep-for-pgdp` does the PGDP mapping from `block_role_labels`.
+- `pdomain-ocr-cli`'s `.txt` output is plain reading-order text and ignores
   most role labels.
 
 Don't expect the library to do downstream formatting for you.
@@ -325,7 +325,7 @@ The format is currently **informal**. Concretely:
   change. New consumers should use `dict.get(...)` with sensible
   defaults rather than hard-indexing.
 - Field removals and renames have happened during reorg refactors.
-  Pin a known-good `pd-book-tools` version in downstream projects if
+  Pin a known-good `pdomain-book-tools` version in downstream projects if
   you depend on a specific field shape.
 - The vocabularies listed above
   (`ALLOWED_BLOCK_ROLE_LABELS`, etc.) are append-only in practice but
@@ -334,7 +334,7 @@ The format is currently **informal**. Concretely:
   signal that this doc needs updating.
 
 There is no JSON schema file, no version-negotiation protocol, and no
-guarantee of round-trip stability across pd-book-tools major versions.
+guarantee of round-trip stability across pdomain-book-tools major versions.
 Those are separate efforts and are out of scope here.
 
 ## See also
@@ -344,7 +344,7 @@ Those are separate efforts and are out of scope here.
   this doc describes.
 - [`02-rotation.md`](02-rotation.md) — how `rotation_applied` interacts with
   the page coordinate frame.
-- `pd-prep-for-pgdp/specs/` — how `block_role_labels` map to PGDP
+- `pdomain-prep-for-pgdp/specs/` — how `block_role_labels` map to PGDP
   markup downstream.
 
 ## TL;DR

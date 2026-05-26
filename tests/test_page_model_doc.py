@@ -19,10 +19,10 @@ from pathlib import Path
 
 import pytest
 
-from pd_book_tools.layout.types import RegionType
-from pd_book_tools.ocr.block import Block
-from pd_book_tools.ocr.label_normalization import ALLOWED_COMPONENTS
-from pd_book_tools.ocr.page import Page
+from pdomain_book_tools.layout.types import RegionType
+from pdomain_book_tools.ocr.block import Block
+from pdomain_book_tools.ocr.label_normalization import ALLOWED_COMPONENTS
+from pdomain_book_tools.ocr.page import Page
 
 DOC_PATH = (
     Path(__file__).resolve().parent.parent / "docs" / "specs" / "01-page-model.md"

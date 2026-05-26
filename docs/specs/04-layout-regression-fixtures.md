@@ -2,7 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#28
+> **Spec-Issue**: pdomain/pdomain-book-tools#28
 
 How the fixture corpus under
 [`tests/fixtures/layout_regression/`](../../tests/fixtures/layout_regression/)
@@ -73,12 +73,12 @@ SLUG=...
 
 # 2. Copy the page image and extract the PGDP target text.
 cp source-pgdp-data/output/<projectID>/<page>.png \
-   pd-book-tools/tests/fixtures/layout_regression/inputs/${SLUG}.png
+   pdomain-book-tools/tests/fixtures/layout_regression/inputs/${SLUG}.png
 # (extract `pages.json[page]`, normalise ` / ` to newlines, write
 #  inputs/${SLUG}.pgdp.txt — see source-pgdp-data/output/*/pages.json)
 
 # 3. OCR the page (writes inputs/${SLUG}.json).
-cd pd-book-tools
+cd pdomain-book-tools
 .venv/bin/python tests/fixtures/layout_regression/ocr_fixtures.py ${SLUG}
 
 # 4. Run the layout model (writes inputs/${SLUG}.layout.json + a

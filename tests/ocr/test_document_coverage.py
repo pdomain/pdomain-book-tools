@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from pd_book_tools.ocr.document import Document
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.provenance import OCRModelProvenance
+from pdomain_book_tools.ocr.document import Document
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.provenance import OCRModelProvenance
 
 
 @pytest.fixture
@@ -310,7 +310,7 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         with patch(
-            "pd_book_tools.ocr.document.get_default_doctr_predictor",
+            "pdomain_book_tools.ocr.document.get_default_doctr_predictor",
             return_value=fake_predictor,
         ) as mock_get_default:
             img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -541,7 +541,7 @@ class TestToFromDictEmptyPages:
 class TestSafePackageVersionExceptionClause:
     def test_exception_returns_unknown(self, monkeypatch):
         """Line 376-377: catches generic Exception from package_version."""
-        from pd_book_tools.ocr import document as doc_module
+        from pdomain_book_tools.ocr import document as doc_module
 
         def raise_runtime(*args, **kwargs):
             raise RuntimeError("unexpected error")
@@ -556,7 +556,7 @@ class TestFromTesseractUnknownPytesseractVersion:
         """Line 436->441 False branch: pytesseract_version == 'unknown'."""
         from pandas import DataFrame
 
-        from pd_book_tools.ocr import document as doc_module
+        from pdomain_book_tools.ocr import document as doc_module
 
         monkeypatch.setattr(
             doc_module.Document,

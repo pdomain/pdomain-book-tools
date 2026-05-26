@@ -46,7 +46,7 @@ Land this API first, then the bottom-crop tool. See section 8.
 
 ## 8. Interaction with the bottom-crop spec
 
-The bottom-crop spec's proposed pd-book-tools surface (section 9 of
+The bottom-crop spec's proposed pdomain-book-tools surface (section 9 of
 that spec) currently is:
 
 - `BoundingBox.crop_bottom_to_y(image, target_y, ...)` — pure geometry.
@@ -109,7 +109,7 @@ tool. Concretely:
 - Land `WordReferenceLines`, `Word.estimate_reference_lines`,
   `Block.estimate_word_reference_lines`,
   `Page.estimate_word_reference_lines`, and
-  `DEFAULT_DESCENDER_CHARS` in pd-book-tools (one PR).
+  `DEFAULT_DESCENDER_CHARS` in pdomain-book-tools (one PR).
 - Cut a tag (e.g. `v0.10.0`).
 - Revise the bottom-crop spec section 9 to consume the new API
   instead of re-deriving baseline / x_height. The surface becomes
@@ -128,7 +128,7 @@ descender-set broadening.
 The user can decide. Recommendation is the first path (do this
 spec's work first) because the bottom-crop spec already calls for
 the descender-set dedup as a side-effect, and doing it here once
-versus there once means it lands in pd-book-tools either way; the
+versus there once means it lands in pdomain-book-tools either way; the
 question is just ordering.
 
 This spec **does not edit the bottom-crop spec.** It only
@@ -212,7 +212,7 @@ The minimum set of decisions needed to start coding:
    Recommendation: only `top + has_ascender`. Confirm.
 5. (Section 4.2 of [06b](06b-word-reference-lines-api.md), Q-RL-8)
    **Broadened descender set, dedup'd into
-   `pd_book_tools/ocr/reference_lines.DEFAULT_DESCENDER_CHARS`.**
+   `pdomain_book_tools/ocr/reference_lines.DEFAULT_DESCENDER_CHARS`.**
    Same set as bottom-crop spec section 2.1. Confirm.
 6. (Section 5 of [06b](06b-word-reference-lines-api.md))
    **Default tunable values** — happy with the table?
@@ -345,7 +345,7 @@ posture (`fail_under = 0`), no new gate.
 - Non-Latin scripts.
 - Persisting `WordReferenceLines` in `to_dict` / `from_dict` (Q-RL-5).
 - Page-level reference-lines visualization (could be a separate
-  `pd_book_tools.layout.visualize` enhancement; not needed for the
+  `pdomain_book_tools.layout.visualize` enhancement; not needed for the
   immediate use cases).
 - Using DocTR's internal text-line geometry (deliberately stay
   on raw pixels so this works for any OCR engine, not just DocTR).

@@ -7,10 +7,10 @@ import pytest
 
 ipywidgets = pytest.importorskip("ipywidgets")
 
-from pd_book_tools.geometry.bounding_box import (
+from pdomain_book_tools.geometry.bounding_box import (
     BoundingBox,  # after importorskip guard
 )
-from pd_book_tools.utility.ipynb_widgets import (
+from pdomain_book_tools.utility.ipynb_widgets import (
     get_formatted_text_html_span,
     get_hbox_widget_for_colored_text,
     get_hbox_widget_for_cropped_image,
@@ -110,7 +110,7 @@ class TestGetHtmlStringFromImageSrc:
 
 
 class TestGetHtmlStringFromImage:
-    @patch("pd_book_tools.utility.ipynb_widgets.get_encoded_image")
+    @patch("pdomain_book_tools.utility.ipynb_widgets.get_encoded_image")
     def test_uses_encoded_data_src(self, mock_get_encoded):
         mock_get_encoded.return_value = (b"x", "b64", "data:image/png;base64,xyz")
         img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -121,7 +121,7 @@ class TestGetHtmlStringFromImage:
 
 
 class TestGetHtmlStringFromCroppedImage:
-    @patch("pd_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
+    @patch("pdomain_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
     def test_uses_cropped_data_src(self, mock_get_cropped):
         mock_get_cropped.return_value = (
             np.zeros((1, 1, 3), dtype=np.uint8),
@@ -138,7 +138,7 @@ class TestGetHtmlStringFromCroppedImage:
 
 
 class TestGetHtmlWidgetFromCroppedImage:
-    @patch("pd_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
+    @patch("pdomain_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
     def test_returns_html_widget(self, mock_get_cropped):
         mock_get_cropped.return_value = (
             np.zeros((1, 1, 3), dtype=np.uint8),
@@ -154,7 +154,7 @@ class TestGetHtmlWidgetFromCroppedImage:
 
 
 class TestGetHboxWidgetForCroppedImage:
-    @patch("pd_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
+    @patch("pdomain_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
     def test_returns_hbox_with_html_child(self, mock_get_cropped):
         mock_get_cropped.return_value = (
             np.zeros((1, 1, 3), dtype=np.uint8),
@@ -170,7 +170,7 @@ class TestGetHboxWidgetForCroppedImage:
         assert len(hbox.children) == 1
         assert isinstance(hbox.children[0], ipywidgets.HTML)
 
-    @patch("pd_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
+    @patch("pdomain_book_tools.utility.ipynb_widgets.get_cropped_encoded_image")
     def test_legacy_argument_order_emits_deprecation(self, mock_get_cropped):
         # Backward-compat: legacy (bounding_box, img) order still works
         # but raises DeprecationWarning. Detected by type discriminator

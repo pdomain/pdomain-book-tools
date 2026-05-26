@@ -1,4 +1,4 @@
-"""Drop-cap recognition regression tests for ``pd_book_tools.ocr.dropcap``.
+"""Drop-cap recognition regression tests for ``pdomain_book_tools.ocr.dropcap``.
 
 Exercises the cursive / decorative drop-cap fallback against the three
 known fixtures where the geometric block-cap stitcher fails because
@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-from pd_book_tools.ocr.document import Document
+from pdomain_book_tools.ocr.document import Document
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"

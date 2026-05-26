@@ -1,6 +1,6 @@
 """Tests for the shared SPDX license allowlist module.
 
-``pd_book_tools.licenses`` is the single source of truth for SPDX license
+``pdomain_book_tools.licenses`` is the single source of truth for SPDX license
 identifier validation across the ``pd-*`` repos. These tests pin the
 public API (``SPDX_VALID_IDS`` and ``is_valid_spdx_id``) and confirm the
 vendored JSON data file ships and loads.
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import importlib.resources
 
-from pd_book_tools.licenses import SPDX_VALID_IDS, is_valid_spdx_id
+from pdomain_book_tools.licenses import SPDX_VALID_IDS, is_valid_spdx_id
 
 
 def test_spdx_valid_ids_is_nonempty_frozenset_of_str():
@@ -60,7 +60,7 @@ def test_is_valid_spdx_id_handles_non_str_input():
 
 
 def test_vendored_json_data_file_loadable():
-    resource = importlib.resources.files("pd_book_tools.data").joinpath(
+    resource = importlib.resources.files("pdomain_book_tools.data").joinpath(
         "spdx_licenses.json"
     )
     assert resource.is_file()
@@ -72,7 +72,7 @@ def test_vendored_json_data_file_loadable():
 def test_vendored_spdx_data_has_third_party_attribution():
     """The vendored SPDX data ships an adjacent third-party notice naming
     its upstream source and license, so redistributors can trace it."""
-    notice = importlib.resources.files("pd_book_tools.data").joinpath(
+    notice = importlib.resources.files("pdomain_book_tools.data").joinpath(
         "THIRD-PARTY-NOTICES.md"
     )
     assert notice.is_file()

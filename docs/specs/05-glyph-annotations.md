@@ -2,7 +2,7 @@
 
 > **Status**: Active
 > **Last updated**: 2026-05-10
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#29
+> **Spec-Issue**: pdomain/pdomain-book-tools#29
 
 Status: spec only — no implementation yet. Decision-oriented; intended
 to be green-lit, pushed back on, or revised before code is written.
@@ -16,7 +16,7 @@ the canonical / semantic ground-truth string.
 This is the **foundation-library half** of a workspace-wide feature.
 Four sibling repos are downstream consumers of the model defined here:
 
-- `pd-ocr-synth` — emits `glyph_annotations` when synthesizing pages
+- `pdomain-ocr-synth` — emits `glyph_annotations` when synthesizing pages
   whose recipe specifies ligatures, long-s, swash, etc., so the
   trainer has supervised signal.
 - `pd-ocr-trainer` — consumes `glyph_annotations` for evaluation
@@ -24,7 +24,7 @@ Four sibling repos are downstream consumers of the model defined here:
   curriculum sampling.
 - `pd-ocr-labeler` (NiceGUI, legacy) — surfaces the annotations in
   the per-word panel; reads/writes them in saved snapshots.
-- `pd-ocr-labeler-spa` (FastAPI + React, in spec) — uses
+- `pdomain-ocr-labeler-spa` (FastAPI + React, in spec) — uses
   `glyph_annotations` in its JSON envelope; needs the field shape
   pinned before milestones referencing it can land.
 
@@ -123,7 +123,7 @@ No existing call site of `Word.__init__`, `Word.to_dict`, or
 
 ## 2. Data model
 
-`Word` is a `@dataclass` (see `pd_book_tools/ocr/word.py:30`) with a
+`Word` is a `@dataclass` (see `pdomain_book_tools/ocr/word.py:30`) with a
 hand-rolled `__init__` and `to_dict` / `from_dict`. The new types
 follow that convention — plain `@dataclass` with `to_dict` /
 `from_dict`, not pydantic, not attrs. This keeps the dependency
@@ -135,7 +135,7 @@ shape exactly.
 A `str`-valued `Enum` (so JSON serialization is the bare string, and
 older readers that hand-decode JSON see human-meaningful values).
 Values are **UPPERCASE** (changed in plan #163 to align with
-pd-ocr-labeler-spa spec 20 §3; a migration shim in `from_dict` accepts
+pdomain-ocr-labeler-spa spec 20 §3; a migration shim in `from_dict` accepts
 the legacy lowercase values for backwards compatibility with pre-#163
 snapshots).
 
@@ -264,7 +264,7 @@ Field-level rules:
 - `swash` — bool; defaults to `false`.
 - `source` — object-level provenance string; one of `"human"`,
   `"predicted"`, `"human_confirmed"`; defaults to `"human"`. Missing
-  key on load = `"human"`. Per ADR D-044 (pd-ocr-labeler-spa
+  key on load = `"human"`. Per ADR D-044 (pdomain-ocr-labeler-spa
   `specs/17-decisions.md`), provenance is per-`GlyphAnnotations` object,
   not per-mark.
 - Future fields (small_caps_in_lc, italic_in_roman, …) — added as
@@ -272,7 +272,7 @@ Field-level rules:
 
 ### 3.2 Nesting into existing `Word` JSON
 
-`Word.to_dict` (currently at `pd_book_tools/ocr/word.py:637`) returns a
+`Word.to_dict` (currently at `pdomain_book_tools/ocr/word.py:637`) returns a
 flat dict. The new key is added at the top level alongside `text`,
 `bounding_box`, `text_style_labels`, etc.:
 
@@ -319,7 +319,7 @@ glyph_annotations = (
 
 ### 3.4 Pickle / snapshot format
 
-`pd-book-tools` consumers also pickle / cloudpickle `Document` and
+`pdomain-book-tools` consumers also pickle / cloudpickle `Document` and
 `Page` objects (see snapshot use in the labeler). Because `Word`,
 `GlyphAnnotations`, and `LigatureMark` are all plain dataclasses with
 JSON-friendly fields, pickle Just Works. No custom `__getstate__` /
@@ -391,10 +391,10 @@ consumer.
 
 | Consumer | Reads | Writes | Needs |
 |---|---|---|---|
-| `pd-ocr-synth` | — | full `GlyphAnnotations` | Stable JSON shape; `LigatureKind` covers everything the recipes can render. |
+| `pdomain-ocr-synth` | — | full `GlyphAnnotations` | Stable JSON shape; `LigatureKind` covers everything the recipes can render. |
 | `pd-ocr-trainer` | `GlyphAnnotations`, `None` distinction | — | Eval slicing depends on `None` ≠ `GlyphAnnotations()` (see §1.3). |
 | `pd-ocr-labeler` (NiceGUI) | full | full | Snapshot pickle round-trip; per-word UI panel. |
-| `pd-ocr-labeler-spa` | full | full | JSON envelope round-trip; field shape pinned before envelope spec lands. |
+| `pdomain-ocr-labeler-spa` | full | full | JSON envelope round-trip; field shape pinned before envelope spec lands. |
 
 If a future change would alter the JSON shape (rename a field, change
 a type), it is a **breaking** change for the SPA envelope and
@@ -430,7 +430,7 @@ requires a coordinated bump across all four consumers.
    the corpora we've sampled. Keep it for now as future-proofing;
    easy to remove with a deprecation if it's never used.
 3. **Validator location** — free function in
-   `pd_book_tools/ocr/glyph_annotations.py`, or method on
+   `pdomain_book_tools/ocr/glyph_annotations.py`, or method on
    `GlyphAnnotations`? Implementation detail; lean toward method
    for symmetry with `BoundingBox.validate`-style helpers if any
    exist; otherwise free function.

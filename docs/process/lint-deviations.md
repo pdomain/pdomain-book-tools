@@ -1,4 +1,4 @@
-# Lint-rule Deviations — pd-book-tools
+# Lint-rule Deviations — pdomain-book-tools
 
 Standing suppressions and per-file rule overrides in this repo.
 Each entry records: the rule, the tool, the file(s) affected, and
@@ -8,7 +8,7 @@ the justification. Update this file whenever a new suppression is added.
 
 ## 1. `reportMissingImports` — basedpyright
 
-**Files:** `pd_book_tools/image_processing/cupy_processing/_cupy_compat.py`,
+**Files:** `pdomain_book_tools/image_processing/cupy_processing/_cupy_compat.py`,
 `contours.py`, `edge_finding.py`, `filters.py`, `morph.py`, `rescale.py`,
 `rotate.py`
 
@@ -35,12 +35,12 @@ The suppression is intentionally scoped to the import lines inside the
 
 **Files:**
 
-- `pd_book_tools/image_processing/cupy_processing/_cupy_compat.py`
+- `pdomain_book_tools/image_processing/cupy_processing/_cupy_compat.py`
   (`_CUPY_AVAILABLE`, `_CUPY_IMPORT_ERROR`)
-- `pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py`
+- `pdomain_book_tools/image_processing/cv2_processing/perspective_adjustment.py`
   (local coordinate variables in ALL_CAPS)
-- `pd_book_tools/layout/types.py` (LTRB field names)
-- `pd_book_tools/ocr/cv2_tesseract.py` (`_pytesseract_available` once-per-process flag)
+- `pdomain_book_tools/layout/types.py` (LTRB field names)
+- `pdomain_book_tools/ocr/cv2_tesseract.py` (`_pytesseract_available` once-per-process flag)
 
 **Suppression form:** `# pyright: ignore[reportConstantRedefinition]` inline.
 
@@ -54,7 +54,7 @@ to lowercase would hurt readability in context.
 
 ## 3. `reportOptionalMemberAccess` — basedpyright
 
-**Files:** `pd_book_tools/ocr/reorganize_page_utils.py` (15 occurrences)
+**Files:** `pdomain_book_tools/ocr/reorganize_page_utils.py` (15 occurrences)
 
 **Suppression form:** `# pyright: ignore[reportOptionalMemberAccess]` inline.
 
@@ -70,10 +70,10 @@ eliminated when the module is refactored with typed containers.
 
 ## 4. `reportAttributeAccessIssue` — basedpyright
 
-**Files:** `pd_book_tools/ocr/page.py`, `pd_book_tools/ocr/document.py`,
-`pd_book_tools/ocr/reorganize_page_utils.py`,
-`pd_book_tools/image_processing/cupy_processing/color_to_gray.py`,
-`pd_book_tools/utility/ipynb_widgets.py`
+**Files:** `pdomain_book_tools/ocr/page.py`, `pdomain_book_tools/ocr/document.py`,
+`pdomain_book_tools/ocr/reorganize_page_utils.py`,
+`pdomain_book_tools/image_processing/cupy_processing/color_to_gray.py`,
+`pdomain_book_tools/utility/ipynb_widgets.py`
 
 **Suppression form:** `# pyright: ignore[reportAttributeAccessIssue]` inline.
 
@@ -93,7 +93,7 @@ eliminated when the module is refactored with typed containers.
 
 ## 5. `reportOptionalCall` / `reportGeneralTypeIssues` — basedpyright
 
-**Files:** `pd_book_tools/image_processing/cupy_processing/` (contours, edge_finding,
+**Files:** `pdomain_book_tools/image_processing/cupy_processing/` (contours, edge_finding,
 morph, rotate)
 
 **Suppression form:** `# pyright: ignore[reportOptionalCall]` and
@@ -114,10 +114,10 @@ returned at runtime.
 
 ## 6. `reportArgumentType` — basedpyright
 
-**Files:** `pd_book_tools/layout/adapters/pp_doclayout.py`,
-`pd_book_tools/ocr/cv2_tesseract.py`,
-`pd_book_tools/image_processing/cupy_processing/rotate.py`,
-`pd_book_tools/utility/ipynb_widgets.py`
+**Files:** `pdomain_book_tools/layout/adapters/pp_doclayout.py`,
+`pdomain_book_tools/ocr/cv2_tesseract.py`,
+`pdomain_book_tools/image_processing/cupy_processing/rotate.py`,
+`pdomain_book_tools/utility/ipynb_widgets.py`
 
 **Suppression form:** `# pyright: ignore[reportArgumentType]` inline.
 
@@ -136,8 +136,8 @@ returned at runtime.
 
 ## 7. `reportReturnType` / `reportAssignmentType` — basedpyright
 
-**Files:** `pd_book_tools/image_processing/cv2_processing/morph.py`,
-`pd_book_tools/image_processing/cv2_processing/contours.py`
+**Files:** `pdomain_book_tools/image_processing/cv2_processing/morph.py`,
+`pdomain_book_tools/image_processing/cv2_processing/contours.py`
 
 **Suppression form:** `# pyright: ignore[reportReturnType]` and
 `# pyright: ignore[reportAssignmentType]` inline.
@@ -151,9 +151,9 @@ gap between the cv2 stub types and the actual values.
 
 ## 8. `reportFunctionMemberAccess` / `reportPrivateImportUsage` — basedpyright
 
-**Files:** `pd_book_tools/ocr/page.py`,
-`pd_book_tools/hf/download.py`,
-`pd_book_tools/layout/adapters/pp_doclayout.py`
+**Files:** `pdomain_book_tools/ocr/page.py`,
+`pdomain_book_tools/hf/download.py`,
+`pdomain_book_tools/layout/adapters/pp_doclayout.py`
 
 **Suppression form:** `# pyright: ignore[reportFunctionMemberAccess]` and
 `# pyright: ignore[reportPrivateImportUsage]` inline.
@@ -169,10 +169,10 @@ gap between the cv2 stub types and the actual values.
 
 ## 9. `type: ignore` (unscoped) — mypy-style — RESOLVED
 
-**Files (historical):** `pd_book_tools/geometry/bounding_box.py`,
-`pd_book_tools/geometry/point.py`, `pd_book_tools/ocr/page.py`,
-`pd_book_tools/ocr/block.py`, `pd_book_tools/ocr/cv2_tesseract.py`,
-`pd_book_tools/image_processing/cupy_processing/threshold.py`
+**Files (historical):** `pdomain_book_tools/geometry/bounding_box.py`,
+`pdomain_book_tools/geometry/point.py`, `pdomain_book_tools/ocr/page.py`,
+`pdomain_book_tools/ocr/block.py`, `pdomain_book_tools/ocr/cv2_tesseract.py`,
+`pdomain_book_tools/image_processing/cupy_processing/threshold.py`
 
 **Resolution.** These were legacy mypy-style suppressions left over from
 before the basedpyright migration. They were audited by stripping every
@@ -249,18 +249,18 @@ Summary of the most significant bundles:
 | `scripts/*.py` | `T201, D, S607` | Scripts use `print()`; `S607` covers partial executable paths |
 | `**/__init__.py` | `D104, F401, TC` | Re-export modules; `F401` is the public API surface mechanism |
 | `**/_*.py` | `D` | Private modules; docstring debt deferred |
-| `pd_book_tools/ocr/page.py` | `ANN, D, G, BLE001, TRY, PERF401, …` | Heavy OCR pipeline file; annotation/docstring/logging debt backlog |
-| `pd_book_tools/ocr/reorganize_page_utils.py` | Same + `N803/N806/N815` | Same backlog; naming convention pre-dates style rules |
-| `pd_book_tools/geometry/bounding_box.py` | `N802, F401, ANN, D, G, S108` | Pre-migration file; full annotation pass deferred |
-| `pd_book_tools/image_processing/cv2_processing/perspective_adjustment.py` | `N806, ANN, D, G, BLE001, TRY, S108` | ALL_CAPS coordinate variables; annotation debt |
-| `pd_book_tools/ocr/ground_truth_matching_helpers/character_groups.py` | `RUF012` | Enum members are list-typed values; `RUF012` incorrectly flags them |
+| `pdomain_book_tools/ocr/page.py` | `ANN, D, G, BLE001, TRY, PERF401, …` | Heavy OCR pipeline file; annotation/docstring/logging debt backlog |
+| `pdomain_book_tools/ocr/reorganize_page_utils.py` | Same + `N803/N806/N815` | Same backlog; naming convention pre-dates style rules |
+| `pdomain_book_tools/geometry/bounding_box.py` | `N802, F401, ANN, D, G, S108` | Pre-migration file; full annotation pass deferred |
+| `pdomain_book_tools/image_processing/cv2_processing/perspective_adjustment.py` | `N806, ANN, D, G, BLE001, TRY, S108` | ALL_CAPS coordinate variables; annotation debt |
+| `pdomain_book_tools/ocr/ground_truth_matching_helpers/character_groups.py` | `RUF012` | Enum members are list-typed values; `RUF012` incorrectly flags them |
 
 ---
 
 ## 15. `PERF203` — ruff (try-in-loop)
 
-**Files:** `pd_book_tools/ocr/word.py` (3 occurrences),
-`pd_book_tools/ocr/page.py` (1 occurrence)
+**Files:** `pdomain_book_tools/ocr/word.py` (3 occurrences),
+`pdomain_book_tools/ocr/page.py` (1 occurrence)
 
 **Suppression form:** `# noqa: PERF203` inline with comment.
 
@@ -272,7 +272,7 @@ cost is acceptable for the correctness guarantee.
 
 ## 16. `PLR0124` — ruff (comparison-to-itself) — RESOLVED
 
-**Files (historical):** `pd_book_tools/ocr/document.py` (2 occurrences)
+**Files (historical):** `pdomain_book_tools/ocr/document.py` (2 occurrences)
 
 **Resolution.** The two suppressed comparisons were `val != val` and
 `f != f` in `Document._tesseract_text` / `Document._tesseract_confidence` —
@@ -289,8 +289,8 @@ both helpers is regression-tested in `tests/ocr/test_document.py`
 
 ## 17. `PLW0603` — ruff (global-statement)
 
-**Files:** `pd_book_tools/ocr/cv2_tesseract.py` (1 occurrence),
-`pd_book_tools/ocr/ground_truth_matching.py` (allowed via per-file-ignores)
+**Files:** `pdomain_book_tools/ocr/cv2_tesseract.py` (1 occurrence),
+`pdomain_book_tools/ocr/ground_truth_matching.py` (allowed via per-file-ignores)
 
 **Suppression form:** `# noqa: PLW0603` inline.
 
@@ -302,8 +302,8 @@ This is the canonical pattern for optional-dependency discovery flags.
 
 ## 18. `ERA001` — ruff (commented-out code)
 
-**Files:** `pd_book_tools/ocr/image_utilities.py`,
-`pd_book_tools/ocr/ground_truth_matching.py`
+**Files:** `pdomain_book_tools/ocr/image_utilities.py`,
+`pdomain_book_tools/ocr/ground_truth_matching.py`
 
 **Suppression form:** `# noqa: ERA001` inline.
 

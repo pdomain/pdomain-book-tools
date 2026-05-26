@@ -1,7 +1,7 @@
 {
   "source_lib": "doctr",
   "source_identifier": "figures-side-by-side-with-captions.png",
-  "source_path": "/workspaces/ocr-container/pd-book-tools/tests/fixtures/layout_regression/inputs/figures-side-by-side-with-captions.png",
+  "source_path": "/workspaces/ocr-container/pdomain-book-tools/tests/fixtures/layout_regression/inputs/figures-side-by-side-with-captions.png",
   "pages": [
     {
       "type": "Page",

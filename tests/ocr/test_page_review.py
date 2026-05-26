@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pd_book_tools.ocr.page import Page
-from pd_book_tools.ocr.review import ReviewMetadata
+from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.review import ReviewMetadata
 
 
 def _minimal_page() -> Page:
