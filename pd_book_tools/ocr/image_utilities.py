@@ -78,7 +78,7 @@ def get_encoded_image(
 ) -> tuple[ndarray, str, str]:
     # Encode the image as PNG
     encoded_img = encode_bgr_image_as_png(img)
-    b64_encoded_string = b64encode(encoded_img).decode("utf-8")
+    b64_encoded_string = b64encode(memoryview(encoded_img)).decode("utf-8")
     data_src_string = f"data:image/png;base64,{b64_encoded_string}"
     return encoded_img, b64_encoded_string, data_src_string
 
