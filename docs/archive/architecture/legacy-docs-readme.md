@@ -1,6 +1,6 @@
-# pd-book-tools — Documentation
+# pdomain-book-tools — Documentation
 
-Detailed documentation for the `pd-book-tools` Python library. Quick-start
+Detailed documentation for the `pdomain-book-tools` Python library. Quick-start
 information for users (installation, dependencies, basic usage) lives in the
 top-level [`README.md`](../README.md); this directory holds the long-form
 reference material.

@@ -2,7 +2,7 @@
 
 > **Status**: Shipped — archived 2026-05-22
 > **Last updated**: 2026-05-22
-> **Spec-Issue**: ConcaveTrillion/pd-book-tools#36 (closed)
+> **Spec-Issue**: ConcaveTrillion/pdomain-book-tools#36 (closed)
 
 ## TL;DR
 
@@ -96,7 +96,7 @@ Decision: `from_ltrb` form for `BoundingBox` (eval-clean) + positional form for 
 - Any snapshot tests that captured the old `<BoundingBox object at ...>` form
   must be updated (expected: none in the current test suite).
 - `Point.__repr__` change may surface differences in any downstream
-  tool that relied on implicit string conversion (check `pd-ocr-cli`,
+  tool that relied on implicit string conversion (check `pdomain-ocr-cli`,
   `pd-ocr-labeler`).
 
 ## Open questions

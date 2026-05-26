@@ -1,15 +1,15 @@
 # Issue #206: Downstream `reportAny` on `pd_book_tools` Attribute Access
 
 **Date:** 2026-05-23
-**Issue:** [pd-book-tools#206](https://github.com/ConcaveTrillion/pd-book-tools/issues/206)
+**Issue:** [pdomain-book-tools#206](https://github.com/ConcaveTrillion/pdomain-book-tools/issues/206)
 **Status:** Investigation complete — Hypothesis 3 confirmed
 
 ---
 
 ## Finding: Hypothesis 3 Applies
 
-The upstream variable in `pd-ocr-labeler-spa` is typed `Any`, not `pd_book_tools`. The
-`reportAny` warnings are **not** a `pd-book-tools` annotation deficiency. `pd-book-tools`
+The upstream variable in `pdomain-ocr-labeler-spa` is typed `Any`, not `pd_book_tools`. The
+`reportAny` warnings are **not** a `pdomain-book-tools` annotation deficiency. `pdomain-book-tools`
 attributes are fully typed and propagate correctly to `py.typed`-aware consumers.
 
 ---
@@ -55,7 +55,7 @@ Output of `uv run basedpyright /tmp/repro.py`:
 This is Python's fundamental `getattr()` behavior: the return type is `Any` by definition.
 No annotation change in `pd_book_tools` can fix this — `getattr()` is structurally `Any`.
 
-### 2. Upstream variable type in `pd-ocr-labeler-spa`
+### 2. Upstream variable type in `pdomain-ocr-labeler-spa`
 
 The six `# pyright: ignore[reportAny]` sites added in commit `c708eb4` are concentrated in:
 
@@ -75,7 +75,7 @@ class PageLoadOutcome:
 
 The comment in that file is explicit (line 24–25):
 
-> `payload` is typed `Any` because the eventual `Page` (from pd-book-tools) hasn't landed
+> `payload` is typed `Any` because the eventual `Page` (from pdomain-book-tools) hasn't landed
 > the M3-proper `PageRecord` type yet
 
 The functions `_resolve_page_object()` (words.py) and `_resolve_page_object_for_pages()`
@@ -111,12 +111,12 @@ for a pure-Python library — source annotations serve as the type surface). Thi
 
 ```text
 $ grep -rn 'getattr.*\(lines\|words\|ground_truth' \
-    /workspaces/ocr-container/pd-ocr-cli/ \
-    /workspaces/ocr-container/pd-prep-for-pgdp/ 2>/dev/null
+    /workspaces/ocr-container/pdomain-ocr-cli/ \
+    /workspaces/ocr-container/pdomain-prep-for-pgdp/ 2>/dev/null
 (no output — exit code 2, paths not found)
 ```
 
-Neither `pd-ocr-cli` nor `pd-prep-for-pgdp` use `getattr()` for `lines`/`words`/
+Neither `pdomain-ocr-cli` nor `pdomain-prep-for-pgdp` use `getattr()` for `lines`/`words`/
 `ground_truth` attribute access. This confirms the pattern is a **labeler-spa
 concentration**, not a workspace-wide idiom.
 
@@ -133,17 +133,17 @@ The six `# pyright: ignore[reportAny]` suppressions were added in labeler-spa co
    `.lines`) — but `getattr()` always returns `Any`, making the suppression unavoidable
    as long as the code uses `getattr()` with an `Any`/`object`-typed receiver
 
-`pd-book-tools` is not the source of the problem.
+`pdomain-book-tools` is not the source of the problem.
 
 ---
 
 ## Recommended Remediation
 
-Hypothesis 3 confirmed — close #206 as "not a pd-book-tools issue."
+Hypothesis 3 confirmed — close #206 as "not a pdomain-book-tools issue."
 
 ### Immediate (labeler-spa)
 
-The correct fix in `pd-ocr-labeler-spa` is to narrow the resolved page object to `Page`
+The correct fix in `pdomain-ocr-labeler-spa` is to narrow the resolved page object to `Page`
 before accessing attributes. The `lift_envelope_to_page` function already performs the
 lift — its return type just needs to be narrowed:
 
@@ -177,14 +177,14 @@ boundaries (e.g. after deserialization), not inside typed function bodies.
 
 ```text
 Cross-repo recommendation
-  Target: pd-ocr-labeler-spa
+  Target: pdomain-ocr-labeler-spa
   Reason: PayloadLoadOutcome.payload is typed Any (pending M3 PageRecord);
           narrowing the lift resolvers to Page | None would eliminate all
           six reportAny ignores and make attribute access type-safe
-  gh issue create -R ConcaveTrillion/pd-ocr-labeler-spa \
+  gh issue create -R ConcaveTrillion/pdomain-ocr-labeler-spa \
     -l kind:feature-request -l status:backlog \
     --title "Narrow lift_envelope_to_page resolvers to Page | None to drop getattr reportAny ignores" \
-    --body "Tracks: none yet\nContext: Discovered while investigating pd-book-tools#206\n\nPageLoadOutcome.payload is typed Any (placeholder pending M3 PageRecord).\nThe _resolve_page_object / _resolve_page_object_for_pages functions return\nobject | None or Any | None instead of Page | None. Adding an isinstance(lift_result, Page)\nguard at the lift boundary would let all six getattr() attribute accesses become\ndirect typed access, dropping the six reportAny ignores added in commit c708eb4."
+    --body "Tracks: none yet\nContext: Discovered while investigating pdomain-book-tools#206\n\nPageLoadOutcome.payload is typed Any (placeholder pending M3 PageRecord).\nThe _resolve_page_object / _resolve_page_object_for_pages functions return\nobject | None or Any | None instead of Page | None. Adding an isinstance(lift_result, Page)\nguard at the lift boundary would let all six getattr() attribute accesses become\ndirect typed access, dropping the six reportAny ignores added in commit c708eb4."
   → Run this? CT can edit before executing.
 ```
 
@@ -192,9 +192,9 @@ Cross-repo recommendation
 
 ## Decision
 
-- **Hypothesis 3 confirmed**: `pd-book-tools` attribute annotations are correct and survive
+- **Hypothesis 3 confirmed**: `pdomain-book-tools` attribute annotations are correct and survive
   the wheel build. The `reportAny` warnings originate from `PageLoadOutcome.payload: Any`
   in labeler-spa, compounded by the inherent `Any`-ness of `getattr()`.
-- **Close pd-book-tools#206**: no action needed in this repo.
+- **Close pdomain-book-tools#206**: no action needed in this repo.
 - **File a labeler-spa follow-up** (see cross-repo recommendation above) to narrow the
   resolvers once M3's `PageRecord` type lands or sooner.

@@ -1,4 +1,4 @@
-# Code Review: pd-book-tools
+# Code Review: pdomain-book-tools
 
 Full library review conducted May 2026 using 7 parallel agents, one per module group.
 ~130 issues documented across 4 files.
@@ -227,7 +227,7 @@ now sweeps `bugs-medium.md` top-to-bottom.
   in the cupy `auto_deskew_gpu` — returned a 3-tuple
   `(image, top_slice, bottom_slice)`. Callers had to do
   `isinstance(out, tuple)` runtime dispatch to switch backends (see
-  `pd-prep-for-pgdp/.../process_page.py`). Aligned the cv2 early-exit
+  `pdomain-prep-for-pgdp/.../process_page.py`). Aligned the cv2 early-exit
   to return `(img, np.empty((0, 0), dtype=img.dtype), np.empty((0, 0),
   dtype=img.dtype))`, mirroring cupy's `cp.empty((0, 0),
   dtype=img_cp.dtype)` placeholders. In-tree callers were tests only;
@@ -437,7 +437,7 @@ now sweeps `bugs-medium.md` top-to-bottom.
   `dpi: int = 300` parameter that flows into the config via
   `f"--dpi {int(dpi)}"`; default preserves existing behavior, callers
   with real DPI (PIL `Image.info["dpi"]`, scanner metadata,
-  pd-prep-for-pgdp's resolution probe) can now pass it through. Three
+  pdomain-prep-for-pgdp's resolution probe) can now pass it through. Three
   regression tests cover dpi=150, dpi=600, and the dpi=300 default
   back-compat lock. — fix `d7f341a`, doc mark `<pending>`
 - M-21 `ocr/cv2_tesseract.py` `tesseract_ocr_cv2_image` hardcoded
@@ -464,7 +464,7 @@ now sweeps `bugs-medium.md` top-to-bottom.
   the two existing `result is None` test assertions, flipped to
   `pytest.raises(FileNotFoundError)`; added a third test for the
   one-missing-file case. External caller
-  `scripts/ocr_to_txt.py` (outside pd-book-tools) already pre-checks
+  `scripts/ocr_to_txt.py` (outside pdomain-book-tools) already pre-checks
   file existence so its `if predictor is None` guard is unreachable
   post-fix; observable behavior unchanged. — fix `0a8b68e`, doc mark
   `<pending>`
@@ -1011,7 +1011,7 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   mandatory runtime deps — CUDA-12-only binaries that fail to install
   on macOS, CPU-only Linux, or stock CI runners. Moved to
   `[project.optional-dependencies] gpu = [...]` so install becomes
-  `pip install pd-book-tools[gpu]` for users who want GPU support.
+  `pip install pdomain-book-tools[gpu]` for users who want GPU support.
   The `_cupy_compat.py` shim was already in place: every
   cupy_processing submodule uses `from ._cupy_compat import cp,
   require_cupy` plus a `try: from cupyx... except ImportError: ...`
@@ -1020,7 +1020,7 @@ processed. The /loop now sweeps `bugs-low.md` top-to-bottom.
   `test_cupy_compat.py` (20 tests) regression-locking the contract:
   (1) `_cupy_compat` imports cleanly with cupy missing,
   (2) `require_cupy()` raises `ImportError` mentioning
-  `pd-book-tools[gpu]`, (3) all 16 cupy_processing submodules import
+  `pdomain-book-tools[gpu]`, (3) all 16 cupy_processing submodules import
   cleanly with cupy missing (parametrized — catches any future
   unguarded top-level `import cupy`), (4) calling a public GPU entry
   point with cupy missing produces the install-hint error rather than
@@ -1041,7 +1041,7 @@ and bugs-medium (30/30), the full ~91-bug review is cleared.
 **Refactor sweep begun.** First iteration (R-01..R-03) all deferred —
 all three are real, but each is a cross-repo API change with
 significant blast radius (pd-ocr-labeler call sites, mock idioms in
-labeler tests, downstream tests in pd-ocr-cli). Better tackled as
+labeler tests, downstream tests in pdomain-ocr-cli). Better tackled as
 coordinated multi-repo PRs than unilateral library changes.
 
 **Refactors fixed so far:**
@@ -1075,7 +1075,7 @@ coordinated multi-repo PRs than unilateral library changes.
   Functions renamed: `cupy_colorToGray` -> `cupy_color_to_gray`,
   `np_uint8_float_colorToGray` -> `np_uint8_color_to_gray` (also dropped
   the redundant `_float_` infix — public contract is uint8 in / uint8
-  out). Cross-repo grep confirmed all call sites are inside pd-book-tools,
+  out). Cross-repo grep confirmed all call sites are inside pdomain-book-tools,
   so no compatibility shim was needed. — fix `f1448eb`, doc mark `18e51d7`
 - R-11 `BoundingBox` early-return copy idiom replaced
   `BoundingBox.from_dict(self.to_dict())` (5 sites in `refine` and
@@ -1122,7 +1122,7 @@ coordinated multi-repo PRs than unilateral library changes.
   landing module) and benefit is speculative since cv2 is a hard
   runtime dependency anyway. Track with R-01. Doc mark `d680137`.
 - R-08 empty `__init__.py` files / missing `utility/__init__.py`.
-  Real point that pd-book-tools has no stable public API surface, but
+  Real point that pdomain-book-tools has no stable public API surface, but
   the fix is a public-API design decision (what to re-export from
   each package), not a behavior-preserving refactor. All imports work
   today despite `utility/` having no `__init__.py` (implicit namespace

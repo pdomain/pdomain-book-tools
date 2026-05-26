@@ -151,7 +151,7 @@ inconsistent with every other function in the cupy backend (`bgr_to_gray_gpu`,
 Rename `colorToGray.py` → `color_to_gray.py`.
 Rename `cupy_colorToGray` → `cupy_color_to_gray`.
 Rename `np_uint8_float_colorToGray` → `np_uint8_color_to_gray`.
-Update `__init__.py`, test file, and all downstream imports in `pd-ocr-cli` and
+Update `__init__.py`, test file, and all downstream imports in `pdomain-ocr-cli` and
 `pd-ocr-labeler`.
 
 ---
@@ -450,7 +450,7 @@ silently get the wrong behavior.
 or remove the parameter from both signatures.
 
 Resolved by deprecating the parameter rather than implementing the
-clamping. `pd-prep-for-pgdp/core/pipeline/process_page.py:154` actively
+clamping. `pdomain-prep-for-pgdp/core/pipeline/process_page.py:154` actively
 passes `aspect_ratio=cfg.page_h_w_ratio` thinking it does something —
 silently changing the math underneath that caller would risk
 regressions on production pipelines. Both backends now emit a
@@ -462,7 +462,7 @@ future major; downstream callers should drop the keyword argument.
 **Update — followed up by removing the parameter entirely.** Rather
 than re-implementing aspect clamping inside `rescale_image`, the design
 review concluded that aspect-shape control already lives downstream in
-`pd-prep-for-pgdp`'s `map_content_onto_scaled_canvas`, applied *after*
+`pdomain-prep-for-pgdp`'s `map_content_onto_scaled_canvas`, applied *after*
 rescale. The rescale-level parameter was therefore silent-no-op for a
 good reason — there was nothing meaningful for it to do. The followup
 slice removed `aspect_ratio` from `rescale_image`, `rescale_image_gpu`,
@@ -568,7 +568,7 @@ After the f1448eb rename of `np_uint8_float_colorToGray` →
 clearer: this wrapper is specifically for Otsu's method) and keeping
 `np_uint8_float_binary_thresh` as a thin deprecated alias that emits
 `DeprecationWarning`. Workspace-wide grep found no actual code callers
-outside this repo's own tests; only `pd-prep-for-pgdp/specs/` markdown
+outside this repo's own tests; only `pdomain-prep-for-pgdp/specs/` markdown
 references the old name (left as-is — historical spec context).
 
 ---
