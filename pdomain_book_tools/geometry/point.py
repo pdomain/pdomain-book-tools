@@ -240,7 +240,7 @@ class Point:
     # auto-introspect it. This hook declares the wire shape produced by
     # ``Point.to_dict()`` so ``TypeAdapter(Point).json_schema()`` emits a
     # precise JSON Schema for downstream TypeScript codegen (pdomain-ui,
-    # pdomain-ocr-ops).
+    # pdomain-ops).
     # ------------------------------------------------------------------
     @classmethod
     def __get_pydantic_core_schema__(

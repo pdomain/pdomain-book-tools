@@ -231,7 +231,7 @@ uv run python -m pdomain_book_tools.schemas.emit > schemas.json
 
 The output is a single JSON document, keyed by public model class name
 (`ReviewMetadata`, ...), whose values are JSON-Schema documents produced
-by `pydantic.TypeAdapter`. Downstream consumers (`pdomain-ocr-ops`, `pdomain-ui`
+by `pydantic.TypeAdapter`. Downstream consumers (`pdomain-ops`, `pdomain-ui`
 codegen) re-run this command against a pinned wheel and feed the output
 to `openapi-typescript` or equivalent to keep TypeScript types in sync
 with the Python source of truth.

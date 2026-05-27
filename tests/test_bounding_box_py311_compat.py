@@ -3,7 +3,7 @@ on Python < 3.12 (typing.override was added in 3.12; we fall back to
 typing_extensions.override on older interpreters).
 
 This test exercises the import path that triggered the ImportError in
-pdomain-ocr-ops when it bumped to pdomain-book-tools v0.14.0 on Python 3.11.
+pdomain-ops when it bumped to pdomain-book-tools v0.14.0 on Python 3.11.
 """
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox

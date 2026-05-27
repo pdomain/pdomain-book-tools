@@ -6,7 +6,7 @@ dumps a single JSON document on stdout with one key per public model
 document as the value, produced via :class:`pydantic.TypeAdapter` on
 the stdlib ``@dataclass`` models.
 
-Downstream consumers (pdomain-ocr-ops, pdomain-ui codegen) re-run this command
+Downstream consumers (pdomain-ops, pdomain-ui codegen) re-run this command
 against a pinned wheel and feed the output to ``openapi-typescript`` or
 equivalent.
 """
