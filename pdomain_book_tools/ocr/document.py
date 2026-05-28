@@ -195,57 +195,7 @@ class Document:
         if predictor is None:
             predictor = cast("_DoctrPredictor", get_default_doctr_predictor())
 
-        has_PIL = False
-        try:
-            from PIL.Image import Image as PILImage
-
-            has_PIL = True
-        except ImportError:
-            has_PIL = False
-            PILImage = None
-
-        source_path = None
-
-        image_ndarray: ndarray
-
-        # Handle different input types
-        if isinstance(image, ndarray):
-            # Already a numpy array (cv2 format)
-            image_ndarray = image
-        elif has_PIL and PILImage is not None and isinstance(image, PILImage):
-            # Convert PIL Image to numpy array
-            # PIL Images are typically in RGB format
-            image_ndarray = array(image)
-            # Convert from RGB to BGR for cv2 compatibility if it's a color image
-            if len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
-                image_ndarray = cvtColor(image_ndarray, COLOR_RGB2BGR)
-        else:
-            # Handle path-like objects (str, Path, or any PathLike)
-            try:
-                _loaded = imread(str(image))
-                source_path = Path(str(image))
-                if _loaded is None:
-                    raise ValueError(f"Could not load image from path: {image}")
-                image_ndarray = _loaded
-            except Exception as e:
-                raise ValueError(
-                    f"Failed to load image from path '{image}': {e}"
-                ) from e
-
-        # Convert to RGB format for doctr processing
-        if len(image_ndarray.shape) == 2:
-            # Grayscale image - convert to RGB
-            image_rgb = cvtColor(image_ndarray, COLOR_GRAY2RGB)
-        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
-            # Color image (BGR) - convert to RGB
-            image_rgb = cvtColor(image_ndarray, COLOR_BGR2RGB)
-        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 1:
-            # Single channel image with shape (H, W, 1) - squeeze and convert to RGB
-            image_gray = image_ndarray.squeeze()
-            image_rgb = cvtColor(image_gray, COLOR_GRAY2RGB)
-        else:
-            # Already in RGB or unsupported format - use as is
-            image_rgb = image_ndarray
+        image_rgb, image_ndarray, source_path = cls._to_rgb_ndarray(image)
 
         def _ocr_one(rgb: ndarray) -> Document:
             doctr_result = predictor([rgb])
@@ -287,6 +237,128 @@ class Document:
             # rotation_applied stays at its default 0
 
         return ocr_doc
+
+    @staticmethod
+    def _to_rgb_ndarray(
+        image: ndarray | PILImage | str | PathLike[str],
+    ) -> tuple[ndarray, ndarray, Path | None]:
+        """Convert any supported image input to an RGB ndarray for DocTR.
+
+        Returns ``(image_rgb, image_ndarray, source_path)`` where
+        ``image_ndarray`` is the original BGR/gray array (kept so callers can
+        attach it to ``page.cv2_numpy_page_image``) and ``source_path`` is set
+        only when the input was a file path.
+        """
+        has_PIL = False
+        try:
+            from PIL.Image import Image as _PILImage
+
+            has_PIL = True
+        except ImportError:
+            has_PIL = False
+            _PILImage = None  # type: ignore[assignment,misc]
+
+        source_path: Path | None = None
+        image_ndarray: ndarray
+
+        if isinstance(image, ndarray):
+            image_ndarray = image
+        elif has_PIL and _PILImage is not None and isinstance(image, _PILImage):
+            image_ndarray = array(image)
+            if len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
+                image_ndarray = cvtColor(image_ndarray, COLOR_RGB2BGR)
+        else:
+            try:
+                _loaded = imread(str(image))
+                source_path = Path(str(image))
+                if _loaded is None:
+                    raise ValueError(f"Could not load image from path: {image}")
+                image_ndarray = _loaded
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load image from path '{image}': {e}"
+                ) from e
+
+        if len(image_ndarray.shape) == 2:
+            image_rgb = cvtColor(image_ndarray, COLOR_GRAY2RGB)
+        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
+            image_rgb = cvtColor(image_ndarray, COLOR_BGR2RGB)
+        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 1:
+            image_gray = image_ndarray.squeeze()
+            image_rgb = cvtColor(image_gray, COLOR_GRAY2RGB)
+        else:
+            image_rgb = image_ndarray
+
+        return image_rgb, image_ndarray, source_path
+
+    @classmethod
+    def from_images_ocr_via_doctr(
+        cls,
+        images: Sequence[ndarray | PILImage | str | PathLike[str]],
+        source_identifiers: Sequence[str] | None = None,
+        predictor: _DoctrPredictor | None = None,
+    ) -> Document:
+        """Perform OCR on a list of images with a single predictor call.
+
+        Preprocesses each image to RGB, calls ``predictor([rgb1, rgb2, …])``
+        once, then maps the returned DocTR pages back to a multi-page
+        ``Document``. Order and ``source_identifiers`` are preserved.
+
+        ``images`` must be non-empty. When ``source_identifiers`` is given it
+        must have the same length as ``images``; a mismatch raises
+        ``ValueError``.
+        """
+        if not images:
+            raise ValueError("images must be a non-empty sequence")
+
+        identifiers: Sequence[str]
+        if source_identifiers is None:
+            identifiers = [""] * len(images)
+        else:
+            if len(source_identifiers) != len(images):
+                raise ValueError(
+                    f"source_identifiers length ({len(source_identifiers)}) "
+                    f"must match images length ({len(images)})"
+                )
+            identifiers = source_identifiers
+
+        if predictor is None:
+            predictor = cast("_DoctrPredictor", get_default_doctr_predictor())
+
+        rgb_list: list[ndarray] = []
+        for img in images:
+            image_rgb, _image_ndarray, _source_path = cls._to_rgb_ndarray(img)
+            rgb_list.append(image_rgb)
+
+        doctr_result = predictor(rgb_list)
+
+        per_page_text: list[str] = [page.render() for page in doctr_result.pages]
+        doctr_output = doctr_result.export()
+        metadata_raw = doctr_output.get("metadata", {})
+        metadata = (
+            cast("dict[str, object]", metadata_raw)
+            if isinstance(metadata_raw, dict)
+            else {}
+        )
+        ocr_provenance = cls._build_ocr_provenance(engine="doctr", metadata=metadata)
+        raw_pages = cast("Sequence[object]", doctr_output.get("pages", []))
+
+        pages: list[Page] = []
+        for page_idx, page_data in enumerate(raw_pages):
+            page = cls._page_from_doctr(
+                cast("Mapping[str, object]", page_data),
+                page_idx=page_idx,
+                ocr_provenance=ocr_provenance,
+                original_text=per_page_text,
+            )
+            pages.append(page)
+
+        return cls(
+            source_lib="doctr",
+            source_path=None,
+            pages=pages,
+            source_identifier=identifiers[0] if len(identifiers) == 1 else "",
+        )
 
     @classmethod
     def from_doctr_result(
