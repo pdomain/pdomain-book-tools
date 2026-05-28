@@ -103,11 +103,11 @@ def _detect_detection_arch(state_dict: Mapping[str, object]) -> str:
     return "db_resnet50"
 
 
-def get_default_doctr_predictor():
-    """
-    Get the pre-trained OCR predictor from the doctr library.
-    :return: The OCR predictor.
-    """
+def get_default_doctr_predictor(
+    det_bs: int = 2,
+    reco_bs: int = 128,
+):
+    """Get the pre-trained OCR predictor from the doctr library."""
     try:
         from doctr.models import (
             crnn_vgg16_bn,
@@ -125,6 +125,8 @@ def get_default_doctr_predictor():
         pretrained=True,
         assume_straight_pages=True,
         disable_crop_orientation=True,
+        det_bs=det_bs,
+        reco_bs=reco_bs,
     )
 
 
@@ -184,7 +186,14 @@ def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):  # pyright: ignor
     return factory(**kwargs)  # pyright: ignore[reportUnknownArgumentType]  # kwargs from unannotated **kwargs param
 
 
-def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque DocTR model types
+def _assemble_doctr_predictor(  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque DocTR model types
+    det_model,
+    reco_model,
+    *,
+    pretrained: bool,
+    det_bs: int = 2,
+    reco_bs: int = 128,
+):
     """Wrap loaded det/reco models into a DocTR ``OCRPredictor``.
 
     Builds the full ``ocr_predictor`` plus the standalone
@@ -194,6 +203,10 @@ def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):  # py
     ``predictor.reco_predictor``. Extracted from
     :func:`get_finetuned_torch_doctr_predictor` as the final R-15
     helper so predictor assembly is independent of model loading.
+
+    ``det_bs`` / ``reco_bs`` are passed through to DocTR's public factory
+    kwargs (``det_bs`` / ``reco_bs`` on ``ocr_predictor``; ``batch_size`` on the
+    standalone predictors). Defaults match DocTR's own defaults (2 / 128).
     """
     from doctr.models import (
         detection_predictor,
@@ -207,15 +220,19 @@ def _assemble_doctr_predictor(det_model, reco_model, *, pretrained: bool):  # py
         pretrained=pretrained,
         assume_straight_pages=True,
         disable_crop_orientation=True,
+        det_bs=det_bs,
+        reco_bs=reco_bs,
     )
     det_predictor = detection_predictor(
         arch=det_model,
         pretrained=pretrained,
         assume_straight_pages=True,
+        batch_size=det_bs,
     )
     reco_predictor = recognition_predictor(
         arch=reco_model,
         pretrained=pretrained,
+        batch_size=reco_bs,
     )
     full_predictor.det_predictor = det_predictor
     full_predictor.reco_predictor = reco_predictor
@@ -339,6 +356,8 @@ def get_finetuned_torch_doctr_predictor(
     pretrained_backbone: bool = True,  # pyright: ignore[reportUnusedParameter]  # public API; _load_reco_model hardcodes pretrained_backbone=False
     device: str | None = None,
     *,
+    det_bs: int = 2,
+    reco_bs: int = 128,
     torch_load=None,  # pyright: ignore[reportMissingParameterType]
 ):
     """Load a fine-tuned DocTR OCR predictor from local ``.pt`` checkpoint files.
@@ -448,4 +467,6 @@ def get_finetuned_torch_doctr_predictor(
         build_arch=_build_arch,
     )
 
-    return _assemble_doctr_predictor(det_model, reco_model, pretrained=pretrained)  # pyright: ignore[reportUnknownArgumentType]
+    return _assemble_doctr_predictor(
+        det_model, reco_model, pretrained=pretrained, det_bs=det_bs, reco_bs=reco_bs
+    )  # pyright: ignore[reportUnknownArgumentType]

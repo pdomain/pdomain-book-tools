@@ -994,3 +994,58 @@ class TestR15ExtractedHelpers:
         assert fake_models.ocr_predictor.call_args.kwargs["pretrained"] is True
         assert fake_models.detection_predictor.call_args.kwargs["pretrained"] is True
         assert fake_models.recognition_predictor.call_args.kwargs["pretrained"] is True
+
+
+class TestAssembleDoctrPredictorBatchSize:
+    """det_bs / reco_bs kwargs flow through to all three DocTR factories."""
+
+    def _make_fake_models(self):
+        fake_full = MagicMock(name="full_predictor")
+        fake_det_pred = MagicMock(name="det_predictor")
+        fake_reco_pred = MagicMock(name="reco_predictor")
+        fake_models = MagicMock()
+        fake_models.ocr_predictor = MagicMock(return_value=fake_full)
+        fake_models.detection_predictor = MagicMock(return_value=fake_det_pred)
+        fake_models.recognition_predictor = MagicMock(return_value=fake_reco_pred)
+        return fake_models, fake_full, fake_det_pred, fake_reco_pred
+
+    def test_custom_batch_sizes_forwarded(self, monkeypatch):
+        fake_models, fake_full, _fake_det_pred, _fake_reco_pred = (
+            self._make_fake_models()
+        )
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pdomain_book_tools.ocr.doctr_support import _assemble_doctr_predictor
+
+        det_model = MagicMock(name="det_model")
+        reco_model = MagicMock(name="reco_model")
+        result = _assemble_doctr_predictor(
+            det_model, reco_model, pretrained=False, det_bs=8, reco_bs=256
+        )
+
+        assert result is fake_full
+        ocr_kwargs = fake_models.ocr_predictor.call_args.kwargs
+        assert ocr_kwargs["det_bs"] == 8
+        assert ocr_kwargs["reco_bs"] == 256
+        det_kwargs = fake_models.detection_predictor.call_args.kwargs
+        assert det_kwargs["batch_size"] == 8
+        reco_kwargs = fake_models.recognition_predictor.call_args.kwargs
+        assert reco_kwargs["batch_size"] == 256
+
+    def test_defaults_preserved(self, monkeypatch):
+        fake_models, _fake_full, _, _ = self._make_fake_models()
+        monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
+
+        from pdomain_book_tools.ocr.doctr_support import _assemble_doctr_predictor
+
+        det_model = MagicMock(name="det_model")
+        reco_model = MagicMock(name="reco_model")
+        _assemble_doctr_predictor(det_model, reco_model, pretrained=False)
+
+        ocr_kwargs = fake_models.ocr_predictor.call_args.kwargs
+        assert ocr_kwargs["det_bs"] == 2
+        assert ocr_kwargs["reco_bs"] == 128
+        det_kwargs = fake_models.detection_predictor.call_args.kwargs
+        assert det_kwargs["batch_size"] == 2
+        reco_kwargs = fake_models.recognition_predictor.call_args.kwargs
+        assert reco_kwargs["batch_size"] == 128
