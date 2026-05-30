@@ -29,13 +29,16 @@ def _prune_old_debug_runs(
         return
     cutoff = time.time() - max_age_seconds
     for child in debug_dir.iterdir():
-        if child.is_dir() and child.name.startswith(("test-", "regen-")):
-            if child.stat().st_mtime < cutoff:
-                logger.debug("pruning old debug run: %s", child.name)
-                shutil.rmtree(child, ignore_errors=True)
+        if (
+            child.is_dir()
+            and child.name.startswith(("test-", "regen-"))
+            and child.stat().st_mtime < cutoff
+        ):
+            logger.debug("pruning old debug run: %s", child.name)
+            shutil.rmtree(child, ignore_errors=True)
 
 
-def pytest_sessionstart(session: pytest.Session) -> None:  # noqa: ARG001
+def pytest_sessionstart(session: pytest.Session) -> None:
     _prune_old_debug_runs()
 
 
