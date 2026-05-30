@@ -3,8 +3,6 @@ import os
 import time
 from pathlib import Path
 
-import pytest
-
 from tests.conftest import _prune_old_debug_runs  # will fail until implemented
 
 

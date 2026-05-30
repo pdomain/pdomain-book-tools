@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
 
 # Debug output cleanup ========================================================
 
-_LAYOUT_DEBUG_DIR = (
-    Path(__file__).parent / "fixtures" / "layout_regression" / "debug"
-)
+_LAYOUT_DEBUG_DIR = Path(__file__).parent / "fixtures" / "layout_regression" / "debug"
 
 
 def _prune_old_debug_runs(
