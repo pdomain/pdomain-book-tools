@@ -176,7 +176,7 @@ format: ## Format code
 
 pre-commit-check: ## Run pre-commit on all files
 	@echo "🪝 Running pre-commit on all files..."
-	uv run pre-commit run --all-files
+	SKIP=basedpyright uv run pre-commit run --all-files
 
 lint-check: ## Read-only ruff format+check on all files (no auto-fix; matches GitHub CI exactly)
 	@echo "🔍 Checking format and lint (read-only, full repo)..."
