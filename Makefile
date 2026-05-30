@@ -315,7 +315,7 @@ layout-fork-pin: ## Pin a SHA into pp_doclayout.py (usage: make layout-fork-pin 
 # tag, creates the annotated tag, and pushes the release branch + tag
 # (which fires .github/workflows/release.yml).
 # Pass FORCE=1 to skip the repo-state guards (pre-flight still runs).
-# Pass SKIP_PUSH=1 to create the tag locally without pushing (dry-run).
+# Pass SKIP_PUSH=1 to create the tag locally without pushing.
 # Pass RELEASE_BRANCH=main if/when the default branch is renamed.
 _do-release:
 	@BUMP=$(or $(BUMP),minor) ./scripts/do-release.sh
