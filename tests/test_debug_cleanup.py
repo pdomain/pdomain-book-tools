@@ -3,7 +3,7 @@ import os
 import time
 from pathlib import Path
 
-from tests.conftest import _prune_old_debug_runs  # will fail until implemented
+from tests.conftest import _prune_old_debug_runs
 
 
 def _make_debug_dir(tmp_path: Path, name: str, age_seconds: float) -> Path:
