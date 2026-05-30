@@ -12,7 +12,7 @@ $(_goals):
 
 else
 
-.PHONY: install setup reinstall remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-slow test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
+.PHONY: setup remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-slow test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
 
 # Layout-detector fork sync (see pdomain_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -40,10 +40,6 @@ endif
 	@[ -f .git/hooks/pre-commit ] || [ -f .git ] || uv run pre-commit install
 	@echo "✅ Setup complete!"
 
-install: setup ## Alias for setup (library — no CLI to install)
-
-reinstall: reset-venv ## Alias for reset-venv (backward compatibility)
-
 reset-venv: reset ## Alias for reset
 
 remove-venv: ## Remove the virtual environment
@@ -54,7 +50,7 @@ remove-venv: ## Remove the virtual environment
 reset: ## Rebuild virtual environment (keeps UV cache)
 	@$(MAKE) --no-print-directory clean
 	@$(MAKE) --no-print-directory remove-venv
-	@$(MAKE) --no-print-directory install
+	@$(MAKE) --no-print-directory setup
 	@echo "✅ Environment Reset!"
 
 reset-full: ## Nuclear option: clear everything and redownload
@@ -64,7 +60,7 @@ reset-full: ## Nuclear option: clear everything and redownload
 	@echo "🧹 Clearing UV cache..."
 	uv cache clean
 	@echo "⬇️ Dependencies should download fresh now."
-	@$(MAKE) --no-print-directory install
+	@$(MAKE) --no-print-directory setup
 	@echo "💥 Full reset complete! Everything is fresh!"
 
 test: sync-gpu ## Run tests with parallelization (slow model-download tests excluded by default)
