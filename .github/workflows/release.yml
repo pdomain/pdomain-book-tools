@@ -38,7 +38,7 @@ jobs:
       - name: Release CI prerequisite
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
       - name: Run release CI gate
-        run: make ci-slow
+        run: make ci-slow GPU_EXTRA="--extra gpu"
 
   publish:
     name: publish GitHub Release
