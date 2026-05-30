@@ -38,6 +38,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 ```
 
 Key properties:
+
 - Path is resolved relative to `conftest.py`, not `cwd` — safe under xdist workers.
 - Skips silently when `debug/` does not exist.
 - Uses `ignore_errors=True` so a concurrent writer in a separate process can't crash the session.

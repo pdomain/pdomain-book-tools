@@ -1,4 +1,8 @@
+import logging
 import os
+import shutil
+import time
+from pathlib import Path
 
 import pytest
 
@@ -7,6 +11,34 @@ from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+logger = logging.getLogger(__name__)
+
+# Debug output cleanup ========================================================
+
+_LAYOUT_DEBUG_DIR = Path(__file__).parent / "fixtures" / "layout_regression" / "debug"
+
+
+def _prune_old_debug_runs(
+    debug_dir: Path = _LAYOUT_DEBUG_DIR,
+    max_age_seconds: int = 86_400,
+) -> None:
+    if not debug_dir.is_dir():
+        return
+    cutoff = time.time() - max_age_seconds
+    for child in debug_dir.iterdir():
+        if (
+            child.is_dir()
+            and child.name.startswith(("test-", "regen-"))
+            and child.stat().st_mtime < cutoff
+        ):
+            logger.debug("pruning old debug run: %s", child.name)
+            shutil.rmtree(child, ignore_errors=True)
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    _prune_old_debug_runs()
+
 
 # GPU/CUDA Testing Configuration =============================================
 

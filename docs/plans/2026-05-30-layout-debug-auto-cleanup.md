@@ -24,6 +24,7 @@
 ### Task 1: Write the failing test
 
 **Files:**
+
 - Create: `tests/test_debug_cleanup.py`
 
 - [ ] **Step 1: Create the test file**
@@ -93,11 +94,13 @@ Expected: `ImportError: cannot import name '_prune_old_debug_runs'`
 ### Task 2: Implement `_prune_old_debug_runs` in conftest.py
 
 **Files:**
+
 - Modify: `tests/conftest.py`
 
 - [ ] **Step 1: Add imports at the top of `tests/conftest.py`**
 
 Current first two lines:
+
 ```python
 import os
 
@@ -105,6 +108,7 @@ import pytest
 ```
 
 Replace with:
+
 ```python
 import logging
 import os
