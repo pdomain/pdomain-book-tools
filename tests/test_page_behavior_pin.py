@@ -52,6 +52,11 @@ def test_constructor_signature_pin():
         "width",
         "height",
         "page_index",
+        # Task 2 (page-split-plan): stable identity + blob refs added after page_index.
+        "page_id",
+        "image_blob_hash",
+        "thumbnail_blob_hash",
+        "gt_orphans",
         "blocks",
         "image_array",
         "bounding_box",

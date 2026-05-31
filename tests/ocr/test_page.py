@@ -1,12 +1,21 @@
+from uuid import UUID
+
 import numpy as np
 import pytest
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.gt_orphans import GtOrphans
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pdomain_book_tools.ocr.word import Word
+
+
+@pytest.fixture
+def minimal_page():
+    return Page(width=100, height=100, page_index=0, blocks=[])
+
 
 # ============================================================================
 # Basic Page construction & serialization
@@ -1439,3 +1448,44 @@ class TestPageMetadata:
         assert copied.name == "x.png"
         assert copied.source == "filesystem"
         assert copied.ocr_failed is True
+
+
+# ============================================================================
+# Task 2: page_id, image_blob_hash, thumbnail_blob_hash, gt_orphans
+# ============================================================================
+
+
+def test_page_has_page_id(minimal_page):
+    assert isinstance(minimal_page.page_id, UUID)
+
+
+def test_page_id_unique():
+    p1 = Page(width=100, height=100, page_index=0, blocks=[])
+    p2 = Page(width=100, height=100, page_index=0, blocks=[])
+    assert p1.page_id != p2.page_id
+
+
+def test_page_id_explicit():
+    from uuid import uuid4
+
+    uid = uuid4()
+    p = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
+    assert p.page_id == uid
+
+
+def test_page_image_blob_hash_default_none(minimal_page):
+    assert minimal_page.image_blob_hash is None
+
+
+def test_page_thumbnail_blob_hash_default_none(minimal_page):
+    assert minimal_page.thumbnail_blob_hash is None
+
+
+def test_page_gt_orphans_default_none(minimal_page):
+    assert minimal_page.gt_orphans is None
+
+
+def test_page_gt_orphans_set():
+    orphans = GtOrphans(lines=["unmatched line"])
+    p = Page(width=100, height=100, page_index=0, blocks=[], gt_orphans=orphans)
+    assert p.gt_orphans.lines == ["unmatched line"]

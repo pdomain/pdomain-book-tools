@@ -14,11 +14,13 @@ from typing import (
     TYPE_CHECKING,
     cast,
 )
+from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from pydantic import GetCoreSchemaHandler
 
     from pdomain_book_tools.layout.types import PageLayout
+    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
     from pdomain_book_tools.ocr.reorganize_page_utils import PageMetrics
 
 from cv2 import (
@@ -90,6 +92,14 @@ class Page:
     width: int
     height: int
     page_index: int
+
+    # Stable identity and blob references (Task 2 of page-split-plan).
+    # ``page_id`` is auto-generated per instance so every Page has a
+    # unique, stable identifier even before it is persisted.
+    page_id: UUID = field(default_factory=uuid4)
+    image_blob_hash: str | None = None
+    thumbnail_blob_hash: str | None = None
+    gt_orphans: GtOrphans | None = None
 
     # InitVars: data passed in but transformed before storage. Cannot
     # be named ``items`` or ``cv2_numpy_page_image`` because those are
