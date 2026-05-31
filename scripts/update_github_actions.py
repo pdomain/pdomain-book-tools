@@ -73,7 +73,7 @@ def latest_release(action: str, *, runner: GhRunner = run_gh) -> ActionRelease:
         if not isinstance(nested, dict):
             raise TypeError(f"annotated tag for {action}@{tag} did not include object")
         sha = cast("dict[str, object]", nested).get("sha")
-    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-zA-Z]{40}", sha):
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise TypeError(f"tag ref for {action}@{tag} did not resolve to a commit SHA")
     return ActionRelease(tag=tag, sha=sha)
 

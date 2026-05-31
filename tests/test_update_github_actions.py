@@ -64,9 +64,9 @@ def test_latest_release_annotated_tag() -> None:
 
 def test_update_workflow_refs_rewrites_sha(tmp_path: Path) -> None:
     wf = tmp_path / "ci.yml"
-    old_sha = "o" * 40
+    old_sha = "a" * 40
     wf.write_text(f"steps:\n  - uses: actions/checkout@{old_sha}  # v4\n")
-    new_sha = "n" * 40
+    new_sha = "b" * 40
     releases = {"actions/checkout": uga.ActionRelease(tag="v4.2.2", sha=new_sha)}
     changed = uga.update_workflow_refs(wf, releases=releases)
     assert changed is True
@@ -94,8 +94,8 @@ def test_update_workflow_refs_ignores_unmanaged(tmp_path: Path) -> None:
 
 def test_update_github_actions_returns_changed_paths(tmp_path: Path) -> None:
     wf_dir = tmp_path
-    old_sha = "o" * 40
-    new_sha = "n" * 40
+    old_sha = "a" * 40
+    new_sha = "b" * 40
     (wf_dir / "ci.yml").write_text(
         f"steps:\n  - uses: actions/checkout@{old_sha}  # v4\n"
     )
@@ -112,7 +112,7 @@ def test_update_github_actions_returns_changed_paths(tmp_path: Path) -> None:
             continue
         responses[f"repos/{action}/releases/latest"] = {"tag_name": "v1.0.0"}
         responses[f"repos/{action}/git/ref/tags/v1.0.0"] = {
-            "object": {"sha": "x" * 40, "type": "commit"}
+            "object": {"sha": "c" * 40, "type": "commit"}
         }
 
     changed = uga.update_github_actions(workflow_dir=wf_dir, runner=_runner(responses))
