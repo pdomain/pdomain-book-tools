@@ -2,7 +2,7 @@
 
 Architecture decisions and planning specs for `pdomain-book-tools`. These are
 the durable, citable references that issues, code comments, and
-downstream pd-* repos point at when they need the rationale behind a
+downstream pdomain-* repos point at when they need the rationale behind a
 behaviour or knob.
 
 New specs follow the workspace 9-section template enforced by
@@ -24,7 +24,7 @@ the workspace's fixing-specs guide).
 | 06a | [word-reference-lines-audit](06a-word-reference-lines-audit.md) | Audit of existing baseline code + gap analysis of all four reference lines | Starting point for implementing the reference-lines API; understanding what currently exists |
 | 06b | [word-reference-lines-api](06b-word-reference-lines-api.md) | `WordReferenceLines` dataclass, `Word.estimate_reference_lines`, `Block.estimate_word_reference_lines`, heuristics, parameters, confidence | Implementing the new reference-lines API; understanding parameter defaults and confidence model |
 | 06c | [word-reference-lines-testing](06c-word-reference-lines-testing.md) | Testing approach, bottom-crop interaction, open questions (Q-RL-1 to Q-RL-10), decisions required | Writing tests, answering open questions before implementation, bottom-crop sequencing decisions |
-| 07 | [dev-local-upgrade-flow](07-dev-local-upgrade-flow.md) | dev-local mode detection + `make upgrade-deps` guard | Touching the dev-local detection logic, the `[gpu]` extra reapply path, or the `.venv/.pd-dev-local` marker lifecycle |
+| 07 | [dev-local-upgrade-flow](07-dev-local-upgrade-flow.md) | dev-local mode detection + `make upgrade-deps` guard | Touching the dev-local detection logic, the `[gpu]` extra reapply path, or the `.venv/.pdomain-dev-local` marker lifecycle |
 | 08 | ~~geometry-repr~~ _(archived — shipped; see `docs/archive/specs/08-geometry-repr.md`)_ | `BoundingBox.__repr__` / `Point.__repr__` contract | Archived 2026-05-22; spec issue #36 closed; implementation landed in PR #50 |
 | 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pdomain-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
 | 10 | [table-structure](10-table-structure.md) | `BlockCategory` TABLE/CELL + grid fields; post-OCR TATR structure detection; deepdoctection-derived numpy cell-assignment geometry | Adding table row/col/cell structure to the page model; threading new `Block` grid fields through the five serialization sites; wiring the post-OCR table-structure step; understanding spanning-cell storage and the no-silent-drop invariant |

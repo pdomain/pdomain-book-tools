@@ -3,7 +3,7 @@
 Forward-looking work in pdomain-book-tools. Excludes anything that's better
 tracked in a consuming-app roadmap (the layout-fine-tune workflow lives
 in [`ocr-container/docs/SPEC-layout-training.md`](../../docs/SPEC-layout-training.md)
-because it spans pd-ocr-labeler + pd-ocr-trainer; this file holds the
+because it spans pdomain-ocr-labeler-spa + pdomain-ocr-training; this file holds the
 items that belong specifically in the library).
 
 The items below are carried over from the (now-archived) workspace
@@ -114,8 +114,8 @@ plates, upside-down scans, the Peutinger map fixture) shipped as
 ### dev-local-aware `upgrade-deps` flow — partial
 
 Detection + guard shipped: `scripts/check_dev_local.py` reports
-dev-local mode (sibling pd-* editables, `[gpu]` extra installed,
-`.venv/.pd-dev-local` marker, or `PD_DEV_LOCAL=1` env var) with
+dev-local mode (sibling pdomain-* editables, `[gpu]` extra installed,
+`.venv/.pdomain-dev-local` marker, or `PDOMAIN_DEV_LOCAL=1` env var) with
 exit-code contract (0 canonical / 1 dev-local) and a `--quiet`
 mode for Makefile branching. `make upgrade-deps` now refuses with
 a pointer to `make upgrade-deps-local` when dev-local is detected;
@@ -125,9 +125,9 @@ the `[gpu]` extra via `make sync-gpu`. Spec
 
 `make dev-local` recipe shipped: runs `sync-gpu` (which applies the
 `[gpu]` extra when an NVIDIA GPU is auto-detected) and writes the
-`.venv/.pd-dev-local` marker via `scripts/write_dev_local_marker.py`.
+`.venv/.pdomain-dev-local` marker via `scripts/write_dev_local_marker.py`.
 Lifecycle is anchored to the venv — `make remove-venv` deletes the
-marker automatically. Downstream `pd-*` repos can now tell users
+marker automatically. Downstream `pdomain-*` repos can now tell users
 "run `make dev-local` in pdomain-book-tools first" with a stable contract.
 
 Still open:

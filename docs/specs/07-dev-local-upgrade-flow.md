@@ -7,7 +7,7 @@ Status: **shipped** (2026-05). All required behavior in §2 landed across
 commits `ba267f3` (refuse-rather-than-clobber `upgrade-deps` +
 `upgrade-deps-local`) and `68c64e2` (`make dev-local` recipe + marker
 writer). This document is retained as the canonical contract this repo
-exposes to its downstream pd-* consumers — the Makefile recipes and
+exposes to its downstream pdomain-* consumers — the Makefile recipes and
 `scripts/check_dev_local.py` are the implementation; deviations from
 this spec should update both.
 
@@ -17,7 +17,7 @@ Implementation pointers:
   `upgrade-deps-local`, `sync-gpu`.
 - `scripts/check_dev_local.py` — detection logic (exit-code contract,
   `--quiet` mode).
-- `scripts/write_dev_local_marker.py` — writes `.venv/.pd-dev-local`.
+- `scripts/write_dev_local_marker.py` — writes `.venv/.pdomain-dev-local`.
 
 Open follow-up tracked in `docs/ROADMAP.md` ("doctr-from-git probe"):
 whether non-canonical `python-doctr` install URLs should auto-flag
@@ -35,7 +35,7 @@ upgrade-deps: ## Upgrade dependencies and sync local environment
 ```
 
 `uv sync --group dev` (no extras, no overrides) silently reverts a venv
-that was put into **dev-local mode** — editable sibling pd-* checkouts
+that was put into **dev-local mode** — editable sibling pdomain-* checkouts
 (`pdomain-book-tools` linked from a local working copy by the consuming
 repo), `[gpu]` extras pinned, doctr-from-git, etc. — back to the
 canonical published / CPU baseline. The user discovers this only when
@@ -47,7 +47,7 @@ unconditionally runs `uv sync --group dev` on a venv that may have
 been customized (today: `upgrade-deps`; in the future: anything else
 that rebuilds the environment).
 
-The workspace is standardizing the fix across all `pd-*` repos. As
+The workspace is standardizing the fix across all `pdomain-*` repos. As
 the foundation library, this repo also defines the **detection
 contract** that downstream repos consume.
 
@@ -61,7 +61,7 @@ detect whether the current venv is in dev-local vs canonical mode
 
 ### 2.2 Detection mechanism — preferred order
 
-1. **Probe `uv pip show <key-pd-package>` for an `Editable project
+1. **Probe `uv pip show <key-pdomain-package>` for an `Editable project
    location` field.** Robust, no marker file, no env var, survives
    manual editable installs done outside `make dev-local`. This is
    the preferred mechanism.
@@ -74,11 +74,11 @@ detect whether the current venv is in dev-local vs canonical mode
    override in place?" — see §4 for the in-repo check.
 
 2. **Fallback: marker file written by `make dev-local`.** Lifecycle
-   anchored to the venv (e.g. `.venv/.pd-dev-local`) so a venv
+   anchored to the venv (e.g. `.venv/.pdomain-dev-local`) so a venv
    rebuild kills the marker automatically — no stale-marker class of
    bug.
 
-3. **Last resort: `PD_DEV_LOCAL=1` env var.** Opt-in escape hatch
+3. **Last resort: `PDOMAIN_DEV_LOCAL=1` env var.** Opt-in escape hatch
    for users who want to force-flag dev-local mode without touching
    the venv (e.g. CI experiments).
 
@@ -127,8 +127,8 @@ NOT rely on GNU-specific `grep`/`sed` flags or Linux-only paths.
 
 This is the load-bearing part of this spec for sibling repos:
 
-**Downstream pd-* repos (`pdomain-ocr-cli`, `pd-ocr-labeler`,
-`pdomain-ocr-labeler-spa`, `pd-ocr-trainer`, `pdomain-prep-for-pgdp`) probe
+**Downstream pdomain-* repos (`pdomain-ocr-cli`, `pdomain-ocr-labeler-spa`,
+`pdomain-ocr-labeler-spa`, `pdomain-ocr-training`, `pdomain-prep-for-pgdp`) probe
 `uv pip show pdomain-book-tools` and look for an `Editable project
 location:` line.** If present, the venv is treated as dev-local.
 
@@ -142,7 +142,7 @@ from the local checkout but would not surface the
 silently.
 
 This means: any future change to how `make dev-local` (or the
-in-repo equivalent) installs sibling pd-* packages MUST keep the
+in-repo equivalent) installs sibling pdomain-* packages MUST keep the
 editable install. Non-editable shortcuts here are a contract break
 for every consumer.
 
@@ -150,10 +150,10 @@ for every consumer.
 
 This repo's `make dev-local` recipe runs `sync-gpu` (which applies
 the `[gpu]` extra when an NVIDIA GPU is auto-detected) and writes
-the `.venv/.pd-dev-local` marker via
+the `.venv/.pdomain-dev-local` marker via
 `scripts/write_dev_local_marker.py`. The signals that put *this*
 repo's venv into dev-local mode are narrower than for downstream
-repos (it has no pd-* siblings to install editably), but still real:
+repos (it has no pdomain-* siblings to install editably), but still real:
 
 - `[gpu]` extra active (`uv sync --group dev --extra gpu` —
   `make sync-gpu` does this conditionally on GPU autodetect).
@@ -189,7 +189,7 @@ final implementation.
 
 ## 6. Out of scope
 
-- Auto-detecting which sibling pd-* checkouts to install editably.
+- Auto-detecting which sibling pdomain-* checkouts to install editably.
   `make dev-local` is explicit; this spec doesn't try to guess.
 - Replicating `uv sync` semantics in shell. Detection only; the
   actual sync is still `uv` doing the work.

@@ -1,7 +1,7 @@
 """Drift gate for ``docs/specs/01-page-model.md``.
 
 The page-model doc is a user-facing reference for ``Page.to_dict()`` —
-the JSON form that every downstream pd-* consumer reads back via
+the JSON form that every downstream pdomain-* consumer reads back via
 ``Page.from_dict``. The vocabulary lists in the doc must stay in sync
 with the source-of-truth ``ClassVar`` frozensets on ``Block`` and the
 ``RegionType`` enum, otherwise downstream authors learn from a stale

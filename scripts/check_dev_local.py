@@ -1,8 +1,8 @@
 """Detect whether the current venv is in **dev-local mode**.
 
-A venv is dev-local when it has overrides — sibling pd-* editable
+A venv is dev-local when it has overrides — sibling pdomain-* editable
 installs, the ``[gpu]`` extra, doctr-from-git, an explicit
-``PD_DEV_LOCAL=1`` env var, or a ``.venv/.pd-dev-local`` marker file —
+``PDOMAIN_DEV_LOCAL=1`` env var, or a ``.venv/.pdomain-dev-local`` marker file —
 that ``uv sync --group dev`` (the canonical sync) would silently
 revert. ``make upgrade-deps`` and any future recipe that rebuilds the
 venv invokes this script to refuse-rather-than-clobber.
@@ -82,7 +82,7 @@ def detect_mode(
     Signals collected (spec §2.2):
 
     1. **Editable install for any package other than the project root.**
-       Sibling pd-* checkouts surface as ``editable_project_location``
+       Sibling pdomain-* checkouts surface as ``editable_project_location``
        in ``uv pip list --format=json``.
     2. **A package from the ``[gpu]`` extra is installed**
        (``cupy-cuda12x``, ``opencv-cuda``). Canonical sync drops
@@ -90,7 +90,7 @@ def detect_mode(
        explicitly applied.
     3. **Marker file present** at ``marker_path`` (if supplied) — the
        fallback signal written by ``make dev-local``.
-    4. **PD_DEV_LOCAL env var set to a truthy value** — last-resort
+    4. **PDOMAIN_DEV_LOCAL env var set to a truthy value** — last-resort
        opt-in.
 
     Reasons for every fired signal accumulate in ``DetectionResult.reasons``
@@ -119,8 +119,8 @@ def detect_mode(
     if marker_path is not None and marker_path.exists():
         reasons.append(f"marker file present: {marker_path}")
 
-    if _is_truthy(env.get("PD_DEV_LOCAL")):
-        reasons.append("PD_DEV_LOCAL env var is set to a truthy value")
+    if _is_truthy(env.get("PDOMAIN_DEV_LOCAL")):
+        reasons.append("PDOMAIN_DEV_LOCAL env var is set to a truthy value")
 
     return DetectionResult(is_dev_local=bool(reasons), reasons=reasons)
 
@@ -149,8 +149,8 @@ def _project_root() -> Path:
 
 
 def _marker_path() -> Path:
-    """Conventional marker location: ``<project>/.venv/.pd-dev-local``."""
-    return _project_root() / ".venv" / ".pd-dev-local"
+    """Conventional marker location: ``<project>/.venv/.pdomain-dev-local``."""
+    return _project_root() / ".venv" / ".pdomain-dev-local"
 
 
 def _format_summary(result: DetectionResult) -> str:

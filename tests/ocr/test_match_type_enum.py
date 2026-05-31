@@ -1,7 +1,7 @@
 """Regression locks for the MatchType enum surface.
 
 L-21: ``WORD_NEARLY_EQUAL_DUE_TO_PUNCTUATION`` was a placeholder member with
-zero consumers in pdomain_book_tools, the test suite, or any sibling pd-* repo.
+zero consumers in pdomain_book_tools, the test suite, or any sibling pdomain-* repo.
 The orphaned ``"TODO: ..."`` string following it was an expression, not a
 docstring, so the intent was not even captured. Removed in the L-21 fix.
 

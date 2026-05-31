@@ -1,6 +1,6 @@
-"""Centralised image-format identification for pd-* tools.
+"""Centralised image-format identification for pdomain-* tools.
 
-Downstream pd-* projects (``pdomain-ocr-cli``, ``pd-ocr-labeler``, ...) repeatedly
+Downstream pdomain-* projects (``pdomain-ocr-cli``, ``pdomain-ocr-labeler-spa``, ...) repeatedly
 re-implemented "is this file an image?" checks that were extension-only and
 incomplete (notably missing JPEG 2000, which OpenCV decodes natively via
 ``libopenjp2``). This module is the single source of truth for that question.

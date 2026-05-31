@@ -19,7 +19,7 @@ Four sibling repos are downstream consumers of the model defined here:
 - `pdomain-ocr-synth` — emits `glyph_annotations` when synthesizing pages
   whose recipe specifies ligatures, long-s, swash, etc., so the
   trainer has supervised signal.
-- `pd-ocr-trainer` — consumes `glyph_annotations` for evaluation
+- `pdomain-ocr-training` — consumes `glyph_annotations` for evaluation
   slicing (e.g. CER conditioned on ligature presence) and for
   curriculum sampling.
 - `pd-ocr-labeler` (NiceGUI, legacy) — surfaces the annotations in
@@ -392,7 +392,7 @@ consumer.
 | Consumer | Reads | Writes | Needs |
 |---|---|---|---|
 | `pdomain-ocr-synth` | — | full `GlyphAnnotations` | Stable JSON shape; `LigatureKind` covers everything the recipes can render. |
-| `pd-ocr-trainer` | `GlyphAnnotations`, `None` distinction | — | Eval slicing depends on `None` ≠ `GlyphAnnotations()` (see §1.3). |
+| `pdomain-ocr-training` | `GlyphAnnotations`, `None` distinction | — | Eval slicing depends on `None` ≠ `GlyphAnnotations()` (see §1.3). |
 | `pd-ocr-labeler` (NiceGUI) | full | full | Snapshot pickle round-trip; per-word UI panel. |
 | `pdomain-ocr-labeler-spa` | full | full | JSON envelope round-trip; field shape pinned before envelope spec lands. |
 

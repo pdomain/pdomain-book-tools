@@ -38,9 +38,9 @@ to a richer set of four reference lines per word and per line:
 4. **bottom** (descender bottom — the lowest ink row, including
    descenders)
 
-This spec exists because of work happening in pd-ocr-labeler on the
+This spec exists because of work happening in pdomain-ocr-labeler-spa on the
 **Bottom-Crop Bbox Tool** (see
-[`/workspaces/ocr-container/pd-ocr-labeler/docs/planning/bottom-crop-tool-spec.md`](../../../pd-ocr-labeler/docs/planning/bottom-crop-tool-spec.md)).
+[`/workspaces/ocr-container/pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md`](../../../pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md)).
 That tool needs `baseline_y + descender_allowance` per word; it
 currently reaches for `Word.estimate_baseline_from_image` and computes
 its own `descender_allowance` from `median_height`. Promoting the

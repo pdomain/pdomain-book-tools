@@ -9,7 +9,7 @@ associated OCR text string. The primary consumer is the
 `pdomain-ocr-labeler-spa` CharFixer feature, which lets a human reviewer
 drag individual character boxes into their correct positions before
 saving a correction. The extracted boxes are also useful for training-
-data pipelines in `pdomain-ocr-synth` and `pd-ocr-trainer` that need
+data pipelines in `pdomain-ocr-synth` and `pdomain-ocr-training` that need
 character-level alignment signals.
 
 This spec relates to:

@@ -1,7 +1,7 @@
-"""Write the ``.pd-dev-local`` marker that flags a venv as dev-local.
+"""Write the ``.pdomain-dev-local`` marker that flags a venv as dev-local.
 
 Backs the ``make dev-local`` recipe (spec §2.2.2 / §4): once the venv
-is in dev-local mode (sibling pd-* editables, ``[gpu]`` extra, doctr
+is in dev-local mode (sibling pdomain-* editables, ``[gpu]`` extra, doctr
 fork, etc.), this helper writes a small self-explanatory marker file
 inside the venv so that subsequent ``check_dev_local`` invocations
 flag the mode without needing to re-probe every override one by one.
@@ -28,7 +28,7 @@ import datetime
 import sys
 from pathlib import Path
 
-MARKER_FILENAME = ".pd-dev-local"
+MARKER_FILENAME = ".pdomain-dev-local"
 
 
 def write_marker(venv_dir: Path) -> Path:
@@ -71,7 +71,7 @@ def write_marker(venv_dir: Path) -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Write the .pd-dev-local marker into the given venv "
+            "Write the .pdomain-dev-local marker into the given venv "
             "directory. Backs `make dev-local`."
         )
     )

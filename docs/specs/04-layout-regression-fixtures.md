@@ -225,7 +225,7 @@ a regression.
   the OCR pass output as-is; mistakes (smart quotes mangled to digits,
   drop caps misread as "+", etc.) flow through into the
   `.reorganize.txt` baselines unchanged. Recognition fidelity belongs
-  to `pd-ocr-labeler` / `pd-ocr-trainer`.
+  to `pdomain-ocr-labeler-spa` / `pdomain-ocr-training`.
 
 ## Source projects
 

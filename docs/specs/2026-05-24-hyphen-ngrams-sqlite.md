@@ -126,7 +126,7 @@ as a drop-in replacement.
 - `SqliteClient` must have no mandatory runtime dependencies beyond the
   Python standard library (`sqlite3`) and `platformdirs`.
 - The extraction pipeline (`build_hyphen_ngrams_db.py`) may use `requests`
-  (already a pd-* dep) and standard-library `gzip`; no heavy ML/data deps.
+  (already a pdomain-* dep) and standard-library `gzip`; no heavy ML/data deps.
 - The SQLite file must be usable by multiple read-only processes
   concurrently; WAL mode is required.
 - The protocol must be satisfiable by a lightweight test double (a dict
@@ -155,7 +155,7 @@ would exceed PyPI's 100 MB soft limit. Rejected.
 Publish a companion wheel containing only the SQLite file. Installs on
 demand via `pip install pdomain-book-tools[hyphen-data]`. Clean separation of
 code and data; wheel can be re-published when the corpus snapshot is
-refreshed. Complicates the pd-index release pipeline (two wheels to
+refreshed. Complicates the pdomain-index release pipeline (two wheels to
 publish per release instead of one). Viable; see §6 decision.
 
 ### O-D: Download-on-first-use from a GitHub Release asset

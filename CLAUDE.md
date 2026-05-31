@@ -1,7 +1,7 @@
 # CLAUDE — pdomain-book-tools
 
 Foundation Python library for public domain book scans: OCR (Tesseract +
-DocTR), layout analysis, image processing. All other `pd-*` projects depend
+DocTR), layout analysis, image processing. All other `pdomain-*` projects depend
 on it, so public API changes ripple downstream.
 
 ## Commands
