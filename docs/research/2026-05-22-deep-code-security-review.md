@@ -643,7 +643,7 @@ Remediation:
 
 Evidence:
 
-- `scripts/ai-filter-log.py:72`
+- `scripts/ai_filter_log.py:72`
 
 The script reads the entire log file before filtering.
 

@@ -82,6 +82,9 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "pdomain_book_tools/_version.py"
 
+[tool.uv]
+required-version = ">=0.11.16"
+
 [tool.uv.sources]
 # Pin to an immutable commit SHA — do not use a bare branch/tag reference.
 # To upgrade: find the desired commit in mindee/doctr, update the rev= value,
@@ -229,7 +232,7 @@ known-first-party = ["pdomain_book_tools"]
 "tests/**/*.py" = ["S101", "S105", "S106", "S311", "T201", "ANN", "D", "PLR2004", "PT011", "S108", "PLR0133", "PLW2901", "PERF401"]
 # Scripts: print() is the output mechanism; no docstrings required; S607 partial
 # executable path is idiomatic when invoking system tools (uv, git, etc.)
-"scripts/*.py" = ["T201", "D", "S607", "N999"]
+"scripts/*.py" = ["T201", "D", "S607"]
 "tests/fixtures/layout_regression/*.py" = ["T201"]
 # __init__.py: re-exports without docstrings; F401 used for public API surface.
 "**/__init__.py" = ["D104", "F401", "TC"]

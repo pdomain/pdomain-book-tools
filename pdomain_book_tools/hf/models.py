@@ -11,9 +11,9 @@ from pathlib import Path
 
 from .download import hf_download
 
-DEFAULT_HF_REPO = "CT2534/pd-ocr-models"
-DEFAULT_DET_FILENAME = "detection/pd-all-detection-model-finetuned.pt"
-DEFAULT_RECO_FILENAME = "recognition/pd-all-recognition-model-finetuned.pt"
+DEFAULT_HF_REPO = "pdomain/pdomain-ocr-models"
+DEFAULT_DET_FILENAME = "detection/pdomain-all-detection-model-finetuned.pt"
+DEFAULT_RECO_FILENAME = "recognition/pdomain-all-recognition-model-finetuned.pt"
 
 OCR_MODEL_SIDECARS: tuple[str, ...] = (".arch", ".vocab")
 

@@ -1,4 +1,4 @@
-"""Unit tests for ``scripts/ai-filter-log.py``.
+"""Unit tests for ``scripts/ai_filter_log.py``.
 
 The script extracts failure-relevant sections from a captured ``make ci``
 log. To avoid excessive memory/CPU on pathologically large CI logs it
@@ -11,7 +11,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "ai-filter-log.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "ai_filter_log.py"
 
 
 def _load_script_module():

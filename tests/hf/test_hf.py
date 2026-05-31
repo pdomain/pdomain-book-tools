@@ -25,9 +25,12 @@ from pdomain_book_tools.hf import models as hf_models_module
 
 
 def test_constants_match_canonical_repo_layout():
-    assert DEFAULT_HF_REPO == "CT2534/pd-ocr-models"
-    assert DEFAULT_DET_FILENAME == "detection/pd-all-detection-model-finetuned.pt"
-    assert DEFAULT_RECO_FILENAME == "recognition/pd-all-recognition-model-finetuned.pt"
+    assert DEFAULT_HF_REPO == "pdomain/pdomain-ocr-models"
+    assert DEFAULT_DET_FILENAME == "detection/pdomain-all-detection-model-finetuned.pt"
+    assert (
+        DEFAULT_RECO_FILENAME
+        == "recognition/pdomain-all-recognition-model-finetuned.pt"
+    )
     assert OCR_MODEL_SIDECARS == (".arch", ".vocab")
     assert LAYOUT_MODEL_FILES == (
         "config.json",
