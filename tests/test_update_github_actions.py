@@ -116,9 +116,17 @@ def test_update_github_actions_returns_changed_paths(tmp_path: Path) -> None:
             "object": {"sha": "c" * 40, "type": "commit"}
         }
 
-    changed = uga.update_github_actions(workflow_dir=wf_dir, runner=_runner(responses))
-    assert len(changed) == 1
-    assert changed[0] == wf_dir / "ci.yml"
+    # Pass a pyproject with an old version so it also gets updated
+    pyproject = tmp_path / "pyproject.toml"
+    pyproject.write_text('[tool.uv]\nrequired-version = "0.11.16"\n')
+
+    changed = uga.update_github_actions(
+        workflow_dir=wf_dir, pyproject=pyproject, runner=_runner(responses)
+    )
+    assert len(changed) == 2  # ci.yml + pyproject.toml
+    assert wf_dir / "ci.yml" in changed
+    assert pyproject in changed
+    assert '"0.11.17"' in pyproject.read_text()
 
 
 def test_latest_uv_version_parses_tag() -> None:
@@ -154,4 +162,33 @@ def test_update_uv_version_refs_no_change(tmp_path: Path) -> None:
         '      version: "0.11.17"\n'
     )
     changed = uga.update_uv_version_refs(wf, version="0.11.17")
+    assert changed is False
+
+
+def test_update_pyproject_uv_version_rewrites(tmp_path: Path) -> None:
+    p = tmp_path / "pyproject.toml"
+    p.write_text('[tool.uv]\nrequired-version = "0.11.16"\n')
+    changed = uga.update_pyproject_uv_version(p, version="0.11.17")
+    assert changed is True
+    assert '"0.11.17"' in p.read_text()
+    assert '"0.11.16"' not in p.read_text()
+
+
+def test_update_pyproject_uv_version_no_change(tmp_path: Path) -> None:
+    p = tmp_path / "pyproject.toml"
+    p.write_text('[tool.uv]\nrequired-version = "0.11.17"\n')
+    changed = uga.update_pyproject_uv_version(p, version="0.11.17")
+    assert changed is False
+
+
+def test_update_pyproject_uv_version_absent(tmp_path: Path) -> None:
+    p = tmp_path / "pyproject.toml"
+    p.write_text("[project]\nname = 'foo'\n")
+    changed = uga.update_pyproject_uv_version(p, version="0.11.17")
+    assert changed is False
+
+
+def test_update_pyproject_uv_version_missing_file(tmp_path: Path) -> None:
+    p = tmp_path / "nonexistent.toml"
+    changed = uga.update_pyproject_uv_version(p, version="0.11.17")
     assert changed is False

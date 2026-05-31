@@ -82,6 +82,9 @@ source = "vcs"
 [tool.hatch.build.hooks.vcs]
 version-file = "pdomain_book_tools/_version.py"
 
+[tool.uv]
+required-version = "0.11.16"
+
 [tool.uv.sources]
 # Pin to an immutable commit SHA — do not use a bare branch/tag reference.
 # To upgrade: find the desired commit in mindee/doctr, update the rev= value,
