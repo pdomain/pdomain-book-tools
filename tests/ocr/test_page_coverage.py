@@ -115,7 +115,7 @@ class TestPropertyAliases:
 
     def test_resolved_dimensions_falls_back_to_image(self):
         page = Page(width=0, height=0, page_index=0, blocks=[])
-        page._cv2_numpy_page_image = np.zeros((50, 70, 3), dtype=np.uint8)
+        page._image_array = np.zeros((50, 70, 3), dtype=np.uint8)
         assert page.resolved_dimensions == (70.0, 50.0)
 
     def test_resolved_dimensions_zero_when_neither(self):
@@ -261,9 +261,10 @@ class TestRemoveEmptyItems:
 
 class TestCv2NumpyImage:
     def test_constructor_accepts_ndarray(self):
-        """Lines 113-115: cv2_numpy_page_image passed to Page constructor."""
+        """cv2_numpy_page_image assigned directly after construction."""
         img = np.zeros((100, 200, 3), dtype=np.uint8)
-        page = Page(width=200, height=100, page_index=0, blocks=[], image_array=img)
+        page = Page(width=200, height=100, page_index=0, blocks=[])
+        page.cv2_numpy_page_image = img
         assert page.cv2_numpy_page_image is not None
 
     def test_setter_validates_type(self, simple_page):

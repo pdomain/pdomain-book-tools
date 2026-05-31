@@ -1063,7 +1063,7 @@ def test_page_compute_text_row_blocks_single_line():
 # ============================================================================
 
 
-def test_page_constructor_cv2_type_error():
+def test_page_cv2_type_error():
     w = Word(
         text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1), ocr_confidence=0.1
     )
@@ -1075,8 +1075,9 @@ def test_page_constructor_cv2_type_error():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
+    p = Page(width=10, height=10, page_index=0, blocks=[para])
     with pytest.raises(TypeError):
-        Page(width=10, height=10, page_index=0, blocks=[para], image_array="bad")  # type: ignore[arg-type]
+        p.cv2_numpy_page_image = "bad"  # type: ignore[assignment]
 
 
 def test_page_scale_no_bounding_box():
@@ -1489,3 +1490,111 @@ def test_page_gt_orphans_set():
     orphans = GtOrphans(lines=["unmatched line"])
     p = Page(width=100, height=100, page_index=0, blocks=[], gt_orphans=orphans)
     assert p.gt_orphans.lines == ["unmatched line"]
+
+
+# ============================================================================
+# Task 3: blob-backed lazy-load (get_image / get_thumbnail / image_array)
+# ============================================================================
+
+
+def test_get_image_returns_none_without_hash(minimal_page):
+    from unittest.mock import MagicMock
+
+    blob_store = MagicMock()
+    assert minimal_page.get_image(blob_store) is None
+    blob_store.read.assert_not_called()
+
+
+def test_get_image_lazy_loads_from_blob():
+    from unittest.mock import MagicMock
+
+    import cv2
+    import numpy as np
+
+    from pdomain_book_tools.ocr.page import Page
+
+    img = np.ones((4, 4, 3), dtype=np.uint8) * 255
+    png_bytes = cv2.imencode(".png", img)[1].tobytes()
+
+    blob_store = MagicMock()
+    blob_store.read.return_value = png_bytes
+
+    p = Page(width=4, height=4, page_index=0, blocks=[], image_blob_hash="abc123")
+    result = p.get_image(blob_store)
+    assert result is not None
+    assert result.shape == (4, 4, 3)
+    blob_store.read.assert_called_once_with("abc123")
+
+
+def test_get_image_caches_result():
+    from unittest.mock import MagicMock
+
+    import cv2
+    import numpy as np
+
+    from pdomain_book_tools.ocr.page import Page
+
+    img = np.ones((4, 4, 3), dtype=np.uint8) * 255
+    png_bytes = cv2.imencode(".png", img)[1].tobytes()
+    blob_store = MagicMock()
+    blob_store.read.return_value = png_bytes
+
+    p = Page(width=4, height=4, page_index=0, blocks=[], image_blob_hash="abc123")
+    first = p.get_image(blob_store)
+    second = p.get_image(blob_store)
+    assert first is second
+    assert blob_store.read.call_count == 1
+
+
+def test_get_thumbnail_returns_none_without_hash(minimal_page):
+    from unittest.mock import MagicMock
+
+    blob_store = MagicMock()
+    assert minimal_page.get_thumbnail(blob_store) is None
+
+
+def test_get_thumbnail_caches_result():
+    from unittest.mock import MagicMock
+
+    import cv2
+    import numpy as np
+
+    from pdomain_book_tools.ocr.page import Page
+
+    img = np.ones((2, 2, 3), dtype=np.uint8) * 128
+    png_bytes = cv2.imencode(".png", img)[1].tobytes()
+    blob_store = MagicMock()
+    blob_store.read.return_value = png_bytes
+
+    p = Page(width=2, height=2, page_index=0, blocks=[], thumbnail_blob_hash="thumb1")
+    first = p.get_thumbnail(blob_store)
+    second = p.get_thumbnail(blob_store)
+    assert first is second
+    assert blob_store.read.call_count == 1
+
+
+def test_get_image_raises_on_corrupt_blob():
+    from unittest.mock import MagicMock
+
+    from pdomain_book_tools.ocr.page import Page
+
+    blob_store = MagicMock()
+    blob_store.read.return_value = b"not a valid png"
+
+    p = Page(width=4, height=4, page_index=0, blocks=[], image_blob_hash="bad")
+    with pytest.raises(ValueError, match="failed to decode"):
+        p.get_image(blob_store)
+    # The failed decode must NOT be cached as None — a retry still attempts a read.
+    assert p._image_array is None
+
+
+def test_image_array_property_returns_cache():
+    import numpy as np
+
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=4, height=4, page_index=0, blocks=[])
+    assert p.image_array is None
+    arr = np.zeros((4, 4, 3), dtype=np.uint8)
+    p._image_array = arr
+    assert p.image_array is arr
