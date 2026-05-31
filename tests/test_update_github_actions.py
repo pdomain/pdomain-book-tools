@@ -106,6 +106,7 @@ def test_update_github_actions_returns_changed_paths(tmp_path: Path) -> None:
         "repos/actions/checkout/git/ref/tags/v4.2.2": {
             "object": {"sha": new_sha, "type": "commit"}
         },
+        "repos/astral-sh/uv/releases/latest": {"tag_name": "0.11.17"},
     }
     for action in uga.MANAGED_ACTIONS:
         if action == "actions/checkout":
@@ -118,3 +119,39 @@ def test_update_github_actions_returns_changed_paths(tmp_path: Path) -> None:
     changed = uga.update_github_actions(workflow_dir=wf_dir, runner=_runner(responses))
     assert len(changed) == 1
     assert changed[0] == wf_dir / "ci.yml"
+
+
+def test_latest_uv_version_parses_tag() -> None:
+    runner = _runner({"repos/astral-sh/uv/releases/latest": {"tag_name": "0.11.17"}})
+    assert uga.latest_uv_version(runner=runner) == "0.11.17"
+
+
+def test_latest_uv_version_strips_v_prefix() -> None:
+    runner = _runner({"repos/astral-sh/uv/releases/latest": {"tag_name": "v0.11.17"}})
+    assert uga.latest_uv_version(runner=runner) == "0.11.17"
+
+
+def test_update_uv_version_refs_rewrites(tmp_path: Path) -> None:
+    wf = tmp_path / "ci.yml"
+    wf.write_text(
+        "steps:\n"
+        "  - uses: astral-sh/setup-uv@abcdef1234567890abcdef1234567890abcdef12\n"
+        "    with:\n"
+        '      version: "0.11.16"\n'
+    )
+    changed = uga.update_uv_version_refs(wf, version="0.11.17")
+    assert changed is True
+    assert '"0.11.17"' in wf.read_text()
+    assert '"0.11.16"' not in wf.read_text()
+
+
+def test_update_uv_version_refs_no_change(tmp_path: Path) -> None:
+    wf = tmp_path / "ci.yml"
+    wf.write_text(
+        "steps:\n"
+        "  - uses: astral-sh/setup-uv@abcdef1234567890abcdef1234567890abcdef12\n"
+        "    with:\n"
+        '      version: "0.11.17"\n'
+    )
+    changed = uga.update_uv_version_refs(wf, version="0.11.17")
+    assert changed is False
