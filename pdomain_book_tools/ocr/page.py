@@ -47,11 +47,9 @@ from pdomain_book_tools.ocr.block import Block, BlockCategory
 from pdomain_book_tools.ocr.ground_truth_matching import (
     update_page_with_ground_truth_text,
 )
-from pdomain_book_tools.ocr.provenance import OCRProvenance
 from pdomain_book_tools.ocr.review import ReviewMetadata
 from pdomain_book_tools.ocr.word import Word
 from pdomain_book_tools.schemas._helpers import (
-    NULLABLE_STR_ANY_DICT_SCHEMA,
     NULLABLE_STR_SCHEMA,
 )
 
@@ -116,32 +114,7 @@ class Page:
 
     bounding_box: BoundingBox | None = None
     page_labels: list[str] | None = None
-    unmatched_ground_truth_lines: list[object] | None = None
-    "List of Ground Truth Lines and the line they were found on before an OCR match"
-
-    original_ocr_tool_text: str | None = ""
-    original_ground_truth_text: str | None = ""
-    ocr_provenance: OCRProvenance | JsonDict | None = None
-
-    # Page metadata fields. These were previously assigned only inside
-    # the custom ``__init__``; R-02 declared them as proper fields so
-    # the dataclass-generated init handles them.
-    image_path: pathlib.Path | str | None = None
     name: str | None = None
-    source: str = "ocr"
-    ocr_failed: bool = False
-    provenance_live_ocr: JsonDict | None = None
-    provenance_saved_ocr: JsonDict | None = None
-    provenance_saved: JsonDict | None = None
-
-    # Rotation OCR applied to the source image before recognition. 0
-    # means OCR ran on the page as it sat on disk; 90/180/270 mean the
-    # image was rotated clockwise by that many degrees first because
-    # the upright pass was below confidence threshold. Pixel and bbox
-    # coordinates on this Page index into the rotated frame, not the
-    # original. See pdomain_book_tools.ocr.rotation. Validated in
-    # ``__post_init__``.
-    rotation_applied: int = 0
 
     # Optional human-review metadata (Page-scope). See
     # pdomain_book_tools/ocr/review.py.
@@ -230,18 +203,6 @@ class Page:
             bboxes = [item.bounding_box for item in self.items if item.bounding_box]
             self.bounding_box = BoundingBox.union(bboxes) if bboxes else None
 
-        # Coerce: ``None`` stays ``None`` per the legacy contract; an
-        # empty/falsy non-None gets normalized to an empty list.
-        if not self.unmatched_ground_truth_lines:
-            self.unmatched_ground_truth_lines = []
-
-        self.ocr_provenance = OCRProvenance.coerce(self.ocr_provenance)
-
-        if self.rotation_applied not in (0, 90, 180, 270):
-            raise ValueError(
-                f"rotation_applied must be one of 0/90/180/270, got {self.rotation_applied}"
-            )
-
     def __eq__(self, other: object) -> bool:  # pyright: ignore[reportImplicitOverride]
         """Compare two Pages by their persisted, observable state.
 
@@ -267,15 +228,6 @@ class Page:
     @index.setter
     def index(self, value: int) -> None:
         self.page_index = int(value)
-
-    @property
-    def page_source(self) -> str:
-        """Compatibility alias for ``source``."""
-        return self.source
-
-    @page_source.setter
-    def page_source(self, value: str) -> None:
-        self.source = value
 
     def _sort_items(self) -> None:
         self._items.sort(
@@ -2761,10 +2713,7 @@ class Page:
 
         All metadata fields are preserved — only bounding box coordinates and
         the ``width``/``height`` dimensions change. Fields preserved include
-        ``page_labels``, ``ocr_provenance``, ``image_path``, ``name``,
-        ``source``, ``ocr_failed``, ``provenance_live_ocr``,
-        ``provenance_saved_ocr``, ``provenance_saved``, ``rotation_applied``,
-        and ``review``.
+        ``page_labels``, ``name``, and ``review``.
         """
         return Page(
             width=width,
@@ -2775,21 +2724,12 @@ class Page:
             if self.bounding_box
             else None,
             page_labels=self.page_labels,
-            ocr_provenance=self.ocr_provenance,
-            image_path=self.image_path,
             name=self.name,
-            source=self.source,
-            ocr_failed=self.ocr_failed,
-            provenance_live_ocr=self.provenance_live_ocr,
-            provenance_saved_ocr=self.provenance_saved_ocr,
-            provenance_saved=self.provenance_saved,
-            rotation_applied=self.rotation_applied,
             review=self.review,
         )
 
     def to_dict(self) -> JsonDict:
         """Convert to JSON-serializable dictionary."""
-        ocr_provenance = OCRProvenance.coerce(self.ocr_provenance)
         result: JsonDict = {
             "type": "Page",
             "width": self.width,
@@ -2797,27 +2737,10 @@ class Page:
             "page_index": self.page_index,
             "bounding_box": self.bounding_box.to_dict() if self.bounding_box else None,
             "items": [item.to_dict() for item in self.items] if self.items else [],
-            "ocr_provenance": (
-                ocr_provenance.to_dict() if ocr_provenance is not None else None
-            ),
         }
         # Include metadata fields when set (omit defaults for compact output)
-        if self.image_path is not None:
-            result["image_path"] = str(self.image_path)
         if self.name is not None:
             result["name"] = self.name
-        if self.source != "ocr":
-            result["source"] = self.source
-        if self.ocr_failed:
-            result["ocr_failed"] = self.ocr_failed
-        if self.provenance_live_ocr is not None:
-            result["provenance_live_ocr"] = self.provenance_live_ocr
-        if self.provenance_saved_ocr is not None:
-            result["provenance_saved_ocr"] = self.provenance_saved_ocr
-        if self.provenance_saved is not None:
-            result["provenance_saved"] = self.provenance_saved
-        if self.rotation_applied:
-            result["rotation_applied"] = self.rotation_applied
         if self.review is not None:
             result["review"] = self.review.to_dict()
         return result
@@ -3283,17 +3206,11 @@ class Page:
         """Remove ground truth text from the page."""
         for item in self.items:
             item.remove_ground_truth()
-        if self.unmatched_ground_truth_lines:
-            self.unmatched_ground_truth_lines.clear()
-        else:
-            self.unmatched_ground_truth_lines = []
         self.refresh_page_images()
 
     @classmethod
     def from_dict(cls, data: Mapping[str, object]) -> Page:
         """Create OCRPage from dictionary."""
-        # Resolve source from either "source" or legacy "page_source" key
-        source = cast("str", data.get("source", data.get("page_source", "ocr")))
         review_raw = data.get("review")
         review = (
             review_raw
@@ -3327,23 +3244,7 @@ class Page:
             height=int(cast("str | float | int", data["height"])),
             page_index=int(cast("str | float | int", data["page_index"])),
             bounding_box=bounding_box,
-            ocr_provenance=cast(
-                "OCRProvenance | JsonDict | None", data.get("ocr_provenance")
-            ),
-            image_path=cast("pathlib.Path | str | None", data.get("image_path")),
             name=cast("str | None", data.get("name")),
-            source=source,
-            ocr_failed=bool(data.get("ocr_failed", False)),
-            provenance_live_ocr=cast(
-                "JsonDict | None", data.get("provenance_live_ocr")
-            ),
-            provenance_saved_ocr=cast(
-                "JsonDict | None", data.get("provenance_saved_ocr")
-            ),
-            provenance_saved=cast("JsonDict | None", data.get("provenance_saved")),
-            rotation_applied=int(
-                cast("str | float | int", data.get("rotation_applied", 0))
-            ),
             review=review,
         )
 
@@ -3704,7 +3605,6 @@ class Page:
     ) -> CoreSchema:
         bb_schema = handler.generate_schema(BoundingBox)
         block_schema = handler.generate_schema(Block)
-        provenance_schema = handler.generate_schema(OCRProvenance)
         review_schema = handler.generate_schema(ReviewMetadata)
         return core_schema.no_info_after_validator_function(
             function=cls.from_dict,
@@ -3731,42 +3631,8 @@ class Page:
                         core_schema.list_schema(block_schema),
                         required=False,
                     ),
-                    "ocr_provenance": core_schema.typed_dict_field(
-                        core_schema.nullable_schema(provenance_schema),
-                        required=False,
-                    ),
-                    "image_path": core_schema.typed_dict_field(
-                        NULLABLE_STR_SCHEMA,
-                        required=False,
-                    ),
                     "name": core_schema.typed_dict_field(
                         NULLABLE_STR_SCHEMA,
-                        required=False,
-                    ),
-                    "source": core_schema.typed_dict_field(
-                        core_schema.str_schema(),
-                        required=False,
-                    ),
-                    "ocr_failed": core_schema.typed_dict_field(
-                        core_schema.bool_schema(),
-                        required=False,
-                    ),
-                    "provenance_live_ocr": core_schema.typed_dict_field(
-                        # #182: runtime type is dict[str, Any] | None; the
-                        # previous NULLABLE_STR_SCHEMA (str | None) was wrong.
-                        NULLABLE_STR_ANY_DICT_SCHEMA,
-                        required=False,
-                    ),
-                    "provenance_saved_ocr": core_schema.typed_dict_field(
-                        NULLABLE_STR_ANY_DICT_SCHEMA,
-                        required=False,
-                    ),
-                    "provenance_saved": core_schema.typed_dict_field(
-                        NULLABLE_STR_ANY_DICT_SCHEMA,
-                        required=False,
-                    ),
-                    "rotation_applied": core_schema.typed_dict_field(
-                        core_schema.nullable_schema(core_schema.int_schema()),
                         required=False,
                     ),
                     "review": core_schema.typed_dict_field(

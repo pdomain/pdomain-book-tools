@@ -670,8 +670,7 @@ class TestUpdatePageWithGroundTruthText:
         assert "away" in gts[2]
 
     def test_unmatched_gt_lines_recorded(self):
-        """GT lines with no matching OCR line should be added to
-        page.unmatched_ground_truth_lines."""
+        """Task 4: unmatched GT lines now route into page.gt_orphans.lines."""
         ocr_lines = [
             ["First", "line", "of", "text"],
             ["Last", "line", "of", "text"],
@@ -687,7 +686,7 @@ class TestUpdatePageWithGroundTruthText:
         page = _make_page(ocr_lines)
         update_page_with_ground_truth_text(page, gt_text)
 
-        unmatched = page.unmatched_ground_truth_lines or []
+        unmatched = page.gt_orphans.lines if page.gt_orphans is not None else []
         unmatched_texts = [t for _, t in unmatched]
         assert any("entirely different middle line" in t for t in unmatched_texts)
 

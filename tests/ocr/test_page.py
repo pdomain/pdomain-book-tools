@@ -8,7 +8,6 @@ from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.gt_orphans import GtOrphans
 from pdomain_book_tools.ocr.page import Page
-from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pdomain_book_tools.ocr.word import Word
 
 
@@ -59,19 +58,11 @@ def test_page_to_dict(sample_page):
     assert "bounding_box" in page_dict
 
 
-def test_page_to_dict_includes_ocr_provenance():
-    provenance = OCRProvenance(
-        engine="doctr",
-        models=[OCRModelProvenance(name="det"), OCRModelProvenance(name="reco")],
-        engine_version="0.8.1",
-    )
-    page = Page(
-        width=100, height=200, page_index=1, blocks=[], ocr_provenance=provenance
-    )
-
+def test_page_to_dict_does_not_include_ocr_provenance():
+    """Task 4: ocr_provenance removed from Page; to_dict must not include it."""
+    page = Page(width=100, height=200, page_index=1, blocks=[])
     page_dict = page.to_dict()
-
-    assert page_dict["ocr_provenance"] == provenance.to_dict()
+    assert "ocr_provenance" not in page_dict
 
 
 def test_page_from_dict(sample_page):
@@ -84,7 +75,8 @@ def test_page_from_dict(sample_page):
     assert len(new_page.items) == len(sample_page.items)
 
 
-def test_page_from_dict_restores_ocr_provenance():
+def test_page_from_dict_ignores_ocr_provenance():
+    """Task 4: from_dict silently ignores the old ocr_provenance key (backward compat)."""
     page_dict = {
         "width": 100,
         "height": 200,
@@ -99,11 +91,11 @@ def test_page_from_dict_restores_ocr_provenance():
     }
 
     page = Page.from_dict(page_dict)
-
-    assert page.ocr_provenance == OCRProvenance.from_dict(page_dict["ocr_provenance"])
+    assert not hasattr(page, "ocr_provenance")
 
 
 def test_page_from_dict_legacy_without_ocr_provenance():
+    """Task 4: from_dict with no ocr_provenance key works fine."""
     page_dict = {
         "width": 100,
         "height": 200,
@@ -113,8 +105,7 @@ def test_page_from_dict_legacy_without_ocr_provenance():
     }
 
     page = Page.from_dict(page_dict)
-
-    assert page.ocr_provenance is None
+    assert not hasattr(page, "ocr_provenance")
 
 
 def test_page_init_filters_none_bbox_items(sample_block4):
@@ -168,42 +159,23 @@ def test_page_init_all_none_bboxes_yields_none():
     assert page.bounding_box is None
 
 
-def test_page_copy_preserves_ocr_provenance_without_shared_mutation():
+def test_page_copy_produces_independent_instance():
+    """Task 4: ocr_provenance removed. copy() still produces independent instances."""
     page = Page(
         width=100,
         height=200,
         page_index=1,
         blocks=[],
-        ocr_provenance=OCRProvenance(
-            engine="doctr",
-            models=[OCRModelProvenance(name="det")],
-            engine_version="unknown",
-        ),
+        name="page-copy-test",
     )
 
     copied = page.copy()
 
-    assert copied.ocr_provenance == page.ocr_provenance
-    assert copied.ocr_provenance is not page.ocr_provenance
-
-    # L-15: ``OCRProvenance.models`` is now a tuple so the frozen dataclass's
-    # immutability promise is real (an in-place ``.append`` on a list field
-    # would have silently leaked across copies). To exercise the no-shared-
-    # mutation contract, construct a *new* OCRProvenance with an extended
-    # tuple and assign it to the copy via ``object.__setattr__`` (the field
-    # is frozen). The original's ``.models`` must be unchanged.
-    new_models = (*copied.ocr_provenance.models, OCRModelProvenance(name="reco"))
-    object.__setattr__(
-        copied,
-        "ocr_provenance",
-        OCRProvenance(
-            engine=copied.ocr_provenance.engine,
-            models=new_models,
-            engine_version=copied.ocr_provenance.engine_version,
-        ),
-    )
-
-    assert page.ocr_provenance.models == (OCRModelProvenance(name="det"),)
+    assert copied.width == page.width
+    assert copied.height == page.height
+    assert copied.page_index == page.page_index
+    assert copied.name == page.name
+    assert not hasattr(copied, "ocr_provenance")
 
 
 # ============================================================================
@@ -1113,7 +1085,10 @@ def test_page_init_with_explicit_bounding_box():
     assert page.bounding_box.to_ltrb() == explicit.to_ltrb()
 
 
-def test_page_init_with_unmatched_ground_truth_lines():
+def test_page_init_with_gt_orphans_lines():
+    """Task 4: unmatched_ground_truth_lines removed; data now lives in gt_orphans.lines."""
+    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
     w = Word(
         text="hello",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
@@ -1127,14 +1102,17 @@ def test_page_init_with_unmatched_ground_truth_lines():
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
+    orphans = GtOrphans(lines=[(0, "UNMATCHED")])
     page = Page(
         width=20,
         height=20,
         page_index=0,
         blocks=[para],
-        unmatched_ground_truth_lines=[(0, "UNMATCHED")],
+        gt_orphans=orphans,
     )
-    assert page.unmatched_ground_truth_lines == [(0, "UNMATCHED")]
+    assert page.gt_orphans is not None
+    assert page.gt_orphans.lines == [(0, "UNMATCHED")]
+    assert not hasattr(page, "unmatched_ground_truth_lines")
 
 
 def test_page_add_rect_with_normalized_block():
@@ -1279,38 +1257,26 @@ def test_page_detection_on_empty_items(tmp_path):
 
 
 class TestPageMetadata:
-    """Tests for first-class metadata fields on Page."""
+    """Tests for metadata fields on Page (Task 4: operational fields removed)."""
 
     def _make_page(self, **kwargs):
         return Page(width=10, height=10, page_index=0, blocks=[], **kwargs)
 
     def test_defaults(self):
+        """Task 4: removed operational fields; name is the only remaining optional metadata."""
         page = self._make_page()
-        assert page.image_path is None
         assert page.name is None
-        assert page.source == "ocr"
-        assert page.ocr_failed is False
-        assert page.provenance_live_ocr is None
-        assert page.provenance_saved_ocr is None
-        assert page.provenance_saved is None
+        assert not hasattr(page, "image_path")
+        assert not hasattr(page, "source")
+        assert not hasattr(page, "ocr_failed")
+        assert not hasattr(page, "provenance_live_ocr")
+        assert not hasattr(page, "provenance_saved_ocr")
+        assert not hasattr(page, "provenance_saved")
 
-    def test_constructor_accepts_metadata(self):
-        page = self._make_page(
-            image_path="/tmp/image.png",
-            name="image.png",
-            source="filesystem",
-            ocr_failed=True,
-            provenance_live_ocr={"engine": "doctr"},
-            provenance_saved_ocr={"engine": "tesseract"},
-            provenance_saved={"hash": "abc"},
-        )
-        assert page.image_path == "/tmp/image.png"
-        assert page.name == "image.png"
-        assert page.source == "filesystem"
-        assert page.ocr_failed is True
-        assert page.provenance_live_ocr == {"engine": "doctr"}
-        assert page.provenance_saved_ocr == {"engine": "tesseract"}
-        assert page.provenance_saved == {"hash": "abc"}
+    def test_constructor_accepts_name(self):
+        """name field is still present on Page."""
+        page = self._make_page(name="page-001")
+        assert page.name == "page-001"
 
     def test_index_alias(self):
         page = self._make_page()
@@ -1319,80 +1285,45 @@ class TestPageMetadata:
         assert page.page_index == 5
         assert page.index == 5
 
-    def test_page_source_alias(self):
-        page = self._make_page(source="ocr")
-        assert page.page_source == "ocr"
-        page.page_source = "filesystem"
-        assert page.source == "filesystem"
-        assert page.page_source == "filesystem"
-
-    def test_set_source(self):
-        page = self._make_page()
-        page.source = "cached_ocr"
-        assert page.source == "cached_ocr"
-
-    def test_mark_ocr_failed(self):
-        page = self._make_page()
-        page.ocr_failed = True
-        assert page.ocr_failed is True
-        page.ocr_failed = False
-        assert page.ocr_failed is False
-
-    def test_set_image_path(self):
-        page = self._make_page()
-        page.image_path = "/new/path.png"
-        assert page.image_path == "/new/path.png"
-        page.image_path = None
-        assert page.image_path is None
-
-    def test_to_dict_omits_defaults(self):
+    def test_to_dict_omits_name_when_none(self):
+        """name is omitted from to_dict when not set."""
         page = self._make_page()
         d = page.to_dict()
-        assert "image_path" not in d
         assert "name" not in d
-        assert "source" not in d
-        assert "ocr_failed" not in d
-        assert "provenance_live_ocr" not in d
-        assert "provenance_saved_ocr" not in d
-        assert "provenance_saved" not in d
 
-    def test_to_dict_includes_non_defaults(self):
-        page = self._make_page(
-            image_path="/img.png",
-            name="img.png",
-            source="filesystem",
-            ocr_failed=True,
-            provenance_saved={"v": 1},
-        )
+    def test_to_dict_includes_name_when_set(self):
+        page = self._make_page(name="my-page")
         d = page.to_dict()
-        assert d["image_path"] == "/img.png"
-        assert d["name"] == "img.png"
-        assert d["source"] == "filesystem"
-        assert d["ocr_failed"] is True
-        assert d["provenance_saved"] == {"v": 1}
+        assert d["name"] == "my-page"
+
+    def test_to_dict_removed_fields_absent(self):
+        """Task 4: removed fields must not appear in to_dict output."""
+        page = self._make_page()
+        d = page.to_dict()
+        for removed in (
+            "image_path",
+            "source",
+            "ocr_failed",
+            "provenance_live_ocr",
+            "provenance_saved_ocr",
+            "provenance_saved",
+            "rotation_applied",
+            "ocr_provenance",
+            "original_ocr_tool_text",
+            "original_ground_truth_text",
+            "unmatched_ground_truth_lines",
+        ):
+            assert removed not in d
 
     def test_serialization_roundtrip(self):
-        page = self._make_page(
-            image_path="/a/b.png",
-            name="b.png",
-            source="cached_ocr",
-            ocr_failed=True,
-            provenance_live_ocr={"k": "v"},
-            provenance_saved_ocr={"k2": "v2"},
-            provenance_saved={"k3": "v3"},
-        )
+        """to_dict / from_dict roundtrip preserves name."""
+        page = self._make_page(name="b.png")
         d = page.to_dict()
         restored = Page.from_dict(d)
-        assert restored.image_path == "/a/b.png"
         assert restored.name == "b.png"
-        assert restored.source == "cached_ocr"
-        assert restored.ocr_failed is True
-        assert restored.provenance_live_ocr == {"k": "v"}
-        assert restored.provenance_saved_ocr == {"k2": "v2"}
-        assert restored.provenance_saved == {"k3": "v3"}
 
     def test_from_dict_without_metadata_uses_defaults(self):
-        """Loading older data without metadata keys keeps defaults."""
+        """Loading older data without metadata keys works fine."""
         d = {
             "type": "Page",
             "width": 10,
@@ -1402,13 +1333,10 @@ class TestPageMetadata:
             "bounding_box": None,
         }
         page = Page.from_dict(d)
-        assert page.image_path is None
         assert page.name is None
-        assert page.source == "ocr"
-        assert page.ocr_failed is False
 
-    def test_from_dict_legacy_page_source_key(self):
-        """When only legacy ``page_source`` key is present, it maps to ``source``."""
+    def test_from_dict_ignores_legacy_keys(self):
+        """from_dict silently ignores old removed fields (backward compat)."""
         d = {
             "type": "Page",
             "width": 10,
@@ -1416,39 +1344,21 @@ class TestPageMetadata:
             "page_index": 0,
             "items": [],
             "bounding_box": None,
-            "page_source": "filesystem",
+            "source": "filesystem",
+            "ocr_failed": True,
+            "rotation_applied": 90,
+            "ocr_provenance": {"engine": "doctr", "models": [], "engine_version": "1"},
         }
         page = Page.from_dict(d)
-        assert page.source == "filesystem"
-        assert page.page_source == "filesystem"
+        assert not hasattr(page, "source")
+        assert not hasattr(page, "ocr_failed")
+        assert not hasattr(page, "rotation_applied")
+        assert not hasattr(page, "ocr_provenance")
 
-    def test_from_dict_source_wins_over_page_source(self):
-        """When both ``source`` and ``page_source`` are present, ``source`` wins."""
-        d = {
-            "type": "Page",
-            "width": 10,
-            "height": 10,
-            "page_index": 0,
-            "items": [],
-            "bounding_box": None,
-            "source": "cached_ocr",
-            "page_source": "filesystem",
-        }
-        page = Page.from_dict(d)
-        assert page.source == "cached_ocr"
-
-    def test_copy_preserves_metadata(self):
-        page = self._make_page(
-            image_path="/x.png",
-            name="x.png",
-            source="filesystem",
-            ocr_failed=True,
-        )
+    def test_copy_preserves_name(self):
+        page = self._make_page(name="x.png")
         copied = page.copy()
-        assert copied.image_path == "/x.png"
         assert copied.name == "x.png"
-        assert copied.source == "filesystem"
-        assert copied.ocr_failed is True
 
 
 # ============================================================================
@@ -1598,3 +1508,36 @@ def test_image_array_property_returns_cache():
     arr = np.zeros((4, 4, 3), dtype=np.uint8)
     p._image_array = arr
     assert p.image_array is arr
+
+
+# ============================================================================
+# Task 4: Operational metadata fields removed
+# ============================================================================
+
+
+def test_page_has_no_image_path():
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=100, height=100, page_index=0, blocks=[])
+    assert not hasattr(p, "image_path")
+
+
+def test_page_has_no_source():
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=100, height=100, page_index=0, blocks=[])
+    assert not hasattr(p, "source")
+
+
+def test_page_has_no_rotation_applied():
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=100, height=100, page_index=0, blocks=[])
+    assert not hasattr(p, "rotation_applied")
+
+
+def test_page_has_no_ocr_provenance():
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=100, height=100, page_index=0, blocks=[])
+    assert not hasattr(p, "ocr_provenance")

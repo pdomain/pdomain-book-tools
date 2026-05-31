@@ -176,42 +176,37 @@ class TestDetectBestRotation:
 
 
 class TestPageRotationAppliedField:
+    """Task 4: rotation_applied removed from Page.
+
+    The rotation angle is now returned directly by from_image_ocr_via_doctr
+    as the second tuple element, so callers can store it on PageRecord.
+    """
+
     def test_default_zero(self):
         from pdomain_book_tools.ocr.page import Page
 
         page = Page(width=10, height=10, page_index=0, blocks=[])
-        assert page.rotation_applied == 0
+        assert not hasattr(page, "rotation_applied")
 
     def test_invalid_value_rejected(self):
+        """Task 4: rotation_applied constructor param removed; Page accepts no rotation arg."""
         from pdomain_book_tools.ocr.page import Page
 
-        with pytest.raises(ValueError, match="rotation_applied"):
+        with pytest.raises(TypeError):
             Page(
                 width=10,
                 height=10,
                 page_index=0,
                 blocks=[],
-                rotation_applied=45,
+                rotation_applied=45,  # no longer a valid constructor arg
             )
 
     def test_round_trip_through_dict(self):
-        from pdomain_book_tools.ocr.page import Page
-
-        page = Page(
-            width=10,
-            height=10,
-            page_index=0,
-            blocks=[],
-            rotation_applied=90,
-        )
-        data = page.to_dict()
-        assert data["rotation_applied"] == 90
-        restored = Page.from_dict(data)
-        assert restored.rotation_applied == 90
-
-    def test_zero_omitted_from_dict(self):
-        # Default 0 isn't serialized, keeping existing JSONs unchanged.
+        """Task 4: rotation_applied not in to_dict / from_dict."""
         from pdomain_book_tools.ocr.page import Page
 
         page = Page(width=10, height=10, page_index=0, blocks=[])
-        assert "rotation_applied" not in page.to_dict()
+        data = page.to_dict()
+        assert "rotation_applied" not in data
+        restored = Page.from_dict(data)
+        assert not hasattr(restored, "rotation_applied")

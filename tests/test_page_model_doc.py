@@ -95,9 +95,8 @@ def test_doc_enumerates_top_level_page_fields(doc_text: str) -> None:
     """Every always-present key emitted by ``Page.to_dict()`` must be
     documented (backtick-quoted).
 
-    Conditional metadata fields (``image_path``, ``rotation_applied``, …)
-    are emitted only when set, so we exercise the well-known always-on
-    subset rather than instantiating every variant.
+    Task 4: ocr_provenance removed from Page.to_dict(). The always-present
+    subset is now: type, width, height, page_index, bounding_box, items.
     """
     page = Page(
         width=10,
@@ -114,13 +113,17 @@ def test_doc_enumerates_top_level_page_fields(doc_text: str) -> None:
         "page_index",
         "bounding_box",
         "items",
-        "ocr_provenance",
     }
     # Sanity: the always-present subset is actually emitted.
     assert always_present.issubset(emitted.keys()), (
         f"Page.to_dict() no longer emits {always_present - set(emitted)}; "
         "update both the code and the doc test."
     )
+    # Task 4: removed fields must NOT appear in to_dict output
+    for removed in ("ocr_provenance", "image_path", "rotation_applied", "source"):
+        assert removed not in emitted, (
+            f"{removed} should be absent from to_dict after Task 4"
+        )
     missing = [
         field for field in sorted(always_present) if f"`{field}`" not in doc_text
     ]

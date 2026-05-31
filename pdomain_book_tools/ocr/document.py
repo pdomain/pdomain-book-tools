@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Callable, Collection, Mapping, Sequence
-from copy import deepcopy
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
@@ -171,7 +170,7 @@ class Document:
         *,
         auto_rotate: bool = True,
         auto_rotate_threshold: float | None = None,
-    ) -> Document:
+    ) -> tuple[Document, int]:
         """
         Perform OCR on a single cv2 image using the doctr library.
         :param image: The input image as:
@@ -183,14 +182,15 @@ class Document:
         :param auto_rotate: If True (default), run OCR upright first; if mean
            per-word confidence is below ``auto_rotate_threshold``, also try
            90°/180°/270° and pick whichever produces the highest mean
-           confidence. The chosen rotation is recorded on
-           ``page.rotation_applied``. Set to False to skip the fallback
-           probes and always OCR the image as-is.
+           confidence. The chosen rotation is returned as the second element of
+           the return tuple so callers can store it on PageRecord.rotation_degrees.
+           Set to False to skip the fallback probes and always OCR the image as-is.
         :param auto_rotate_threshold: Mean per-word confidence at which the
            upright pass is considered good enough; ignored when
            ``auto_rotate`` is False. Defaults to
            :data:`pdomain_book_tools.ocr.rotation.DEFAULT_CONFIDENCE_THRESHOLD`.
-        :return: Document containing the OCR results.
+        :return: Tuple of (Document containing the OCR results, rotation_degrees applied).
+                 rotation_degrees is 0 when auto_rotate is False or no rotation was needed.
         """
         if predictor is None:
             predictor = cast("_DoctrPredictor", get_default_doctr_predictor())
@@ -229,14 +229,14 @@ class Document:
             rotated_source = rotate_image(image_ndarray, chosen)
             ocr_page: Page = ocr_doc.pages[0]
             ocr_page.cv2_numpy_page_image = rotated_source
-            ocr_page.rotation_applied = chosen
+            rotation_degrees = chosen
         else:
             ocr_doc = _ocr_one(image_rgb)
             ocr_page = ocr_doc.pages[0]
             ocr_page.cv2_numpy_page_image = image_ndarray
-            # rotation_applied stays at its default 0
+            rotation_degrees = 0
 
-        return ocr_doc
+        return ocr_doc, rotation_degrees
 
     @staticmethod
     def _to_rgb_ndarray(
@@ -510,17 +510,17 @@ class Document:
                 cls._block_from_doctr(cast("Mapping[str, object]", block_data))
             )
 
-        original_ocr_tool_text = None
-        if original_text is not None and page_idx < len(original_text):
-            original_ocr_tool_text = original_text[page_idx]
+        # Note: original_text (DocTR rendered text) was previously stored as
+        # page.original_ocr_tool_text. That field is removed in Task 4.
+        # TODO(Task 5/Plan 2): route original_text into OcrCompleted event / PageRecord
+        del ocr_provenance  # was stored on page.ocr_provenance; removed in Task 4
+        del original_text
 
         return Page(
             page_index=page_idx,
             width=width,
             height=height,
             blocks=blocks,
-            original_ocr_tool_text=original_ocr_tool_text,
-            ocr_provenance=deepcopy(ocr_provenance),
         )
 
     @classmethod
@@ -892,13 +892,15 @@ class Document:
             )
             for br in block_rows.itertuples()
         ]
+        # Note: ocr_provenance was stored on page.ocr_provenance; removed in Task 4.
+        # TODO(Task 5/Plan 2): route ocr_provenance into PageRecord / OcrCompleted event
+        del ocr_provenance
         return Page(
             page_index=page_idx,
             width=int(page_bbox.width),
             height=int(page_bbox.height),
             blocks=blocks,
             bounding_box=page_bbox,
-            ocr_provenance=deepcopy(ocr_provenance),
         )
 
     @classmethod
@@ -980,8 +982,9 @@ class Document:
 
         result._sort_pages()
 
-        if tesseract_string is not None and result.pages:
-            # If a string is provided, we can add it to the first page
-            result.pages[0].original_ocr_tool_text = tesseract_string
+        # Note: tesseract_string was previously stored as page.original_ocr_tool_text.
+        # That field was removed in Task 4. Callers that need the raw Tesseract string
+        # should receive it via the return value or record it on PageRecord (Plan 2).
+        # TODO(Task 5/Plan 2): route tesseract_string into the OcrCompleted event / PageRecord
 
         return result

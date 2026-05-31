@@ -204,10 +204,11 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         img = np.zeros((50, 50, 3), dtype=np.uint8)
-        doc = Document.from_image_ocr_via_doctr(
+        doc, rotation = Document.from_image_ocr_via_doctr(
             img, predictor=fake_predictor, auto_rotate=False
         )
         assert isinstance(doc, Document)
+        assert rotation == 0
         assert doc.pages[0].cv2_numpy_page_image is img
         fake_predictor.assert_called_once()
 
@@ -222,7 +223,7 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         gray = np.zeros((50, 50), dtype=np.uint8)
-        doc = Document.from_image_ocr_via_doctr(
+        doc, _rotation = Document.from_image_ocr_via_doctr(
             gray, predictor=fake_predictor, auto_rotate=False
         )
         assert isinstance(doc, Document)
@@ -238,7 +239,7 @@ class TestFromImageOcrViaDoctr:
         fake_predictor.return_value = doctr_result
 
         img = np.zeros((50, 50, 1), dtype=np.uint8)
-        doc = Document.from_image_ocr_via_doctr(
+        doc, _rotation = Document.from_image_ocr_via_doctr(
             img, predictor=fake_predictor, auto_rotate=False
         )
         assert isinstance(doc, Document)
@@ -259,7 +260,7 @@ class TestFromImageOcrViaDoctr:
         }
         fake_predictor.return_value = doctr_result
 
-        doc = Document.from_image_ocr_via_doctr(
+        doc, _rotation = Document.from_image_ocr_via_doctr(
             str(img_path), predictor=fake_predictor, auto_rotate=False
         )
         assert isinstance(doc, Document)
@@ -293,7 +294,7 @@ class TestFromImageOcrViaDoctr:
         }
         fake_predictor.return_value = doctr_result
 
-        doc = Document.from_image_ocr_via_doctr(
+        doc, _rotation = Document.from_image_ocr_via_doctr(
             pil_image, predictor=fake_predictor, auto_rotate=False
         )
         assert isinstance(doc, Document)
@@ -338,7 +339,7 @@ class TestFromImageOcrViaDoctr:
         }
         fake_predictor.return_value = doctr_result
 
-        doc = Document.from_image_ocr_via_doctr(
+        doc, _rotation = Document.from_image_ocr_via_doctr(
             pil_image, predictor=fake_predictor, auto_rotate=False
         )
         assert isinstance(doc, Document)
@@ -383,14 +384,17 @@ class TestFromDoctrOutputEdgeCases:
         assert isinstance(doc.source_path, Path)
 
     def test_metadata_not_dict_treated_as_empty(self):
+        """Task 4: ocr_provenance removed from Page. Build still succeeds."""
         doctr_output = {
             "metadata": "not a dict",
             "pages": [{"dimensions": [10, 10], "blocks": []}],
         }
         doc = Document.from_doctr_output(doctr_output)
-        assert doc.pages[0].ocr_provenance is not None
+        assert len(doc.pages) == 1
+        assert not hasattr(doc.pages[0], "ocr_provenance")
 
     def test_with_original_text_assigned_per_page(self):
+        """Task 4: original_ocr_tool_text removed from Page (TODO Task 5)."""
         doctr_output = {
             "metadata": {},
             "pages": [{"dimensions": [10, 10], "blocks": []}],
@@ -399,14 +403,19 @@ class TestFromDoctrOutputEdgeCases:
             doctr_output,
             original_text=["hello"],
         )
-        assert doc.pages[0].original_ocr_tool_text == "hello"
+        assert len(doc.pages) == 1
+        assert not hasattr(doc.pages[0], "original_ocr_tool_text")
 
 
 class TestFromDoctrResultRendersPerPage:
     """Regression: H-12. ``doctr_result.render()`` returns a single ``str``.
     ``from_doctr_result`` must split it per-page (one render() per page) before
     handing it to ``from_doctr_output``; otherwise ``original_text[page_idx]``
-    yields a single character (since ``str`` is a ``Sequence[str]``)."""
+    yields a single character (since ``str`` is a ``Sequence[str]``).
+
+    Task 4: original_ocr_tool_text removed from Page; test now verifies per-page
+    construction still works (two pages produced, H-12 regression gated by count).
+    """
 
     def test_multipage_render_yields_per_page_text_not_characters(self):
         # Realistic DocTR API: doctr_result.render() returns one str for the
@@ -431,9 +440,9 @@ class TestFromDoctrResultRendersPerPage:
 
         doc = Document.from_doctr_result(doctr_result)
         assert len(doc.pages) == 2
-        # Bug symptom: page 0 would have original_ocr_tool_text == "H".
-        assert doc.pages[0].original_ocr_tool_text == "Hello"
-        assert doc.pages[1].original_ocr_tool_text == "World"
+        # Task 4: original_ocr_tool_text removed from Page
+        assert not hasattr(doc.pages[0], "original_ocr_tool_text")
+        assert not hasattr(doc.pages[1], "original_ocr_tool_text")
 
 
 class TestFromTesseractMissingPandas:
@@ -446,6 +455,8 @@ class TestFromTesseractMissingPandas:
 
 class TestFromTesseractStringFirstPage:
     def test_tesseract_string_assigned(self):
+        """Task 4: original_ocr_tool_text removed from Page; tesseract_string param is accepted
+        but not stored on Page (TODO Task 5/Plan 2: route into PageRecord/OcrCompleted)."""
         from pandas import DataFrame
 
         df = DataFrame(
@@ -464,16 +475,17 @@ class TestFromTesseractStringFirstPage:
             }
         )
         doc = Document.from_tesseract(df, tesseract_string="full text")
-        assert doc.pages[0].original_ocr_tool_text == "full text"
+        assert len(doc.pages) == 1
+        assert not hasattr(doc.pages[0], "original_ocr_tool_text")
 
 
 class TestFromTesseractRecordsLanguageInProvenance:
     """L-18: Tesseract provenance must record the OCR language model.
 
-    Pre-fix ``tesseract_metadata["models"] = []`` was fixed at the empty
-    list, so two runs with different language packs (``eng`` vs ``deu``)
-    produced byte-identical provenance records — discoverability of
-    which language model produced which output was lost.
+    Task 4: ocr_provenance removed from Page. The Document._build_ocr_provenance
+    method still builds the provenance internally; this class now verifies that
+    from_tesseract builds successfully with different lang values (not that
+    provenance is stored on Page).
     """
 
     @staticmethod
@@ -497,32 +509,29 @@ class TestFromTesseractRecordsLanguageInProvenance:
         )
 
     def test_lang_recorded_as_model(self):
+        """Task 4: ocr_provenance removed from Page; build succeeds with lang param."""
         df = self._single_word_df()
         doc = Document.from_tesseract(df, lang="deu")
-        prov = doc.pages[0].ocr_provenance
-        assert prov is not None
-        names = [m.name for m in prov.models]
-        assert "deu" in names
+        assert len(doc.pages) == 1
+        assert not hasattr(doc.pages[0], "ocr_provenance")
 
     def test_lang_default_still_recorded(self):
-        # Default lang is "eng" (Tesseract's default); we still surface it
-        # so the provenance is unambiguous about which model ran.
+        """Task 4: ocr_provenance removed from Page; default lang build succeeds."""
         df = self._single_word_df()
         doc = Document.from_tesseract(df)
-        prov = doc.pages[0].ocr_provenance
-        assert prov is not None
-        assert any(m.name == "eng" for m in prov.models)
+        assert len(doc.pages) == 1
+        assert not hasattr(doc.pages[0], "ocr_provenance")
 
     def test_different_langs_produce_different_provenance(self):
+        """Task 4: Both lang builds succeed; Page has no ocr_provenance field."""
         df_a = self._single_word_df()
         df_b = self._single_word_df()
         doc_a = Document.from_tesseract(df_a, lang="eng")
         doc_b = Document.from_tesseract(df_b, lang="deu")
-        prov_a = doc_a.pages[0].ocr_provenance
-        prov_b = doc_b.pages[0].ocr_provenance
-        assert prov_a is not None
-        assert prov_b is not None
-        assert prov_a.models != prov_b.models
+        assert len(doc_a.pages) == 1
+        assert len(doc_b.pages) == 1
+        assert not hasattr(doc_a.pages[0], "ocr_provenance")
+        assert not hasattr(doc_b.pages[0], "ocr_provenance")
 
 
 class TestToFromDictEmptyPages:
@@ -581,9 +590,8 @@ class TestFromTesseractUnknownPytesseractVersion:
         doc = Document.from_tesseract(df)
         # Should succeed; when version is unknown, fingerprint comes from source_lib only
         assert doc.pages
-        prov = doc.pages[0].ocr_provenance
-        # fingerprint should be "tesseract" (from source_lib), not include pytesseract version
-        assert prov is None or "pytesseract" not in (prov.config_fingerprint or "")
+        # Task 4: ocr_provenance removed from Page
+        assert not hasattr(doc.pages[0], "ocr_provenance")
 
 
 class TestDetectTesseractVersionFalsyResult:

@@ -1579,7 +1579,10 @@ def layout_debug_enabled() -> bool:
     }
 
 
-def layout_debug_output_path(page: Page) -> pathlib.Path:
+def layout_debug_output_path(
+    page: Page,
+    image_path: pathlib.Path | str | None = None,
+) -> pathlib.Path:
     explicit_file = os.environ.get("PD_OCR_LAYOUT_DEBUG_FILE", "").strip()
     if explicit_file:
         out_path = pathlib.Path(explicit_file)
@@ -1592,7 +1595,7 @@ def layout_debug_output_path(page: Page) -> pathlib.Path:
 
     stem = (
         page.name
-        or (pathlib.Path(page.image_path).stem if page.image_path else None)
+        or (pathlib.Path(image_path).stem if image_path else None)
         or f"page-{page.page_index + 1}"
     )
     safe_stem = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in stem)

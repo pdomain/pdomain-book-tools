@@ -37,11 +37,14 @@ def test_page_type_adapter_does_not_raise():
 
 
 def test_page_json_schema_shape():
+    """Task 4: Removed operational fields from schema.
+
+    Only OCR content + identity + name + review remain in the pydantic schema.
+    """
     schema = TypeAdapter(Page).json_schema()
     assert schema["type"] == "object"
     props = schema["properties"]
-    # Page.to_dict produces these keys; some are omitted-when-default,
-    # but the schema must list all of them.
+    # Page.to_dict produces these keys; the schema must list all of them.
     expected_keys = {
         "type",
         "width",
@@ -49,18 +52,22 @@ def test_page_json_schema_shape():
         "page_index",
         "bounding_box",
         "items",
+        "name",
+        "review",
+    }
+    assert set(props.keys()) == expected_keys
+    # Removed operational fields must NOT appear in the wire schema.
+    for removed_field in (
         "ocr_provenance",
         "image_path",
-        "name",
         "source",
         "ocr_failed",
         "provenance_live_ocr",
         "provenance_saved_ocr",
         "provenance_saved",
         "rotation_applied",
-        "review",
-    }
-    assert set(props.keys()) == expected_keys
+    ):
+        assert removed_field not in props
     # NDArray cache fields must NOT appear in the wire schema.
     for cache_field in (
         "_cv2_numpy_page_image",
@@ -87,6 +94,7 @@ def test_page_validate_from_dict_roundtrip_minimal():
 
 
 def test_page_validate_from_dict_roundtrip_with_metadata():
+    """Task 4: Removed operational fields; only name remains as optional metadata."""
     adapter = TypeAdapter(Page)
     page = Page(
         width=100,
@@ -94,10 +102,7 @@ def test_page_validate_from_dict_roundtrip_with_metadata():
         page_index=1,
         bounding_box=_bbox(),
         blocks=[_line()],
-        image_path="/tmp/page-1.png",
         name="page-001",
-        source="ocr-fixture",
-        rotation_applied=90,
     )
     d = page.to_dict()
     validated = adapter.validate_python(d)
@@ -106,12 +111,8 @@ def test_page_validate_from_dict_roundtrip_with_metadata():
 
 
 def test_page_validate_provenance_dict_fields():
-    # #182: provenance_live_ocr / provenance_saved_ocr / provenance_saved are
-    # dict[str, Any] | None at runtime, but the pydantic schema previously
-    # declared them as str | None. Validation of a Page.to_dict() payload
-    # with provenance dicts must not raise.
+    """Task 4: provenance fields removed from Page; schema handles to_dict output."""
     adapter = TypeAdapter(Page)
-    prov_dict = {"engine": "tesseract", "version": "5.3.1", "lang": "eng"}
     page = Page(
         width=100,
         height=100,
@@ -119,21 +120,12 @@ def test_page_validate_provenance_dict_fields():
         bounding_box=_bbox(),
         blocks=[_line()],
     )
-    page.provenance_live_ocr = prov_dict
-    page.provenance_saved_ocr = {"source": "sidecar.json"}
-    page.provenance_saved = {"format": "v2"}
     d = page.to_dict()
-    # The dict must contain the provenance dicts, not strings.
-    assert isinstance(d.get("provenance_live_ocr"), dict)
-    assert isinstance(d.get("provenance_saved_ocr"), dict)
-    assert isinstance(d.get("provenance_saved"), dict)
-    # Pydantic schema must accept these dict values without ValidationError.
+    # Pydantic schema must accept to_dict output without ValidationError.
     validated = adapter.validate_python(d)
     assert isinstance(validated, Page)
-    # None values must also be accepted.
-    d_none = dict(d)
-    d_none["provenance_live_ocr"] = None
-    d_none["provenance_saved_ocr"] = None
-    d_none["provenance_saved"] = None
-    validated_none = adapter.validate_python(d_none)
-    assert isinstance(validated_none, Page)
+    # Removed fields must not be in to_dict output
+    assert "provenance_live_ocr" not in d
+    assert "provenance_saved_ocr" not in d
+    assert "provenance_saved" not in d
+    assert "ocr_provenance" not in d

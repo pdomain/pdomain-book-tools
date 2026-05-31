@@ -202,7 +202,6 @@ def _load_fixture_page(case_name: str):
     doc_dict = json.loads((INPUT_DIR / f"{case_name}.json").read_text(encoding="utf-8"))
     page = Document.from_dict(doc_dict).pages[0]
     page.name = case_name
-    page.image_path = INPUT_DIR / f"{case_name}.png"
 
     cv2 = pytest.importorskip("cv2")
     image = cv2.imread(str(INPUT_DIR / f"{case_name}.png"))

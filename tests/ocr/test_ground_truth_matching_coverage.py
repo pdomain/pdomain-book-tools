@@ -151,9 +151,10 @@ class TestUpdatePageMatchDifflibLinesEqualErrors:
 
 class TestUpdatePageMatchDifflibLinesInsert:
     def test_insert_populates_unmatched_when_initially_empty(self):
-        """First GT insert sets unmatched_ground_truth_lines."""
+        """Task 4: unmatched GT now routes into page.gt_orphans.lines."""
+
         page = _make_page([["hello"]])
-        page.unmatched_ground_truth_lines = None  # ensure initially None/empty
+        assert page.gt_orphans is None  # ensure initially empty
 
         op = LineDiffOpCodes(
             line_tag="insert",
@@ -166,14 +167,16 @@ class TestUpdatePageMatchDifflibLinesInsert:
         update_page_match_difflib_lines_insert(
             page=page, op=op, ground_truth_tuples=gt_tuples, ocr_tuples=[]
         )
-        assert page.unmatched_ground_truth_lines is not None
-        assert len(page.unmatched_ground_truth_lines) == 1
-        assert page.unmatched_ground_truth_lines[0][1] == "missing line"
+        assert page.gt_orphans is not None
+        assert len(page.gt_orphans.lines) == 1
+        assert page.gt_orphans.lines[0][1] == "missing line"
 
     def test_insert_appends_to_existing_unmatched_list(self):
-        """When unmatched list already has entries, append."""
+        """Task 4: When gt_orphans already has entries, append to gt_orphans.lines."""
+        from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
         page = _make_page([["hello"]])
-        page.unmatched_ground_truth_lines = [(0, "existing line")]
+        page.gt_orphans = GtOrphans(lines=[(0, "existing line")])
 
         op = LineDiffOpCodes(
             line_tag="insert",
@@ -186,8 +189,8 @@ class TestUpdatePageMatchDifflibLinesInsert:
         update_page_match_difflib_lines_insert(
             page=page, op=op, ground_truth_tuples=gt_tuples, ocr_tuples=[]
         )
-        assert len(page.unmatched_ground_truth_lines) == 2
-        assert page.unmatched_ground_truth_lines[1][1] == "another line"
+        assert len(page.gt_orphans.lines) == 2
+        assert page.gt_orphans.lines[1][1] == "another line"
 
 
 # ---------------------------------------------------------------------------
@@ -197,33 +200,42 @@ class TestUpdatePageMatchDifflibLinesInsert:
 
 class TestUpdatePageMatchUnmatchedLinesBestEffort:
     def test_skips_empty_ocr_text_lines(self):
-        """Lines with empty text are skipped."""
+        """Task 4: unmatched GT in gt_orphans.lines; lines with empty text are skipped."""
+        from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
         # Create a page with a line whose word text is empty → line.text = ""
         page = _make_page([[""], ["hello", "world"]])
-        page.unmatched_ground_truth_lines = [(0, "something")]
+        page.gt_orphans = GtOrphans(lines=[(0, "something")])
         update_page_match_unmatched_lines_best_effort(page)
 
     def test_handles_duplicate_candidates_with_skip(self):
-        """When same OCR line matches multiple GT lines, second is skipped."""
+        """Task 4: When same OCR line matches multiple GT lines, second is skipped."""
+        from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
         page = _make_page([["the", "quick", "brown", "fox"]])
         # Two GT lines that both match the same OCR line
-        page.unmatched_ground_truth_lines = [
-            (0, "the quick brown fox"),
-            (0, "the quick brown fox"),  # duplicate
-        ]
+        page.gt_orphans = GtOrphans(
+            lines=[
+                (0, "the quick brown fox"),
+                (0, "the quick brown fox"),  # duplicate
+            ]
+        )
         update_page_match_unmatched_lines_best_effort(page)
 
     def test_removes_matched_gt_from_unmatched_list(self):
-        """After successful match, removes matched GT from unmatched list."""
+        """Task 4: After successful match, removes matched GT from gt_orphans.lines."""
+        from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
         page = _make_page([["hello", "world"]])
         # Give the OCR line GT text that matches the unmatched GT
         for word in page.lines[0].words:
             word.ground_truth_text = ""  # no existing GT
-        page.unmatched_ground_truth_lines = [(0, "hello world")]
+        page.gt_orphans = GtOrphans(lines=[(0, "hello world")])
 
         update_page_match_unmatched_lines_best_effort(page)
 
-        assert page.unmatched_ground_truth_lines == []
+        assert page.gt_orphans is not None
+        assert page.gt_orphans.lines == []
 
 
 # ---------------------------------------------------------------------------

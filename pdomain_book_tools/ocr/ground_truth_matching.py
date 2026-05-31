@@ -22,6 +22,7 @@ from pdomain_book_tools.ocr.ground_truth_matching_helpers.character_groups impor
 from pdomain_book_tools.ocr.ground_truth_matching_helpers.match_type import (
     MatchType,
 )
+from pdomain_book_tools.ocr.gt_orphans import GtOrphans
 
 # Configure logging
 logger = getLogger(__name__)
@@ -135,7 +136,7 @@ def update_page_with_ground_truth_text(
     we only have to make a few adjustments to feed the ground truth data into the model to train it.
 
     Ground truth lines that have no corresponding OCR lines are added
-    to the unmatched_ground_truth_lines list.
+    to the page's ``gt_orphans.lines`` list.
     """
     page.remove_ground_truth()
 
@@ -199,11 +200,14 @@ def update_page_match_unmatched_lines_best_effort(page: Page) -> None:
 
     Difflib can emit a delete+insert pair when a short line moves position.
     In those cases, OCR lines are left without GT while the corresponding GT
-    lines are stored in ``page.unmatched_ground_truth_lines``. This post-pass
+    lines are stored in ``page.gt_orphans.lines``. This post-pass
     reattaches only very high-confidence full-line matches.
     """
+    # TODO(Task 5/Plan 2): refine gt_orphans.lines schema — currently stores
+    # (ocr_line_nbr, gt_text) tuples; Task 5 will formalise the entry type.
     unmatched_gt_lines = cast(
-        "list[GroundTruthLine]", list(page.unmatched_ground_truth_lines or [])
+        "list[GroundTruthLine]",
+        list(page.gt_orphans.lines if page.gt_orphans is not None else []),
     )
     if not unmatched_gt_lines:
         return
@@ -247,11 +251,14 @@ def update_page_match_unmatched_lines_best_effort(page: Page) -> None:
         used_gt_idxs.add(gt_idx)
 
     if used_gt_idxs:
-        page.unmatched_ground_truth_lines = [
+        remaining: list[object] = [
             unmatched_gt_lines[i]
             for i in range(len(unmatched_gt_lines))
             if i not in used_gt_idxs
         ]
+        if page.gt_orphans is None:
+            page.gt_orphans = GtOrphans()
+        page.gt_orphans.lines = remaining
 
 
 def update_page_match_difflib_lines_delete(page: Page, op: LineDiffOpCodes) -> None:
@@ -336,6 +343,8 @@ def update_page_match_difflib_lines_insert(
     """
     del ocr_tuples
     logger.debug("INSERT - LINES exist in GT that do not appear to exist in OCR data")
+    # TODO(Task 5/Plan 2): refine gt_orphans.lines schema — currently stores
+    # (ocr_line_nbr, gt_text) tuples; Task 5 will formalise the entry type.
     # Add unmatched GT lines to the page after the OCR lines
     for ocr_line_offset, gt_line_nbr in enumerate(range(op.gt_line_1, op.gt_line_2)):
         logger.debug(
@@ -345,10 +354,10 @@ def update_page_match_difflib_lines_insert(
             + str(str(ground_truth_tuples[gt_line_nbr][0:20]) + "...")
         )
         ocr_line_nbr: int = int(op.ocr_line_1 + ocr_line_offset)
-        if not page.unmatched_ground_truth_lines:
-            page.unmatched_ground_truth_lines = []
+        if page.gt_orphans is None:
+            page.gt_orphans = GtOrphans()
 
-        page.unmatched_ground_truth_lines.append(
+        page.gt_orphans.lines.append(
             (ocr_line_nbr, " ".join(ground_truth_tuples[gt_line_nbr]))
         )
 
@@ -1090,15 +1099,17 @@ def update_page_match_difflib_lines_replace_different_line_count(
         )
 
     # Finally, for those GT lines that are not matched to OCR lines, add them to the unmatched list
+    # TODO(Task 5/Plan 2): refine gt_orphans.lines schema — currently stores
+    # (ocr_line_nbr, gt_text) tuples; Task 5 will formalise the entry type.
     for gt_line_nbr in range(op.gt_line_1, op.gt_line_2):
         # Check if this GT line is already matched
         if any(m.gt_line_nbr == gt_line_nbr for m in matched_ocr_lines):
             continue
-        # Add unmatched GT line to the page after the OCR lines
+        # Route unmatched GT line into page.gt_orphans (replaces page.unmatched_ground_truth_lines)
         ground_truth_text = " ".join(ground_truth_tuples[gt_line_nbr])
-        if not page.unmatched_ground_truth_lines:
-            page.unmatched_ground_truth_lines = []
-        page.unmatched_ground_truth_lines.append((op.ocr_line_2 - 1, ground_truth_text))
+        if page.gt_orphans is None:
+            page.gt_orphans = GtOrphans()
+        page.gt_orphans.lines.append((op.ocr_line_2 - 1, ground_truth_text))
 
 
 def _build_current_work_gt_line_from_prev(

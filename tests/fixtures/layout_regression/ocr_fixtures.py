@@ -50,7 +50,7 @@ def _ocr_one(case: str, predictor) -> None:
     if not png.exists():
         raise SystemExit(f"missing fixture PNG: {png}")
     t0 = time.perf_counter()
-    doc = Document.from_image_ocr_via_doctr(image=png, predictor=predictor)
+    doc, _rotation = Document.from_image_ocr_via_doctr(image=png, predictor=predictor)
     elapsed = time.perf_counter() - t0
     out.write_text(json.dumps(doc.to_dict(), indent=2), encoding="utf-8")
     print(f"  {case}: OCR in {elapsed:.1f}s -> {out.name}")

@@ -6,7 +6,7 @@ from pandas import DataFrame
 
 from pdomain_book_tools.ocr.document import Document
 from pdomain_book_tools.ocr.page import Page
-from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
+from pdomain_book_tools.ocr.provenance import OCRProvenance
 
 
 @pytest.fixture
@@ -172,12 +172,8 @@ def test_document_from_doctr_output(sample_doctr_output):
     assert len(doc.pages) == 1
     assert doc.pages[0].width == 800
     assert doc.pages[0].height == 1000
-    assert doc.pages[0].ocr_provenance is not None
-    assert doc.pages[0].ocr_provenance == OCRProvenance(
-        engine="doctr",
-        models=[],
-        engine_version="unknown",
-    )
+    # Task 4: ocr_provenance removed from Page
+    assert not hasattr(doc.pages[0], "ocr_provenance")
 
 
 def test_document_from_doctr_output_matches_tesseract_nesting_depth(
@@ -393,6 +389,7 @@ def test_document_from_doctr_output_tolerates_missing_word_geometry():
 
 
 def test_document_from_doctr_output_normalizes_model_provenance():
+    """Task 4: ocr_provenance removed from Page. Document builds provenance but no longer stores it on Page."""
     doctr_output = {
         "metadata": {
             "source_lib": "doctr-custom",
@@ -412,15 +409,10 @@ def test_document_from_doctr_output_normalizes_model_provenance():
 
     doc = Document.from_doctr_output(doctr_output)
 
-    assert doc.pages[0].ocr_provenance == OCRProvenance(
-        engine="doctr",
-        engine_version="0.12.1",
-        models=[
-            OCRModelProvenance(name="db_resnet50"),
-            OCRModelProvenance(name="crnn_vgg16", version="2", weights_id="123"),
-        ],
-        config_fingerprint="doctr-custom|crnn_vgg16|db_resnet50",
-    )
+    # Task 4: ocr_provenance is gone from Page
+    assert not hasattr(doc.pages[0], "ocr_provenance")
+    # Document builds successfully with valid metadata
+    assert len(doc.pages) == 1
 
 
 def test_document_from_tesseract(sample_tesseract_output):
@@ -431,14 +423,8 @@ def test_document_from_tesseract(sample_tesseract_output):
     print(doc.to_dict())  # debug helper for test inspection
     assert doc.pages[0].width == 100
     assert doc.pages[0].height == 200
-    assert doc.pages[0].ocr_provenance is not None
-    assert doc.pages[0].ocr_provenance.engine == "tesseract"
-    # L-15: tuple, not list. L-18: default ``lang="eng"`` is now recorded
-    # in the provenance so two language packs produce distinguishable
-    # records.
-    assert isinstance(doc.pages[0].ocr_provenance.models, tuple)
-    assert [m.name for m in doc.pages[0].ocr_provenance.models] == ["eng"]
-    assert isinstance(doc.pages[0].ocr_provenance.engine_version, str)
+    # Task 4: ocr_provenance removed from Page
+    assert not hasattr(doc.pages[0], "ocr_provenance")
 
 
 def test_document_from_tesseract_treats_conf_minus_one_as_none():
@@ -689,6 +675,9 @@ def test_artefact_from_doctr_with_no_metadata_has_empty_attrs():
 
 
 def test_page_from_doctr_uses_dimensions_and_threads_original_text():
+    """Task 4: ocr_provenance and original_ocr_tool_text removed from Page.
+    _page_from_doctr still accepts the params but discards them (TODO Task 5).
+    """
     provenance = OCRProvenance(engine="doctr", models=[], engine_version="x")
     page = Document._page_from_doctr(
         page_data={
@@ -716,7 +705,8 @@ def test_page_from_doctr_uses_dimensions_and_threads_original_text():
     )
     assert page.height == 1000
     assert page.width == 800
-    assert page.original_ocr_tool_text == "original"
+    assert not hasattr(page, "original_ocr_tool_text")
+    assert not hasattr(page, "ocr_provenance")
     assert [w.text for w in page.words] == ["Hi"]
 
 

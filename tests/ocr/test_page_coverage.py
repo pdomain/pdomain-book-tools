@@ -105,10 +105,10 @@ class TestPropertyAliases:
         simple_page.index = 7
         assert simple_page.page_index == 7
 
-    def test_page_source_alias_get_set(self, simple_page):
-        assert simple_page.page_source == simple_page.source
-        simple_page.page_source = "manual"
-        assert simple_page.source == "manual"
+    def test_page_source_alias_removed(self, simple_page):
+        """Task 4: page_source (alias for source) removed along with source field."""
+        assert not hasattr(simple_page, "page_source")
+        assert not hasattr(simple_page, "source")
 
     def test_resolved_dimensions_uses_width_height(self, simple_page):
         assert simple_page.resolved_dimensions == (100.0, 200.0)
@@ -546,14 +546,20 @@ class TestFirstUsableBbox:
 
 class TestRemoveGroundTruth:
     def test_remove_ground_truth(self, simple_page):
+        """Task 4: unmatched_ground_truth_lines removed; remove_ground_truth still clears word GT."""
+        from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
         for w in simple_page.words:
             w.ground_truth_text = "GT"
-        # Force unmatched_ground_truth_lines to be set
-        simple_page.unmatched_ground_truth_lines = [(0, "extra")]
+        # Task 4: unmatched GT now lives in gt_orphans.lines
+        simple_page.gt_orphans = GtOrphans(lines=[(0, "extra")])
         simple_page.remove_ground_truth()
         for w in simple_page.words:
             assert w.ground_truth_text == ""
-        assert simple_page.unmatched_ground_truth_lines == []
+        # gt_orphans is NOT cleared by remove_ground_truth (it's persistent content, not a cache)
+        assert not hasattr(simple_page, "unmatched_ground_truth_lines")
+        assert simple_page.gt_orphans is not None
+        assert simple_page.gt_orphans.lines == [(0, "extra")]
 
 
 # Paragraphs property ---------------------------------------------------------
@@ -607,30 +613,32 @@ class TestScaleAndCopy:
 
 
 class TestToFromDictEdgeCases:
-    def test_to_dict_preserves_metadata(self):
+    def test_to_dict_preserves_name(self):
+        """Task 4: only name remains as optional metadata in to_dict."""
         page = Page(
             width=100,
             height=200,
             page_index=0,
             blocks=[],
-            image_path="/path/to.png",
             name="page-name",
-            source="manual",
-            ocr_failed=True,
-            provenance_live_ocr={"a": 1},
-            provenance_saved_ocr={"b": 2},
-            provenance_saved={"c": 3},
         )
         out = page.to_dict()
-        assert out["image_path"] == "/path/to.png"
         assert out["name"] == "page-name"
-        assert out["source"] == "manual"
-        assert out["ocr_failed"] is True
-        assert out["provenance_live_ocr"] == {"a": 1}
-        assert out["provenance_saved_ocr"] == {"b": 2}
-        assert out["provenance_saved"] == {"c": 3}
+        # Removed fields must not appear
+        for removed in (
+            "image_path",
+            "source",
+            "ocr_failed",
+            "provenance_live_ocr",
+            "provenance_saved_ocr",
+            "provenance_saved",
+            "ocr_provenance",
+            "rotation_applied",
+        ):
+            assert removed not in out
 
     def test_from_dict_legacy_page_source(self):
+        """Task 4: legacy page_source key is silently ignored (source field removed)."""
         page = Page.from_dict(
             {
                 "width": 100,
@@ -640,7 +648,8 @@ class TestToFromDictEdgeCases:
                 "page_source": "legacy_source",
             }
         )
-        assert page.source == "legacy_source"
+        assert not hasattr(page, "source")
+        assert not hasattr(page, "page_source")
 
 
 # Recompute bounding box ------------------------------------------------------

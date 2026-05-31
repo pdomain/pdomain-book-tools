@@ -45,7 +45,6 @@ def dump_case(case_name: str) -> str:
     doc = Document.from_dict(json.loads(json_path.read_text(encoding="utf-8")))
     page = doc.pages[0]
     page.name = case_name
-    page.image_path = png_path
     image = cv2.imread(str(png_path))
     if image is None:
         raise SystemExit(f"failed to load fixture image: {png_path}")

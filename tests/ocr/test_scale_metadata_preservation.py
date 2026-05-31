@@ -13,7 +13,6 @@ from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.document import Document
 from pdomain_book_tools.ocr.page import Page
-from pdomain_book_tools.ocr.provenance import OCRProvenance
 from pdomain_book_tools.ocr.review import ReviewMetadata
 from pdomain_book_tools.ocr.word import Word
 
@@ -50,10 +49,9 @@ def _line_block(text: str = "hello") -> Block:
 
 
 def _page_with_metadata(page_index: int = 0) -> Page:
-    prov = OCRProvenance(
-        engine="tesseract",
-        engine_version="5.0",
-    )
+    """Task 4: operational metadata fields removed from Page.
+    Only page_labels, name, and review remain as OCR-content metadata.
+    """
     return Page(
         width=100,
         height=100,
@@ -61,15 +59,7 @@ def _page_with_metadata(page_index: int = 0) -> Page:
         blocks=[_block_with_metadata()],
         bounding_box=_norm_bbox(),
         page_labels=["chapter"],
-        ocr_provenance=prov,
-        image_path=Path("/some/image.png"),
         name="page-0",
-        source="ocr",
-        ocr_failed=False,
-        provenance_live_ocr={"engine": "tesseract"},
-        provenance_saved_ocr={"saved": True},
-        provenance_saved={"persisted": True},
-        rotation_applied=0,
         review=ReviewMetadata(validated=True, reviewer_note="checked"),
     )
 
@@ -139,6 +129,12 @@ class TestDocumentScalePreservesMetadata:
 
 
 class TestPageScalePreservesMetadata:
+    """Task 4: operational fields removed from Page.
+
+    scale() now preserves: page_labels, name, review.
+    Removed: image_path, source, ocr_failed, provenance_*, rotation_applied, ocr_provenance.
+    """
+
     def _scaled_page(self) -> tuple[Page, Page]:
         p = _page_with_metadata()
         return p, p.scale(200, 200)
@@ -149,63 +145,31 @@ class TestPageScalePreservesMetadata:
             "Page.scale() dropped page_labels"
         )
 
-    def test_scale_preserves_image_path(self):
-        original, scaled = self._scaled_page()
-        assert scaled.image_path == original.image_path, (
-            "Page.scale() dropped image_path"
-        )
-
     def test_scale_preserves_name(self):
         original, scaled = self._scaled_page()
         assert scaled.name == original.name, "Page.scale() dropped name"
-
-    def test_scale_preserves_source(self):
-        original, scaled = self._scaled_page()
-        assert scaled.source == original.source, "Page.scale() dropped source"
-
-    def test_scale_preserves_ocr_failed(self):
-        original, scaled = self._scaled_page()
-        assert scaled.ocr_failed == original.ocr_failed, (
-            "Page.scale() dropped ocr_failed"
-        )
-
-    def test_scale_preserves_provenance_live_ocr(self):
-        original, scaled = self._scaled_page()
-        assert scaled.provenance_live_ocr == original.provenance_live_ocr, (
-            "Page.scale() dropped provenance_live_ocr"
-        )
-
-    def test_scale_preserves_provenance_saved_ocr(self):
-        original, scaled = self._scaled_page()
-        assert scaled.provenance_saved_ocr == original.provenance_saved_ocr, (
-            "Page.scale() dropped provenance_saved_ocr"
-        )
-
-    def test_scale_preserves_provenance_saved(self):
-        original, scaled = self._scaled_page()
-        assert scaled.provenance_saved == original.provenance_saved, (
-            "Page.scale() dropped provenance_saved"
-        )
-
-    def test_scale_preserves_rotation_applied(self):
-        p = Page(
-            width=100,
-            height=100,
-            page_index=0,
-            blocks=[_line_block()],
-            rotation_applied=90,
-        )
-        scaled = p.scale(200, 200)
-        assert scaled.rotation_applied == 90, "Page.scale() dropped rotation_applied"
 
     def test_scale_preserves_review(self):
         original, scaled = self._scaled_page()
         assert scaled.review is not None, "Page.scale() dropped review"
         assert scaled.review.validated == original.review.validated  # type: ignore[union-attr]
 
-    def test_scale_does_not_drop_ocr_provenance(self):
+    def test_scale_removed_fields_not_present(self):
+        """Task 4: Removed operational fields must not be present on scaled page."""
         _, scaled = self._scaled_page()
-        assert scaled.ocr_provenance is not None, "Page.scale() dropped ocr_provenance"
+        for removed in (
+            "image_path",
+            "source",
+            "ocr_failed",
+            "provenance_live_ocr",
+            "provenance_saved_ocr",
+            "provenance_saved",
+            "rotation_applied",
+            "ocr_provenance",
+        ):
+            assert not hasattr(scaled, removed), (
+                f"Page.scale() carried through removed field: {removed}"
+            )
 
 
 # ---------------------------------------------------------------------------
