@@ -2,7 +2,7 @@
 
 Builds on :mod:`pdomain_book_tools.hf.download` to translate "what model do I want"
 into "where is the cached file path." Intended consumers: pdomain-ocr-cli,
-pd-ocr-labeler, pdomain-prep-for-pgdp.
+pdomain-ocr-labeler-spa, pdomain-prep-for-pgdp.
 """
 
 from __future__ import annotations

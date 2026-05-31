@@ -5,12 +5,12 @@
 # "GPU extras active + marker present" per spec §5.3.
 #
 # Two markers are written for compatibility with both the shell scripts
-# (.pd-local-mode, read by local-upgrade-deps.sh / local-check.sh) and the
-# Python check_dev_local.py probe (.pd-dev-local, read by upgrade-deps guard).
+# (.pdomain-local-mode, read by local-upgrade-deps.sh / local-check.sh) and the
+# Python check_dev_local.py probe (.pdomain-dev-local, read by upgrade-deps guard).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MARKER="$REPO_ROOT/.venv/.pd-local-mode"
+MARKER="$REPO_ROOT/.venv/.pdomain-local-mode"
 
 echo "[local-dev] → uv sync --extra gpu"
 uv sync --extra gpu

@@ -41,7 +41,7 @@ page number, and perceptual-hash visual similarity.
 
 Page reordering is a common artifact of physical scanning workflows —
 scanners mis-feed, operators grab pages in the wrong order, and older
-digitisation batches have known sorting errors. Every pd-* consumer that works
+digitisation batches have known sorting errors. Every pdomain-* consumer that works
 with multi-page documents needs the same logic. Centralising it in the
 foundation library avoids duplication across `pdomain-prep-for-pgdp`,
 `pdomain-ocr-cli`, and future tools.

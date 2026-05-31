@@ -3,7 +3,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MARKER="$REPO_ROOT/.venv/.pd-local-mode"
+MARKER="$REPO_ROOT/.venv/.pdomain-local-mode"
 
 if [[ -f "$MARKER" ]]; then
   echo "MODE: local-dev (GPU extras active; marker at $MARKER)"

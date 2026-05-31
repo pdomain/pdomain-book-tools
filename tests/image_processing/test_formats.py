@@ -1,7 +1,7 @@
 """Tests for ``pdomain_book_tools.image_processing.formats``.
 
 The formats module centralises image-format identification for downstream
-pd-* tools (pdomain-ocr-cli, pd-ocr-labeler, ...). It must support both
+pdomain-* tools (pdomain-ocr-cli, pdomain-ocr-labeler-spa, ...). It must support both
 extension-based gating (cheap) and magic-byte sniffing (correct), with a
 warning when the two disagree.
 """
@@ -195,7 +195,7 @@ class TestEdgeCases:
 # tiny image with each plugin's encoder, sniffing it through is_image_file,
 # and decoding it back via Pillow. They guard against the test env losing
 # the plugins, which would silently regress HEIF/AVIF support for every
-# downstream pd-* project.
+# downstream pdomain-* project.
 
 
 class TestBundledPluginRoundTrip:

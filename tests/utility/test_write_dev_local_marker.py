@@ -2,7 +2,7 @@
 
 The marker-write helper backs the `make dev-local` recipe (spec
 §2.2.2 / §4): it writes a self-explanatory marker file at
-``.venv/.pd-dev-local`` that future ``check_dev_local`` invocations
+``.venv/.pdomain-dev-local`` that future ``check_dev_local`` invocations
 can pick up. Tests drive the pure helper so we don't have to spin up
 a real venv or run ``make``.
 
@@ -50,7 +50,7 @@ def test_write_marker_creates_file(wm, tmp_path):
     marker at the expected path."""
     venv_dir = tmp_path / ".venv"
     venv_dir.mkdir()
-    target = venv_dir / ".pd-dev-local"
+    target = venv_dir / ".pdomain-dev-local"
     assert not target.exists()
 
     written = wm.write_marker(venv_dir)
@@ -66,7 +66,7 @@ def test_write_marker_content_is_self_explanatory(wm, tmp_path):
     venv_dir.mkdir()
 
     wm.write_marker(venv_dir)
-    text = (venv_dir / ".pd-dev-local").read_text()
+    text = (venv_dir / ".pdomain-dev-local").read_text()
 
     # Timestamp (year is enough — guard against empty file regression).
     assert "20" in text
@@ -80,7 +80,7 @@ def test_write_marker_overwrites_existing(wm, tmp_path):
     when they last entered dev-local mode."""
     venv_dir = tmp_path / ".venv"
     venv_dir.mkdir()
-    target = venv_dir / ".pd-dev-local"
+    target = venv_dir / ".pdomain-dev-local"
     target.write_text("stale content from a previous run")
 
     wm.write_marker(venv_dir)

@@ -112,8 +112,8 @@ sync-gpu: ## Sync the [gpu] extra (CuPy) when an NVIDIA GPU is auto-detected; no
 upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if local-dev — see local-upgrade-deps)
 	@# Two-tier dev-local detection (spec #200 / pdomain-ocr-cli canonical pattern):
 	@#   1. check_dev_local.py — probes editable installs, [gpu] extras, env var,
-	@#      and the .pd-dev-local marker written by write_dev_local_marker.py.
-	@#   2. Fast marker fallback — also check .venv/.pd-local-mode (written by
+	@#      and the .pdomain-dev-local marker written by write_dev_local_marker.py.
+	@#   2. Fast marker fallback — also check .venv/.pdomain-local-mode (written by
 	@#      local-dev.sh for back-compat with shell-side scripts).
 	@# Either probe firing causes the recipe to refuse rather than clobber.
 	@if ! uv run python scripts/check_dev_local.py --quiet 2>/dev/null; then \
@@ -121,13 +121,13 @@ upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if loc
 	  echo "❌ local-dev venv detected (GPU extras, editable siblings, or marker)." >&2; \
 	  echo "   Running 'uv sync' here would revert the venv to the canonical baseline." >&2; \
 	  echo "   Use:  make local-upgrade-deps   (lock + sync + restore GPU extras)" >&2; \
-	  echo "   Or:   PD_DEV_LOCAL=0 make upgrade-deps   (intentional clobber)" >&2; \
+	  echo "   Or:   PDOMAIN_DEV_LOCAL=0 make upgrade-deps   (intentional clobber)" >&2; \
 	  echo "" >&2; \
 	  exit 1; \
 	fi
-	@if [ -f .venv/.pd-local-mode ]; then \
+	@if [ -f .venv/.pdomain-local-mode ]; then \
 	  echo "" >&2; \
-	  echo "❌ local-dev marker (.venv/.pd-local-mode) detected." >&2; \
+	  echo "❌ local-dev marker (.venv/.pdomain-local-mode) detected." >&2; \
 	  echo "   Use:  make local-upgrade-deps" >&2; \
 	  echo "" >&2; \
 	  exit 1; \

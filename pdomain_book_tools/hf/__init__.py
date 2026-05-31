@@ -1,7 +1,7 @@
 """Hugging Face Hub helpers for OCR + layout model resolution.
 
 Canonical home for the model-resolution code shared by pdomain-ocr-cli,
-pd-ocr-labeler, and pdomain-prep-for-pgdp. Each downstream app uses
+pdomain-ocr-labeler-spa, and pdomain-prep-for-pgdp. Each downstream app uses
 ``pdomain-book-tools`` for inference; this package factors out the
 "how do we find / fetch the .pt files" layer so they don't drift.
 

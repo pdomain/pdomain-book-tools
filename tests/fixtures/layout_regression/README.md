@@ -24,7 +24,7 @@ and the labeler/trainer flow exists precisely to close that gap.
 What this corpus tests is **layout**: are the right regions found, in
 the right reading order, with captions associated to figures, headers
 and footers stripped, marginalia routed to the right place. Word- and
-character-level fidelity belongs to `pd-ocr-labeler` / `pd-ocr-trainer`.
+character-level fidelity belongs to `pdomain-ocr-labeler-spa` / `pdomain-ocr-training`.
 
 ## Cases
 

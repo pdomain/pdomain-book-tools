@@ -116,7 +116,7 @@ tool. Concretely:
   approximately 30% smaller.
 - Implement the bottom-crop tool against the new API. Cut a tag
   (e.g. `v0.11.0`).
-- Bump `pd-ocr-labeler`'s `tool.uv.sources` pin to `v0.11.0` and add
+- Bump `pdomain-ocr-labeler-spa`'s `tool.uv.sources` pin to `v0.11.0` and add
   the labeler-side UI plumbing.
 
 Alternative: implement the bottom-crop tool now against the existing

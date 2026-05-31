@@ -168,4 +168,4 @@ tests/fixtures/layout_regression/expected_text/diff/
 .ci-ai.log
 
 # Local-dev mode marker (spec #362)
-.venv/.pd-local-mode
+.venv/.pdomain-local-mode

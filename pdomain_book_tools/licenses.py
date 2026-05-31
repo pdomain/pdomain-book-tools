@@ -1,6 +1,6 @@
 """Shared SPDX license identifier allowlist.
 
-``pdomain_book_tools`` is the foundation library every ``pd-*`` repo depends on,
+``pdomain_book_tools`` is the foundation library every ``pdomain-*`` repo depends on,
 so it is the cheapest single source of truth for license-identifier
 validation. Without a shared allowlist each downstream tool hand-rolls its
 own subset and they drift — one accepts ``Apache-2.0``, another typos it,

@@ -1,7 +1,7 @@
 """Tests for the shared SPDX license allowlist module.
 
 ``pdomain_book_tools.licenses`` is the single source of truth for SPDX license
-identifier validation across the ``pd-*`` repos. These tests pin the
+identifier validation across the ``pdomain-*`` repos. These tests pin the
 public API (``SPDX_VALID_IDS`` and ``is_valid_spdx_id``) and confirm the
 vendored JSON data file ships and loads.
 """

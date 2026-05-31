@@ -6,7 +6,7 @@
 
 Own the data model, storage, and API for the scannos (scanner
 error corrections) subsystem used across `pdomain-prep-for-pgdp` and future
-pd-* tools. This module gates all Stage 13 slices (`S13-A` through `S13-D`)
+pdomain-* tools. This module gates all Stage 13 slices (`S13-A` through `S13-D`)
 in the `pdomain-prep-for-pgdp` design-handoff plan. The UI components it backs are
 designed in
 `pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf05b/scanno-configure.jsx`
@@ -31,7 +31,7 @@ Add `pdomain_book_tools.scannos` owning:
    confidence heuristics.
 3. Storage: **SQLite** for the global rule library (relational queries on
    hit counts, book counts, contributor history), **JSON sidecar** for
-   per-book candidates (matches the existing pd-* sidecar convention).
+   per-book candidates (matches the existing pdomain-* sidecar convention).
 4. API: load/save/query rules; load/save/promote candidates; promotion flow
    that records an evidence trail when a candidate is promoted to a rule.
 
@@ -92,7 +92,7 @@ downstream tool from independently inventing its own format and migration path.
 - Implement SQLite-backed `RuleLibrary` for the global rule store with CRUD,
   search, and statistics queries.
 - Implement JSON-sidecar-backed `CandidateStore` for per-book candidates,
-  following the existing sidecar naming convention used elsewhere in pd-*.
+  following the existing sidecar naming convention used elsewhere in pdomain-*.
 - Implement a `promote(candidate, library)` operation that creates or updates
   a `ScannoRule`, records provenance (which book, which user, timestamp), and
   marks the candidate as `'promoted'`.
@@ -119,7 +119,7 @@ downstream tool from independently inventing its own format and migration path.
 
 ## 4. Constraints
 
-- The global SQLite library must be readable by multiple pd-* processes
+- The global SQLite library must be readable by multiple pdomain-* processes
   concurrently (read-heavy; WAL mode required).
 - JSON sidecars must use UTF-8 and be human-readable (indented) so developers
   can inspect them without tooling.
@@ -129,7 +129,7 @@ downstream tool from independently inventing its own format and migration path.
 - The `promote` function must be atomic with respect to the SQLite write
   (use a transaction) and idempotent (re-promoting the same candidate updates
   evidence rather than creating a duplicate rule).
-- `platformdirs` is already a dependency of the pd-* stack; no new mandatory
+- `platformdirs` is already a dependency of the pdomain-* stack; no new mandatory
   dep needed for the default path resolution.
 
 ---
@@ -141,12 +141,12 @@ downstream tool from independently inventing its own format and migration path.
 Simple from a query perspective; candidates could be JOINed to rules in one
 query. Rejected: per-book candidate stores would accumulate in the global
 database, making it hard to share the rule library independently of any one
-book's working state. Also breaks the existing pd-* convention of book-level
+book's working state. Also breaks the existing pdomain-* convention of book-level
 sidecars that travel with the book's output directory.
 
 ### O-B: Two JSON files (global rules + per-book candidates)
 
-Pure JSON matches the pd-* sidecar convention everywhere. Rejected for the
+Pure JSON matches the pdomain-* sidecar convention everywhere. Rejected for the
 global library: querying hit counts, filtering by contributor, and pagination
 over thousands of rules is significantly harder on JSON than on SQLite. The
 global library is write-once-read-many from a single-user perspective, so

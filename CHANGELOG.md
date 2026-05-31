@@ -36,7 +36,7 @@ GitHub Releases (with attached wheel + sdist) are at
     `long_st` name; `OE` and `AE` entries added. Closes #163.
   - `source` provenance field on `GlyphAnnotations` (commit e0fb16d).
 - **Shared SPDX license allowlist** (`pdomain_book_tools.licenses`) — common
-  list of approved SPDX identifiers, shared across pd-* tooling. Closes #162.
+  list of approved SPDX identifiers, shared across pdomain-* tooling. Closes #162.
 
 ### Fixed — security review batches (#176 / #179 / #181 / #182 / #192 / #193)
 

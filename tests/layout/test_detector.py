@@ -339,7 +339,7 @@ class TestDetectorFailureHardening:
 
 class TestRegisterDetector:
     """R-25: ``register_detector`` allows downstream projects (e.g.
-    ``pd-ocr-trainer``) to plug in custom adapter keys without modifying
+    ``pdomain-ocr-training``) to plug in custom adapter keys without modifying
     the registry's hard-coded chain."""
 
     def teardown_method(self, method):

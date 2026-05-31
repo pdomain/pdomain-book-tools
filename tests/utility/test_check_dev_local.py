@@ -1,7 +1,7 @@
 """Unit tests for ``scripts/check_dev_local.py``.
 
 The script detects whether the current venv is in **dev-local mode** —
-i.e. has overrides (the ``[gpu]`` extra, doctr-from-git, sibling-pd-*
+i.e. has overrides (the ``[gpu]`` extra, doctr-from-git, sibling-pdomain-*
 editable, or any non-project editable install) that ``uv sync --group
 dev`` would silently revert. These tests exercise its pure-function
 core via importable helpers so we don't need to spin up a real venv.
@@ -81,7 +81,7 @@ def test_gpu_extra_flags_dev_local(cdl, tmp_path):
 
 
 def test_sibling_editable_flags_dev_local(cdl, tmp_path):
-    """A sibling pd-* editable install (NOT the project root) flags
+    """A sibling pdomain-* editable install (NOT the project root) flags
     dev-local. This is the canonical downstream signal — the spec
     §3 contract."""
     project_root = tmp_path
@@ -108,7 +108,7 @@ def test_marker_file_flags_dev_local(cdl, tmp_path):
     """Spec §2.2.2: a marker file written by ``make dev-local`` is the
     fallback signal when the package probe doesn't fire."""
     project_root = tmp_path
-    marker = tmp_path / ".pd-dev-local"
+    marker = tmp_path / ".pdomain-dev-local"
     marker.write_text("dev-local since 2026-05-07\n")
     pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=marker)
@@ -117,21 +117,21 @@ def test_marker_file_flags_dev_local(cdl, tmp_path):
 
 
 def test_env_var_flags_dev_local(cdl, tmp_path, monkeypatch):
-    """Spec §2.2.3: ``PD_DEV_LOCAL=1`` is the last-resort opt-in flag."""
+    """Spec §2.2.3: ``PDOMAIN_DEV_LOCAL=1`` is the last-resort opt-in flag."""
     project_root = tmp_path
     pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
-    monkeypatch.setenv("PD_DEV_LOCAL", "1")
+    monkeypatch.setenv("PDOMAIN_DEV_LOCAL", "1")
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
     assert result.is_dev_local is True
-    assert any("PD_DEV_LOCAL" in r for r in result.reasons)
+    assert any("PDOMAIN_DEV_LOCAL" in r for r in result.reasons)
 
 
 def test_env_var_zero_does_not_flag(cdl, tmp_path, monkeypatch):
-    """``PD_DEV_LOCAL=0`` (or any falsey value) MUST NOT flag — only
+    """``PDOMAIN_DEV_LOCAL=0`` (or any falsey value) MUST NOT flag — only
     truthy values opt in."""
     project_root = tmp_path
     pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
-    monkeypatch.setenv("PD_DEV_LOCAL", "0")
+    monkeypatch.setenv("PDOMAIN_DEV_LOCAL", "0")
     result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
     assert result.is_dev_local is False
 
@@ -165,8 +165,10 @@ def test_cli_exit_zero_when_canonical(cdl, tmp_path, monkeypatch, capsys):
     pkgs = [_pkg("pdomain-book-tools", editable_location=str(project_root))]
     monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
     monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
-    monkeypatch.setattr(cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-missing")
-    monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+    monkeypatch.setattr(
+        cdl, "_marker_path", lambda: tmp_path / ".pdomain-dev-local-missing"
+    )
+    monkeypatch.delenv("PDOMAIN_DEV_LOCAL", raising=False)
     rc = cdl.main([])
     assert rc == 0
 
@@ -182,8 +184,10 @@ def test_cli_exit_one_when_dev_local(cdl, tmp_path, monkeypatch):
     ]
     monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
     monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
-    monkeypatch.setattr(cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-missing")
-    monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+    monkeypatch.setattr(
+        cdl, "_marker_path", lambda: tmp_path / ".pdomain-dev-local-missing"
+    )
+    monkeypatch.delenv("PDOMAIN_DEV_LOCAL", raising=False)
     rc = cdl.main([])
     assert rc == 1
 
@@ -198,8 +202,10 @@ def test_cli_quiet_flag_suppresses_output(cdl, tmp_path, monkeypatch, capsys):
     ]
     monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
     monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
-    monkeypatch.setattr(cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-missing")
-    monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+    monkeypatch.setattr(
+        cdl, "_marker_path", lambda: tmp_path / ".pdomain-dev-local-missing"
+    )
+    monkeypatch.delenv("PDOMAIN_DEV_LOCAL", raising=False)
     rc = cdl.main(["--quiet"])
     assert rc == 1
     captured = capsys.readouterr()
@@ -215,17 +221,17 @@ def test_cli_quiet_flag_suppresses_output(cdl, tmp_path, monkeypatch, capsys):
 class TestMarkerFilenameConsistency:
     """Regression tests for #200 — upgrade-deps guard uses check_dev_local.py.
 
-    ``local-dev.sh`` writes ``.venv/.pd-local-mode``.
+    ``local-dev.sh`` writes ``.venv/.pdomain-local-mode``.
     ``check_dev_local.py`` must detect the mode regardless of which marker
     filename is present, so the two-tier Makefile guard works end-to-end.
     """
 
-    def test_pd_local_mode_marker_detected(self, cdl, tmp_path, monkeypatch):
-        """The .pd-local-mode marker written by local-dev.sh must be detected
+    def test_pdomain_local_mode_marker_detected(self, cdl, tmp_path, monkeypatch):
+        """The .pdomain-local-mode marker written by local-dev.sh must be detected
         as dev-local mode (so upgrade-deps refuses when local-dev is active)."""
         project_root = tmp_path
         # Write the marker that local-dev.sh creates
-        marker = tmp_path / ".pd-local-mode"
+        marker = tmp_path / ".pdomain-local-mode"
         marker.touch()
 
         pkgs = [
@@ -235,11 +241,11 @@ class TestMarkerFilenameConsistency:
         monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
         monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
         monkeypatch.setattr(cdl, "_marker_path", lambda: marker)
-        monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+        monkeypatch.delenv("PDOMAIN_DEV_LOCAL", raising=False)
 
         rc = cdl.main(["--quiet"])
         assert rc == 1, (
-            "check_dev_local must exit 1 (dev-local) when .pd-local-mode exists, "
+            "check_dev_local must exit 1 (dev-local) when .pdomain-local-mode exists, "
             "so that upgrade-deps refuses rather than clobbering the local-dev venv"
         )
 
@@ -255,9 +261,9 @@ class TestMarkerFilenameConsistency:
         monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
         monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
         monkeypatch.setattr(
-            cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-absent"
+            cdl, "_marker_path", lambda: tmp_path / ".pdomain-dev-local-absent"
         )
-        monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+        monkeypatch.delenv("PDOMAIN_DEV_LOCAL", raising=False)
 
         rc = cdl.main(["--quiet"])
         assert rc == 1, (
@@ -276,9 +282,9 @@ class TestMarkerFilenameConsistency:
         monkeypatch.setattr(cdl, "_load_pip_list", lambda: pkgs)
         monkeypatch.setattr(cdl, "_project_root", lambda: project_root)
         monkeypatch.setattr(
-            cdl, "_marker_path", lambda: tmp_path / ".pd-dev-local-absent"
+            cdl, "_marker_path", lambda: tmp_path / ".pdomain-dev-local-absent"
         )
-        monkeypatch.delenv("PD_DEV_LOCAL", raising=False)
+        monkeypatch.delenv("PDOMAIN_DEV_LOCAL", raising=False)
 
         rc = cdl.main(["--quiet"])
         assert rc == 0, "Canonical venv must allow upgrade-deps to proceed (exit 0)"

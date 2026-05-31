@@ -271,7 +271,7 @@ def register_detector(key: str, factory: _DetectorFactory) -> None:
     on_error="log_and_null")`` fallback — so the next
     :func:`get_detector` call rebuilds with the new factory.
 
-    Intended for downstream projects (e.g. ``pd-ocr-trainer``) that
+    Intended for downstream projects (e.g. ``pdomain-ocr-training``) that
     produce custom fine-tuned checkpoints needing their own adapter
     keys without modifying this registry's hard-coded chain.
     """

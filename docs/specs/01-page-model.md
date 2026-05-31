@@ -7,7 +7,7 @@
 This document is the user-facing reference for the JSON form of a
 processed page produced by pdomain-book-tools. It describes what the keys
 mean, what the value vocabularies are, and where the format is and
-isn't stable. Downstream consumers (`pdomain-ocr-cli`, `pd-ocr-labeler`,
+isn't stable. Downstream consumers (`pdomain-ocr-cli`, `pdomain-ocr-labeler-spa`,
 `pdomain-prep-for-pgdp`) all read this format back via `Page.from_dict`.
 
 For maintainers: this doc is gated by
