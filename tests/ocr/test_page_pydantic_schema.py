@@ -47,13 +47,18 @@ def test_page_json_schema_shape():
     # Page.to_dict produces these keys; the schema must list all of them.
     expected_keys = {
         "type",
+        "page_id",
         "width",
         "height",
         "page_index",
         "bounding_box",
         "items",
+        "page_labels",
         "name",
         "review",
+        "image_blob_hash",
+        "thumbnail_blob_hash",
+        "gt_orphans",
     }
     assert set(props.keys()) == expected_keys
     # Removed operational fields must NOT appear in the wire schema.

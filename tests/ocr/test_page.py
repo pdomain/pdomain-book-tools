@@ -1541,3 +1541,145 @@ def test_page_has_no_ocr_provenance():
 
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert not hasattr(p, "ocr_provenance")
+
+
+# ============================================================================
+# Task 5: to_dict / from_dict — page_id, gt_orphans, stripped-field exclusion
+# ============================================================================
+
+
+def test_to_dict_includes_page_id(minimal_page):
+    d = minimal_page.to_dict()
+    assert "page_id" in d
+    assert isinstance(d["page_id"], str)  # UUID serialized as str
+
+
+def test_to_dict_excludes_removed_fields(minimal_page):
+    d = minimal_page.to_dict()
+    for field in (
+        "image_path",
+        "source",
+        "ocr_failed",
+        "ocr_provenance",
+        "rotation_applied",
+        "original_ocr_tool_text",
+        "original_ground_truth_text",
+        "unmatched_ground_truth_lines",
+        "provenance_live_ocr",
+        "provenance_saved_ocr",
+        "provenance_saved",
+    ):
+        assert field not in d, f"Unexpected field in to_dict: {field}"
+
+
+def test_from_dict_round_trip_with_page_id(minimal_page):
+    from pdomain_book_tools.ocr.page import Page
+
+    d = minimal_page.to_dict()
+    restored = Page.from_dict(d)
+    assert restored.page_id == minimal_page.page_id
+
+
+def test_to_dict_includes_gt_orphans_when_set():
+    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(
+        width=100,
+        height=100,
+        page_index=0,
+        blocks=[],
+        gt_orphans=GtOrphans(lines=["orphan"]),
+    )
+    d = p.to_dict()
+    assert "gt_orphans" in d
+    assert d["gt_orphans"]["lines"] == ["orphan"]
+
+
+# ============================================================================
+# Task 5: page_id in __eq__
+# ============================================================================
+
+
+def test_page_eq_same_content_and_page_id():
+    """Two Pages with identical content AND identical page_id are equal."""
+    from uuid import UUID
+
+    from pdomain_book_tools.ocr.page import Page
+
+    uid = UUID("12345678-1234-5678-1234-567812345678")
+    p1 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
+    p2 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
+    assert p1 == p2
+
+
+def test_page_eq_same_content_different_page_id():
+    """Two Pages with identical content but different page_ids are NOT equal."""
+    from uuid import uuid4
+
+    from pdomain_book_tools.ocr.page import Page
+
+    p1 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uuid4())
+    p2 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uuid4())
+    assert p1.page_id != p2.page_id
+    assert p1 != p2
+
+
+def test_page_eq_differs_only_in_gt_orphans():
+    """Two Pages differing only in gt_orphans are NOT equal."""
+    from uuid import UUID
+
+    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+    from pdomain_book_tools.ocr.page import Page
+
+    uid = UUID("12345678-1234-5678-1234-567812345678")
+    p1 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
+    p2 = Page(
+        width=100,
+        height=100,
+        page_index=0,
+        blocks=[],
+        page_id=uid,
+        gt_orphans=GtOrphans(lines=["orphan"]),
+    )
+    assert p1 != p2
+
+
+# ============================================================================
+# Task 5: identity preservation across copy()/scale() + gt_orphans round-trip
+# ============================================================================
+
+
+def test_copy_preserves_page_id():
+    """copy() routes through to_dict/from_dict and must preserve entity identity."""
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=100, height=100, page_index=0, blocks=[])
+    assert p.copy().page_id == p.page_id
+
+
+def test_scale_preserves_page_id():
+    """scale() is a view transform of the same entity; page_id must carry over."""
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(width=100, height=100, page_index=0, blocks=[])
+    assert p.scale(200, 200).page_id == p.page_id
+
+
+def test_gt_orphans_lines_tuples_survive_round_trip():
+    """A round-trip restores 2-tuple line entries as tuples, not lists, so
+    copy() is representation-stable; bare-string entries pass through."""
+    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+    from pdomain_book_tools.ocr.page import Page
+
+    p = Page(
+        width=100,
+        height=100,
+        page_index=0,
+        blocks=[],
+        gt_orphans=GtOrphans(lines=[(0, "UNMATCHED"), "bare"]),
+    )
+    restored = Page.from_dict(p.to_dict())
+    assert restored.gt_orphans is not None
+    assert restored.gt_orphans.lines == [(0, "UNMATCHED"), "bare"]
+    assert isinstance(restored.gt_orphans.lines[0], tuple)

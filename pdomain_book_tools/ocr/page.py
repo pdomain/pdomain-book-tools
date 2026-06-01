@@ -2713,7 +2713,12 @@ class Page:
 
         All metadata fields are preserved — only bounding box coordinates and
         the ``width``/``height`` dimensions change. Fields preserved include
-        ``page_labels``, ``name``, and ``review``.
+        ``page_id`` (entity identity), ``page_labels``, ``name``, and ``review``.
+
+        Note: ``image_blob_hash`` / ``thumbnail_blob_hash`` reference the stored
+        source-scan blobs and are carried through unchanged — scaling is a view
+        transform of the same entity, not a new image. A caller that renders and
+        stores a blob at the scaled resolution must overwrite these hashes.
         """
         return Page(
             width=width,
@@ -2723,15 +2728,20 @@ class Page:
             bounding_box=self.bounding_box.scale(width, height)
             if self.bounding_box
             else None,
+            page_id=self.page_id,
             page_labels=self.page_labels,
             name=self.name,
             review=self.review,
+            image_blob_hash=self.image_blob_hash,
+            thumbnail_blob_hash=self.thumbnail_blob_hash,
+            gt_orphans=self.gt_orphans,
         )
 
     def to_dict(self) -> JsonDict:
         """Convert to JSON-serializable dictionary."""
         result: JsonDict = {
             "type": "Page",
+            "page_id": str(self.page_id),
             "width": self.width,
             "height": self.height,
             "page_index": self.page_index,
@@ -2739,10 +2749,23 @@ class Page:
             "items": [item.to_dict() for item in self.items] if self.items else [],
         }
         # Include metadata fields when set (omit defaults for compact output)
+        if self.page_labels is not None:
+            result["page_labels"] = self.page_labels
         if self.name is not None:
             result["name"] = self.name
         if self.review is not None:
             result["review"] = self.review.to_dict()
+        if self.image_blob_hash is not None:
+            result["image_blob_hash"] = self.image_blob_hash
+        if self.thumbnail_blob_hash is not None:
+            result["thumbnail_blob_hash"] = self.thumbnail_blob_hash
+        if self.gt_orphans is not None and not self.gt_orphans.is_empty():
+            result["gt_orphans"] = {
+                "words": self.gt_orphans.words,
+                "lines": self.gt_orphans.lines,
+                "paragraphs": self.gt_orphans.paragraphs,
+                "page": self.gt_orphans.page,
+            }
         return result
 
     def copy(self) -> Page:
@@ -3211,6 +3234,8 @@ class Page:
     @classmethod
     def from_dict(cls, data: Mapping[str, object]) -> Page:
         """Create OCRPage from dictionary."""
+        from pdomain_book_tools.ocr.gt_orphans import GtOrphans
+
         review_raw = data.get("review")
         review = (
             review_raw
@@ -3238,14 +3263,60 @@ class Page:
                 else None
             )
         )
+
+        # page_id: restore from serialized UUID string, or mint a fresh one.
+        # Fail explicitly on a wrong-typed value rather than coercing via
+        # ``str()`` (which would turn e.g. an int into an opaque ValueError).
+        page_id_raw = data.get("page_id")
+        if page_id_raw is None:
+            page_id = uuid4()
+        elif isinstance(page_id_raw, UUID):
+            page_id = page_id_raw
+        elif isinstance(page_id_raw, str):
+            page_id = UUID(page_id_raw)
+        else:
+            raise TypeError(
+                f"page_id must be a str or UUID, got {type(page_id_raw).__name__}"
+            )
+
+        # gt_orphans: reconstruct from nested dict if present. JSON turns the
+        # ``lines`` entries' ``(ocr_line_nbr, gt_text)`` tuples into lists;
+        # restore 2-tuples so copy()/round-trip is representation-stable
+        # (bare-string and other entries pass through unchanged).
+        gt_raw = data.get("gt_orphans")
+        gt_orphans: GtOrphans | None = None
+        if gt_raw and isinstance(gt_raw, dict):
+            gt_orphans = GtOrphans(
+                words=list(cast("list[object]", gt_raw.get("words", []))),
+                lines=[
+                    tuple(entry) if isinstance(entry, list) else entry
+                    for entry in cast("list[object]", gt_raw.get("lines", []))
+                ],
+                paragraphs=list(cast("list[object]", gt_raw.get("paragraphs", []))),
+                page=list(cast("list[str]", gt_raw.get("page", []))),
+            )
+
+        # page_labels: restore list when present.
+        page_labels_raw = data.get("page_labels")
+        page_labels: list[str] | None = (
+            list(cast("list[str]", page_labels_raw))
+            if page_labels_raw is not None
+            else None
+        )
+
         return cls(
             blocks=blocks,
+            page_id=page_id,
             width=int(cast("str | float | int", data["width"])),
             height=int(cast("str | float | int", data["height"])),
             page_index=int(cast("str | float | int", data["page_index"])),
             bounding_box=bounding_box,
+            page_labels=page_labels,
             name=cast("str | None", data.get("name")),
             review=review,
+            image_blob_hash=cast("str | None", data.get("image_blob_hash")),
+            thumbnail_blob_hash=cast("str | None", data.get("thumbnail_blob_hash")),
+            gt_orphans=gt_orphans,
         )
 
     def recompute_bounding_box(self) -> None:
@@ -3614,6 +3685,10 @@ class Page:
                         core_schema.literal_schema(["Page"]),
                         required=False,
                     ),
+                    "page_id": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
                     "width": core_schema.typed_dict_field(
                         core_schema.int_schema(),
                     ),
@@ -3631,12 +3706,35 @@ class Page:
                         core_schema.list_schema(block_schema),
                         required=False,
                     ),
+                    "page_labels": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(
+                            core_schema.list_schema(core_schema.str_schema())
+                        ),
+                        required=False,
+                    ),
                     "name": core_schema.typed_dict_field(
                         NULLABLE_STR_SCHEMA,
                         required=False,
                     ),
                     "review": core_schema.typed_dict_field(
                         core_schema.nullable_schema(review_schema),
+                        required=False,
+                    ),
+                    "image_blob_hash": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "thumbnail_blob_hash": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
+                        required=False,
+                    ),
+                    "gt_orphans": core_schema.typed_dict_field(
+                        core_schema.nullable_schema(
+                            core_schema.dict_schema(
+                                keys_schema=core_schema.str_schema(),
+                                values_schema=core_schema.any_schema(),
+                            )
+                        ),
                         required=False,
                     ),
                 }
