@@ -119,6 +119,9 @@ make coverage  # Run tests with coverage report (generates htmlcov/index.html)
   `pyproject.toml`)
 - **Soft target:** 88% — Goal for maintainability and code reliability
 
+CPU-only runs use `.coveragerc.cpu`, which keeps the same hard threshold but
+omits optional GPU backend modules while CuPy tests are skipped.
+
 The coverage report includes a threshold summary with the current coverage
 percentage and how it compares to the soft target.
 

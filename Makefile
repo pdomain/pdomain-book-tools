@@ -23,6 +23,7 @@ HF_LAYOUT_ADAPTER  := pdomain_book_tools/layout/adapters/pp_doclayout.py
 # Auto-detect a usable NVIDIA GPU (nvidia-smi present and succeeds) and not in CI.
 # When detected, GPU_EXTRA expands to "--extra gpu"; otherwise it is empty.
 GPU_EXTRA := $(shell [ -z "$$CI" ] && command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 && echo --extra gpu)
+COVERAGE_CONFIG := $(if $(strip $(GPU_EXTRA)),pyproject.toml,.coveragerc.cpu)
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -65,15 +66,15 @@ reset-full: ## Nuclear option: clear everything and redownload
 
 test: sync-gpu ## Run tests with parallelization (slow model-download tests excluded by default)
 	@echo "🧪 Running tests (parallelized, slow tests excluded)..."
-	uv run pytest -n auto -v -ra
+	uv run pytest --cov-config=$(COVERAGE_CONFIG) -n auto -v -ra
 
 test-slow: sync-gpu ## Run ALL tests including slow model-download smoke tests (needs network + disk space)
 	@echo "🧪 Running tests including slow model-download smoke tests..."
-	uv run pytest -n auto -v -ra -m "slow or not slow"
+	uv run pytest --cov-config=$(COVERAGE_CONFIG) -n auto -v -ra -m "slow or not slow"
 
 test-verbose: sync-gpu ## Run tests with verbose output and parallelization
 	@echo "🧪 Running tests (verbose mode, parallelized)..."
-	uv run pytest -n auto -v -ra
+	uv run pytest --cov-config=$(COVERAGE_CONFIG) -n auto -v -ra
 
 test-single: sync-gpu ## Run one pytest node id (usage: make test-single TEST='tests/...::test_name')
 	@if [ -z "$(TEST)" ]; then \
@@ -82,7 +83,7 @@ test-single: sync-gpu ## Run one pytest node id (usage: make test-single TEST='t
 		exit 1; \
 	fi
 	@echo "🧪 Running single test (parallelized): $(TEST)"
-	uv run pytest -n auto "$(TEST)"
+	uv run pytest --cov-config=$(COVERAGE_CONFIG) -n auto "$(TEST)"
 
 test-k: sync-gpu ## Run tests by pytest -k expression (usage: make test-k K='pattern')
 	@if [ -z "$(K)" ]; then \
@@ -91,11 +92,11 @@ test-k: sync-gpu ## Run tests by pytest -k expression (usage: make test-k K='pat
 		exit 1; \
 	fi
 	@echo "🧪 Running tests with -k (parallelized): $(K)"
-	uv run pytest -n auto -k "$(K)"
+	uv run pytest --cov-config=$(COVERAGE_CONFIG) -n auto -k "$(K)"
 
 coverage: sync-gpu ## Run tests with coverage report (parallelized)
 	@echo "🧪 Running tests with coverage (parallelized)..."
-	uv run pytest --cov=pdomain_book_tools --cov-report=html --cov-report=xml -n auto -v -ra
+	uv run pytest --cov-config=$(COVERAGE_CONFIG) --cov=pdomain_book_tools --cov-report=html --cov-report=xml -n auto -v -ra
 	@echo "📊 Coverage report generated in htmlcov/index.html"
 	@uv run python scripts/coverage_reporter.py
 

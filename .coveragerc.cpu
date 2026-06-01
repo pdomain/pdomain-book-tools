@@ -1,0 +1,31 @@
+[run]
+source = pdomain_book_tools
+branch = True
+omit =
+    */tests/*
+    */.venv/*
+    */.tox/*
+    */site-packages/*
+    */image_processing/cupy_processing/*
+    */image_processing/cv2cuda_processing/*
+concurrency =
+    multiprocessing
+    thread
+
+[report]
+show_missing = True
+skip_empty = True
+fail_under = 87
+precision = 1
+exclude_also =
+    if __name__ == .__main__.:
+    pragma: no cover
+    raise NotImplementedError
+    ^if TYPE_CHECKING:
+    ^\s*pass$
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
