@@ -38,7 +38,7 @@ else
 endif
 	uv sync --group dev $(GPU_EXTRA)
 	@echo "🪝 Setting up pre-commit hooks..."
-	@[ -f .git/hooks/pre-commit ] || [ -f .git ] || uv run pre-commit install
+	@[ -f .git/hooks/pre-commit ] || [ -f .git ] || [ -n "$$(git config --get core.hooksPath 2>/dev/null)" ] || uv run pre-commit install
 	@echo "✅ Setup complete!"
 
 reset-venv: reset ## Alias for reset
