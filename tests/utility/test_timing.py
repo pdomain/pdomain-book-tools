@@ -148,7 +148,7 @@ class TestFuncLogExecutionTime:
         """
         logger = logging.getLogger("test_call_site_log_does_not_emit_raw_arg_values")
         logger.setLevel(logging.DEBUG)
-        sentinel = "PD_BOOK_TOOLS_L29_SECRET_VALUE_DO_NOT_LOG"
+        sentinel = "PDOMAIN_BOOK_TOOLS_L29_SECRET_VALUE_DO_NOT_LOG"
 
         @func_log_excution_time(logger)
         def takes_args(positional, *, kw):
