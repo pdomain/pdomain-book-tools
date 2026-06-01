@@ -8,6 +8,19 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ---
 
+## [Unreleased — next minor]
+
+- **feat(ocr): auto-rotation for batch OCR** — `Document.from_images_ocr_via_doctr`
+  now accepts `auto_rotate: bool = True` and `auto_rotate_threshold: float | None = None`,
+  matching the singular method's interface. After the initial single-pass batch OCR, any
+  page whose mean per-word confidence is below the threshold is individually re-examined
+  with 90°/180°/270° rotation probes; the best rotation replaces that page's OCR result.
+  High-confidence pages (the common all-upright case) skip the probes entirely — no extra
+  predictor calls. Fixes a real defect where a 90°-rotated page in a multi-page batch
+  would OCR to empty output.
+
+---
+
 ## [v0.14.1] — 2026-05-23
 
 - **Python 3.11 compat** — `typing.override` import now falls back to

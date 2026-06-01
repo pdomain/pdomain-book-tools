@@ -297,16 +297,32 @@ class Document:
         images: Sequence[ndarray | PILImage | str | PathLike[str]],
         source_identifiers: Sequence[str] | None = None,
         predictor: _DoctrPredictor | None = None,
+        *,
+        auto_rotate: bool = True,
+        auto_rotate_threshold: float | None = None,
     ) -> Document:
         """Perform OCR on a list of images with a single predictor call.
 
-        Preprocesses each image to RGB, calls ``predictor([rgb1, rgb2, …])``
+        Preprocesses each image to RGB, calls ``predictor([rgb1, rgb2, \u2026])``
         once, then maps the returned DocTR pages back to a multi-page
         ``Document``. Order and ``source_identifiers`` are preserved.
 
         ``images`` must be non-empty. When ``source_identifiers`` is given it
         must have the same length as ``images``; a mismatch raises
         ``ValueError``.
+
+        :param auto_rotate: If True (default), after the initial batch OCR any
+            page whose mean per-word confidence is below ``auto_rotate_threshold``
+            is re-examined by trying 90\u00b0/180\u00b0/270\u00b0 rotations and replacing the
+            page's OCR result with whichever orientation yields the highest
+            confidence. Only low-confidence pages pay the extra cost; pages
+            whose upright pass already meets the threshold are left untouched.
+            Set to False to skip all rotation probes and always use the as-is
+            batch results.
+        :param auto_rotate_threshold: Mean per-word confidence at or above which
+            a page's upright pass is considered good enough; ignored when
+            ``auto_rotate`` is False. Defaults to
+            :data:`pdomain_book_tools.ocr.rotation.DEFAULT_CONFIDENCE_THRESHOLD`.
         """
         if not images:
             raise ValueError("images must be a non-empty sequence")
@@ -325,10 +341,14 @@ class Document:
         if predictor is None:
             predictor = cast("_DoctrPredictor", get_default_doctr_predictor())
 
+        # Keep both the BGR ndarray (for stashing on the page) and the RGB
+        # ndarray (for the predictor). The singular method does the same.
         rgb_list: list[ndarray] = []
+        ndarray_list: list[ndarray] = []
         for img in images:
-            image_rgb, _image_ndarray, _source_path = cls._to_rgb_ndarray(img)
+            image_rgb, image_ndarray, _source_path = cls._to_rgb_ndarray(img)
             rgb_list.append(image_rgb)
+            ndarray_list.append(image_ndarray)
 
         doctr_result = predictor(rgb_list)
 
@@ -352,6 +372,85 @@ class Document:
                 original_text=per_page_text,
             )
             pages.append(page)
+
+        if auto_rotate:
+            # Lazy import to avoid overhead when callers opt out.
+            from pdomain_book_tools.ocr.rotation import (
+                DEFAULT_CONFIDENCE_THRESHOLD,
+                detect_best_rotation,
+                rotate_image,
+            )
+
+            threshold = (
+                DEFAULT_CONFIDENCE_THRESHOLD
+                if auto_rotate_threshold is None
+                else auto_rotate_threshold
+            )
+
+            for page_idx, page in enumerate(pages):
+                if page_idx >= len(ndarray_list):
+                    break
+                image_ndarray = ndarray_list[page_idx]
+                image_rgb = rgb_list[page_idx]
+
+                # Check this page's confidence against the threshold.
+                # Compute mean per-word confidence directly from the page's words.
+                word_confs = [
+                    float(w.ocr_confidence)
+                    for w in page.words
+                    if w.ocr_confidence is not None
+                ]
+                upright_conf = (
+                    float(sum(word_confs) / len(word_confs)) if word_confs else 0.0
+                )
+                if upright_conf >= threshold:
+                    # Fast path: upright is fine — stash source image and move on.
+                    page.cv2_numpy_page_image = image_ndarray
+                    continue
+
+                # Slow path: this page's upright confidence is below threshold.
+                # Re-examine with rotation probes, reusing the upright OCR result
+                # we already have (via upright_result) to avoid a redundant 0° call.
+                upright_doc = cls(
+                    source_lib="doctr",
+                    source_path=None,
+                    pages=[
+                        cls._page_from_doctr(
+                            cast("Mapping[str, object]", raw_pages[page_idx]),
+                            page_idx=0,  # single-page doc for the rotation helper
+                            ocr_provenance=ocr_provenance,
+                            original_text=None,
+                        )
+                    ],
+                )
+
+                def _ocr_rotated(rgb: ndarray) -> Document:
+                    single_result = predictor([rgb])
+                    return cls.from_doctr_result(doctr_result=single_result)
+
+                chosen, best_doc, _probes = detect_best_rotation(
+                    image_rgb,
+                    ocr_fn=_ocr_rotated,
+                    confidence_threshold=threshold,
+                    upright_result=upright_doc,
+                )
+
+                # Replace this page's OCR content with the best-rotation result.
+                # best_doc is a single-page Document; carry over the original
+                # page_index so Document ordering is preserved.
+                if chosen != 0:
+                    best_page = best_doc.pages[0]
+                    best_page.page_index = page_idx
+                    pages[page_idx] = best_page
+
+                # Stash the rotated source image (identity when chosen==0).
+                rotated_source = rotate_image(image_ndarray, chosen)
+                pages[page_idx].cv2_numpy_page_image = rotated_source
+        else:
+            # auto_rotate=False: stash each page's source image unchanged.
+            for page_idx, page in enumerate(pages):
+                if page_idx < len(ndarray_list):
+                    page.cv2_numpy_page_image = ndarray_list[page_idx]
 
         return cls(
             source_lib="doctr",
