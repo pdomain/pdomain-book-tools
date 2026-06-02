@@ -1,3 +1,5 @@
+import pytest
+
 from pdomain_book_tools.geometry_correction.protocols import (
     CurvatureReport,
     DeskewResult,
@@ -27,3 +29,38 @@ def test_result_dataclasses_hold_transform():
         flatness=0.1, recommended="deskew_only", per_line_residuals=None, method="q"
     )
     assert cr.recommended == "deskew_only"
+
+
+# --- Task 4: registry ---
+
+from pdomain_book_tools.geometry_correction import (  # noqa: E402, F811
+    Deskew,
+    DeskewResult,
+    GeometryTransform,
+)
+from pdomain_book_tools.geometry_correction.registry import (  # noqa: E402
+    available,
+    get_deskew,
+    register_deskew,
+)
+
+
+class _FakeDeskew:
+    name = "fake"
+
+    def estimate(self, image, *, page_side=None, text_lines=None):
+        return DeskewResult(
+            0.0, 1.0, GeometryTransform.identity(image.shape[:2]), self.name
+        )
+
+
+def test_register_and_get_roundtrip():
+    register_deskew("fake", _FakeDeskew)
+    inst = get_deskew("fake")
+    assert isinstance(inst, Deskew)  # satisfies the Protocol
+    assert "fake" in available("deskew")
+
+
+def test_get_unknown_raises():
+    with pytest.raises(KeyError):
+        get_deskew("nope-not-registered")
