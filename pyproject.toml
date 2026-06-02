@@ -58,6 +58,8 @@ gpu = [
     "cupy-cuda12x>=13.4.1",
     "opencv-cuda>=0.0.2",
 ]
+# UVDoc ONNX dewarp backend. Install with: pip install 'pdomain-book-tools[dewarp-dl]'
+dewarp-dl = ["onnxruntime>=1.17"]
 
 [dependency-groups]
 dev = [
