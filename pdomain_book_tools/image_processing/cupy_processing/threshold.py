@@ -160,3 +160,50 @@ def np_uint8_float_binary_thresh(img: np.ndarray) -> np.ndarray:
         stacklevel=2,
     )
     return np_uint8_otsu_binary_thresh(img)
+
+
+def adaptive_binary_thresh(
+    img: CuPyArray,
+    *,
+    block_size: int = 31,
+    c: int = 10,
+    mode: str = "gaussian",
+) -> CuPyArray:
+    """Adaptive (local) binarisation on a GPU array (not yet implemented)."""
+    require_cupy()
+    raise NotImplementedError(
+        "adaptive_binary_thresh is a stub; the adaptive binarization method is "
+        "specified but not yet implemented. See "
+        "docs/specs/2026-06-02-threshold-binarization-methods.md."
+    )
+
+
+def sauvola_binary_thresh(
+    img: CuPyArray,
+    *,
+    window_size: int = 25,
+    k: float = 0.2,
+    r: int = 128,
+) -> CuPyArray:
+    """Sauvola local binarisation on a GPU array (not yet implemented)."""
+    require_cupy()
+    raise NotImplementedError(
+        "sauvola_binary_thresh is a stub; the Sauvola binarization method is "
+        "specified but not yet implemented. See "
+        "docs/specs/2026-06-02-threshold-binarization-methods.md."
+    )
+
+
+def niblack_binary_thresh(
+    img: CuPyArray,
+    *,
+    window_size: int = 25,
+    k: float = -0.2,
+) -> CuPyArray:
+    """Niblack local binarisation on a GPU array (not yet implemented)."""
+    require_cupy()
+    raise NotImplementedError(
+        "niblack_binary_thresh is a stub; the Niblack binarization method is "
+        "specified but not yet implemented. See "
+        "docs/specs/2026-06-02-threshold-binarization-methods.md."
+    )

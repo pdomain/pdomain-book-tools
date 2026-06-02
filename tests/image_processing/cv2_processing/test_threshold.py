@@ -6,6 +6,7 @@ import pytest
 pytest.importorskip("cv2")
 
 from pdomain_book_tools.image_processing.cv2_processing.threshold import (
+    binarize,
     binary_thresh,
     otsu_binary_thresh,
 )
@@ -47,3 +48,30 @@ class TestOtsuBinaryThresh:
         # The dark and light regions should map to 0 and 255 respectively
         assert (out[:10, :] == 0).all()
         assert (out[10:, :] == 255).all()
+
+
+class TestBinarize:
+    def test_default_method_is_otsu(self):
+        img = np.zeros((20, 20), dtype=np.uint8)
+        img[:10, :] = 30
+        img[10:, :] = 220
+        out = binarize(img)
+        expected = otsu_binary_thresh(img)
+        assert np.array_equal(out, expected)
+
+    def test_explicit_otsu_matches_helper(self):
+        img = np.zeros((20, 20), dtype=np.uint8)
+        img[:10, :] = 30
+        img[10:, :] = 220
+        assert np.array_equal(binarize(img, method="otsu"), otsu_binary_thresh(img))
+
+    @pytest.mark.parametrize("method", ["adaptive", "sauvola", "niblack"])
+    def test_stub_methods_raise_not_implemented(self, method):
+        img = np.zeros((4, 4), dtype=np.uint8)
+        with pytest.raises(NotImplementedError):
+            binarize(img, method=method)
+
+    def test_unknown_method_raises_value_error(self):
+        img = np.zeros((4, 4), dtype=np.uint8)
+        with pytest.raises(ValueError):
+            binarize(img, method="bogus")
