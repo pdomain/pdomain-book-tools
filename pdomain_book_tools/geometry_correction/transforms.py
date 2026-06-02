@@ -9,6 +9,11 @@ import numpy as np
 TransformKind = Literal["identity", "affine", "homography", "grid", "rectified"]
 
 
+def _is_cupy(arr: object) -> bool:
+    """True if ``arr`` is a cupy ndarray, without importing cupy on CPU-only installs."""
+    return arr is not None and type(arr).__module__.split(".")[0] == "cupy"
+
+
 @dataclass(frozen=True)
 class GeometryTransform:
     """A page-geometry correction expressed as a reusable, (usually) invertible map.
@@ -46,7 +51,17 @@ class GeometryTransform:
     def grid(
         cls, map_x: np.ndarray, map_y: np.ndarray, size: tuple[int, int]
     ) -> GeometryTransform:
-        """Return a dense backward-map (grid) transform for cv2.remap."""
+        """Return a dense backward-map (grid) transform for cv2.remap or cupy map_coordinates."""
+        if _is_cupy(map_x):
+            import cupy as cp  # pyright: ignore[reportMissingImports]
+
+            return cls(
+                kind="grid",
+                size=size,
+                map_x=cp.asarray(map_x, cp.float32),
+                map_y=cp.asarray(map_y, cp.float32),
+                invertible=False,
+            )
         return cls(
             kind="grid",
             size=size,
@@ -90,6 +105,16 @@ class GeometryTransform:
         if self.kind == "grid":
             if self.map_x is None or self.map_y is None:  # pragma: no cover
                 raise ValueError("grid transform has no maps")
+            if _is_cupy(self.map_x):
+                import importlib
+
+                import cupy as cp  # pyright: ignore[reportMissingImports]
+
+                _cupyx_ndimage = importlib.import_module("cupyx.scipy.ndimage")
+                map_coordinates = _cupyx_ndimage.map_coordinates
+                coords = cp.stack([self.map_y, self.map_x])  # (row, col) order
+                src = image if _is_cupy(image) else cp.asarray(image)
+                return map_coordinates(src, coords, order=3, mode="nearest")  # type: ignore[return-value]
             return cv2.remap(
                 image,
                 self.map_x,
