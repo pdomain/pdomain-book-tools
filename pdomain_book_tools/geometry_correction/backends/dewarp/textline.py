@@ -34,11 +34,25 @@ class TextlineDisparityDewarp:
         detector: TextlineDetector | None = None,
         min_textlines: int = DEFAULT_MIN_TEXTLINES,
         prefer_gpu: bool = False,
+        binarization: str = "otsu",
+        binarization_params: dict[str, Any] | None = None,
     ) -> None:
-        """Initialise the backend with an optional custom detector."""
-        self.detector = detector or MorphCentroidDetector(prefer_gpu=prefer_gpu)
+        """Initialise the backend with an optional custom detector.
+
+        When ``detector`` is ``None``, a :class:`MorphCentroidDetector` is
+        constructed using ``prefer_gpu``, ``binarization``, and
+        ``binarization_params``. When an explicit ``detector`` is provided it
+        is used as-is and the binarization arguments are ignored.
+        """
+        self.detector = detector or MorphCentroidDetector(
+            prefer_gpu=prefer_gpu,
+            binarization=binarization,
+            binarization_params=binarization_params,
+        )
         self.min_textlines = min_textlines
         self.prefer_gpu = prefer_gpu
+        self.binarization = binarization
+        self.binarization_params = binarization_params
 
     def _module(self) -> Any:
         """Return the appropriate textline_dewarp module (cv2 or cupy)."""

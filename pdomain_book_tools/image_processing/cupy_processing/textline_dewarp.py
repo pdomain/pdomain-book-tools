@@ -104,20 +104,46 @@ def _remove_tall_components(fg: Any) -> Any:
     return cp.clip(fg.astype(cp.int16) - tall.astype(cp.int16), 0, 255).astype(cp.uint8)
 
 
-def detect_textlines(binary: Any, *, page_width: int) -> list[LineSamples]:
+def detect_textlines(
+    binary: Any,
+    *,
+    page_width: int,
+    binarization: str = "otsu",
+    binarization_params: dict[str, Any] | None = None,
+) -> list[LineSamples]:
     """Detect text lines as per-column vertical centroids (GPU path).
 
     ``binary`` may be a foreground-text (255) cupy array or a grayscale image.
     Returns one LineSamples per surviving line (cupy arrays), ordered top->bottom.
+
+    Args:
+        binary: Grayscale or already-binarized (text=255) CuPy array.
+        page_width: Page width in pixels (used for morphology kernel sizing).
+        binarization: Binarization method name. ``"otsu"`` (default) preserves
+            the pre-existing code path exactly. Other methods route through the
+            CuPy threshold module's ``binarize()`` and the result is inverted
+            on-device to foreground=text=255 polarity.
+        binarization_params: Optional keyword arguments forwarded to ``binarize()``.
     """
     require_cupy()
     import importlib
 
     _ndi = importlib.import_module("cupyx.scipy.ndimage")
 
-    fg = _remove_tall_components(
-        _consolidate_lines(_ensure_foreground(binary), page_width)
-    )
+    if binarization == "otsu":
+        raw_fg = _ensure_foreground(binary)
+    else:
+        from pdomain_book_tools.image_processing.cupy_processing.threshold import (
+            binarize as _binarize,
+        )
+
+        arr = cp.asarray(binary)
+        gray = arr if arr.ndim == 2 else arr.mean(axis=2).astype(cp.uint8)
+        params = binarization_params or {}
+        # threshold module returns BACKGROUND=255, TEXT=0 → invert to foreground=TEXT=255
+        bg_fg = _binarize(gray, method=binarization, **params)
+        raw_fg = cp.where(bg_fg == 0, cp.uint8(255), cp.uint8(0))
+    fg = _remove_tall_components(_consolidate_lines(raw_fg, page_width))
     labels, count = _ndi.label(fg > 0)
     lines: list[LineSamples] = []
     for lbl in range(1, int(count) + 1):

@@ -13,6 +13,17 @@ def _lined_page(h=900, w=700, n_lines=14, top=90, gap=55):
     return img
 
 
+def _gradient_page(h=900, w=700, n_lines=14, top=90, gap=55):
+    """Dark text on a smoothly-varying light background (illumination gradient)."""
+    bg = np.linspace(240, 120, w, dtype=np.float32)
+    img = np.tile(bg, (h, 1)).astype(np.uint8)
+    for i in range(n_lines):
+        y = top + i * gap
+        for x0 in range(60, w - 60, 70):
+            img[y : y + 10, x0 : x0 + 50] = 30
+    return img
+
+
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestCuPyTextlineDewarpParity:
@@ -58,3 +69,29 @@ class TestCuPyTextlineDewarpParity:
         )
         np.testing.assert_allclose(cp.asnumpy(g_mx), c_mx, atol=2.0)
         np.testing.assert_allclose(cp.asnumpy(g_my), c_my, atol=2.0)
+
+    def test_detect_textlines_sauvola_gpu_close_to_cpu(self, cupy_module):
+        """CuPy detect_textlines with binarization='sauvola' line centers stay close to cv2."""
+        cp = cupy_module
+        from pdomain_book_tools.image_processing.cupy_processing import (
+            textline_dewarp as gtd,
+        )
+        from pdomain_book_tools.image_processing.cv2_processing import (
+            textline_dewarp as ctd,
+        )
+
+        page = _gradient_page()
+        cpu_lines = ctd.detect_textlines(
+            page, page_width=page.shape[1], binarization="sauvola"
+        )
+        gpu_lines = gtd.detect_textlines(
+            cp.asarray(page), page_width=page.shape[1], binarization="sauvola"
+        )
+        # Both backends should find a reasonable number of lines on the gradient page
+        assert len(cpu_lines) >= 6
+        assert len(gpu_lines) >= 6
+        # Line centers should be within 5 px of each other (same method, same image)
+        n = min(len(cpu_lines), len(gpu_lines))
+        cpu_centers = sorted(float(ln.ys.mean()) for ln in cpu_lines)[:n]
+        gpu_centers = sorted(float(cp.asnumpy(ln.ys).mean()) for ln in gpu_lines)[:n]
+        np.testing.assert_allclose(gpu_centers, cpu_centers, atol=5.0)

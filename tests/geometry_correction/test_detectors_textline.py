@@ -42,3 +42,25 @@ def test_morph_centroid_detector_recovers_lines():
     page = _lined_page()
     lines = det.detect(page, page_width=page.shape[1])
     assert 12 <= len(lines) <= 14
+
+
+def test_morph_centroid_detector_default_binarization_is_otsu():
+    det = MorphCentroidDetector()
+    assert det.binarization == "otsu"
+    assert det.binarization_params is None
+
+
+def test_morph_centroid_detector_binarization_param_threaded():
+    """binarization kwarg is stored and forwarded (smoke test — no GPU needed)."""
+    det = MorphCentroidDetector(binarization="sauvola", binarization_params={"k": 0.3})
+    assert det.binarization == "sauvola"
+    assert det.binarization_params == {"k": 0.3}
+    # Verify it can actually run on a gradient page (dark text on uneven background)
+    bg = np.linspace(240, 120, 700, dtype=np.float32)
+    img = np.tile(bg, (900, 1)).astype(np.uint8)
+    for i in range(14):
+        y = 90 + i * 55
+        for x0 in range(60, 700 - 60, 70):
+            img[y : y + 10, x0 : x0 + 50] = 30
+    lines = det.detect(img, page_width=img.shape[1])
+    assert len(lines) >= 6  # recovers most lines under illumination gradient

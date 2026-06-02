@@ -11,6 +11,8 @@ plan's "Confirmed Leptonica constants" table.
 
 from __future__ import annotations
 
+from typing import Any
+
 import cv2
 import numpy as np
 
@@ -88,13 +90,42 @@ def _remove_tall_components(fg: np.ndarray) -> np.ndarray:
     return np.asarray(cv2.subtract(fg, tall), dtype=np.uint8)
 
 
-def detect_textlines(binary: np.ndarray, *, page_width: int) -> list[LineSamples]:
+def detect_textlines(
+    binary: np.ndarray,
+    *,
+    page_width: int,
+    binarization: str = "otsu",
+    binarization_params: dict[str, Any] | None = None,
+) -> list[LineSamples]:
     """Detect text lines as per-column vertical centroids.
 
     ``binary`` may be a foreground-text (255) binary or a grayscale image (binarized
-    internally). Returns one LineSamples per surviving line, ordered top->bottom.
+    internally via ``binarization``). Returns one LineSamples per surviving line,
+    ordered top->bottom.
+
+    Args:
+        binary: Grayscale or already-binarized (text=255) image.
+        page_width: Page width in pixels (used for morphology kernel sizing).
+        binarization: Binarization method name passed to the threshold module's
+            ``binarize()`` dispatcher. ``"otsu"`` (default) preserves the
+            pre-existing code path exactly. Other methods (``"sauvola"``,
+            ``"niblack"``, ``"adaptive"``) are routed through ``binarize()``
+            and their output is inverted to foreground=text=255 polarity.
+        binarization_params: Optional keyword arguments forwarded verbatim to
+            ``binarize()`` (e.g. ``{"window_size": 31}`` for Sauvola/Niblack).
     """
-    fg = _ensure_foreground(binary)
+    if binarization == "otsu":
+        fg = _ensure_foreground(binary)
+    else:
+        from pdomain_book_tools.image_processing.cv2_processing.threshold import (
+            binarize as _binarize,
+        )
+
+        gray = binary if binary.ndim == 2 else cv2.cvtColor(binary, cv2.COLOR_BGR2GRAY)
+        params = binarization_params or {}
+        # threshold module returns BACKGROUND=255, TEXT=0 → invert to foreground polarity
+        bg_fg = _binarize(gray, method=binarization, **params)
+        fg = np.asarray(255 - bg_fg, dtype=np.uint8)
     consolidated = _remove_tall_components(_consolidate_lines(fg, page_width))
     count, labels, stats, _ = cv2.connectedComponentsWithStats(
         consolidated, connectivity=8

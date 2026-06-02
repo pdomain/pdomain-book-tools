@@ -90,3 +90,62 @@ def test_scanned_pipeline_routes_flat_curl_to_textline():
     # the flat_curl regime resolves to the textline backend in the routing map
     assert "textline_disparity" in pipe.dewarp_backends
     assert pipe.regime is not None
+
+
+# ---------------------------------------------------------------------------
+# Binarization-parameter wiring — TextlineDisparityDewarp
+# ---------------------------------------------------------------------------
+
+
+def _gradient_gray(h=1000, w=760, n_lines=16, top=90, gap=58):
+    """Dark-text-on-light-background page with an illumination gradient (for binarize tests)."""
+    import numpy as np
+
+    bg = np.linspace(240, 120, w, dtype=np.float32)
+    img = np.tile(bg, (h, 1)).astype(np.uint8)
+    for i in range(n_lines):
+        y = top + i * gap
+        for x0 in range(60, w - 60, 70):
+            img[y : y + 10, x0 : x0 + 50] = 30
+    return img
+
+
+def test_backend_default_binarization_is_otsu():
+    from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
+        TextlineDisparityDewarp,
+    )
+
+    backend = TextlineDisparityDewarp()
+    assert backend.binarization == "otsu"
+    assert backend.binarization_params is None
+
+
+def test_backend_sauvola_returns_valid_result():
+    """TextlineDisparityDewarp(binarization='sauvola').estimate() must not raise."""
+    from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
+        TextlineDisparityDewarp,
+    )
+
+    backend = TextlineDisparityDewarp(binarization="sauvola")
+    page = _gradient_gray()
+    res = backend.estimate(page)
+    # Either a grid (enough lines) or identity+conf0 (too few after gradient binarization)
+    assert res.transform.kind in {"grid", "identity"}
+    assert res.confidence >= 0.0
+
+
+def test_backend_injected_detector_ignores_binarization_params():
+    """When a detector is injected explicitly, it's used as-is regardless of binarization."""
+
+    from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
+        TextlineDisparityDewarp,
+    )
+    from pdomain_book_tools.geometry_correction.detectors.textline import (
+        MorphCentroidDetector,
+    )
+
+    injected = MorphCentroidDetector(binarization="niblack")
+    backend = TextlineDisparityDewarp(detector=injected, binarization="sauvola")
+    # The injected detector takes precedence; the backend wraps it unchanged
+    assert backend.detector is injected
+    assert backend.detector.binarization == "niblack"  # not overridden to "sauvola"

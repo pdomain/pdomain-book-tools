@@ -34,13 +34,26 @@ class MorphCentroidDetector:
     ``prefer_gpu`` selects the CuPy module when CuPy is importable; otherwise the
     NumPy path is used. The module is resolved lazily so a CPU-only install never
     imports cupy.
+
+    ``binarization`` selects the binarization method forwarded to
+    ``detect_textlines``; ``"otsu"`` (default) preserves the pre-existing
+    Otsu-INV code path exactly. ``binarization_params`` passes extra keyword
+    arguments to the selected method.
     """
 
     name = "morph_centroid"
 
-    def __init__(self, *, prefer_gpu: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        prefer_gpu: bool = False,
+        binarization: str = "otsu",
+        binarization_params: dict[str, Any] | None = None,
+    ) -> None:
         """Initialise the detector, optionally preferring the GPU path."""
         self.prefer_gpu = prefer_gpu
+        self.binarization = binarization
+        self.binarization_params = binarization_params
 
     def _module(self) -> Any:
         """Return the appropriate textline_dewarp module (cv2 or cupy)."""
@@ -59,4 +72,9 @@ class MorphCentroidDetector:
 
     def detect(self, binary: Any, *, page_width: int) -> list[LineSamples]:
         """Detect text lines as per-column vertical centroids."""
-        return self._module().detect_textlines(binary, page_width=page_width)  # type: ignore[no-any-return]
+        return self._module().detect_textlines(  # type: ignore[no-any-return]
+            binary,
+            page_width=page_width,
+            binarization=self.binarization,
+            binarization_params=self.binarization_params,
+        )

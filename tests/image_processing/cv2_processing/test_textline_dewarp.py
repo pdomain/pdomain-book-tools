@@ -219,3 +219,61 @@ def test_build_disparity_maps_shapes_and_identity_baseline():
     ys, xs = np.meshgrid(np.arange(h), np.arange(w), indexing="ij")
     assert np.abs(map_x - xs).max() < 2.0
     assert np.abs(map_y - ys).max() < 2.0
+
+
+# ---------------------------------------------------------------------------
+# Binarization-parameter wiring tests
+# ---------------------------------------------------------------------------
+
+
+def test_detect_textlines_default_equals_explicit_otsu():
+    """binarization="otsu" must produce byte-identical output to the default."""
+    page = _lined_page(n_lines=14, top=90, gap=55)
+    lines_default = td.detect_textlines(page, page_width=page.shape[1])
+    lines_explicit = td.detect_textlines(
+        page, page_width=page.shape[1], binarization="otsu"
+    )
+    assert len(lines_default) == len(lines_explicit)
+    for ld, le in zip(lines_default, lines_explicit, strict=True):
+        np.testing.assert_array_equal(ld.xs, le.xs)
+        np.testing.assert_array_equal(ld.ys, le.ys)
+
+
+def _gradient_page(h=900, w=700, n_lines=14, top=90, gap=55):
+    """Dark-text-on-light-background page with a strong horizontal illumination gradient.
+
+    The left half is near-white (240) and the right half fades to mid-grey (~120).
+    Global Otsu will pick a threshold in the middle and miss lines on one side;
+    Sauvola/Niblack local methods handle it well.
+    """
+    # Start with a light background that varies column-wise
+    bg = np.linspace(240, 120, w, dtype=np.float32)
+    img = np.tile(bg, (h, 1)).astype(np.uint8)
+    # Draw dark text bars (value = 30)
+    for i in range(n_lines):
+        y = top + i * gap
+        for x0 in range(60, w - 60, 70):
+            img[y : y + 10, x0 : x0 + 50] = 30
+    return img
+
+
+def test_detect_textlines_sauvola_handles_illumination_gradient():
+    """Sauvola binarization should recover most lines under uneven illumination."""
+    page = _gradient_page(n_lines=14, top=90, gap=55)
+    lines = td.detect_textlines(page, page_width=page.shape[1], binarization="sauvola")
+    # Sauvola's local stats handle the gradient; recover most of 14 lines
+    assert 8 <= len(lines) <= 14
+
+
+def test_detect_textlines_niblack_does_not_raise():
+    """Niblack binarization should run without error (behavioral/wiring smoke test)."""
+    page = _gradient_page(n_lines=14, top=90, gap=55)
+    # Just verify no exception; line count depends on k/gradient interaction
+    lines = td.detect_textlines(page, page_width=page.shape[1], binarization="niblack")
+    assert isinstance(lines, list)
+
+
+def test_detect_textlines_unknown_method_raises():
+    page = _lined_page()
+    with pytest.raises(ValueError, match="Unknown binarization method"):
+        td.detect_textlines(page, page_width=page.shape[1], binarization="bogus")
