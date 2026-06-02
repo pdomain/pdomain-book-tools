@@ -1,0 +1,1 @@
+"""Curvature detector backend implementations."""
