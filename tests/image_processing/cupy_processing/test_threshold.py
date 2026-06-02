@@ -13,6 +13,30 @@ def cupy_threshold(cupy_module):
     return thresh_mod, cupy_module
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _gradient_with_text_np() -> np.ndarray:
+    """100x100 uint8 image: smooth horizontal gradient + dark text patches.
+
+    Same fixture as the cv2 tests — used to build GPU parity inputs.
+    """
+    h, w = 100, 100
+    gradient = np.tile(np.linspace(80, 220, w, dtype=np.float32), (h, 1)).astype(
+        np.uint8
+    )
+    for r, col in [(10, 10), (30, 60), (60, 15), (75, 70)]:
+        gradient[r : r + 10, col : col + 10] = 10
+    return gradient
+
+
+# ---------------------------------------------------------------------------
+# otsu_binary_thresh (pre-existing tests, preserved)
+# ---------------------------------------------------------------------------
+
+
 class TestOtsuBinaryThresh:
     def test_bimodal_image(self, cupy_threshold):
         thresh_mod, cp = cupy_threshold
@@ -157,6 +181,11 @@ class TestOtsuBinaryThresh:
         )
 
 
+# ---------------------------------------------------------------------------
+# binary_thresh_gpu (pre-existing tests, preserved)
+# ---------------------------------------------------------------------------
+
+
 class TestBinaryThreshGpu:
     def test_pixels_above_level_become_255(self, cupy_threshold):
         thresh_mod, cp = cupy_threshold
@@ -183,6 +212,11 @@ class TestBinaryThreshGpu:
         _, cpu = cv2.threshold(img_np, 127, 255, cv2.THRESH_BINARY)
         gpu = cp.asnumpy(thresh_mod.binary_thresh_gpu(cp.asarray(img_np), level=127))
         np.testing.assert_array_equal(cpu, gpu)
+
+
+# ---------------------------------------------------------------------------
+# np_uint8_* wrappers (pre-existing tests, preserved)
+# ---------------------------------------------------------------------------
 
 
 class TestNpUint8BinaryThresh:
@@ -242,3 +276,256 @@ class TestNpUint8OtsuBinaryThresh:
         # Same behavior as canonical name.
         canonical = thresh_mod.np_uint8_otsu_binary_thresh(img)
         np.testing.assert_array_equal(out, canonical)
+
+
+# ---------------------------------------------------------------------------
+# adaptive_binary_thresh (GPU) — new
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.gpu
+class TestAdaptiveBinaryThreshGpu:
+    def test_output_is_cupy_uint8_binary(self, cupy_threshold):
+        """GPU adaptive returns a cp.ndarray of dtype uint8 with values in {0,255}."""
+        thresh_mod, cp = cupy_threshold
+        img_np = _gradient_with_text_np()
+        img_cp = cp.asarray(img_np)
+        out = thresh_mod.adaptive_binary_thresh(img_cp)
+        # Type stays on-device
+        assert type(out).__module__.startswith("cupy"), (
+            f"Expected cupy array, got {type(out)}"
+        )
+        assert out.dtype == cp.uint8
+        assert tuple(out.shape) == img_np.shape
+        assert set(np.unique(out.get()).tolist()).issubset({0, 255})
+
+    def test_input_and_output_remain_on_device(self, cupy_threshold):
+        """Proves no host transfer: input is cp.ndarray, output is cp.ndarray."""
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.adaptive_binary_thresh(img_cp)
+        assert hasattr(out, "device"), "Output must be a CuPy device array"
+        # If it were a NumPy array it would not have a .device attribute
+
+    def test_parity_with_cv2_mean_mode(self, cupy_threshold):
+        """GPU mean-mode result must be close to cv2 mean-mode result.
+
+        We allow up to 2% of pixels to differ (border and rounding effects).
+        """
+        thresh_mod, cp = cupy_threshold
+        pytest.importorskip("cv2")
+        from pdomain_book_tools.image_processing.cv2_processing.threshold import (
+            adaptive_binary_thresh as cpu_adaptive,
+        )
+
+        img_np = _gradient_with_text_np()
+        img_cp = cp.asarray(img_np)
+
+        cpu_out = cpu_adaptive(img_np, block_size=31, c=10, mode="mean")
+        gpu_out = thresh_mod.adaptive_binary_thresh(
+            img_cp, block_size=31, c=10, mode="mean"
+        )
+        gpu_out_np = gpu_out.get()
+
+        diff = np.sum(cpu_out != gpu_out_np)
+        total = cpu_out.size
+        assert diff / total < 0.02, (
+            f"GPU/CPU mean-mode adaptive mismatch: {diff}/{total} pixels differ"
+        )
+
+    def test_mode_gaussian_produces_binary(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.adaptive_binary_thresh(img_cp, mode="gaussian")
+        assert out.dtype == cp.uint8
+        assert set(np.unique(out.get()).tolist()).issubset({0, 255})
+
+    def test_unknown_mode_raises(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.zeros((10, 10), dtype=cp.uint8)
+        with pytest.raises(ValueError, match="Unknown adaptive mode"):
+            thresh_mod.adaptive_binary_thresh(img_cp, mode="bogus")
+
+
+# ---------------------------------------------------------------------------
+# sauvola_binary_thresh (GPU) — new
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.gpu
+class TestSauvolaBinaryThreshGpu:
+    def test_output_is_cupy_uint8_binary(self, cupy_threshold):
+        """GPU Sauvola returns a cp.ndarray of dtype uint8 with values in {0,255}."""
+        thresh_mod, cp = cupy_threshold
+        img_np = _gradient_with_text_np()
+        img_cp = cp.asarray(img_np)
+        out = thresh_mod.sauvola_binary_thresh(img_cp)
+        assert type(out).__module__.startswith("cupy"), (
+            f"Expected cupy array, got {type(out)}"
+        )
+        assert out.dtype == cp.uint8
+        assert tuple(out.shape) == img_np.shape
+        assert set(np.unique(out.get()).tolist()).issubset({0, 255})
+
+    def test_input_and_output_remain_on_device(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.sauvola_binary_thresh(img_cp)
+        assert hasattr(out, "device"), "Output must be a CuPy device array"
+
+    def test_parity_with_cv2_result(self, cupy_threshold):
+        """GPU Sauvola result must be very close to the cpu Sauvola result.
+
+        Allow up to 2% pixel difference (border/rounding from uniform_filter
+        vs cv2.boxFilter boundary handling).
+        """
+        thresh_mod, cp = cupy_threshold
+        from pdomain_book_tools.image_processing.cv2_processing.threshold import (
+            sauvola_binary_thresh as cpu_sauvola,
+        )
+
+        img_np = _gradient_with_text_np()
+        img_cp = cp.asarray(img_np)
+
+        cpu_out = cpu_sauvola(img_np, window_size=25, k=0.2, r=128)
+        gpu_out = thresh_mod.sauvola_binary_thresh(img_cp, window_size=25, k=0.2, r=128)
+        gpu_out_np = gpu_out.get()
+
+        diff = np.sum(cpu_out != gpu_out_np)
+        total = cpu_out.size
+        assert diff / total < 0.02, (
+            f"GPU/CPU Sauvola mismatch: {diff}/{total} pixels differ"
+        )
+
+    def test_recovers_dark_text_patches(self, cupy_threshold):
+        """Dark text patches should be classified as 0 (text)."""
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.sauvola_binary_thresh(img_cp)
+        out_np = out.get()
+        for r, col in [(15, 15), (35, 65), (65, 20), (80, 75)]:
+            assert out_np[r, col] == 0, (
+                f"GPU Sauvola: expected 0 at ({r},{col}), got {out_np[r, col]}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# niblack_binary_thresh (GPU) — new
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.gpu
+class TestNiblackBinaryThreshGpu:
+    def test_output_is_cupy_uint8_binary(self, cupy_threshold):
+        """GPU Niblack returns a cp.ndarray of dtype uint8 with values in {0,255}."""
+        thresh_mod, cp = cupy_threshold
+        img_np = _gradient_with_text_np()
+        img_cp = cp.asarray(img_np)
+        out = thresh_mod.niblack_binary_thresh(img_cp)
+        assert type(out).__module__.startswith("cupy"), (
+            f"Expected cupy array, got {type(out)}"
+        )
+        assert out.dtype == cp.uint8
+        assert tuple(out.shape) == img_np.shape
+        assert set(np.unique(out.get()).tolist()).issubset({0, 255})
+
+    def test_input_and_output_remain_on_device(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.niblack_binary_thresh(img_cp)
+        assert hasattr(out, "device"), "Output must be a CuPy device array"
+
+    def test_parity_with_cv2_result(self, cupy_threshold):
+        """GPU Niblack result must be very close to the cpu Niblack result.
+
+        Allow up to 2% pixel difference (border/rounding).
+        """
+        thresh_mod, cp = cupy_threshold
+        from pdomain_book_tools.image_processing.cv2_processing.threshold import (
+            niblack_binary_thresh as cpu_niblack,
+        )
+
+        img_np = _gradient_with_text_np()
+        img_cp = cp.asarray(img_np)
+
+        cpu_out = cpu_niblack(img_np, window_size=25, k=-0.2)
+        gpu_out = thresh_mod.niblack_binary_thresh(img_cp, window_size=25, k=-0.2)
+        gpu_out_np = gpu_out.get()
+
+        diff = np.sum(cpu_out != gpu_out_np)
+        total = cpu_out.size
+        assert diff / total < 0.02, (
+            f"GPU/CPU Niblack mismatch: {diff}/{total} pixels differ"
+        )
+
+    def test_recovers_dark_text_patches(self, cupy_threshold):
+        """Dark text patches should be classified as 0 (text)."""
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.niblack_binary_thresh(img_cp)
+        out_np = out.get()
+        for r, col in [(15, 15), (35, 65), (65, 20), (80, 75)]:
+            assert out_np[r, col] == 0, (
+                f"GPU Niblack: expected 0 at ({r},{col}), got {out_np[r, col]}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# binarize dispatcher (GPU) — new
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.gpu
+class TestBinarizeGpu:
+    def test_default_method_is_otsu(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img = cp.zeros((20, 20), dtype=cp.float32)
+        img[:10, :] = 0.1
+        img[10:, :] = 0.9
+        out = thresh_mod.binarize(img)
+        expected = thresh_mod.otsu_binary_thresh(img)
+        assert cp.array_equal(out, expected)
+
+    def test_adaptive_dispatches(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.binarize(img_cp, method="adaptive")
+        expected = thresh_mod.adaptive_binary_thresh(img_cp)
+        assert cp.array_equal(out, expected)
+
+    def test_sauvola_dispatches(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.binarize(img_cp, method="sauvola")
+        expected = thresh_mod.sauvola_binary_thresh(img_cp)
+        assert cp.array_equal(out, expected)
+
+    def test_niblack_dispatches(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.binarize(img_cp, method="niblack")
+        expected = thresh_mod.niblack_binary_thresh(img_cp)
+        assert cp.array_equal(out, expected)
+
+    def test_params_forwarded(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        out = thresh_mod.binarize(img_cp, method="sauvola", window_size=15, k=0.15)
+        expected = thresh_mod.sauvola_binary_thresh(img_cp, window_size=15, k=0.15)
+        assert cp.array_equal(out, expected)
+
+    def test_unknown_method_raises_value_error(self, cupy_threshold):
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.zeros((4, 4), dtype=cp.uint8)
+        with pytest.raises(ValueError):
+            thresh_mod.binarize(img_cp, method="bogus")
+
+    def test_output_remains_on_device(self, cupy_threshold):
+        """binarize dispatcher must not move data to CPU — output is cp.ndarray."""
+        thresh_mod, cp = cupy_threshold
+        img_cp = cp.asarray(_gradient_with_text_np())
+        for method in ("adaptive", "sauvola", "niblack"):
+            out = thresh_mod.binarize(img_cp, method=method)
+            assert hasattr(out, "device"), (
+                f"binarize(method={method!r}) returned a non-device array"
+            )
