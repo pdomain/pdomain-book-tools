@@ -87,6 +87,9 @@ def ensure_defaults() -> None:
     from pdomain_book_tools.geometry_correction.backends.deskew.sbrunner import (
         SbrunnerDeskew,
     )
+    from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
+        TextlineDisparityDewarp,
+    )
     from pdomain_book_tools.geometry_correction.backends.dewarp.uvdoc import UVDocDewarp
     from pdomain_book_tools.geometry_correction.backends.page_side.gutter_shadow import (
         GutterShadowPageSide,
@@ -101,4 +104,5 @@ def ensure_defaults() -> None:
     register_page_side("supplied", SuppliedPageSide)
     register_page_side("gutter_shadow", GutterShadowPageSide)
     register_dewarp("uvdoc", UVDocDewarp)
+    register_dewarp("textline_disparity", TextlineDisparityDewarp)
     _defaults_loaded = True

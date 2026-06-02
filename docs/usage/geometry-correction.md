@@ -124,3 +124,65 @@ inv = transform.invert()                  # invert (affine only)
 
 Grid transforms (`kind="grid"`) are non-invertible — they come from dense
 backward-map dewarpers. Affine transforms invert exactly.
+
+## Textline-disparity dewarp (scanned-page workhorse)
+
+> **Spec:** [`docs/specs/2026-06-02-textline-disparity-dewarp-design.md`](../specs/2026-06-02-textline-disparity-dewarp-design.md)
+
+`TextlineDisparityDewarp` is a clean-room reimplementation of Leptonica's
+textline-disparity model: morph-consolidate text lines, fit order-2 baselines
+(vertical disparity), and optionally straighten the reference margin (horizontal
+disparity, even/odd-aware). No neural-network weights required.
+
+### Regime routing (flat / flat_curl / oblique)
+
+`RegimeDetector` classifies a page by two signals:
+
+- **baseline_sag** — mean `|c2|` of detected baselines, scaled to a
+  dimensionless page-sag. Flat pages have sag near 0; curl pages have sag ≥ 0.04
+  (default).
+- **edge_convergence** — angle between the left/right content edges. Oblique
+  photos show convergence ≥ 0.10 rad (default).
+
+| Regime | Signal | Routed to |
+|---|---|---|
+| `flat` | low sag, low convergence | deskew only |
+| `flat_curl` | high sag, low convergence | `textline_disparity` |
+| `oblique` | high convergence | UVDoc (when available) |
+
+Use `scanned_pipeline()` for the regime-aware default:
+
+```python
+from pdomain_book_tools.geometry_correction.defaults import scanned_pipeline
+
+pipe = scanned_pipeline()
+result = pipe.run(img, page_side_hint=PageSide.LEFT)
+```
+
+### Even/odd (gutter_edge) contract
+
+- **Verso (LEFT page, gutter on right):** reference the LEFT line-ends; target =
+  minimum left end across lines.
+- **Recto (RIGHT page, gutter on left):** reference the RIGHT line-ends; target =
+  maximum right end across lines.
+
+Pass `gutter_edge="right"` for verso, `"left"` for recto. The `GutterShadowPageSide`
+backend sets `gutter_edge` automatically from the detected binding side.
+
+### Sparse-page fallback
+
+When fewer than `min_textlines=15` (Leptonica `DefaultMinLines`) text lines survive
+the short-line cull, `TextlineDisparityDewarp.estimate()` returns an identity
+transform with `confidence=0.0`. The regime gate / caller can then defer to UVDoc
+or skip dewarp entirely.
+
+### GPU acceleration (`[gpu]` extra)
+
+Pass `prefer_gpu=True` to use the CuPy mirror for morphology and the dense resample:
+
+```python
+TextlineDisparityDewarp(prefer_gpu=True)
+```
+
+CuPy is the `[gpu]` optional extra. On CPU-only installs the flag is silently
+ignored and the NumPy path is used.
