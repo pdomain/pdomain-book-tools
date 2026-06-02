@@ -130,11 +130,12 @@ def detect_textlines(binary: Any, *, page_width: int) -> list[LineSamples]:
             continue
         ux = cp.unique(xs)
         idx = cp.searchsorted(ux, xs)
-        sums = cp.zeros(ux.size, cp.float64)
-        counts = cp.zeros(ux.size, cp.float64)
-        cp.add.at(sums, idx, ys.astype(cp.float64))
+        ux_size: int = ux.size  # pyright: ignore[reportAttributeAccessIssue]
+        sums = cp.zeros(ux_size, cp.float64)
+        counts = cp.zeros(ux_size, cp.float64)
+        cp.add.at(sums, idx, ys.astype(cp.float64))  # pyright: ignore[reportAttributeAccessIssue]
         cp.add.at(counts, idx, 1.0)
-        lines.append(LineSamples(xs=ux.astype(cp.float64), ys=sums / counts))
+        lines.append(LineSamples(xs=ux.astype(cp.float64), ys=sums / counts))  # pyright: ignore[reportAttributeAccessIssue]
     lines.sort(key=lambda ln: float(ln.ys.mean()))
     return lines
 
@@ -173,7 +174,11 @@ def remove_short_lines(
 def build_vertical_disparity(
     coeffs: list[QuadCoeffs], size: tuple[int, int], *, sampling: int = DEFAULT_SAMPLING
 ) -> Any:
-    """Dense V(x,y): row offset that flattens each curved baseline (GPU path)."""
+    """Dense V(x,y): row offset that flattens each curved baseline (GPU path).
+
+    Uses cp.polyfit/polyval when available; falls back to np.polyfit when BLAS
+    libraries are not fully installed (e.g. partial CUDA install without CUBLAS).
+    """
     require_cupy()
     h, w = size
     xs_full = cp.arange(w, dtype=cp.float64)
@@ -188,8 +193,15 @@ def build_vertical_disparity(
         y_pts = fitted[:, x]
         d_pts = refs - fitted[:, x]
         order = cp.argsort(y_pts)
-        cc = cp.polyfit(y_pts[order], d_pts[order], deg)
-        samp[:, j] = cp.polyval(cc, rows_full)
+        try:
+            cc = cp.polyfit(y_pts[order], d_pts[order], deg)
+            samp[:, j] = cp.polyval(cc, rows_full)
+        except (ImportError, RuntimeError):
+            # Fall back to NumPy polyfit if BLAS libs unavailable
+            y_np = cp.asnumpy(y_pts[order])
+            d_np = cp.asnumpy(d_pts[order])
+            cc_np = np.polyfit(y_np, d_np, deg)
+            samp[:, j] = cp.asarray(np.polyval(cc_np, cp.asnumpy(rows_full)))
     disparity = cp.empty((h, w), cp.float32)
     sx = sample_x.astype(cp.float64)
     cols = cp.arange(w, dtype=cp.float64)
@@ -249,9 +261,10 @@ def build_disparity_maps(
     hdisp = build_horizontal_disparity(
         lines, coeffs, size, gutter_edge=gutter_edge, sampling=sampling
     )
-    ys, xs = cp.meshgrid(
+    mesh = cp.meshgrid(  # pyright: ignore[reportGeneralTypeIssues]
         cp.arange(h, dtype=cp.float32), cp.arange(w, dtype=cp.float32), indexing="ij"
     )
+    ys, xs = mesh[0], mesh[1]  # pyright: ignore[reportGeneralTypeIssues]
     return (xs + hdisp).astype(cp.float32), (ys + vdisp).astype(cp.float32)
 
 
