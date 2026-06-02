@@ -44,7 +44,7 @@ def resolve_model_path(explicit: str | os.PathLike[str] | None = None) -> Path:
 
 def run_uvdoc(image_rgb: np.ndarray, model_path: Path) -> np.ndarray:
     """Run UVDoc ONNX, returning the grid (1,2,Gh,Gw)."""
-    import onnxruntime as ort  # lazy: only when the extra is installed
+    import onnxruntime as ort  # pyright: ignore[reportMissingImports]  # lazy: only when the extra is installed
 
     inp = cv2.resize(image_rgb.astype(np.float32) / 255.0, UVDOC_INPUT_WH)
     inp = inp.transpose(2, 0, 1)[None]  # (1,3,H,W)
