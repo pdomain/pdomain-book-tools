@@ -36,8 +36,18 @@ def _foreground_binary(image: np.ndarray) -> np.ndarray:
 
 
 def _ensure_foreground(binary: np.ndarray) -> np.ndarray:
-    """Accept a grayscale image *or* a foreground-text binary; return text=255."""
-    if binary.dtype == np.uint8 and set(np.unique(binary)).issubset({0, 255}):
+    """Accept a grayscale image *or* a foreground-text binary; return text=255.
+
+    Binary images where the majority of pixels are dark (mean < 128) are assumed to
+    already be foreground=255 and passed through unchanged. All other images (including
+    dark-text-on-light-background) are re-binarized via Otsu+INV.
+    """
+    if (
+        binary.dtype == np.uint8
+        and set(np.unique(binary)).issubset({0, 255})
+        and float(binary.mean()) < 128.0
+    ):
+        # Dark background (most pixels 0): text is already at 255
         return binary
     return _foreground_binary(binary)
 
