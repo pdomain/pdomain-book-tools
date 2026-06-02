@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 
@@ -169,12 +169,53 @@ def adaptive_binary_thresh(
     c: int = 10,
     mode: str = "gaussian",
 ) -> CuPyArray:
-    """Adaptive (local) binarisation on a GPU array (not yet implemented)."""
+    """Adaptive (local) binarisation on a GPU array.
+
+    Computes a local mean over each pixel's ``block_size x block_size``
+    neighbourhood (using a Gaussian-weighted kernel when ``mode="gaussian"``,
+    or a uniform mean when ``mode="mean"``), then thresholds
+    ``img > (local_mean - c)``.  Pixels above the threshold become 255
+    (background); pixels at or below become 0 (text).
+
+    All computation stays on-device — no CPU/NumPy round-trips.
+
+    Args:
+        img: 2-D uint8 CuPy array (grayscale image, on GPU).
+        block_size: Side length of the local neighbourhood (must be odd >= 3).
+        c: Constant subtracted from the local mean. Increase to bias more
+            pixels towards 0 (darker output).
+        mode: ``"gaussian"`` (default) — Gaussian-weighted local mean;
+            ``"mean"`` — uniform local mean.
+
+    Returns:
+        cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
+    """
     require_cupy()
-    raise NotImplementedError(
-        "adaptive_binary_thresh is a stub; the adaptive binarization method is "
-        "specified but not yet implemented. See "
-        "docs/specs/2026-06-02-threshold-binarization-methods.md."
+    import cupyx.scipy.ndimage as cpnd  # pyright: ignore[reportMissingImports]  # cupyx is part of the cupy GPU extra
+
+    img_f = cast("CuPyArray", img.astype(cp.float32))
+
+    if mode == "gaussian":
+        # sigma chosen to match OpenCV's formula: sigma = 0.3 * ((block_size-1)/2 - 1) + 0.8
+        sigma = 0.3 * ((block_size - 1) / 2 - 1) + 0.8
+        local_mean = cast(
+            "CuPyArray",
+            cpnd.gaussian_filter(img_f, sigma=sigma),
+        )
+    elif mode == "mean":
+        local_mean = cast(
+            "CuPyArray",
+            cpnd.uniform_filter(img_f, size=block_size),
+        )
+    else:
+        raise ValueError(
+            f"Unknown adaptive mode {mode!r}; valid modes are: 'gaussian', 'mean'."
+        )
+
+    threshold = local_mean - c  # pyright: ignore[reportOperatorIssue]
+    return cast(
+        "CuPyArray",
+        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]
     )
 
 
@@ -185,12 +226,47 @@ def sauvola_binary_thresh(
     k: float = 0.2,
     r: int = 128,
 ) -> CuPyArray:
-    """Sauvola local binarisation on a GPU array (not yet implemented)."""
+    """Sauvola local binarisation on a GPU array.
+
+    The Sauvola threshold at each pixel is::
+
+        T = m * (1 + k * (s / r - 1))
+
+    where *m* is the local mean and *s* is the local standard deviation over a
+    ``window_size x window_size`` neighbourhood.  Pixels with value ``> T``
+    become 255 (background); pixels ``<= T`` become 0 (text).
+
+    All computation stays on-device — no CPU/NumPy round-trips.  Local
+    statistics are computed via ``cupyx.scipy.ndimage.uniform_filter``:
+    variance = E[x^2] - E[x]^2.
+
+    Args:
+        img: 2-D uint8 CuPy array (grayscale image, on GPU).
+        window_size: Side length of the local neighbourhood (should be odd).
+        k: Sauvola sensitivity parameter (typically 0.2).
+        r: Dynamic range of the standard deviation (typically 128 for uint8
+            images; controls the weight of the local contrast term).
+
+    Returns:
+        cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
+    """
     require_cupy()
-    raise NotImplementedError(
-        "sauvola_binary_thresh is a stub; the Sauvola binarization method is "
-        "specified but not yet implemented. See "
-        "docs/specs/2026-06-02-threshold-binarization-methods.md."
+    import cupyx.scipy.ndimage as cpnd  # pyright: ignore[reportMissingImports]  # cupyx is part of the cupy GPU extra
+
+    img_f = cast("CuPyArray", img.astype(cp.float64))
+
+    # Local mean: E[x]
+    local_mean = cast("CuPyArray", cpnd.uniform_filter(img_f, size=window_size))
+    # Local mean of squares: E[x²]
+    local_mean_sq = cast("CuPyArray", cpnd.uniform_filter(img_f**2, size=window_size))  # pyright: ignore[reportOperatorIssue]
+    # Variance = E[x²] - E[x]² (clamp to 0 to avoid negative-float artifacts)
+    local_var = cp.maximum(local_mean_sq - local_mean**2, 0.0)  # pyright: ignore[reportOperatorIssue]
+    local_std = cp.sqrt(local_var)
+
+    threshold = local_mean * (1.0 + k * (local_std / r - 1.0))  # pyright: ignore[reportOperatorIssue]
+    return cast(
+        "CuPyArray",
+        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]
     )
 
 
@@ -200,10 +276,70 @@ def niblack_binary_thresh(
     window_size: int = 25,
     k: float = -0.2,
 ) -> CuPyArray:
-    """Niblack local binarisation on a GPU array (not yet implemented)."""
+    """Niblack local binarisation on a GPU array.
+
+    The Niblack threshold at each pixel is::
+
+        T = m + k * s
+
+    where *m* is the local mean and *s* is the local standard deviation over a
+    ``window_size x window_size`` neighbourhood.  Pixels with value ``> T``
+    become 255 (background); pixels ``<= T`` become 0 (text).
+
+    All computation stays on-device — no CPU/NumPy round-trips.  Local
+    statistics are computed via ``cupyx.scipy.ndimage.uniform_filter``:
+    variance = E[x^2] - E[x]^2.
+
+    Args:
+        img: 2-D uint8 CuPy array (grayscale image, on GPU).
+        window_size: Side length of the local neighbourhood (should be odd).
+        k: Niblack sensitivity parameter (typically -0.2).
+
+    Returns:
+        cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
+    """
     require_cupy()
-    raise NotImplementedError(
-        "niblack_binary_thresh is a stub; the Niblack binarization method is "
-        "specified but not yet implemented. See "
-        "docs/specs/2026-06-02-threshold-binarization-methods.md."
+    import cupyx.scipy.ndimage as cpnd  # pyright: ignore[reportMissingImports]  # cupyx is part of the cupy GPU extra
+
+    img_f = cast("CuPyArray", img.astype(cp.float64))
+
+    local_mean = cast("CuPyArray", cpnd.uniform_filter(img_f, size=window_size))
+    local_mean_sq = cast("CuPyArray", cpnd.uniform_filter(img_f**2, size=window_size))  # pyright: ignore[reportOperatorIssue]
+    local_var = cp.maximum(local_mean_sq - local_mean**2, 0.0)  # pyright: ignore[reportOperatorIssue]
+    local_std = cp.sqrt(local_var)
+
+    threshold = local_mean + k * local_std  # pyright: ignore[reportOperatorIssue]
+    return cast(
+        "CuPyArray",
+        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]
+    )
+
+
+def binarize(img: CuPyArray, *, method: str = "otsu", **params: Any) -> CuPyArray:
+    """Binarise a grayscale GPU image via the named method, dispatching to its helper.
+
+    Mirrors the cv2_processing ``binarize`` dispatcher but operates entirely
+    on-device — all operations stay on the GPU; no host (CPU/NumPy) transfers.
+
+    Args:
+        img: 2-D CuPy array (grayscale image, on GPU).
+        method: One of ``"otsu"`` (default), ``"adaptive"``, ``"sauvola"``,
+            ``"niblack"``.
+        **params: Additional keyword arguments forwarded to the selected method.
+
+    Returns:
+        cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
+    """
+    require_cupy()
+    if method == "otsu":
+        return otsu_binary_thresh(img)
+    if method == "adaptive":
+        return adaptive_binary_thresh(img, **params)
+    if method == "sauvola":
+        return sauvola_binary_thresh(img, **params)
+    if method == "niblack":
+        return niblack_binary_thresh(img, **params)
+    raise ValueError(
+        f"Unknown binarization method {method!r}; "
+        "valid methods are: 'otsu', 'adaptive', 'sauvola', 'niblack'."
     )
