@@ -64,3 +64,31 @@ def test_register_and_get_roundtrip():
 def test_get_unknown_raises():
     with pytest.raises(KeyError):
         get_deskew("nope-not-registered")
+
+
+# --- Task 13: defaults ---
+
+
+def test_builtin_backends_are_registered():
+    from pdomain_book_tools.geometry_correction import registry
+
+    registry.ensure_defaults()
+    assert "projection" in registry.available("deskew")
+    assert "sbrunner" in registry.available("deskew")
+    assert "image_based" in registry.available("curvature")
+    assert "supplied" in registry.available("page_side")
+    assert "gutter_shadow" in registry.available("page_side")
+    assert "uvdoc" in registry.available("dewarp")  # registered even if extra absent
+
+
+def test_default_pipeline_builds_and_runs_on_flat_page():
+    import cv2
+    import numpy as np
+
+    from pdomain_book_tools.geometry_correction.defaults import default_pipeline
+
+    img = np.full((200, 300), 255, np.uint8)
+    for y in range(30, 170, 14):
+        cv2.rectangle(img, (40, y), (260, y + 4), 0, -1)
+    res = default_pipeline().run(img)
+    assert res.image.shape == img.shape  # flat page: deskew-only, shape preserved

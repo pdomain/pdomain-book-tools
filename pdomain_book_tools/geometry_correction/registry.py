@@ -68,3 +68,37 @@ def get_page_side(name: str) -> object:
 def get_curvature(name: str) -> object:
     """Return a new instance of the named curvature detector."""
     return _get("curvature", name)
+
+
+_defaults_loaded = False
+
+
+def ensure_defaults() -> None:
+    """Register all built-in backends (idempotent)."""
+    global _defaults_loaded  # noqa: PLW0603
+    if _defaults_loaded:
+        return
+    from pdomain_book_tools.geometry_correction.backends.curvature.image_based import (
+        ImageBasedCurvature,
+    )
+    from pdomain_book_tools.geometry_correction.backends.deskew.projection import (
+        ProjectionDeskew,
+    )
+    from pdomain_book_tools.geometry_correction.backends.deskew.sbrunner import (
+        SbrunnerDeskew,
+    )
+    from pdomain_book_tools.geometry_correction.backends.dewarp.uvdoc import UVDocDewarp
+    from pdomain_book_tools.geometry_correction.backends.page_side.gutter_shadow import (
+        GutterShadowPageSide,
+    )
+    from pdomain_book_tools.geometry_correction.backends.page_side.supplied import (
+        SuppliedPageSide,
+    )
+
+    register_deskew("projection", ProjectionDeskew)
+    register_deskew("sbrunner", SbrunnerDeskew)
+    register_curvature("image_based", ImageBasedCurvature)
+    register_page_side("supplied", SuppliedPageSide)
+    register_page_side("gutter_shadow", GutterShadowPageSide)
+    register_dewarp("uvdoc", UVDocDewarp)
+    _defaults_loaded = True
