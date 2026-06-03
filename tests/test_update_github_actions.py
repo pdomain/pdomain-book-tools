@@ -236,3 +236,40 @@ def test_update_pyproject_uv_version_missing_file(tmp_path: Path) -> None:
     p = tmp_path / "nonexistent.toml"
     changed = uga.update_pyproject_uv_version(p, version="0.11.17")
     assert changed is False
+
+
+def test_update_workflow_refs_updates_quoted_action_refs(tmp_path: Path) -> None:
+    workflow = tmp_path / "ci.yml"
+    workflow.write_text(
+        "jobs:\n"
+        "  ci:\n"
+        "    steps:\n"
+        '      - uses: "actions/checkout@oldoldoldoldoldoldoldoldoldoldoldoldoldoldoldoldold1"\n'
+        "      - uses: 'astral-sh/setup-uv@oldoldoldoldoldoldoldoldoldoldoldoldoldoldoldoldold2'\n",
+        encoding="utf-8",
+    )
+    releases = {
+        "actions/checkout": uga.ActionRelease(tag="v-test", sha="a" * 40),
+        "astral-sh/setup-uv": uga.ActionRelease(tag="v-test", sha="b" * 40),
+    }
+
+    assert uga.update_workflow_refs(workflow, releases=releases)
+    text = workflow.read_text(encoding="utf-8")
+    assert f'uses: "actions/checkout@{"a" * 40}"' in text
+    assert f"uses: 'astral-sh/setup-uv@{'b' * 40}'" in text
+
+
+def test_update_uv_version_refs_updates_quoted_setup_uv(tmp_path: Path) -> None:
+    workflow = tmp_path / "ci.yml"
+    workflow.write_text(
+        "jobs:\n"
+        "  ci:\n"
+        "    steps:\n"
+        '      - uses: "astral-sh/setup-uv@oldoldoldoldoldoldoldoldoldoldoldoldoldoldoldoldold2"\n'
+        "        with:\n"
+        '          version: "0.1.0"\n',
+        encoding="utf-8",
+    )
+
+    assert uga.update_uv_version_refs(workflow, version="0.11.16")
+    assert 'version: "0.11.16"' in workflow.read_text(encoding="utf-8")
