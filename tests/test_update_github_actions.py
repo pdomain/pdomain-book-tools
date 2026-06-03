@@ -6,6 +6,8 @@ import json
 import subprocess
 from typing import TYPE_CHECKING
 
+import pytest
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -90,6 +92,33 @@ def test_update_workflow_refs_ignores_unmanaged(tmp_path: Path) -> None:
     changed = uga.update_workflow_refs(wf, releases={})
     assert changed is False
     assert wf.read_text() == original
+
+
+def test_detects_unmanaged_workflow_action(tmp_path: Path) -> None:
+    workflows = tmp_path / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    (workflows / "ci.yml").write_text(
+        "name: ci\njobs:\n  ci:\n    steps:\n      - uses: example/not-managed@abc123\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="example/not-managed"):
+        uga.verify_managed_actions(workflows)
+
+
+def test_accepts_local_workflow_call(tmp_path: Path) -> None:
+    workflows = tmp_path / ".github" / "workflows"
+    workflows.mkdir(parents=True)
+    (workflows / "release.yml").write_text(
+        "jobs:\n  regen:\n    uses: ./.github/workflows/regen.yml\n",
+        encoding="utf-8",
+    )
+
+    uga.verify_managed_actions(workflows)
+
+
+def test_current_workflows_use_only_managed_actions() -> None:
+    uga.verify_managed_actions()
 
 
 def test_update_github_actions_returns_changed_paths(tmp_path: Path) -> None:
