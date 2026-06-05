@@ -183,9 +183,6 @@ ignore = [
     "D100",
     "D104",
     "D107",
-    # ANN101/ANN102 (self/cls annotations) are deprecated in ruff >= 0.2.
-    "ANN101",
-    "ANN102",
     # PLR0913 (too-many-arguments): OCR/image functions legitimately need many
     # params; enforcing here would require invasive config-object refactors.
     "PLR0913",
@@ -266,7 +263,7 @@ known-first-party = ["pdomain_book_tools"]
 # in this rollout. Add individually as each file gets a focused pass.
 "pdomain_book_tools/ocr/page.py" = ["N811", "E402", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]
 "pdomain_book_tools/ocr/reorganize_page_utils.py" = ["N803", "N806", "N811", "N815", "ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401"]
-"pdomain_book_tools/ocr/ground_truth_matching.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "PLW0603"]
+"pdomain_book_tools/ocr/ground_truth_matching.py" = ["ANN", "D", "ERA", "G003", "G004", "BLE001", "TRY", "PERF401", "PLW0603"]
 "pdomain_book_tools/geometry/bounding_box.py" = ["N802", "F401", "ANN", "D", "G003", "G004", "S108"]
 "pdomain_book_tools/ocr/document.py" = ["N806", "ANN", "D", "G003", "G004", "BLE001", "TRY"]
 "pdomain_book_tools/pgdp/pgdp_results.py" = ["ANN", "D", "G003", "G004", "BLE001", "TRY", "PERF401", "S108"]

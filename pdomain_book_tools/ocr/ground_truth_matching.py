@@ -141,7 +141,7 @@ def update_page_with_ground_truth_text(
     page.remove_ground_truth()
 
     # Sequence Matcher needs ordered tuples, so convert lists + dicts into tuples of tuples of strings
-    #   example: ( ( "line1word1", "line1word2" ), ("line2word1", "line2word2") )  # noqa: ERA001
+    #   example: ( ( "line1word1", "line1word2" ), ("line2word1", "line2word2") )
     ocr_tuples: list[TextTuple] = [
         tuple(word.text for word in line.words) for line in page.lines
     ]
