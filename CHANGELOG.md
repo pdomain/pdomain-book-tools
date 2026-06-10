@@ -13,6 +13,14 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+- **feat(image): `denoise_binary` primitive** — connected-component area
+  filtering that removes speckle noise from binarized book-scan pages while
+  preserving small genuine glyph features (periods, diacritics, thin serifs).
+  Available as
+  `from pdomain_book_tools.image_processing.cv2_processing import denoise_binary`.
+  Parameters: `min_component_area` (default 6 px², period-safe at 300 DPI)
+  and optional `median_kernel_size` pre-pass.
+
 - **feat(ocr): auto-rotation for batch OCR** — `Document.from_images_ocr_via_doctr`
   now accepts `auto_rotate: bool = True` and `auto_rotate_threshold: float | None = None`,
   matching the singular method's interface. After the initial single-pass batch OCR, any

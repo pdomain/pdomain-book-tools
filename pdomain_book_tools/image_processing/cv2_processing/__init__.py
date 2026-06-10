@@ -2,6 +2,7 @@ from .canvas import Alignment, map_content_onto_scaled_canvas
 from .colors import cv2_convert_to_grayscale
 from .contours import find_and_draw_contours, remove_small_contours
 from .crop import crop_edges, crop_to_rectangle
+from .denoise import denoise_binary
 from .edge_finding import find_edges
 from .encoding import encode_bgr_image_as_png
 from .invert import invert_image
@@ -26,6 +27,7 @@ __all__ = [
     "crop_edges",
     "crop_to_rectangle",
     "cv2_convert_to_grayscale",
+    "denoise_binary",
     "encode_bgr_image_as_png",
     "find_and_draw_contours",
     "find_edges",
