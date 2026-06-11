@@ -13,6 +13,27 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+- **feat(image): ndarray-accepting page-attribute detection** — new module
+  `pdomain_book_tools.image_processing.page_attributes` exposes
+  `detect_page_attributes_from_array(img: NDArray[np.uint8]) -> PageCharacteristics`
+  and `detect_page_attributes(image_bytes: bytes) -> PageCharacteristics`.
+  The bytes variant decodes once and delegates to the array variant; callers
+  in pipeline stages that already hold a decoded BGR ndarray can call the
+  array variant directly and avoid an encode/decode round-trip.
+  `PageCharacteristics` is a plain dataclass with string fields
+  (`suggested_type`, `suggested_alignment`, `confidence`) — no enum dependency.
+
+- **feat(layout): ndarray-accepting illustration detection** — new function
+  `auto_detect_illustrations_from_array(img, *, layout_detector, confidence_threshold)`
+  in `pdomain_book_tools.layout` (also importable from
+  `pdomain_book_tools.layout.ndarray_detection`). Accepts a BGR ndarray
+  directly, passes it to `layout_detector.detect()` (which already supports
+  arrays via the existing `ImageSource` union), then filters to
+  `{figure, table, decoration}` regions above the threshold.  Returns a
+  `PageLayout` so the caller can inspect all detector metadata.  Pipeline
+  stages that previously wrote the ndarray to a temp file just to pass a
+  path can now call this instead.
+
 - **feat(image): `denoise_binary` primitive** — connected-component area
   filtering that removes speckle noise from binarized book-scan pages while
   preserving small genuine glyph features (periods, diacritics, thin serifs).
