@@ -20,6 +20,8 @@ Public surface:
 - Region-geometry helpers: :func:`iou`, :func:`contains`,
   :func:`horizontal_overlap_ratio`, :func:`caption_for_figure`,
   :func:`region_reading_order`.
+- :func:`auto_detect_illustrations_from_array` — illustration detection that
+  accepts a BGR ndarray directly, skipping any encode/decode round-trip.
 """
 
 from pdomain_book_tools.layout.detector import (
@@ -33,6 +35,9 @@ from pdomain_book_tools.layout.geometry import (
     horizontal_overlap_ratio,
     iou,
     region_reading_order,
+)
+from pdomain_book_tools.layout.ndarray_detection import (
+    auto_detect_illustrations_from_array,
 )
 from pdomain_book_tools.layout.registry import clear_detector_cache, get_detector
 from pdomain_book_tools.layout.types import (
@@ -53,6 +58,7 @@ __all__ = [
     "PageLayout",
     "PageLayoutDict",
     "RegionType",
+    "auto_detect_illustrations_from_array",
     "caption_for_figure",
     "clear_detector_cache",
     "contains",
