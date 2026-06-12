@@ -84,12 +84,25 @@ def _mean_confidence(doc: Document) -> tuple[float, int]:
     when no words have a confidence value (so the empty-page case is
     treated as "no signal" rather than NaN-poisoning the comparison).
     """
-    confidences: list[float] = [
-        float(word.ocr_confidence)
-        for page in doc.pages
-        for word in page.words
-        if word.ocr_confidence is not None
-    ]
+    confidences: list[float] = []
+    try:
+        for page in doc.pages:
+            confidences.extend(
+                float(word.ocr_confidence)
+                for word in page.words
+                if word.ocr_confidence is not None
+            )
+    except (AttributeError, TypeError) as e:
+        # A raw DocTR result (or anything else that isn't our Document)
+        # lacks pages[].words[].ocr_confidence. Fail with guidance instead
+        # of an opaque AttributeError deep inside the rotation probes.
+        raise TypeError(
+            "ocr_fn must return a pdomain_book_tools Document (with "
+            f"pages[].words[].ocr_confidence); got {type(doc).__name__!r}. "
+            "If you have a raw DocTR predictor, wrap it with "
+            "Document.make_doctr_ocr_fn(predictor) instead of calling the "
+            "predictor directly."
+        ) from e
     if not confidences:
         return 0.0, 0
     return float(np.mean(confidences)), len(confidences)
@@ -117,8 +130,10 @@ def detect_best_rotation(
         Source image as a numpy array (BGR / RGB / grayscale).
     ocr_fn
         Callable that takes an image array and returns a :class:`Document`.
-        Typically a partially-applied ``Document.from_image_ocr_via_doctr``;
-        kept abstract so this module isn't bound to DocTR.
+        For DocTR, build one with ``Document.make_doctr_ocr_fn(predictor)``
+        — do NOT pass a raw DocTR predictor directly: predictors take a
+        *list* of pages and return a DocTR result, not a Document. Kept
+        abstract so this module isn't bound to DocTR.
     confidence_threshold
         Mean per-word confidence at which the 0° pass is considered good
         enough to skip the fallback rotations. Default 0.6.

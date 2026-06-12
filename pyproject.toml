@@ -364,6 +364,11 @@ filterwarnings = [
     # Pre-existing ignores: third-party noise that isn't actionable here.
     "ignore::UserWarning:cupy.*",
     "ignore::FutureWarning:torch.*",
+    # doctr.io.elements calls defusedxml.defuse_stdlib() at import time, which
+    # imports the deprecated defusedxml.cElementTree shim. Fires only in tests
+    # that import doctr lazily inside the test body (e.g. real-predictor
+    # orientation sanity tests). Upstream doctr issue; not actionable here.
+    "ignore:defusedxml.cElementTree is deprecated:DeprecationWarning",
     # Add new ignores below as new warnings surface — each one with a comment
     # explaining the package and why we tolerate it.
 ]

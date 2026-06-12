@@ -10,8 +10,16 @@ from logging import getLogger
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, cast
 
-from cv2 import COLOR_BGR2RGB, COLOR_GRAY2RGB, COLOR_RGB2BGR, cvtColor, imread
-from numpy import array, ndarray
+from cv2 import (
+    COLOR_BGR2RGB,
+    COLOR_BGRA2RGB,
+    COLOR_GRAY2RGB,
+    COLOR_RGB2BGR,
+    COLOR_RGBA2BGRA,
+    cvtColor,
+    imread,
+)
+from numpy import array, ndarray, uint8
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -238,6 +246,51 @@ class Document:
 
         return ocr_doc, rotation_degrees
 
+    @classmethod
+    def make_doctr_ocr_fn(
+        cls,
+        predictor: _DoctrPredictor | None = None,
+        *,
+        source_identifier: str = "",
+    ) -> Callable[[ndarray], Document]:
+        """Build an ``ocr_fn`` suitable for :func:`detect_best_rotation`.
+
+        DocTR predictors take a *list* of HxWx3 arrays — calling
+        ``predictor(image)`` with a bare ndarray makes DocTR iterate the
+        array into 2D row-slices and raise ``ValueError: incorrect input
+        shape: all pages are expected to be multi-channel 2D images.``
+        They also return a raw DocTR result, not a :class:`Document`, so
+        the orientation probes can't read per-word confidences from it.
+
+        This helper wraps a predictor so each call:
+
+        1. normalizes the input image to an HxWx3 RGB ``uint8`` array
+           (grayscale, BGR, BGRA, single-channel-3D, and boolean binarized
+           inputs are all accepted — same matrix as
+           :meth:`from_image_ocr_via_doctr`);
+        2. calls ``predictor([image_rgb])`` with the list DocTR expects;
+        3. converts the result into a :class:`Document`.
+
+        :param predictor: DocTR OCR predictor. Defaults to
+            :func:`~pdomain_book_tools.ocr.doctr_support.get_default_doctr_predictor`.
+        :param source_identifier: Forwarded to :meth:`from_doctr_result`.
+        :return: ``Callable[[ndarray], Document]`` matching the
+            ``ocr_fn`` contract of
+            :func:`pdomain_book_tools.ocr.rotation.detect_best_rotation`.
+        """
+        if predictor is None:
+            predictor = cast("_DoctrPredictor", get_default_doctr_predictor())
+
+        def _ocr_fn(image: ndarray) -> Document:
+            image_rgb, _image_ndarray, _source_path = cls._to_rgb_ndarray(image)
+            doctr_result = predictor([image_rgb])
+            return cls.from_doctr_result(
+                doctr_result=doctr_result,
+                source_identifier=source_identifier,
+            )
+
+        return _ocr_fn
+
     @staticmethod
     def _to_rgb_ndarray(
         image: ndarray | PILImage | str | PathLike[str],
@@ -267,6 +320,10 @@ class Document:
             image_ndarray = array(image)
             if len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
                 image_ndarray = cvtColor(image_ndarray, COLOR_RGB2BGR)
+            elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 4:
+                # PIL gives RGBA; keep the ndarray in cv2's BGRA convention
+                # so the unified 4-channel branch below is correct.
+                image_ndarray = cvtColor(image_ndarray, COLOR_RGBA2BGRA)
         else:
             try:
                 _loaded = imread(str(image))
@@ -279,6 +336,10 @@ class Document:
                     f"Failed to load image from path '{image}': {e}"
                 ) from e
 
+        if image_ndarray.dtype == bool:
+            # Binarized masks can't go through cvtColor; promote to uint8.
+            image_ndarray = image_ndarray.astype(uint8) * 255
+
         if len(image_ndarray.shape) == 2:
             image_rgb = cvtColor(image_ndarray, COLOR_GRAY2RGB)
         elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 3:
@@ -286,8 +347,14 @@ class Document:
         elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 1:
             image_gray = image_ndarray.squeeze()
             image_rgb = cvtColor(image_gray, COLOR_GRAY2RGB)
+        elif len(image_ndarray.shape) == 3 and image_ndarray.shape[2] == 4:
+            # BGRA, e.g. cv2.IMREAD_UNCHANGED on a PNG with alpha. Drop alpha.
+            image_rgb = cvtColor(image_ndarray, COLOR_BGRA2RGB)
         else:
-            image_rgb = image_ndarray
+            raise ValueError(
+                f"unsupported image shape for OCR: {image_ndarray.shape}; "
+                "expected HxW (grayscale) or HxWxC with C in (1, 3, 4)"
+            )
 
         return image_rgb, image_ndarray, source_path
 
