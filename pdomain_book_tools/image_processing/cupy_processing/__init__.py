@@ -20,6 +20,7 @@ from .contours import (
     remove_small_contours_gpu,
 )
 from .crop import crop_edges, crop_to_rectangle
+from .denoise import denoise_binary_gpu, np_uint8_denoise_binary
 from .deskew import auto_deskew_gpu, np_uint8_auto_deskew
 from .edge_finding import find_edges_gpu, np_uint8_find_edges
 from .filters import (
@@ -64,6 +65,7 @@ __all__ = [
     "crop_edges",
     "crop_to_rectangle",
     "cupy_color_to_gray",
+    "denoise_binary_gpu",
     "find_edges_gpu",
     "gaussian_filter_gpu",
     "gray_to_bgr_gpu",
@@ -77,6 +79,7 @@ __all__ = [
     "np_uint8_bgr_to_rgb",
     "np_uint8_binary_thresh",
     "np_uint8_color_to_gray",
+    "np_uint8_denoise_binary",
     "np_uint8_find_edges",
     "np_uint8_float_binary_thresh",
     "np_uint8_gaussian_filter",

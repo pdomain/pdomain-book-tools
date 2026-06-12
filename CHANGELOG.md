@@ -34,6 +34,18 @@ GitHub Releases (with attached wheel + sdist) are at
   stages that previously wrote the ndarray to a temp file just to pass a
   path can now call this instead.
 
+- **feat(image): CuPy `denoise_binary` mirror** — GPU port of
+  ``cv2_processing.denoise.denoise_binary`` available as
+  ``from pdomain_book_tools.image_processing.cupy_processing import denoise_binary_gpu``.
+  Uses ``cupyx.scipy.ndimage.label`` for connected-component labelling and
+  ``cupyx.scipy.ndimage.median_filter`` for the optional median pre-pass.
+  Produces **array-equal** output to the CPU path on binary images
+  (component filtering is deterministic — no floating-point arithmetic).
+  Importable without CuPy installed; ``require_cupy()`` guard raises a clear
+  ``ImportError`` with install instructions if the ``[gpu]`` extra is absent.
+  Also exports ``np_uint8_denoise_binary`` convenience wrapper for callers
+  that work with NumPy arrays.
+
 - **feat(image): `denoise_binary` primitive** — connected-component area
   filtering that removes speckle noise from binarized book-scan pages while
   preserving small genuine glyph features (periods, diacritics, thin serifs).

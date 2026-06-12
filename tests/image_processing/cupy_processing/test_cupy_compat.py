@@ -36,6 +36,7 @@ _CUPY_PROCESSING_MODULES = [
     "pdomain_book_tools.image_processing.cupy_processing.contours",
     "pdomain_book_tools.image_processing.cupy_processing.crop",
     "pdomain_book_tools.image_processing.cupy_processing.deskew",
+    "pdomain_book_tools.image_processing.cupy_processing.denoise",
     "pdomain_book_tools.image_processing.cupy_processing.edge_finding",
     "pdomain_book_tools.image_processing.cupy_processing.filters",
     "pdomain_book_tools.image_processing.cupy_processing.invert",
