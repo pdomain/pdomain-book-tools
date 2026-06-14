@@ -13,6 +13,16 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+## [v0.20.0] — 2026-06-14
+
+- **feat(image): configurable grayscale primitive** — new
+  `pdomain_book_tools.image_processing.cv2_processing.to_grayscale(img, *, mode,
+  sampler_radius, gamma, output_range)` converts BGR or single-channel arrays to
+  8-bit grayscale with a `perceptual` mode (BT.709 luminance in linear light with
+  a local-contrast nudge, re-encoded to display space so `gamma` is a midtone
+  control, not a darkener) or a `standard` fast-luma mode, plus a configurable
+  `output_range`. Backs the prep-for-pgdp grayscale stage's tuning controls.
+
 - **feat(image): ndarray-accepting page-attribute detection** — new module
   `pdomain_book_tools.image_processing.page_attributes` exposes
   `detect_page_attributes_from_array(img: NDArray[np.uint8]) -> PageCharacteristics`
