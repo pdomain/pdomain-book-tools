@@ -5,6 +5,7 @@ from .crop import crop_edges, crop_to_rectangle
 from .denoise import denoise_binary
 from .edge_finding import find_edges
 from .encoding import encode_bgr_image_as_png
+from .grayscale import to_grayscale
 from .invert import invert_image
 from .io import write_jpg, write_png
 from .morph import morph_fill
@@ -40,6 +41,7 @@ __all__ = [
     "rotate_image",
     "split_x_columns",
     "split_y_rows",
+    "to_grayscale",
     "write_jpg",
     "write_png",
 ]
