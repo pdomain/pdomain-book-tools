@@ -63,13 +63,17 @@ def to_grayscale(
 
         sampler_radius: Local neighbourhood radius (pixels) for the
             perceptual contrast step.  Larger values smooth local adaptation
-            over a wider area.  Values below 1 disable the local step
-            entirely.  Ignored in ``"standard"`` mode.
-        gamma: Approximate display gamma of the input scan.  The sRGB
+            over a wider area.  ``0`` disables the local step entirely.
+            Negative values are rejected.  Ignored in ``"standard"`` mode.
+        gamma: Tone-mixing control for the perceptual pipeline.  The
             linearisation step divides stored values by 255, raises to the
-            power ``gamma``, and then applies the BT.709 channel weights.
-            Typical values are 1.0 (no correction) to 2.2 (full sRGB gamma).
-            Ignored in ``"standard"`` mode.
+            power ``gamma`` (removing display gamma), applies BT.709 channel
+            weights to form a linear-light luminance, then **re-encodes back
+            to perceptual/display space** via ``luminance ** (1.0 / gamma)``
+            before mapping to the output range.  Higher ``gamma`` values pull
+            midtones *brighter* (more output headroom for midtones), not
+            darker.  ``1.0`` is a no-op (identity round-trip).  Typical
+            values are 1.0-2.2.  Ignored in ``"standard"`` mode.
         output_range: ``(min_out, max_out)`` window for the final 8-bit
             output.  The grayscale result is linearly mapped so that the
             darkest pixel lands at ``min_out`` and the brightest at
@@ -123,6 +127,11 @@ def _validate_inputs(
         raise TypeError(
             f"sampler_radius must be an int; got {type(sampler_radius).__name__}."
         )
+    if sampler_radius < 0:
+        raise ValueError(
+            f"sampler_radius must be >= 0; got {sampler_radius}."
+            " Use 0 to disable the local-contrast step."
+        )
     if gamma <= 0.0:
         raise ValueError(f"gamma must be > 0; got {gamma}.")
     min_out, max_out = output_range
@@ -140,7 +149,14 @@ def _perceptual_gray(
     sampler_radius: int,
     gamma: float,
 ) -> npt.NDArray[np.float32]:
-    """Return float32 grayscale using BT.709 weights in linear light.
+    """Return float32 grayscale using BT.709 weights with perceptual re-encode.
+
+    Pipeline:
+    1. Linearise each channel: ``channel / 255 ** gamma`` removes display gamma.
+    2. Form linear-light luminance with BT.709 weights.
+    3. Apply the optional local-contrast nudge in linear space.
+    4. Re-encode to perceptual/display space: ``luminance ** (1.0 / gamma)``.
+    5. Return scaled to [0, 255] as float32 for downstream ``_apply_output_range``.
 
     The local-contrast nudge (when ``sampler_radius >= 1``) computes a box
     mean over a (2*r+1)x(2*r+1) neighbourhood and pulls each pixel 10%
@@ -151,11 +167,12 @@ def _perceptual_gray(
     r = img[:, :, 2].astype(np.float32) / 255.0
 
     wb, wg, wr = _BT709_BGR
-    # Linearise: remove display gamma, then weight by BT.709 luminance coefficients.
+    # Step 1-2: linearise channels, then weight by BT.709 luminance coefficients.
     lin: npt.NDArray[np.float32] = (
         wb * (b**gamma) + wg * (g**gamma) + wr * (r**gamma)
     ).astype(np.float32)
 
+    # Step 3: optional local-contrast nudge in linear space.
     if sampler_radius >= 1:
         ksize = 2 * sampler_radius + 1
         local_mean = cast("npt.NDArray[np.float32]", cv2.blur(lin, (ksize, ksize)))
@@ -163,7 +180,14 @@ def _perceptual_gray(
         lin = (lin + 0.10 * (lin - local_mean)).astype(np.float32)
         lin = np.clip(lin, 0.0, 1.0).astype(np.float32)
 
-    return (lin * 255.0).astype(np.float32)
+    # Step 4: re-encode linear luminance back to perceptual/display space.
+    # Without this step, the output would be a linear-light signal, which
+    # appears dark and crushed compared to the sRGB-encoded input.
+    perceptual: npt.NDArray[np.float32] = np.power(
+        np.clip(lin, 0.0, 1.0), 1.0 / gamma
+    ).astype(np.float32)
+
+    return (perceptual * 255.0).astype(np.float32)
 
 
 def _apply_output_range(

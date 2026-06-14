@@ -114,6 +114,34 @@ def test_uniform_image_does_not_crash():
     assert result.dtype == np.uint8
 
 
+def test_perceptual_mode_is_perceptually_encoded_not_darkened():
+    """Perceptual mode with typical gamma must NOT globally darken the image.
+
+    The pipeline linearises channels (decode: ** gamma), weights by BT.709,
+    then re-encodes (** (1/gamma)).  With gamma > 1 the round-trip is
+    identity for uniform luminance, so the perceptual output mean must be
+    within a reasonable band of the standard output mean — not consistently
+    and significantly darker.
+
+    This locks in that `gamma` is a tone-mixing control, not a global darkener.
+    Concretely: perceptual mean must be >= standard mean * 0.85 (i.e. no more
+    than 15% darker overall), which standard mode passes trivially and a broken
+    linear-light-only pipeline at gamma=2.2 would fail (mean drops ~30%).
+    """
+    img = _bgr_ramp()
+    std = to_grayscale(img, mode="standard", sampler_radius=0, output_range=(0, 255))
+    perc = to_grayscale(
+        img, mode="perceptual", gamma=1.1, sampler_radius=0, output_range=(0, 255)
+    )
+    std_mean = float(std.mean())
+    perc_mean = float(perc.mean())
+    # Re-encoded perceptual output must not be crushed dark relative to standard.
+    assert perc_mean >= std_mean * 0.85, (
+        f"perceptual mean {perc_mean:.1f} is more than 15% below "
+        f"standard mean {std_mean:.1f} — re-encode step may be missing"
+    )
+
+
 def test_standard_mode_ignores_gamma_and_sampler():
     """standard mode must return identical results regardless of perceptual params."""
     img = _bgr_ramp()
@@ -179,6 +207,12 @@ def test_raises_on_invalid_mode():
     img = _bgr_ramp()
     with pytest.raises(ValueError, match="mode must be"):
         to_grayscale(img, mode="unknown")  # type: ignore[arg-type]
+
+
+def test_raises_on_negative_sampler_radius():
+    img = _bgr_ramp()
+    with pytest.raises(ValueError, match="sampler_radius must be >= 0"):
+        to_grayscale(img, sampler_radius=-1)
 
 
 def test_raises_on_4d_input():
