@@ -13,6 +13,19 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+- **feat(image): composable grayscale pipeline subpackage** — new
+  `pdomain_book_tools.image_processing.grayscale_pipeline` exposes
+  `run_grayscale_pipeline(img, config, *, use_gpu)` plus `GrayscaleConfig`,
+  `Converter` (luma / luma_bt709 / lab_l / color2gray / best_channel),
+  `FlattenConfig`, `ClaheConfig`, and `Color2GrayParams`.  The pipeline is a
+  composable chain: optional background-flatten (blur-divide) → one converter
+  → optional CLAHE → optional output-range stretch.  Matching CPU
+  (numpy/cv2) and GPU (CuPy) op implementations share a single entry point
+  with automatic CPU fallback when CuPy is unavailable; GPU ops carry
+  CPU-parity tests.  `lab_l` and CLAHE on the GPU path delegate to CPU
+  (no faithful CuPy equivalent).  `color2gray` is a pure-numpy port with
+  GPU parity.  Backs the prep-for-pgdp composable grayscale pipeline stage.
+
 ## [v0.20.0] — 2026-06-14
 
 - **feat(image): configurable grayscale primitive** — new
