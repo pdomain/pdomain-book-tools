@@ -7,6 +7,9 @@ from pdomain_book_tools.image_processing.grayscale_pipeline.config import (
     FlattenConfig,
     GrayscaleConfig,
 )
+from pdomain_book_tools.image_processing.grayscale_pipeline.pipeline import (
+    run_grayscale_pipeline,
+)
 
 __all__ = [
     "ClaheConfig",
@@ -14,4 +17,5 @@ __all__ = [
     "Converter",
     "FlattenConfig",
     "GrayscaleConfig",
+    "run_grayscale_pipeline",
 ]
