@@ -53,7 +53,7 @@ def otsu_binary_thresh(img_cp_float: CuPyArray) -> CuPyArray:
     img_cp_float = cast("CuPyArray", img_cp_float.astype(cp.float32))
 
     # Compute histogram (auto-detect range)
-    min_val, max_val = img_cp_float.min(), img_cp_float.max()
+    min_val, max_val = cp.min(img_cp_float), cp.max(img_cp_float)
 
     # Degenerate case: a uniform-valued image has no meaningful Otsu split.
     # Older cupy versions raised `ValueError: max must be larger than min` from

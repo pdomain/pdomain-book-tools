@@ -126,7 +126,7 @@ def best_channel_gpu(img: U8, channel: str = "green") -> U8:
         ch = cast("CuPyArray", img_cp[..., idx[channel]].copy())
     else:
         # Auto: select channel with highest variance (computed on GPU)
-        variances = [float(img_cp[..., c].var()) for c in range(3)]
+        variances = [float(cp.var(img_cp[..., c])) for c in range(3)]
         best = int(np.argmax(variances))
         ch = cast("CuPyArray", img_cp[..., best].copy())
     return cast("U8", cp.asnumpy(ch))
