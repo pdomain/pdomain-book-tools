@@ -47,7 +47,7 @@ Kind: context
 - **Old paths:** docs/archive/**/*.md (15 files)
 - **Outcome:** deleted as retired, superseded, implemented, or closed research
 - **Superseded by:** live specs, code/tests, and the context entries above
-- **Removal commit:** pending
+- **Removal commit:** 91bda25
 - **Rationale kept:** this decision log, docs/context/intent-map.md, live specs,
   code, tests, and Git history
 - **Remaining work:** none
