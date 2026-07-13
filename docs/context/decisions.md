@@ -179,3 +179,34 @@ Kind: context
   validation and compatibility follow-ups remain in the intent map.
 - Residual intent: docs/context/intent-map.md
 - Retained evidence: `docs/architecture/glyph-annotations.md`
+
+### 2026-07-13 — Separate geometry regimes and own the classical baseline
+
+- **Context:** Deskew, textline curvature, perspective distortion, and general
+  restoration need different algorithms and dependency profiles.
+- **Decision:** Keep page-side, curvature, deskew, and dewarp seams separate.
+  Ship owned projection/Sbrunner deskew and NumPy/CuPy textline-disparity as
+  the classical baseline. Keep UVDoc optional and regime-gated.
+- **Rationale:** This preserves CPU availability and GPU parity without making
+  weights or external CLI tools mandatory. No Leptonica/Rust binding is needed
+  for the shipped behavior.
+- **Evidence:** `pdomain_book_tools/geometry_correction/`,
+  `tests/geometry_correction/`, and
+  `_tbd/ocr-container-docs/specs/2026-06-02-geometry-correction-design.md`.
+- **Remaining work:** Alternative backends remain evidence-gated intent.
+
+### 2026-07-13 — Keep OCR values separate from lifecycle and matching state
+
+- **Context:** OCR content, operational persistence, review decisions, and
+  ground-truth matching evolve independently.
+- **Decision:** Keep Page as the portable OCR value boundary with protocol-based
+  blob access. Keep operational lifecycle in pdomain-ops. Keep ReviewMetadata
+  separate from matching fields, and use public Pydantic schemas as the
+  language-neutral consumer boundary.
+- **Rationale:** The split avoids package cycles and prevents application
+  persistence or review workflow from becoming foundation-model requirements.
+- **Evidence:** `pdomain_book_tools/ocr/page.py`, `ocr/review.py`,
+  `schemas/emit.py`, their tests, and
+  `_tbd/ocr-container-docs/archive/plans/2026-05-31-page-split-book-tools.md`.
+- **Remaining work:** Matching-field clustering and compatibility removal need
+  owner-approved consumer evidence.
