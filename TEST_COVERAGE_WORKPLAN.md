@@ -174,3 +174,30 @@ modules pushed overall coverage from 70.7% to 89.8% on a CPU-only test run
    `tests/ocr/test_cv2_tesseract.py::TestRealImageIntegration` cases run
    end-to-end.
 3. Establish CI coverage reporting thresholds (target: 88%, fail under 80%).
+
+## Goal
+
+Raise the CPU-only test coverage snapshot from 70.7% through targeted tests of
+OCR models, adapters, image-processing helpers, and utilities, while
+identifying the remaining gaps needed to exceed 90% in core modules.
+
+## Architecture
+
+Add focused tests around public OCR model behavior, coordinate conversions,
+rendering and training-set helpers, and image-processing edge cases. Isolate
+external OCR and model dependencies with mocks, while reserving real-image and
+GPU paths for environments that provide Tesseract or CUDA.
+
+## Tech Stack
+
+The plan uses pytest, pytest fixtures and monkeypatching, coverage configuration
+in `pyproject.toml`, small in-memory images, and mocked Tesseract, DocTR, and
+PyTorch integrations. CuPy tests use the shared `cupy_module` fixture and are
+omitted from the CPU-only coverage baseline.
+
+## Global Constraints
+
+Treat every percentage as a dated snapshot and regenerate current data with
+`make coverage`. Keep GPU-only coverage separate from the CPU baseline, and
+either provide required external binaries for integration tests or skip those
+tests explicitly when the binaries are absent.

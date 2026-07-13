@@ -271,3 +271,11 @@ for the full open-questions list (Q-RL-1 through Q-RL-10).
 - Original parent spec — superseded by 06a, 06b, and 06c; preserved in Git history
 - `pdomain_book_tools/ocr/word.py` — `estimate_baseline_from_image`, `split_into_characters_from_whitespace`
 - `pdomain_book_tools/ocr/block.py` — `Block.estimate_baseline_from_image`
+
+## Adversarial Review
+
+- **Stage:** Migration/design audit review dated 2026-07-13; it does not claim an adversarial exercise occurred when the design was authored.
+- **Source:** Full spec compared with current Word, Block, and Page baseline symbols and a package-wide search for the proposed reference-line module and APIs.
+- **Accepted findings:** One-of-four partial support, three duplicated descender literals, and the absence of the proposed module and Page-level API remain accurate. Fold in current symbol references instead of stale line numbers and qualify grep-based absence as search evidence, not proof.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** The external bottom-crop dependency is unverified here; baseline quality claims are supported by narrow tests; design decisions remain open in 06c.

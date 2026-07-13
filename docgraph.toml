@@ -32,7 +32,7 @@ frontmatter_base = "master"
 legacy_unverified = true
 
 [checks]
-required_section_live_status_severity = "advisory"
+required_section_live_status_severity = "error"
 
 [workflow.required_sections]
 spec = ["Adversarial Review"]

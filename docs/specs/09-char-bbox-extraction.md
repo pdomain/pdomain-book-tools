@@ -491,3 +491,11 @@ coordinates? The current design outputs pixel-space only (matching
 `word_bbox` input). If the labeler API needs normalized coordinates,
 the caller can scale with `BoundingBox.scale(w, h)` and reconstruct;
 no spec change needed.
+
+## Adversarial Review
+
+- **Stage:** Migration/design review performed 2026-07-13; no implementation was found.
+- **Source:** Full spec, current `Word`/`Character`/`BoundingBox` code, `Word.split_into_characters_from_whitespace`, DocTR support, and repository tests.
+- **Accepted findings (and how folded in):** Correct the foreground-polarity algorithm before implementation; make fallback boxes satisfy the non-empty/tight-component contract or relax that contract explicitly; resolve the contradictory single-character behavior; and specify confidence, coverage-union, crop/bbox dimension validation, morphology selection, and Unicode failure semantics as testable rules. Keep CTC integration as a later optional path unless the DocTR API is first proven.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Connected-component heuristics calibrated only by asserted defaults may fail across fonts, DPI, touching glyphs, loose crops, punctuation, and degraded scans. Real annotated fixtures and consumer UX decisions are still absent.

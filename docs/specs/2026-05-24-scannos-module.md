@@ -359,3 +359,11 @@ WAL mode is enabled at `PRAGMA journal_mode=WAL` on first open.
   `scan_document(pages, library)` convenience wrapper scanning all pages at
   once and de-duplicating candidates by `(token, sug)` would be useful.
   Defer to V1 implementation feedback.
+
+## Adversarial Review
+
+- **Stage:** Migration/design review performed 2026-07-13; no implementation was found.
+- **Source:** Full spec and current `Page`/`Word` identity, serialization, dependency, and test code.
+- **Accepted findings (and how folded in):** Add stable book and occurrence identifiers plus a normalized evidence schema; define compensating/recovery behavior for the unavoidable SQLite/JSON dual write; replace slug identity with collision-safe immutable IDs; correct the word-final example; and specify deduplication, statistics updates, normalization, conflicts, migrations, and concurrent sidecar writes before implementation.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** A shared mutable global library can leak project-specific judgments across tools, and no seed dataset or real-book evaluation establishes usefulness or false-positive rates.

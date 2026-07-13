@@ -164,3 +164,34 @@ Still open:
 - **Layout-aware OCR crops** (different recognition models per
   region type — handwriting / fraktur / running text). Real
   improvement, separate effort, not on this roadmap.
+
+## Goal
+
+Track only forward-looking work that belongs in the `pdomain-book-tools`
+library, carrying forward residual layout, image-processing, page-handling, and
+developer-tooling work after the original phases shipped. Exclude work owned by
+consuming applications or cross-repository training workflows.
+
+## Architecture
+
+Extend the existing `Page.reorganize_page` pipeline with late layout
+post-classification and optional sidenote refinements, and keep drop-cap
+recovery in the OCR reorganization path. Keep local-development detection in
+repository scripts and Make targets, with downstream CLI wiring and
+cross-repository training outside this plan.
+
+## Tech Stack
+
+The roadmap builds on PP-DocLayout and `PageLayout`/`RegionType` layout
+types, OCR bounding boxes and cropped-image projection analysis,
+layout-regression fixtures, and the Python scripts, uv environment metadata,
+and Make targets used by the local-development workflow.
+
+## Global Constraints
+
+Do not flip the sidenote-height default without a real-fixture pass, and add
+image-projection refinement only when a fixture demonstrates that bounding-box
+height is insufficient. Keep decoration post-classification deferred until
+fine-tuning lands, preserve legacy behavior by default, and retain the listed
+model-training, architecture-swap, cross-book, table-serialization, cross-page,
+and layout-aware OCR exclusions.

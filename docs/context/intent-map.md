@@ -29,6 +29,25 @@ Kind: context
   history for docs/archive/research/older/bugs-low.md.
 - Decide whether a non-canonical DocTR Git URL should activate local-dev mode
   when a concrete fork-pin workflow needs it. Evidence: docs/plans/roadmap.md.
+- Add a versioned, complete Page JSON schema and downstream compatibility gate
+  before retiring the page-model spec. Evidence:
+  docs/specs/01-page-model.md, Adversarial Review.
+- Decide whether rotation probes need a durable audit/event surface, then back
+  threshold and timing claims with a reproducible benchmark. Evidence:
+  docs/specs/02-rotation.md, Adversarial Review.
+- Close or explicitly accept the five strict-xfail layout baselines, and define
+  whether canonical fixture baselines represent current or desired behavior.
+  Evidence: docs/specs/03-reorganize-pipeline.md and
+  docs/specs/04-layout-regression-fixtures.md, Adversarial Review.
+- Decide whether glyph-span validation should become automatic and whether
+  unknown future annotation kinds need tolerant reading. Evidence:
+  docs/specs/05-glyph-annotations.md, Adversarial Review.
+- Reconcile the local-upgrade restore recipe, override semantics, and duplicate
+  marker contracts before retiring the dev-local spec. Evidence:
+  docs/specs/07-dev-local-upgrade-flow.md, Adversarial Review.
+- Protect active layout-debug runs with a liveness marker or lock, and test
+  cleanup races and suppressed filesystem failures. Evidence:
+  docs/specs/2026-05-30-layout-debug-auto-cleanup.md, Adversarial Review.
 
 ## Rejected directions
 
@@ -43,6 +62,28 @@ None.
 
 - Choose architecture destinations for implemented specs 01–05, 07, and the
   layout-debug auto-cleanup spec and plan before formal retirement.
+- Resolve the word-reference-lines coordinate, persistence, heuristic, mapping,
+  font-fixture, and property-test contracts before implementation. Evidence:
+  docs/specs/06b-word-reference-lines-api.md and
+  docs/specs/06c-word-reference-lines-testing.md, Adversarial Review.
+- For character extraction, resolve mask polarity, placeholder/component
+  invariants, confidence, coverage, crop dimensions, morphology, and Unicode
+  failure behavior. Evidence: docs/specs/09-char-bbox-extraction.md,
+  Adversarial Review.
+- For table structure, define word fallback, line grouping, rendering, detector
+  mapping, table-region replacement, and sparse-span validation. Evidence:
+  docs/specs/10-table-structure.md, Adversarial Review.
+- For hyphen n-grams, choose a two-pass/indexed builder and specify corpus
+  identity, normalization, secure atomic download, locking, and read-only
+  SQLite behavior. Evidence:
+  docs/specs/2026-05-24-hyphen-ngrams-sqlite.md, Adversarial Review.
+- Redesign page-order evidence around current Page fields and normalized roles;
+  remove unvalidated visual-similarity voting and reconcile confidence tiers
+  and numbering gaps. Evidence:
+  docs/specs/2026-05-24-page-order-detection.md, Adversarial Review.
+- For scannos, define stable book/occurrence IDs, evidence storage, dual-write
+  recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
+  Evidence: docs/specs/2026-05-24-scannos-module.md, Adversarial Review.
 
 ## Legacy-unverified sweep
 

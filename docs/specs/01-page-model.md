@@ -390,3 +390,11 @@ Not yet captured during the B3 mechanical migration.
 ## References
 
 Not yet captured during the B3 mechanical migration.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review dated 2026-07-13; no claim is made that a live adversarial exercise occurred before this date.
+- **Source:** Full spec compared with `Page.to_dict` / `Page.from_dict`, related model serializers, and `tests/test_page_model_doc.py`.
+- **Accepted findings:** The review found implementation drift: `ocr_provenance`, `image_path`, `rotation_applied`, and `source` are described as Page JSON fields, but the current drift test requires them to be absent. Fold this in by correcting the field inventory and by describing the doc test as a selected-vocabulary/field-presence gate, not a complete schema proof. Cross-repository consumer compatibility remains `needs_owner_decision` because it was not evidenced locally.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** There is still no versioned JSON Schema or complete shape gate; local tests cannot prove downstream compatibility, and the mechanically empty acceptance sections obscure what evidence justified `implemented`.

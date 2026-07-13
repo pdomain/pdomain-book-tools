@@ -484,3 +484,11 @@ Not yet captured during the B3 mechanical migration.
 ## References
 
 Not yet captured during the B3 mechanical migration.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review dated 2026-07-13; this records a repository review, not a pre-implementation adversarial exercise.
+- **Source:** Full spec compared with `Page.reorganize_page`, `ocr/reorganize_page_utils.py`, layout-aware helpers, drop-cap code, and reorganize regression tests.
+- **Accepted findings:** The staged pipeline, per-page metrics, preservation validator, and auto-discovered fixture regression harness are present. Fold in the operational qualification that five desired baselines are strict xfails and that fixture tests intentionally exercise legacy word-dropping mode; distinguish this from the default preservation contract. Record planned PageMetrics fields as deferred, not implemented.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Known figure-noise failures remain; strict xfails keep CI green without satisfying desired output; mode-dependent word preservation and heuristic step ordering remain difficult to reason about without a formal end-to-end invariant table.

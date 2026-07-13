@@ -235,3 +235,28 @@ Expected: no output (the flag must not appear in any Makefile target).
 | `PD_OCR_LAYOUT_DEBUG` absent from Makefile targets | Task 3 step 2 |
 
 All acceptance criteria covered. No placeholders. No FastAPI+SPA milestone needed (this is a pure Python library).
+
+## Goal
+
+Remove timestamped layout-regression debug directories older than 24 hours at
+the start of every pytest session.
+
+## Architecture
+
+A `pytest_sessionstart` hook in `tests/conftest.py` calls
+`_prune_old_debug_runs`, which scans the debug directory relative to
+`conftest.py`. The helper removes stale `test-*` and `regen-*`
+subdirectories and leaves recent, non-matching, or absent directories alone.
+
+## Tech Stack
+
+The implementation uses the pytest hook API and Python standard-library
+`pathlib`, `shutil`, `time`, and `logging` modules. Tests use
+pytest's `tmp_path` fixture.
+
+## Global Constraints
+
+Run cleanup unconditionally before collection, with no environment-variable
+gate and no new dependency. Resolve the debug path independently of the current
+working directory, log only at DEBUG, use `ignore_errors=True`, and leave the
+existing `make clean-debug` behavior unchanged.

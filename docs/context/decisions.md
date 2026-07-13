@@ -51,3 +51,16 @@ Kind: context
 - **Rationale kept:** this decision log, docs/context/intent-map.md, live specs,
   code, tests, and Git history
 - **Remaining work:** none
+
+### 2026-07-13 — Enforce required document sections
+
+- **Context:** The conformance migration updated 20 legacy documents and closed
+  all 37 missing-section findings; 15 specs received adversarial review.
+- **Decision:** Set required live-section severity to `error`.
+- **Rationale:** Specs must retain an adversarial review, while plans and
+  research must state their required evidence and constraints before becoming
+  retrievable truth.
+- **Evidence:** MCP `docgraph_check` reported zero `missing_section`
+  findings after the reviewed batches.
+- **Remaining work:** Resolve the separate orphan and lifecycle-candidate
+  advisories.

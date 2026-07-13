@@ -358,3 +358,11 @@ created at test time via `pytest` `tmp_path`; they do not require the full
   raw count vs. Zipf score. The `wf05/NOTES.md` prototype renders the values
   as a small bar chart, suggesting relative frequency is the right unit (scale
   is human-meaningful). Confirm before building the extraction pipeline.
+
+## Adversarial Review
+
+- **Stage:** Migration/design review performed 2026-07-13; no implementation or data artifact was found.
+- **Source:** Full spec, current package/CLI/dependency layout, and repository tests.
+- **Accepted findings (and how folded in):** Redesign extraction as an explicit two-pass or indexed process; pin the corpus edition and exact normalization/counting rules; add checksum verification, locking, atomic download, retry/timeout, and corruption recovery; and define read-only SQLite behavior instead of assuming WAL is always safe. Treat size, duration, and latency figures as estimates until a reproducible build manifest and benchmark exist.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Corpus licensing/redistribution, GitHub asset durability, initial build resource cost, API fallback drift, and cross-process first-use races remain unproven.

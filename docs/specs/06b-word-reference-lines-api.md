@@ -475,3 +475,11 @@ for the full list (Q-RL-1 through Q-RL-10).
 - `pdomain_book_tools/ocr/reference_lines.py` — new module (to be created)
 - `pdomain_book_tools/ocr/word.py` — `estimate_reference_lines`, `estimate_baseline_from_image`
 - `pdomain_book_tools/ocr/block.py` — `estimate_word_reference_lines`
+
+## Adversarial Review
+
+- **Stage:** Migration/design review dated 2026-07-13; no pre-existing live red-team exercise is claimed.
+- **Source:** Full spec compared with current Word, Block, Page, baseline implementations, and the absence of `ocr/reference_lines.py` and reference-line tests.
+- **Accepted findings:** The proposal is additive and preserves existing baseline methods, but none of its new API exists yet. Fold in an explicit unimplemented status for every proposed symbol, require executable acceptance tests, and resolve the return-key semantics before implementation. The dataclass shape, pixel coordinate contract, persistence policy, heuristic defaults, and Word-keyed mapping remain `needs_owner_decision`.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Mutable-object key semantics, heuristic brittleness, non-Latin behavior, cache invalidation, and confidence calibration are not resolved by current evidence.

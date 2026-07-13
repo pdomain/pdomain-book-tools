@@ -482,3 +482,11 @@ Not yet captured during the B3 mechanical migration.
 ## References
 
 Not yet captured during the B3 mechanical migration.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review dated 2026-07-13; this is not evidence of a live pre-implementation adversarial exercise.
+- **Source:** Full spec compared with `ocr/glyph_annotations.py`, Word serialization/schema integration, and `tests/ocr/test_glyph_annotations.py`.
+- **Accepted findings:** The side-channel model, None-versus-empty semantics, serialization, legacy kind aliases, uppercase values, OE/AE additions, source provenance, and explicit validation have implementation coverage. Fold in that validation is caller-invoked rather than automatic, and close or rewrite the pre-implementation open questions as recorded decisions. Cross-repository adoption is not proven by this repository.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Invalid spans can exist until `validate(word)` is called; unknown future kinds fail closed; consumer compatibility and image-to-annotation truth are outside the local test evidence.

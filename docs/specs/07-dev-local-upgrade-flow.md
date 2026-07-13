@@ -246,3 +246,11 @@ Not yet captured during the B3 mechanical migration.
 ## References
 
 Not yet captured during the B3 mechanical migration.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review performed 2026-07-13.
+- **Source:** Current `Makefile`, `scripts/check_dev_local.py`, `scripts/write_dev_local_marker.py`, `scripts/local-dev.sh`, `scripts/local-upgrade-deps.sh`, and focused utility tests. The 24 focused tests passed, although the targeted pytest command failed the repository-wide coverage threshold because it ran only these tests.
+- **Accepted findings (and how folded in):** Record the shipped `local-*` targets as canonical and the `dev-local` targets as deprecated aliases; reconcile the restore recipe with the promised `--group dev` flow; remove or implement the advertised `PDOMAIN_DEV_LOCAL=0` clobber escape; consolidate the two-marker contract; and keep the DocTR-from-Git probe explicitly deferred rather than describing it as detected.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** No test executes the Make recipes end to end or proves that every pre-upgrade override is restored. Manual editable forks and DocTR URL overrides can still be missed, and marker-only restoration currently assumes GPU mode rather than preserving an arbitrary prior environment.

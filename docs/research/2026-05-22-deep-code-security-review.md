@@ -753,3 +753,43 @@ Remediation:
 5. Align pydantic schemas with `to_dict()` wire formats.
 6. Repair GitLab/GitHub CI claims: Python version, coverage XML, GPU deps/skips, and slow test policy.
 7. Address lower-severity API polish, docs, and supply-chain hardening.
+
+## Goal
+
+Review `pdomain-book-tools` at `fba1657` for code, API, CI, packaging, and
+security risks across OCR/domain models, image and geometry code, layout,
+external downloads, and subprocesses.
+
+## Method
+
+Five read-only subagent reviews covered the scoped areas, followed by
+coordinating spot checks. One reviewer also ran `uv run python` probes for
+pydantic/schema and coordinate-export behavior; no production files were
+edited.
+
+## Evidence
+
+Most findings are static-review findings tied to direct file-and-line
+references. The review also records the probe results, impacts, and
+remediation options for each finding.
+
+## Conclusions
+
+The highest-risk findings involve unsafe checkpoint loading, broken pixel-space
+DocTR export, layout fallback cache poisoning, incorrect or crashing crop
+behavior, and CI guarantees that are not enforced. The review identified 34
+findings and filed issues #165 through #198 for them.
+
+## Next steps
+
+First harden checkpoint and model loading, fix pixel-space export, layout
+caching, and crop/ROI behavior, then align pydantic schemas with wire formats
+and repair CI claims. Address the lower-severity API, documentation, and
+supply-chain findings afterward.
+
+## What this does NOT establish
+
+This review does not establish that the full test or CI suite passes because
+`make ci` was not run. Most findings are based on static review rather than
+runtime verification, apart from the recorded pydantic/schema and
+coordinate-export probes.

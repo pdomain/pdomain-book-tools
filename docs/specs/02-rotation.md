@@ -220,3 +220,11 @@ Not yet captured during the B3 mechanical migration.
 ## References
 
 Not yet captured during the B3 mechanical migration.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review dated 2026-07-13; no earlier live adversarial exercise is asserted.
+- **Source:** Full spec compared with `ocr/rotation.py`, `Document.from_image_ocr_via_doctr`, batch ingestion, and `tests/ocr/test_rotation.py`.
+- **Accepted findings:** Quarter-turn probing, threshold fallback, tie behavior, and rotated-frame image attachment are implemented and tested. The Page audit contract is not: current tests explicitly require `rotation_applied` to be absent from Page construction and serialization. Fold this in by separating the implemented detection behavior from the removed persistence design and marking any replacement audit/event path `needs_owner_decision`.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Threshold and timing claims are historical measurements without a checked benchmark; probe diagnostics are discarded by ingestion; consumers cannot reconstruct the chosen rotation from serialized Page data.

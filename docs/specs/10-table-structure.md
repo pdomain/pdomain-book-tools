@@ -467,3 +467,11 @@ are **not designed in this spec**:
   captured, via a table-grid editing surface that feeds ground truth back.
 
 These are pointers for the future plan, not commitments in this spec.
+
+## Adversarial Review
+
+- **Stage:** Migration/design review performed 2026-07-13; no implementation was found.
+- **Source:** Full spec and current `Block`, page pipeline, layout detector/registry, serialization, and test code.
+- **Accepted findings (and how folded in):** Resolve unassigned-word placement and cell-local line grouping before treating Slices B/D as implementable; define an exact text-rendering contract; specify TATR label/threshold and resize-to-page coordinate mapping; define how existing table-role blocks are replaced without duplication; and add structural validation plus compatibility tests for sparse spans.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Model availability, historical-scan accuracy, licensing attribution, CPU/GPU resource cost, and real-fixture word conservation remain unproven. The recursive Block change affects every serializer and downstream traversal.

@@ -29,6 +29,7 @@ an archive directory, preserves retired documentation.
 
 ## Risks
 
-- Required-section conformance remains advisory during bootstrap.
-- Required-section and orphan findings remain advisory during bootstrap;
-  docgraph check tracks that conformance work.
+- Required-section conformance is enforced as an error after the 2026-07-13
+  conformance migration closed all 37 findings and adversarially reviewed 15
+  specs.
+- Fifteen orphan advisories remain for the lifecycle and link-curation wave.

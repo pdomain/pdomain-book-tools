@@ -285,3 +285,11 @@ Not yet captured during the B3 mechanical migration.
 ## References
 
 Not yet captured during the B3 mechanical migration.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review dated 2026-07-13; no historical live red-team claim is made.
+- **Source:** Full spec compared with the 31 layout inputs, 31 reorganize baselines, `tests/layout/test_fixture_layouts.py`, and `tests/ocr/test_reorganize_page_utils_grouping.py`.
+- **Accepted findings:** Auto-discovery, round-trip/bounds checks, text diffs, and intentional one-case promotion are implemented. Fold in that five committed baselines are desired-future outputs under strict xfail, so “source of truth” must distinguish current behavior from target behavior. Replace obsolete direct-venv command examples with supported make/uv workflows. Whether target baselines may remain in the canonical baseline directory is `needs_owner_decision`.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Semantic correctness still depends on human review; strict xfails weaken the regression gate; corpus coverage excludes tables, formulae, cross-page foldouts, and recognition fidelity.

@@ -600,3 +600,30 @@ accounts for this; actual Wave 4 work may be significantly lighter.
 - For `reportImplicitStringConcatenation`: always use explicit `+` or
   f-string or `textwrap.dedent` — implicit continuation is never intentional
   in this codebase.
+
+## Goal
+
+Eliminate the 2,416 own-code warnings recorded at commit `ddefc8d` while
+leaving the 949 third-party cascade warnings outside the plan's scope. Preserve
+a green type-checking gate as the warning baseline is reduced.
+
+## Architecture
+
+Partition source files into disjoint chunks, land low-dependency shared types
+before their consumers, and sequence the core OCR hierarchy from DocTR support
+through Word, Block, Document, and Page. Regenerate the single shared baseline
+only after integrating each wave to avoid generated-file conflicts.
+
+## Tech Stack
+
+Use basedpyright with `pyproject.toml` and
+`.basedpyright/baseline.json`, plus `uv run basedpyright` for per-file
+verification. Use the repository's formatting, lint, test, and CI Make targets
+before completing each chunk or integration wave.
+
+## Global Constraints
+
+Do not edit the baseline on individual chunk branches, and do not mix files
+across chunks that are intended to merge in parallel. Preserve dependency
+ordering for shared geometry, layout, and OCR types, and do not treat missing
+third-party stubs as own-code annotation work.

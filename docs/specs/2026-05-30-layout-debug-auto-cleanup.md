@@ -74,3 +74,11 @@ Key properties:
 3. `make test` with `PD_OCR_LAYOUT_DEBUG=1`: new debug run is written; previous
    runs older than 24 h are removed before the new one starts.
 4. `make clean-debug` still works as before.
+
+## Adversarial Review
+
+- **Stage:** Migration/post-implementation review performed 2026-07-13.
+- **Source:** Current `tests/conftest.py`, `tests/test_debug_cleanup.py`, Makefile cleanup target, and focused test execution. All 24 tests in the combined dev-local/debug-cleanup review passed; the command itself failed the global coverage threshold because only focused tests were selected.
+- **Accepted findings (and how folded in):** Record cleanup as best-effort; do not claim directory mtime proves a run is inactive; add a liveness marker/lock or exclude active run IDs before deleting across concurrent pytest processes; and extend tests to the session hook, failure/race behavior, threshold boundary, and `make clean-debug` contract.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** A long-running or externally active debug run can still be removed, and suppressed filesystem errors can allow old directories to accumulate silently.

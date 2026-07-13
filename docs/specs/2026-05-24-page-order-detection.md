@@ -284,3 +284,11 @@ significant enough to justify it.
   independently from `Page.image_array`? Leaning toward route-owns-thumbnails
   to keep `SwapProposal` data-only, but needs alignment with the
   `pdomain-prep-for-pgdp` slice owner.
+
+## Adversarial Review
+
+- **Stage:** Migration/design review performed 2026-07-13; no implementation was found.
+- **Source:** Full spec and current `Page`, block-role normalization, image-cache, and test code.
+- **Accepted findings (and how folded in):** Align the API with `Page.name`, `page_index`, and UUID `page_id`; use the normalized page-role labels; remove visual pair similarity as a swap vote unless a validated positional model is supplied; reconcile confidence tiers; and define numbering gaps/front matter before proposing swaps. Keep thread offloading in the downstream caller or expose a clearly separate async wrapper.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Pairwise proposals cannot model cycles or arbitrary moves, and no labelled corpus establishes precision, recall, thresholds, or safe high-confidence auto-application.

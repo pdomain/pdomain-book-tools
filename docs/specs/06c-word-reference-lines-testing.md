@@ -396,3 +396,11 @@ All open questions for this feature are listed in section 9 above
 - Original parent spec — superseded by 06a, 06b, and 06c; preserved in Git history
 - `tests/ocr/test_word.py:1332-1348` — existing baseline tests
 - `tests/ocr/test_block_coverage2.py` — existing block baseline tests
+
+## Adversarial Review
+
+- **Stage:** Migration/design review dated 2026-07-13; this records a current repository review, not a historical live exercise.
+- **Source:** Full spec compared with existing baseline tests, current CI guidance, fixture policy, and the absence of the proposed reference-line implementation/tests.
+- **Accepted findings:** The plan usefully separates word, block, property, and fixture tests, but no feature acceptance has run. Fold in explicit preconditions for property tests, verify PIL-default-font glyph coverage before relying on it, and replace example version tags with dependency ordering only. All ten questions and seven coding-start decisions remain `needs_owner_decision`.
+- **Disposition:** Accepted corrections and unresolved ideas are preserved in `docs/context/intent-map.md` as deferred work or owner decisions; the source body remains unchanged pending its next evidence-backed revision.
+- **Residual risks:** Font/rendering variability, underspecified property domains, no non-Latin coverage, no cross-Pillow parity, and unresolved API choices can invalidate or overfit the planned tests.
