@@ -91,3 +91,36 @@ Kind: context
 - Decision: Point-in-time review is retired; durable unresolved ideas are
   preserved in `docs/context/intent-map.md` and Git preserves findings.
 - Residual intent: docs/context/intent-map.md
+
+### 2026-07-13 — Retired basedpyright warning plan
+
+- Plan ID: `df5014fdf4b15dcae74ce95eeb3fa3fd6a3fd2b5a93af77ffbd7bdd10d807ad6`
+- Retired: `docs/plans/2026-05-22-basedpyright-warning-burndown.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/type-checking.md`
+- Decision: Implemented warning burndown is promoted to current type-checking
+  architecture; historical task scaffolding remains in Git.
+- Residual intent: docs/architecture/type-checking.md#residual-intent
+- Retained evidence: `docs/architecture/type-checking.md`
+
+### 2026-07-13 — Retired layout-debug cleanup plan
+
+- Plan ID: `df5014fdf4b15dcae74ce95eeb3fa3fd6a3fd2b5a93af77ffbd7bdd10d807ad6`
+- Retired: `docs/plans/2026-05-30-layout-debug-auto-cleanup.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/layout-debug-cleanup.md`
+- Decision: Implemented execution plan is promoted to layout-debug cleanup
+  architecture; disposable checklist scaffolding remains in Git.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/layout-debug-cleanup.md`
+
+### 2026-07-13 — Retired layout-debug cleanup spec
+
+- Plan ID: `df5014fdf4b15dcae74ce95eeb3fa3fd6a3fd2b5a93af77ffbd7bdd10d807ad6`
+- Retired: `docs/specs/2026-05-30-layout-debug-auto-cleanup.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/layout-debug-cleanup.md`
+- Decision: Implemented spec is promoted to layout-debug cleanup architecture
+  with residual liveness work in the intent map.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/layout-debug-cleanup.md`

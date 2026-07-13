@@ -47,7 +47,7 @@ Kind: context
   docs/specs/07-dev-local-upgrade-flow.md, Adversarial Review.
 - Protect active layout-debug runs with a liveness marker or lock, and test
   cleanup races and suppressed filesystem failures. Evidence:
-  docs/specs/2026-05-30-layout-debug-auto-cleanup.md, Adversarial Review.
+  docs/architecture/layout-debug-cleanup.md.
 
 ## Rejected directions
 
@@ -60,8 +60,9 @@ None.
 
 ## Needs owner decision
 
-- Choose architecture destinations for implemented specs 01–05, 07, and the
-  layout-debug auto-cleanup spec and plan before formal retirement.
+- Choose architecture destinations for implemented specs 01–05 and 07 before
+  formal retirement. Layout-debug cleanup now lives in
+  `docs/architecture/layout-debug-cleanup.md`.
 - Resolve the word-reference-lines coordinate, persistence, heuristic, mapping,
   font-fixture, and property-test contracts before implementation. Evidence:
   docs/specs/06b-word-reference-lines-api.md and
@@ -92,8 +93,9 @@ None.
 - **Still active:** docs/plans/roadmap.md, docs/process/lint-deviations.md,
   docs/process/writing-style.md, active specs 06a–06c, 09, 10, hyphen n-grams,
   page-order detection, scannos, and the specs index.
-- **Still active pending architecture promotion:** implemented specs 01–05, 07,
-  layout-debug auto-cleanup, and its implementation plan.
+- **Still active pending architecture promotion:** implemented specs 01–05 and
+  07.
 - **Superseded:** the original word-reference-lines parent spec, replaced by
   specs 06a, 06b, and 06c.
-- **Needs owner review:** none beyond the architecture destinations above.
+- **Needs owner review:** none beyond the remaining architecture destinations
+  above.

@@ -23,7 +23,7 @@ an archive directory, preserves retired documentation.
 
 ## In-flight work
 
-- The docgraph bootstrap and first migration are on docs/docgraph-migration.
+- The conformance and lifecycle migration is on docs/docgraph-conformance.
 - Implemented specs still need durable architecture replacements before formal
   retirement.
 
@@ -32,5 +32,5 @@ an archive directory, preserves retired documentation.
 - Required-section conformance is enforced as an error after the 2026-07-13
   conformance migration closed all 37 findings and adversarially reviewed 15
   specs.
-- Three implemented orphan documents remain until the type-checking and
-  layout-debug architecture promotions complete their retirement.
+- The orphan queue is clear after promoting type-checking and layout-debug
+  behavior to architecture and retiring their implementation documents.
