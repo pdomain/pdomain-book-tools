@@ -21,6 +21,11 @@ Docgraph is the documentation lifecycle and retrieval system for this repository
 Live specs now declare whether they are active or implemented. Git history, not
 an archive directory, preserves retired documentation.
 
+Shipped geometry behavior lives in
+[`geometry-correction.md`](../architecture/geometry-correction.md). OCR model,
+blob, review, and schema ownership lives in
+[`ocr-model-and-schema-boundaries.md`](../architecture/ocr-model-and-schema-boundaries.md).
+
 ## In-flight work
 
 - The docgraph bootstrap and first migration are on docs/docgraph-migration.

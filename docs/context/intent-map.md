@@ -23,6 +23,16 @@ Kind: context
 
 ## Deferred work
 
+- Benchmark alternative OCR, HTR, and dewarp engines only with reproducible
+  historical-document datasets, license review, and comparison against the
+  shipped DocTR, Tesseract, textline-disparity, and UVDoc baseline. This
+  includes the deferred page-dewarp fork and any renewed DocUNet-style metric
+  suite.
+- Cluster ground-truth matching fields into `GTMatchMetadata`, or remove Page
+  compatibility fields, only after current consumers are inventoried and an
+  owner approves the migration. No removal is implied by the current
+  architecture record.
+
 - Add a dirty flag for Page.items and Block.items sorting only if profiling
   shows repeated reads are material. Preserve the mutation-site coverage in
   tests/ocr/test_items_resort_l23.py. Evidence: retired review item L-23 in Git
