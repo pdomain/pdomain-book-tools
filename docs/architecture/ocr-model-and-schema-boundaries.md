@@ -47,8 +47,8 @@ This record does not promise removal dates for compatibility fields and does
 not define pdomain-ops persistence. A future `GTMatchMetadata` cluster requires
 consumer evidence before it changes the current top-level matching fields.
 
-The detailed JSON reference remains in
-[`01-page-model.md`](../specs/01-page-model.md).
+The current JSON reference is
+[`page-serialization.md`](page-serialization.md).
 
 ## Evidence
 
