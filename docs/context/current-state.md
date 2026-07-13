@@ -32,4 +32,5 @@ an archive directory, preserves retired documentation.
 - Required-section conformance is enforced as an error after the 2026-07-13
   conformance migration closed all 37 findings and adversarially reviewed 15
   specs.
-- Fifteen orphan advisories remain for the lifecycle and link-curation wave.
+- Three implemented orphan documents remain until the type-checking and
+  layout-debug architecture promotions complete their retirement.

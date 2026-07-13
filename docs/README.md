@@ -29,3 +29,11 @@ deleting a retired document.
 Active docs map to GitHub issues — see this repo's issue tracker for status.
 This layout is workspace-standard; see
 `/workspaces/ocr-container/docs/README.md` for the master.
+
+## Current documentation
+
+- [Type-checking architecture](architecture/type-checking.md)
+- [Layout-debug cleanup architecture](architecture/layout-debug-cleanup.md)
+- [Roadmap](plans/roadmap.md)
+- [Specifications](specs/_index.md)
+- [Geometry correction usage](usage/geometry-correction.md)

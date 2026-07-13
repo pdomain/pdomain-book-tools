@@ -10,6 +10,16 @@ Kind: usage
 
 Python tools for working with public domain book scans.
 
+## Project documentation
+
+- [Agent instructions](AGENTS.md)
+- [Codex instructions](CODEX.md)
+- [Engineering conventions](CONVENTIONS.md)
+- [Docgraph workflow](DOCGRAPH.md)
+- [GPU testing](GPU_TESTING.md)
+- [Changelog](CHANGELOG.md)
+- [Documentation index](docs/README.md)
+
 ## Installation
 
 ### Prerequisites
