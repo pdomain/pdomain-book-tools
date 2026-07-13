@@ -23,9 +23,11 @@ in `wf05b/DISCUSSION.md`.
 
 Related specs:
 
-- `Spec: 01-page-model` — the `Page` / `Block` / `Word` types whose text
+- [Page serialization](../architecture/page-serialization.md) — the `Page` /
+  `Block` / `Word` types whose text
   is scanned for scanno candidates.
-- `Spec: 03-reorganize-pipeline` — the upstream pipeline that produces the
+- [Page reorganization](../architecture/reorganize-page-pipeline.md) — the
+  upstream pipeline that produces the
   word-level text this module reads.
 
 ---

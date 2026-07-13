@@ -22,11 +22,13 @@ character-level alignment signals.
 
 This spec relates to:
 
-- `Spec: 05-glyph-annotations` — the parallel side-channel annotation
+- [Glyph annotations](../architecture/glyph-annotations.md) — the parallel
+  side-channel annotation
   model for ligatures and long-s. Where glyph-annotations records
   *what* ligature is present, char-bbox extraction records *where*
   each rendered component sits on the image.
-- `Spec: 01-page-model` — the `Word` / `Character` / `BoundingBox`
+- [Page serialization](../architecture/page-serialization.md) — the `Word` /
+  `Character` / `BoundingBox`
   types that this spec builds on.
 - `Spec: 06b-word-reference-lines-api` — baseline / x-height geometry used
   to classify diacritic blobs vs. base-letter blobs (see also the
@@ -245,7 +247,7 @@ therefore do NOT trigger diacritic reassignment):
 ### 3.6 Ligature Policy
 
 This spec adopts the following policy, which aligns with
-`Spec: 05-glyph-annotations §1.1`:
+the [glyph-annotation architecture](../architecture/glyph-annotations.md):
 
 - If `word_text` contains a Unicode ligature codepoint (U+FB00–U+FB06),
   the extractor treats it as a **single character**. The resulting

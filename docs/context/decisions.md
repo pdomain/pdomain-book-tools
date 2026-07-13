@@ -124,3 +124,58 @@ Kind: context
   with residual liveness work in the intent map.
 - Residual intent: docs/context/intent-map.md
 - Retained evidence: `docs/architecture/layout-debug-cleanup.md`
+
+### 2026-07-13 — Retired Page model spec
+
+- Plan ID: `3d6bc2d48890fd00d94679e88bd008e6fa8cf1d69e7fac0bdc7264f6f7e396a2`
+- Retired: `docs/specs/01-page-model.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/page-serialization.md`
+- Decision: Implemented Page serialization behavior is promoted to
+  architecture; drift and compatibility follow-ups remain in the intent map.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/page-serialization.md`
+
+### 2026-07-13 — Retired orientation spec
+
+- Plan ID: `3d6bc2d48890fd00d94679e88bd008e6fa8cf1d69e7fac0bdc7264f6f7e396a2`
+- Retired: `docs/specs/02-rotation.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/ocr-page-orientation.md`
+- Decision: Implemented orientation behavior is promoted to architecture; audit
+  persistence and benchmarks remain in the intent map.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/ocr-page-orientation.md`
+
+### 2026-07-13 — Retired page-reorganization spec
+
+- Plan ID: `3d6bc2d48890fd00d94679e88bd008e6fa8cf1d69e7fac0bdc7264f6f7e396a2`
+- Retired: `docs/specs/03-reorganize-pipeline.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/reorganize-page-pipeline.md`
+- Decision: Implemented reorganization behavior is promoted to architecture;
+  strict-xfail and metric follow-ups remain in the intent map.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/reorganize-page-pipeline.md`
+
+### 2026-07-13 — Retired layout-fixture spec
+
+- Plan ID: `3d6bc2d48890fd00d94679e88bd008e6fa8cf1d69e7fac0bdc7264f6f7e396a2`
+- Retired: `docs/specs/04-layout-regression-fixtures.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/layout-regression-fixture-corpus.md`
+- Decision: Implemented fixture governance is promoted to architecture;
+  baseline policy remains in the intent map.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/layout-regression-fixture-corpus.md`
+
+### 2026-07-13 — Retired glyph-annotation spec
+
+- Plan ID: `3d6bc2d48890fd00d94679e88bd008e6fa8cf1d69e7fac0bdc7264f6f7e396a2`
+- Retired: `docs/specs/05-glyph-annotations.md`
+- Action: `retire_with_decision`
+- Replacement: `docs/architecture/glyph-annotations.md`
+- Decision: Implemented glyph annotation behavior is promoted to architecture;
+  validation and compatibility follow-ups remain in the intent map.
+- Residual intent: docs/context/intent-map.md
+- Retained evidence: `docs/architecture/glyph-annotations.md`

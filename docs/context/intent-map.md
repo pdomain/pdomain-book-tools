@@ -31,17 +31,17 @@ Kind: context
   when a concrete fork-pin workflow needs it. Evidence: docs/plans/roadmap.md.
 - Add a versioned, complete Page JSON schema and downstream compatibility gate
   before retiring the page-model spec. Evidence:
-  docs/specs/01-page-model.md, Adversarial Review.
+  docs/architecture/page-serialization.md.
 - Decide whether rotation probes need a durable audit/event surface, then back
   threshold and timing claims with a reproducible benchmark. Evidence:
-  docs/specs/02-rotation.md, Adversarial Review.
+  docs/architecture/ocr-page-orientation.md.
 - Close or explicitly accept the five strict-xfail layout baselines, and define
   whether canonical fixture baselines represent current or desired behavior.
-  Evidence: docs/specs/03-reorganize-pipeline.md and
-  docs/specs/04-layout-regression-fixtures.md, Adversarial Review.
+  Evidence: docs/architecture/reorganize-page-pipeline.md and
+  docs/architecture/layout-regression-fixture-corpus.md.
 - Decide whether glyph-span validation should become automatic and whether
   unknown future annotation kinds need tolerant reading. Evidence:
-  docs/specs/05-glyph-annotations.md, Adversarial Review.
+  docs/architecture/glyph-annotations.md.
 - Reconcile the local-upgrade restore recipe, override semantics, and duplicate
   marker contracts before retiring the dev-local spec. Evidence:
   docs/specs/07-dev-local-upgrade-flow.md, Adversarial Review.
@@ -60,9 +60,8 @@ None.
 
 ## Needs owner decision
 
-- Choose architecture destinations for implemented specs 01–05 and 07 before
-  formal retirement. Layout-debug cleanup now lives in
-  `docs/architecture/layout-debug-cleanup.md`.
+- Reconcile the dev-local contract drift before promoting and retiring spec 07.
+  The other implemented specs now have architecture replacements.
 - Resolve the word-reference-lines coordinate, persistence, heuristic, mapping,
   font-fixture, and property-test contracts before implementation. Evidence:
   docs/specs/06b-word-reference-lines-api.md and
@@ -93,8 +92,7 @@ None.
 - **Still active:** docs/plans/roadmap.md, docs/process/lint-deviations.md,
   docs/process/writing-style.md, active specs 06a–06c, 09, 10, hyphen n-grams,
   page-order detection, scannos, and the specs index.
-- **Still active pending architecture promotion:** implemented specs 01–05 and
-  07.
+- **Still active pending architecture promotion:** implemented spec 07.
 - **Superseded:** the original word-reference-lines parent spec, replaced by
   specs 06a, 06b, and 06c.
 - **Needs owner review:** none beyond the remaining architecture destinations

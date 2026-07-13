@@ -25,7 +25,8 @@ preferring local indexing.
 
 Related specs:
 
-- `Spec: 01-page-model` — the `Word` type whose text is the query key.
+- [Page serialization](../architecture/page-serialization.md) — the `Word`
+  type whose text is the query key.
 - `Spec: 2026-05-24-scannos-module` — the parallel local-data module for
   scannos rules; follows the same `platformdirs` + opt-in-download convention.
 

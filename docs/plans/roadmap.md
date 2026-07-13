@@ -115,7 +115,7 @@ the glyph-size work, not standalone.
 The PLAN's "open follow-up" on page-rotation detection (sideways
 plates, upside-down scans, the Peutinger map fixture) shipped as
 `pdomain_book_tools/ocr/rotation.py`. Documented in
-`docs/specs/02-rotation.md`. **No further work tracked here.**
+`../architecture/ocr-page-orientation.md`. **No further work tracked here.**
 
 ## Open — developer tooling
 

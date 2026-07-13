@@ -1,6 +1,6 @@
 """Glyph-level side-channel annotations on Word.
 
-Spec: pdomain-book-tools/docs/specs/05-glyph-annotations.md
+Architecture: pdomain-book-tools/docs/architecture/glyph-annotations.md
 Issue: pdomain/pdomain-book-tools#41
 
 These types record glyph-level facts about the printed page (ligatures,

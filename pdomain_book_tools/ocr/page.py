@@ -162,7 +162,7 @@ class Page:
     # any production logic, NOT persisted by ``to_dict`` / ``copy``,
     # and remain ``None`` for any page that has not been reorganized.
     # See ``Page.reorganize_page`` for the capture points and the
-    # ``docs/specs/03-reorganize-pipeline.md`` notes.
+    # ``docs/architecture/reorganize-page-pipeline.md`` notes.
     diagnostic_pure_ocr: Page | None = field(
         default=None, init=False, repr=False, compare=False
     )
@@ -2786,7 +2786,7 @@ class Page:
 
         All pipeline-step logic lives in
         :mod:`pdomain_book_tools.ocr.reorganize_page_utils`. See
-        ``docs/specs/03-reorganize-pipeline.md`` for the per-step
+        ``docs/architecture/reorganize-page-pipeline.md`` for the per-step
         heuristics, debug-PNG outputs, and the rationale behind each
         threshold.
 

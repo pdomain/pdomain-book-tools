@@ -1,6 +1,6 @@
 """Tests for GlyphAnnotations, LigatureKind, and LigatureMark.
 
-Spec: pdomain-book-tools/docs/specs/05-glyph-annotations.md
+Architecture: pdomain-book-tools/docs/architecture/glyph-annotations.md
 Issue: pdomain/pdomain-book-tools#41
 Plan: pdomain/pdomain-book-tools#163
 """

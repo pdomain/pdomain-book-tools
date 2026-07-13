@@ -24,8 +24,8 @@ an archive directory, preserves retired documentation.
 ## In-flight work
 
 - The conformance and lifecycle migration is on docs/docgraph-conformance.
-- Implemented specs still need durable architecture replacements before formal
-  retirement.
+- Spec 07 remains implemented until its local-development command, override,
+  marker, and restore contracts are reconciled with current code.
 
 ## Risks
 

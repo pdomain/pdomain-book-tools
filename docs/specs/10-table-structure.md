@@ -23,10 +23,12 @@ table training pipeline are downstream or future work. See §3 and §9.
 
 Related specs:
 
-- `Spec: 01-page-model` defines the `Page` / `Block` / `Word` JSON form and
+- [Page serialization](../architecture/page-serialization.md) defines the
+  `Page` / `Block` / `Word` JSON form and
   the `block_role_labels` vocabulary. `"table"` already lives in that
   vocabulary, and this spec extends it.
-- `Spec: 03-reorganize-pipeline` defines the reading-order pipeline. A
+- [Page reorganization](../architecture/reorganize-page-pipeline.md) defines
+  the reading-order pipeline. A
   recovered `TABLE` block must be placed into that pipeline.
 
 ---
@@ -329,7 +331,7 @@ are:
    blocks. Assemble the `TABLE` block, then place it in the page's normal
    reading-order stream. Use the column-clustering concept from deepdoctection
    `order.py` for the page-level sort, consistent with
-   `Spec: 03-reorganize-pipeline`.
+   the [page-reorganization architecture](../architecture/reorganize-page-pipeline.md).
 
 ### 6.6 No-silent-drop invariant
 
@@ -390,7 +392,8 @@ Each slice is independently shippable.
 - Wire stages 1 through 4 from §6.5 into the page pipeline: detect table
   regions, then structure-detect, then assign words, then build the `TABLE`
   tree, then place it in reading order.
-- Keep reading-order placement consistent with `Spec: 03-reorganize-pipeline`.
+- Keep reading-order placement consistent with the
+  [page-reorganization architecture](../architecture/reorganize-page-pipeline.md).
 - Add an end-to-end test on a fixture table page, and assert the no-silent-drop
   invariant on real OCR output.
 

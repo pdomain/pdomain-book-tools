@@ -5,7 +5,7 @@ blocks: header/footer band detection, row-block grouping, column / floated-
 figure expansion, paragraph splitting, special-block classification, and the
 per-step debug PNG writers used by the layout regression test.
 
-See ``docs/specs/03-reorganize-pipeline.md`` for the per-step heuristic
+See ``docs/architecture/reorganize-page-pipeline.md`` for the per-step heuristic
 specs, debug-PNG semantics, the rationale behind every threshold, and the
 fixture-driven decisions that shaped the pipeline.
 """
@@ -2349,7 +2349,7 @@ def compute_text_paragraph_blocks(lines: list[Block]) -> Block:
 # Pipeline orchestration helpers -- consume a Page and produce structured
 # intermediates. Page only needs to call these in order; all the heavy lifting
 # lives here. Full per-step heuristic specs in
-# docs/specs/03-reorganize-pipeline.md.
+# docs/architecture/reorganize-page-pipeline.md.
 # ─────────────────────────────────────────────────────────────────────────────
 
 

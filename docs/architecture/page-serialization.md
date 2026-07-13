@@ -41,6 +41,52 @@ The serializer emits `page_labels`, `name`, `review`, `image_blob_hash`, and `th
 
 Allowed block-role, block-position, line-role, and line-position labels live on `Block`. Word-component labels live in `ocr/label_normalization.py`. Layout-region vocabulary lives in `layout/types.py`. Those code definitions are authoritative; adding a vocabulary value requires updating its documentation drift test.
 
+### Block roles
+
+`block_role_labels` accepts `artefact`, `blockquote`, `caption`, `decoration`,
+`figure`, `footnote`, `formula`, `illustration`, `list`, `page footer`,
+`page header`, `page number`, `paragraph`, `poetry`, `printers mark`,
+`recovered`, `section`, `sidenote`, `table`, and `title`.
+
+### Line roles
+
+`line_role_labels` accepts `blockquote line`, `body line`, `caption line`,
+`footer line`, `footnote line`, `header line`, `heading line`,
+`page number line`, and `verse line`.
+
+### Position labels
+
+`block_position_labels` accepts `top`, `bottom`, `left`, `right`, `center`,
+`margin left`, and `margin right`. `line_position_labels` accepts `top`,
+`bottom`, `left`, `right`, `center`, `column left`, and `column right`.
+Multiple position labels may describe the same block or line.
+
+### Role-label normalization
+
+Role labels are stripped, lowercased, and normalized so underscores, hyphens,
+repeated whitespace, and compact spellings resolve to canonical values when
+possible. Block-role aliases include `block quote` → `blockquote`, `pageheader`
+→ `page header`, `pagefooter` → `page footer`, `pagenumber` → `page number`,
+`printer's mark` and `printersmark` → `printers mark`, and `poem` → `poetry`.
+Line-role aliases map the short forms `body`, `heading`, `verse`, `blockquote`,
+`header`, `footer`, `footnote`, and `caption` to their corresponding `… line`
+values; `page number` and `pagenumber` map to `page number line`. Unknown labels
+raise `ValueError`, and normalized duplicates collapse while preserving order.
+
+### Word components
+
+Word components accept `drop cap`, `drop cap unrecovered`, `footnote marker`,
+`subscript`, and `superscript`. A recovered drop cap contributes its character
+to `Block.text`; `drop cap unrecovered` records that the printed initial could
+not be recovered and contributes no replacement character.
+
+### Layout regions
+
+`RegionType` accepts `text`, `title`, `section`, `list`, `table`, `figure`,
+`decoration`, `caption`, `header`, `footer`, `footnote`, `formula`, `abandoned`,
+and `sidenote`. These detector-output values are distinct from block roles even
+where their spelling overlaps.
+
 ## Evidence
 
 - `pdomain_book_tools/ocr/page.py`: `Page` fields, `Page.to_dict`, and `Page.from_dict`.

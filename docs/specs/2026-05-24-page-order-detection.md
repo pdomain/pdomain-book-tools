@@ -20,8 +20,10 @@ confident swap pairs for the user to review. The primary consumer is the
 
 Related specs:
 
-- `Spec: 01-page-model` — the `Page` type whose metadata this module reads.
-- `Spec: 03-reorganize-pipeline` — upstream pipeline whose output provides
+- [Page serialization](../architecture/page-serialization.md) — the `Page`
+  type whose metadata this module reads.
+- [Page reorganization](../architecture/reorganize-page-pipeline.md) — the
+  upstream pipeline whose output provides
   OCR text from which page numbers may be extracted.
 
 ---

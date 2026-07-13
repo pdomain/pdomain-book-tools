@@ -231,18 +231,17 @@ doc = Document.from_image_ocr_via_doctr(
 )
 ```
 
-See [`docs/specs/02-rotation.md`](docs/specs/02-rotation.md) for
-the threshold rationale, the rotated-frame coordinate convention, and
-what this is *not* (no arbitrary deskew, no separate orientation
-classifier).
+See [`docs/architecture/ocr-page-orientation.md`](docs/architecture/ocr-page-orientation.md) for
+the current probe sequence, confidence threshold, rotated-frame coordinate
+convention, and verification evidence.
 
 ### Layout-regression fixture corpus
 
-`tests/fixtures/layout_regression/` holds 30 hand-picked public-domain
+`tests/fixtures/layout_regression/` holds 31 hand-picked public-domain
 pages plus their OCR / layout / reorganize artifacts; it's the contract
 that pins the layout pipeline to known-good output. Workflow for adding
-a fixture and regenerating after a pipeline change is in
-[`docs/specs/04-layout-regression-fixtures.md`](docs/specs/04-layout-regression-fixtures.md).
+a fixture and regenerating baselines is documented in
+[layout regression fixtures](docs/architecture/layout-regression-fixture-corpus.md).
 
 ## Emitting JSON Schema for downstream codegen
 
