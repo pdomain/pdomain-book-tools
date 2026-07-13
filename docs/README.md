@@ -34,6 +34,11 @@ This layout is workspace-standard; see
 
 - [Type-checking architecture](architecture/type-checking.md)
 - [Layout-debug cleanup architecture](architecture/layout-debug-cleanup.md)
+- [Page serialization architecture](architecture/page-serialization.md)
+- [OCR page-orientation architecture](architecture/ocr-page-orientation.md)
+- [Page reorganization architecture](architecture/reorganize-page-pipeline.md)
+- [Layout-regression fixture architecture](architecture/layout-regression-fixture-corpus.md)
+- [Glyph-annotation architecture](architecture/glyph-annotations.md)
 - [Roadmap](plans/roadmap.md)
 - [Specifications](specs/_index.md)
 - [Geometry correction usage](usage/geometry-correction.md)
