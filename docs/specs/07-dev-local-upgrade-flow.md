@@ -1,6 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-07
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: dev-local-aware `upgrade-deps` flow
 
-> **Status**: Partially shipped — doctr-from-git signal still open (tracked in issue #7)
+> **Status**: Implemented — the optional DocTR-from-Git signal is deferred in the intent map
 > **Last updated**: 2026-05-22
 
 Status: **shipped** (2026-05). All required behavior in §2 landed across

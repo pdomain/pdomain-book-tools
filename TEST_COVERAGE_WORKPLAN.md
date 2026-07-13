@@ -1,3 +1,11 @@
+---
+Status: retired
+Owner: CT
+Created: 2025-09-13
+Last verified: 2026-07-13
+Kind: plan
+---
+
 # Test Coverage Analysis & Work Plan (Historical Snapshot)
 
 > Note: This document is a point-in-time snapshot and may not reflect current

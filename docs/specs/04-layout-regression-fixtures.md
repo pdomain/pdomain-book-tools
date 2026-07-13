@@ -1,11 +1,19 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-04
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Layout-Regression Fixture Corpus
 
-> **Status**: Active
+> **Status**: Implemented
 > **Last updated**: 2026-05-10
 > **Spec-Issue**: pdomain/pdomain-book-tools#28
 
 How the fixture corpus under
-[`tests/fixtures/layout_regression/`](../../tests/fixtures/layout_regression/)
+`tests/fixtures/layout_regression/`
 is organised, how to add a new fixture, and what role each per-case file
 plays.
 
@@ -240,7 +248,7 @@ a regression.
 
 The per-case manifest with full source paths and a description of what
 each fixture stresses lives in
-[`tests/fixtures/layout_regression/README.md`](../../tests/fixtures/layout_regression/README.md).
+`tests/fixtures/layout_regression/README.md`.
 
 ## TL;DR
 

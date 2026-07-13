@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2025-03-23
+Last verified: 2026-07-13
+Kind: usage
+---
+
 # pdomain-book-tools
 
 Python tools for working with public domain book scans.
@@ -48,7 +56,7 @@ command above.
 The project includes a Makefile with convenient commands. For a complete setup:
 
 ```bash
-make install
+make setup
 ```
 
 This will:
@@ -61,7 +69,7 @@ This will:
 
 Run `make help` to see all available commands:
 
-- `make install` - Install dependencies and set up development environment
+- `make setup` - Install dependencies and set up development environment
 - `make test` - Run tests
 - `make lint` - Run linting checks
 - `make format` - Format code

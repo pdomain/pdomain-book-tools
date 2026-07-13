@@ -1,3 +1,11 @@
+---
+Status: retired
+Owner: CT
+Created: 2026-05-22
+Last verified: 2026-07-13
+Kind: research
+---
+
 # Deep Code and Security Review - 2026-05-22
 
 Scope: `pdomain-book-tools` at `fba1657` (`Merge fix/hf-test-xdist-determinism...`).

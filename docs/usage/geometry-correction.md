@@ -1,6 +1,14 @@
+---
+Status: active
+Owner: CT
+Created: 2026-06-02
+Last verified: 2026-07-13
+Kind: usage
+---
+
 # Geometry Correction (Deskew / Dewarp)
 
-> **Spec:** [`docs/specs/2026-06-02-geometry-correction-design.md`](../specs/2026-06-02-geometry-correction-design.md)
+> **Design history:** preserved in Git history.
 
 The `pdomain_book_tools.geometry_correction` package provides swappable
 `Deskew`, `Dewarp`, `PageSideDetector`, and `CurvatureDetector` protocol
@@ -127,7 +135,7 @@ backward-map dewarpers. Affine transforms invert exactly.
 
 ## Textline-disparity dewarp (scanned-page workhorse)
 
-> **Spec:** [`docs/specs/2026-06-02-textline-disparity-dewarp-design.md`](../specs/2026-06-02-textline-disparity-dewarp-design.md)
+> **Design history:** preserved in Git history.
 
 `TextlineDisparityDewarp` is a clean-room reimplementation of Leptonica's
 textline-disparity model: morph-consolidate text lines, fit order-2 baselines

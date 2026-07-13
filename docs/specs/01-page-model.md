@@ -1,6 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-07
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Page model — `Page.to_dict()` JSON reference
 
-> **Status**: Active
+> **Status**: Implemented
 > **Last updated**: 2026-05-10
 > **Spec-Issue**: pdomain/pdomain-book-tools#24
 
@@ -11,7 +19,7 @@ isn't stable. Downstream consumers (`pdomain-ocr-cli`, `pdomain-ocr-labeler-spa`
 `pdomain-prep-for-pgdp`) all read this format back via `Page.from_dict`.
 
 For maintainers: this doc is gated by
-[`tests/test_page_model_doc.py`](../../tests/test_page_model_doc.py),
+`tests/test_page_model_doc.py`,
 which fails the build if the vocabulary lists below drift from the
 authoritative `ClassVar` frozensets on `Block` or the `RegionType`
 enum. If a test in that file fails, update the doc and the
@@ -212,7 +220,7 @@ values flag lines on the boundary of a detected multi-column layout.
 - `word_labels` — caller-controlled freeform labels. The reorg
   pipeline's `layout:*` tags (e.g. `layout:figure`, `layout:sidenote`)
   live here. See
-  [`pdomain_book_tools/ocr/layout_aware_reorg.py`](../../pdomain_book_tools/ocr/layout_aware_reorg.py)
+  `pdomain_book_tools/ocr/layout_aware_reorg.py`
   for the `layout:` prefix convention used by
   `tag_words_with_layout`.
 - `text_style_labels` — italic / bold / small-caps style hints (when
@@ -221,11 +229,11 @@ values flag lines on the boundary of a detected multi-column layout.
   spans.
 - `word_components` — sub-word component tags. Allowed values are
   defined by `ALLOWED_COMPONENTS` in
-  [`pdomain_book_tools/ocr/label_normalization.py`](../../pdomain_book_tools/ocr/label_normalization.py):
+  `pdomain_book_tools/ocr/label_normalization.py`:
   `superscript`, `subscript`, `footnote marker`, `drop cap`,
   `drop cap unrecovered`. The drop-cap tags are set by Step DC of the
   reorganize pipeline (see
-  [`pdomain_book_tools/ocr/dropcap.py`](../../pdomain_book_tools/ocr/dropcap.py)):
+  `pdomain_book_tools/ocr/dropcap.py`):
   - `drop cap` — this Word *is* the decorative initial glyph (e.g. the
     oversized "R" in "READER!"). It is kept as its own Word at the
     front of the body line, with its own bounding box and OCR
@@ -288,7 +296,7 @@ placeholder blocks).
 
 The mapping `RegionType` → `block_role_labels` is defined by
 `_REGION_TO_BLOCK_ROLE` in
-[`pdomain_book_tools/ocr/layout_aware_reorg.py`](../../pdomain_book_tools/ocr/layout_aware_reorg.py)
+`pdomain_book_tools/ocr/layout_aware_reorg.py`
 (roughly: `text` → `paragraph`, `header` → `page header`, `footer` →
 `page footer`, the rest pass through unchanged). `RegionType.abandoned`
 intentionally has no block-role mapping; it exists so layout-derived

@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-04
+Last verified: 2026-07-13
+Kind: process
+---
+
 # CLAUDE — pdomain-book-tools
 
 Foundation Python library for public domain book scans: OCR (Tesseract +
@@ -20,7 +28,7 @@ on it, so public API changes ripple downstream.
 | `make local-check` | print local-dev mode status (marker + torch location) |
 | `make local-upgrade-deps` | upgrade deps + re-sync GPU extras (local-mode only) |
 
-See [workspace `docs/process/local-dev.md`](../docs/process/local-dev.md) for the canonical local-dev pattern (spec #362).
+The local-dev commands above define this repository's supported workflow.
 
 `AI=1` captures verbose output to `.ci-ai.log`; stdout shows `✅` on pass or
 filtered failure sections on error. Remove `AI=1` only if you need full verbose
@@ -61,8 +69,7 @@ When shipping a plan task:
 
 This repo follows the workspace docs/ template — see [`docs/README.md`](docs/README.md). Active
 folders: `architecture/`, `decisions/`, `plans/`, `process/`, `research/`,
-`runbooks/`, `specs/`, `templates/`, `usage/`, plus parallel `archive/`
-subfolders.
+`runbooks/`, `specs/`, `templates/`, and `usage/`.
 
 **Superpowers redirect.** When a superpowers skill (e.g. `brainstorming`,
 `writing-plans`) instructs you to save to `docs/superpowers/specs/<file>.md`

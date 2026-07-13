@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2025-09-13
+Last verified: 2026-07-13
+Kind: process
+---
+
 # GPU Testing Strategy
 
 This document explains how GPU/CUDA functionality is tested in pdomain-book-tools
@@ -158,7 +166,6 @@ uv run pytest -n auto -m "not gpu"
 tests/
 ├── conftest.py              # GPU fixtures and skip conditions
 ├── gpu/                     # GPU-specific tests
-│   ├── test_examples.py     # Usage patterns
 │   └── test_cuda_functionality.py  # Actual GPU tests
 ├── ocr/                     # Regular tests (run in CI)
 ├── geometry/               # Regular tests (run in CI)

@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-10
+Last verified: 2026-07-13
+Kind: process
+---
+
 # Specs
 
 Architecture decisions and planning specs for `pdomain-book-tools`. These are
@@ -20,12 +28,12 @@ the workspace's fixing-specs guide).
 | 03 | [reorganize-pipeline](03-reorganize-pipeline.md) | `Page.reorganize_page` and `pdomain_book_tools/ocr/reorganize_page_utils.py` | Adding fixtures, tuning header/footer/column/float detection, adding a new pipeline step, debugging unexpected reading-order output |
 | 04 | [layout-regression-fixtures](04-layout-regression-fixtures.md) | `tests/fixtures/layout_regression/` | Adding a new fixture page, regenerating OCR / layout / reorganize artifacts, understanding what each existing fixture stresses |
 | 05 | [glyph-annotations](05-glyph-annotations.md) | Glyph-level annotation data model (planning) | Designing annotation surfaces above the Word level — drop caps, small caps, italics, ligatures, accents |
-| 06 | ~~word-reference-lines~~ _(archived — superseded; split into 06a/06b/06c; see `docs/archive/specs/06-word-reference-lines.md`)_ | Per-word baseline / x-height / cap-height / ascender / descender reference geometry (planning) | Archived 2026-05-23; superseded by the three child specs below |
+| 06 | ~~word-reference-lines~~ _(superseded; split into 06a/06b/06c)_ | Per-word baseline / x-height / cap-height / ascender / descender reference geometry (planning) | Superseded 2026-05-23 by the three child specs below; Git history preserves the forwarding stub |
 | 06a | [word-reference-lines-audit](06a-word-reference-lines-audit.md) | Audit of existing baseline code + gap analysis of all four reference lines | Starting point for implementing the reference-lines API; understanding what currently exists |
 | 06b | [word-reference-lines-api](06b-word-reference-lines-api.md) | `WordReferenceLines` dataclass, `Word.estimate_reference_lines`, `Block.estimate_word_reference_lines`, heuristics, parameters, confidence | Implementing the new reference-lines API; understanding parameter defaults and confidence model |
 | 06c | [word-reference-lines-testing](06c-word-reference-lines-testing.md) | Testing approach, bottom-crop interaction, open questions (Q-RL-1 to Q-RL-10), decisions required | Writing tests, answering open questions before implementation, bottom-crop sequencing decisions |
 | 07 | [dev-local-upgrade-flow](07-dev-local-upgrade-flow.md) | dev-local mode detection + `make upgrade-deps` guard | Touching the dev-local detection logic, the `[gpu]` extra reapply path, or the `.venv/.pdomain-dev-local` marker lifecycle |
-| 08 | ~~geometry-repr~~ _(archived — shipped; see `docs/archive/specs/08-geometry-repr.md`)_ | `BoundingBox.__repr__` / `Point.__repr__` contract | Archived 2026-05-22; spec issue #36 closed; implementation landed in PR #50 |
+| 08 | ~~geometry-repr~~ _(shipped)_ | `BoundingBox.__repr__` / `Point.__repr__` contract | Shipped 2026-05-22; spec issue #36 closed; implementation landed in PR #50; tests preserve the contract |
 | 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pdomain-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
 | 10 | [table-structure](10-table-structure.md) | `BlockCategory` TABLE/CELL + grid fields; post-OCR TATR structure detection; deepdoctection-derived numpy cell-assignment geometry | Adding table row/col/cell structure to the page model; threading new `Block` grid fields through the five serialization sites; wiring the post-OCR table-structure step; understanding spanning-cell storage and the no-silent-drop invariant |
 | — | [page-order-detection](2026-05-24-page-order-detection.md) | `pdomain_book_tools.page_order` module — `detect_out_of_order_pages` + `SwapProposal` | Implementing Stage 11 of pdomain-prep-for-pgdp; understanding the three-signal (filename seq, OCR page number, visual hash) confidence model |

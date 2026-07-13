@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-24
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: Scannos Rule and Candidate Module
 
 > **Status**: Draft

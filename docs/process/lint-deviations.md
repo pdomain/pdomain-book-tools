@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-21
+Last verified: 2026-07-13
+Kind: process
+---
+
 # Lint-rule Deviations — pdomain-book-tools
 
 Standing suppressions and per-file rule overrides in this repo.

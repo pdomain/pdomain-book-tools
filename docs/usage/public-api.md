@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-07
+Last verified: 2026-07-13
+Kind: usage
+---
+
 # Public API
 
 This page lists the **supported public API** of `pdomain-book-tools`.
@@ -55,7 +63,9 @@ compatibility.
 from pdomain_book_tools.layout import (
     RegionType,
     LayoutRegion,
+    LayoutRegionDict,
     PageLayout,
+    PageLayoutDict,
     LayoutDetector,
     ContourDetector,
     NullDetector,
@@ -67,6 +77,7 @@ from pdomain_book_tools.layout import (
     horizontal_overlap_ratio,
     caption_for_figure,
     region_reading_order,
+    auto_detect_illustrations_from_array,
 )
 ```
 

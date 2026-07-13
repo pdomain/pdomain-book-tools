@@ -1,5 +1,8 @@
 ---
-status: active
+status: implemented
+owner: CT
+last_verified: 2026-07-13
+kind: plan
 synced: ~
 milestone: ~
 repo: pdomain-book-tools

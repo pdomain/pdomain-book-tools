@@ -1,8 +1,16 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-21
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: Word / Line Reference Lines — API Surface and Heuristics
 
 > **Status**: Active
 > **Last updated**: 2026-05-21
-> **Split from**: [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md)
+> **Split from**: the original spec, preserved in Git history
 
 Recommended API surface, per-line heuristics, tunable parameters,
 confidence model, and worked examples for the four reference lines
@@ -463,7 +471,7 @@ for the full list (Q-RL-1 through Q-RL-10).
 
 - [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md) — Audit + gap analysis
 - [06c-word-reference-lines-testing.md](06c-word-reference-lines-testing.md) — Testing, open questions, decisions
-- [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md) — Parent forwarding stub (archived)
+- Original parent spec — superseded by 06a, 06b, and 06c; preserved in Git history
 - `pdomain_book_tools/ocr/reference_lines.py` — new module (to be created)
 - `pdomain_book_tools/ocr/word.py` — `estimate_reference_lines`, `estimate_baseline_from_image`
 - `pdomain_book_tools/ocr/block.py` — `estimate_word_reference_lines`

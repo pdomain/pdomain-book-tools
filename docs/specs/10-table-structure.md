@@ -1,3 +1,11 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-28
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: Table Structure (rows / columns / cells) in the OCR model
 
 > **Status**: Draft

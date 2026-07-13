@@ -1,7 +1,15 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-30
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Layout Regression Debug — Auto-Cleanup on Test Run
 
 **Date:** 2026-05-30
-**Status:** approved
+**Status:** implemented
 
 ## Problem
 

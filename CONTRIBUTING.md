@@ -1,3 +1,11 @@
+---
+Status: retired
+Owner: CT
+Created: 2025-09-13
+Last verified: 2026-07-13
+Kind: process
+---
+
 # Contributing to pdomain-book-tools
 
 Thank you for your interest in contributing to pdomain-book-tools!

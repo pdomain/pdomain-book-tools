@@ -1,11 +1,20 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-06
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: Glyph-Level Side-Channel Annotations on `Word`
 
-> **Status**: Active
+> **Status**: Implemented
 > **Last updated**: 2026-05-10
 > **Spec-Issue**: pdomain/pdomain-book-tools#29
 
-Status: spec only — no implementation yet. Decision-oriented; intended
-to be green-lit, pushed back on, or revised before code is written.
+The pdomain_book_tools.ocr.glyph_annotations module and its page/word model
+integration are implemented and tested. This document preserves the design
+contract until that durable behavior moves to architecture documentation.
 
 Author intent: add a *parallel* annotation structure to `Word` that
 records glyph-level facts about the printed page (ligatures, long-s

@@ -1,8 +1,16 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-21
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: Word / Line Reference Lines — Audit and Gap Analysis
 
 > **Status**: Active
 > **Last updated**: 2026-05-21
-> **Split from**: [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md)
+> **Split from**: the original spec, preserved in Git history
 
 Audit of existing baseline-estimation code in `pdomain-book-tools` and gap
 analysis of the four reference lines (top, x-height, baseline, bottom).
@@ -40,7 +48,7 @@ to a richer set of four reference lines per word and per line:
 
 This spec exists because of work happening in pdomain-ocr-labeler-spa on the
 **Bottom-Crop Bbox Tool** (see
-[`/workspaces/ocr-container/pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md`](../../../pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md)).
+`pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md`).
 That tool needs `baseline_y + descender_allowance` per word; it
 currently reaches for `Word.estimate_baseline_from_image` and computes
 its own `descender_allowance` from `median_height`. Promoting the
@@ -260,6 +268,6 @@ for the full open-questions list (Q-RL-1 through Q-RL-10).
 
 - [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md) — API design, heuristics, parameters
 - [06c-word-reference-lines-testing.md](06c-word-reference-lines-testing.md) — Testing, open questions, decisions
-- [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md) — Parent forwarding stub (archived)
+- Original parent spec — superseded by 06a, 06b, and 06c; preserved in Git history
 - `pdomain_book_tools/ocr/word.py` — `estimate_baseline_from_image`, `split_into_characters_from_whitespace`
 - `pdomain_book_tools/ocr/block.py` — `Block.estimate_baseline_from_image`

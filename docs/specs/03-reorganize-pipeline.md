@@ -1,6 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-04
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Reorganize Page Pipeline
 
-> **Status**: Active
+> **Status**: Implemented
 > **Last updated**: 2026-05-10
 > **Spec-Issue**: pdomain/pdomain-book-tools#27
 
@@ -15,7 +23,7 @@ interleaved by Y, body text that wraps around a floated figure flows
 correctly, and special blocks (sidenotes, poetry, blockquotes) are tagged.
 
 The implementation lives almost entirely in
-[`pdomain_book_tools/ocr/reorganize_page_utils.py`](../../pdomain_book_tools/ocr/reorganize_page_utils.py).
+`pdomain_book_tools/ocr/reorganize_page_utils.py`.
 `Page.reorganize_page` is a thin orchestration shim that calls named module
 functions in pipeline order.
 

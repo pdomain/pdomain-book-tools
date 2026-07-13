@@ -1,8 +1,16 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-21
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Spec: Word / Line Reference Lines — Testing, Decisions, and Interactions
 
 > **Status**: Active
 > **Last updated**: 2026-05-21
-> **Split from**: [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md)
+> **Split from**: the original spec, preserved in Git history
 
 Bottom-crop spec interaction, open questions (Q-RL-1 through Q-RL-10),
 decisions requested, testing approach, CI integration, and out-of-scope
@@ -385,6 +393,6 @@ All open questions for this feature are listed in section 9 above
 
 - [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md) — Audit + gap analysis
 - [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md) — API surface, heuristics, parameters
-- [06-word-reference-lines.md](../archive/specs/06-word-reference-lines.md) — Parent forwarding stub (archived)
+- Original parent spec — superseded by 06a, 06b, and 06c; preserved in Git history
 - `tests/ocr/test_word.py:1332-1348` — existing baseline tests
 - `tests/ocr/test_block_coverage2.py` — existing block baseline tests

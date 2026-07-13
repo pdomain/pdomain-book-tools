@@ -1,8 +1,16 @@
+---
+Status: active
+Owner: CT
+Created: 2026-05-04
+Last verified: 2026-07-13
+Kind: plan
+---
+
 # Roadmap
 
 Forward-looking work in pdomain-book-tools. Excludes anything that's better
 tracked in a consuming-app roadmap (the layout-fine-tune workflow lives
-in [`ocr-container/docs/SPEC-layout-training.md`](../../docs/SPEC-layout-training.md)
+in the workspace layout-training specification
 because it spans pdomain-ocr-labeler-spa + pdomain-ocr-training; this file holds the
 items that belong specifically in the library).
 
@@ -10,7 +18,7 @@ The items below are carried over from the (now-archived) workspace
 docs `PLAN-layout-aware-ocr.md` and `TODO-layout-training.md`. The
 phases they originally lived in have shipped; only the residuals remain.
 
-> Shipped items live in [`ROADMAP-shipped.md`](ROADMAP-shipped.md).
+> Git history preserves shipped roadmap items removed from this live plan.
 
 ## Open — layout consumption
 
@@ -121,7 +129,7 @@ mode for Makefile branching. `make upgrade-deps` now refuses with
 a pointer to `make upgrade-deps-local` when dev-local is detected;
 `make upgrade-deps-local` runs the canonical sync then re-applies
 the `[gpu]` extra via `make sync-gpu`. Spec
-[`docs/specs/07-dev-local-upgrade-flow.md`](specs/07-dev-local-upgrade-flow.md).
+[`docs/specs/07-dev-local-upgrade-flow.md`](../specs/07-dev-local-upgrade-flow.md).
 
 `make dev-local` recipe shipped: runs `sync-gpu` (which applies the
 `[gpu]` extra when an NVIDIA GPU is auto-detected) and writes the

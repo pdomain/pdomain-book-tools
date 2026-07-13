@@ -1,6 +1,14 @@
+---
+Status: implemented
+Owner: CT
+Created: 2026-05-04
+Last verified: 2026-07-13
+Kind: spec
+---
+
 # Page-Orientation Detection
 
-> **Status**: Active
+> **Status**: Implemented
 > **Last updated**: 2026-05-10
 > **Spec-Issue**: pdomain/pdomain-book-tools#26
 
@@ -8,7 +16,7 @@ How `pdomain-book-tools` decides whether a page image needs to be rotated before
 OCR, and what the resulting `Page` records about that decision.
 
 The implementation lives in
-[`pdomain_book_tools/ocr/rotation.py`](../../pdomain_book_tools/ocr/rotation.py).
+`pdomain_book_tools/ocr/rotation.py`.
 `Document.from_image_ocr_via_doctr` consumes it as the default code path
 (opt out with `auto_rotate=False`).
 
@@ -16,7 +24,7 @@ The implementation lives in
 
 Real public-domain scans include sideways foldout plates, upside-down
 covers, and 90°-rotated maps. The Peutinger map fixture
-[`rotated-peutinger-map.png`](../../tests/fixtures/layout_regression/inputs/rotated-peutinger-map.png)
+`tests/fixtures/layout_regression/inputs/rotated-peutinger-map.png`
 is the canonical example: a full-page map printed sideways, with the page
 number `42` running vertically up the gutter.
 
