@@ -210,3 +210,15 @@ Kind: context
   `_tbd/ocr-container-docs/archive/plans/2026-05-31-page-split-book-tools.md`.
 - **Remaining work:** Matching-field clustering and compatibility removal need
   owner-approved consumer evidence.
+
+### 2026-07-15 — Retired: Writing-docs plugin routing implementation plan
+
+- **Old path:** `docs/plans/2026-07-15-writing-docs-plugin-routing.md`
+- **Outcome:** implemented
+- **Superseded by:** N/A; current routing lives in `AGENTS.md` and
+  `CONVENTIONS.md`.
+- **Removal commit:** `e46087e`
+- **Rationale kept:**
+  `docs/specs/2026-07-15-writing-docs-plugin-routing-design.md` records the
+  design and review; commit `140283e` records the implementation.
+- **Remaining work:** none
