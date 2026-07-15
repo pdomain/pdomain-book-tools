@@ -23,15 +23,15 @@ Kind: context
 
 ## Deferred work
 
-- Benchmark alternative OCR, HTR, and dewarp engines only with reproducible
-  historical-document datasets, license review, and comparison against the
-  shipped DocTR, Tesseract, textline-disparity, and UVDoc baseline. This
-  includes the deferred page-dewarp fork and any renewed DocUNet-style metric
-  suite.
+- Benchmark alternative OCR, HTR, and dewarp engines only when the work uses
+  reproducible historical-document datasets. The work must include license
+  review and comparison against the shipped DocTR, Tesseract,
+  textline-disparity, and UVDoc baseline. This condition applies to the
+  deferred page-dewarp fork and any renewed DocUNet-style metric suite.
 - Cluster ground-truth matching fields into `GTMatchMetadata`, or remove Page
-  compatibility fields, only after current consumers are inventoried and an
-  owner approves the migration. No removal is implied by the current
-  architecture record.
+  compatibility fields, only after two conditions are met. Current consumers
+  must be inventoried, and an owner must approve the migration. The current
+  architecture record does not imply removal.
 
 - Add a dirty flag for Page.items and Block.items sorting only if profiling
   shows repeated reads are material. Preserve the mutation-site coverage in
@@ -46,14 +46,15 @@ Kind: context
   threshold and timing claims with a reproducible benchmark. Evidence:
   docs/architecture/ocr-page-orientation.md.
 - Close or explicitly accept the five strict-xfail layout baselines, and define
-  whether canonical fixture baselines represent current or desired behavior.
+  whether canonical fixture baselines represent current behavior or desired
+  behavior.
   Evidence: docs/architecture/reorganize-page-pipeline.md and
   docs/architecture/layout-regression-fixture-corpus.md.
 - Decide whether glyph-span validation should become automatic and whether
   unknown future annotation kinds need tolerant reading. Evidence:
   docs/architecture/glyph-annotations.md.
-- Reconcile the local-upgrade restore recipe, override semantics, and duplicate
-  marker contracts before retiring the dev-local spec. Evidence:
+- Before retiring the dev-local spec, reconcile the local-upgrade restore
+  recipe, override semantics, and duplicate marker contracts. Evidence:
   docs/specs/07-dev-local-upgrade-flow.md, Adversarial Review.
 - Protect active layout-debug runs with a liveness marker or lock, and test
   cleanup races and suppressed filesystem failures. Evidence:
@@ -70,8 +71,8 @@ None.
 
 ## Needs owner decision
 
-- Reconcile the dev-local contract drift before promoting and retiring spec 07.
-  The other implemented specs now have architecture replacements.
+- Before promoting and retiring spec 07, reconcile the dev-local contract
+  drift. The other implemented specs now have architecture replacements.
 - Resolve the word-reference-lines coordinate, persistence, heuristic, mapping,
   font-fixture, and property-test contracts before implementation. Evidence:
   docs/specs/06b-word-reference-lines-api.md and
@@ -88,8 +89,8 @@ None.
   SQLite behavior. Evidence:
   docs/specs/2026-05-24-hyphen-ngrams-sqlite.md, Adversarial Review.
 - Redesign page-order evidence around current Page fields and normalized roles;
-  remove unvalidated visual-similarity voting and reconcile confidence tiers
-  and numbering gaps. Evidence:
+  remove unvalidated visual-similarity voting. Reconcile confidence tiers and
+  numbering gaps. Evidence:
   docs/specs/2026-05-24-page-order-detection.md, Adversarial Review.
 - For scannos, define stable book/occurrence IDs, evidence storage, dual-write
   recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
