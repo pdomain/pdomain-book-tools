@@ -12,9 +12,9 @@ Use this style for docs, reports, issue text, PR text, and user-facing copy.
 
 ## Goal
 
-Write text that is easy to scan without sounding clipped. Make it clear for
+Write text that is easy to scan without sounding clipped. Make it clear to
 readers who are tired, new to the project, or reading in a second language.
-Aim for about a 7th grade English level.
+Aim for about a 7th-grade English level.
 
 ## Rules
 
