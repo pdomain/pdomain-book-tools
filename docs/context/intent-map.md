@@ -101,8 +101,8 @@ None.
 - **Can retire:** every file formerly under docs/archive/; the completed deep
   code/security review; Git history preserves their evidence.
 - **Still active:** docs/plans/roadmap.md, docs/process/lint-deviations.md,
-  docs/process/writing-style.md, active specs 06a–06c, 09, 10, hyphen n-grams,
-  page-order detection, scannos, and the specs index.
+  active specs 06a–06c, 09, 10, hyphen n-grams, page-order detection, scannos,
+  and the specs index.
 - **Still active pending architecture promotion:** implemented spec 07.
 - **Superseded:** the original word-reference-lines parent spec, replaced by
   specs 06a, 06b, and 06c.
