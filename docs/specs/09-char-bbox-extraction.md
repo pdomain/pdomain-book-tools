@@ -12,12 +12,12 @@ Kind: spec
 > **Last updated**: 2026-05-16
 > **Spec-Issue**: (to be filed)
 
-Extract per-character bounding boxes from a word image crop and the
-associated OCR text string. The primary consumer is the
+This API extracts per-character bounding boxes from a word image crop and its
+OCR text. Its primary consumer is the
 `pdomain-ocr-labeler-spa` CharFixer feature, which lets a human reviewer
 drag individual character boxes into their correct positions before
-saving a correction. The extracted boxes are also useful for training-
-data pipelines in `pdomain-ocr-synth` and `pdomain-ocr-training` that need
+the reviewer saves a correction. The boxes also support training-data
+pipelines in `pdomain-ocr-synth` and `pdomain-ocr-training` that need
 character-level alignment signals.
 
 This spec relates to:
@@ -36,10 +36,10 @@ This spec relates to:
 
 ---
 
-## 1. Problem Statement
+## 1. Why character alignment is difficult
 
-Word-level OCR is well-solved; character-level spatial alignment is
-not. Three categories of difficulty dominate real-world book scans:
+Word-level OCR is well-solved, but character-level spatial alignment is not.
+Three types of difficulty dominate real-world book scans:
 
 **Disconnected strokes.** Many characters consist of two or more
 ink blobs that are not connected at the pixel level. Common cases:
@@ -53,9 +53,9 @@ ink blobs that are not connected at the pixel level. Common cases:
 - Split ascenders/descenders — especially at low resolution or on
   worn type, the top of "f", "t", or "h" may detach.
 
-A naive connected-component-per-character assignment will produce one
-blob for the tittle and one for the stem of "i", misaligning every
-subsequent character.
+A naive one-component-per-character assignment produces one blob for the
+tittle and another for the stem of "i". This error misaligns every subsequent
+character.
 
 **Ligatures.** Typographers set "fi", "fl", "ff", "ffi", "ffl" (and
 early-modern "ct", "st", "ſt", "ſs") as a single fused glyph. Two
@@ -68,19 +68,17 @@ competing needs arise:
 
 The spec resolves this with an explicit policy (see §4.4).
 
-**Long-s (ſ).** The long-s ascender is nearly as tall as an "f" and
-frequently merges with descenders ("p", "g", "y", "j") from the line
-above when working on a full page image. This spec operates on the
-word-level crop already isolated by the upstream pipeline, so
-cross-line merging is avoided; however the ascender-to-line-above risk
-remains when the crop is loose.
+**Long-s (ſ).** The long-s ascender is nearly as tall as an "f". In a full-page
+image, it frequently merges with descenders ("p", "g", "y", "j") from the line
+above. This spec operates on the word-level crop that the upstream pipeline
+has already isolated, which avoids cross-line merging. A loose crop can still
+include the ascender-to-line-above overlap.
 
-**Drop-caps.** The drop-cap pipeline (see `pdomain_book_tools/ocr/dropcap.py`)
-already isolates the initial letter into its own `Word` with
-`word_components = ["drop cap"]`. When the input `Word` is a drop cap,
-the extraction must not attempt connected-component decomposition across
-the body text that surrounds it; the word crop already contains only
-the drop-cap letter, so standard extraction applies unchanged.
+**Drop-caps.** The drop-cap pipeline already isolates the initial letter in
+its own `Word` with `word_components = ["drop cap"]`. See
+`pdomain_book_tools/ocr/dropcap.py`. The extractor must not decompose the body
+text surrounding a drop-cap `Word`. Its crop contains only the drop-cap
+letter, so standard extraction applies unchanged.
 
 ---
 
@@ -152,7 +150,7 @@ a visible gap between boxes.
 
 ---
 
-## 3. Algorithm
+## 3. Extraction algorithm
 
 ### 3.1 Pre-processing
 
@@ -170,7 +168,7 @@ Run `cv2.connectedComponentsWithStats` on the binarized foreground
 mask. Discard components whose pixel area is below
 `config.min_component_area` (dust / JPEG artefacts).
 
-Each surviving component is a candidate glyph blob with:
+Each surviving component becomes a candidate glyph blob with:
 
 - Centroid `(cx, cy)` in word-image coordinates.
 - Bounding rectangle `(x, y, w, h)`.
@@ -189,8 +187,8 @@ following hold:
 Classify as a *cedilla/descending diacritic* candidate when (1) and (2)
 hold AND `cy > (1 - config.diacritic_y_ratio) * word_image.height`.
 
-Diacritic candidates are tagged but not independently assigned to
-characters in the sweepline; they are reassigned in §3.5.
+The sweepline tags diacritic candidates without assigning them independently
+to characters. Section 3.5 reassigns them.
 
 ### 3.4 Character-to-Blob Assignment (Sweepline)
 
