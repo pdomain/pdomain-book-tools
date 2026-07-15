@@ -39,6 +39,7 @@ the workspace's fixing-specs guide.
 | — | [page-order-detection](2026-05-24-page-order-detection.md) | `pdomain_book_tools.page_order` module — `detect_out_of_order_pages` + `SwapProposal` | Implementing Stage 11 of pdomain-prep-for-pgdp; understanding the three-signal (filename seq, OCR page number, visual hash) confidence model |
 | — | [scannos-module](2026-05-24-scannos-module.md) | `pdomain_book_tools.scannos` — `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote` | Implementing pdomain-prep-for-pgdp Stage 13; understanding SQLite (global rules) vs JSON sidecar (per-book candidates) split; promotion evidence trail |
 | — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `pdomain_book_tools.hyphen_ngrams` — `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction pipeline | Implementing pdomain-prep-for-pgdp Stage 15 (post-JSON-adapter); understanding download-on-first-use packaging and SQLite schema for Google Books Ngrams hyphen pairs |
+| — | [writing-docs plugin routing](2026-07-15-writing-docs-plugin-routing-design.md) | Repository writing guidance and plugin ownership | Removing duplicated local style rules and changing agent-writing instructions |
 
 ## Historical numbering
 
