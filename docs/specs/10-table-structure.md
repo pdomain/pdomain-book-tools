@@ -12,14 +12,14 @@ Kind: spec
 > **Last updated**: 2026-05-28
 > **Spec-Issue**: _(none yet)_
 
-This spec adds a table-structure layer to the OCR page model. The layer takes
-a table region that layout detection already flagged, recovers its row /
-column / cell grid with a TATR-style structure detector, and assigns the
-existing OCR `Word`s into a recursive tree. The tree reuses the model's own
-`Block` idiom and has the shape `TABLE → CELL → LINE → Word`.
+This spec adds a table-structure layer to the OCR page model. The layer starts
+with a table region already flagged by layout detection. It uses a TATR-style
+structure detector to recover the row, column, and cell grid. It then assigns
+existing OCR `Word`s to a recursive tree that reuses the model's `Block`
+idiom: `TABLE → CELL → LINE → Word`.
 
-This is the **structure** layer only. PGDP table-syntax emission and any
-table training pipeline are downstream or future work. See §3 and §9.
+This layer handles **structure** only. PGDP table-syntax emission is downstream
+work, and any table training pipeline is future work. See §3 and §9.
 
 Related specs:
 
@@ -90,9 +90,9 @@ Tables are already a first-class layout concept downstream of detection:
   (`pdomain_book_tools/ocr/layout_aware_reorg.py:634`), which the page
   pipeline calls at `page.py:3213`.
 
-So the page model can already say "this region is a table." It cannot yet say
-"this table has 4 rows and 3 columns, and this word lives in row 2, column 1."
-That gap is what this spec closes.
+The page model can already identify a region as a table. It cannot yet record
+that a table has 4 rows and 3 columns or place a word in row 2, column 1. This
+spec closes that gap.
 
 ### 2.2 The ML stack we already have
 
@@ -104,9 +104,9 @@ behind the `LayoutDetector` Protocol
 (`pdomain_book_tools/layout/detector.py:43`) via the registry's
 `register_detector` (`pdomain_book_tools/layout/registry.py:257`).
 
-The stack is already DETR-family plus transformers. So a TATR-style table
-**structure** detector drops into the same adapter and registry pattern with
-no new heavyweight dependency. The model is HuggingFace
+The stack already uses the DETR family and transformers. A TATR-style table
+**structure** detector can therefore use the same adapter and registry pattern
+without a new heavyweight dependency. The model is HuggingFace
 `microsoft/table-transformer-structure-recognition`, a DETR model trained on
 PubTables-1M. We explicitly **avoid** the classic deepdoctection
 Cascade-R-CNN / Detectron2 route, which would add an incompatible detection
@@ -114,8 +114,8 @@ framework.
 
 ### 2.3 Why deepdoctection, and how we use it
 
-We evaluated the deepdoctection project (Apache-2.0) for table-aware OCR. Its
-table reconstruction has two separable halves:
+We evaluated the Apache-2.0 deepdoctection project for table-aware OCR. Its
+table reconstruction has two separate halves:
 
 - A **detector** half, the Detectron2 Cascade-R-CNN. We reject this half and
   use TATR instead.
@@ -124,9 +124,9 @@ table reconstruction has two separable halves:
   of word boxes into a filled cell grid. It is plain intersection and span
   reasoning with no ML.
 
-The decision is to **reimplement the pure-geometry half** as plain numpy box
-math, with attribution per §9.4, and to depend on TATR for the boxes. We
-borrow concepts, not code.
+We will **reimplement the pure-geometry half** as plain numpy box math and
+attribute it as §9.4 requires. TATR will supply the boxes. We borrow concepts,
+not code.
 
 ---
 
@@ -173,8 +173,8 @@ borrow concepts, not code.
   - the pydantic core-schema `typed_dict_schema` (`block.py:1276`, inside
     `__get_pydantic_core_schema__` at `block.py:1255`)
 
-  Omitting a field from `to_dict`, `from_dict`, or the pydantic schema
-  silently drops it. This is a known repo hazard. See the agent-memory note
+  Omitting a field from `to_dict`, `from_dict`, or the pydantic schema silently
+  drops it. This is a known repository hazard. See the agent-memory note
   _"Pydantic schema must list all fields; scale() must forward all metadata."_
   The grid fields must appear at all five sites and ship with explicit
   round-trip tests.
@@ -200,22 +200,22 @@ borrow concepts, not code.
 
 ### 5.1 Data model: how to represent cells
 
-**Option A — TABLE / CELL as new `BlockCategory` members (chosen).** Reuse the
-recursive `Block` tree:
+**Option A — TABLE / CELL as new `BlockCategory` members (chosen).** This option
+reuses the recursive `Block` tree:
 `TABLE (BLOCKS) → CELL (BLOCKS) → LINE (WORDS) → Word`. Grid coordinates ride
 on the `CELL` block as optional fields. This fits the model's existing idiom,
 serializes through the existing machinery, and inherits reading-order and text
 rendering with small targeted branches.
 
-**Option B — a separate `Table` dataclass parallel to `Block` (rejected).** It
-duplicates serialization, scaling, reading-order, and text logic. Every
-downstream consumer would need a second traversal path.
+**Option B — a separate `Table` dataclass parallel to `Block` (rejected).**
+This option duplicates serialization, scaling, reading-order, and text logic.
+Every downstream consumer would need a second traversal path.
 
 **Option C — store grid metadata only in `additional_block_attributes`
-(rejected).** This is the existing free-form dict at `block.py:178`. It is
-rejected for the structural fields: the dict is untyped, invisible to the
-pydantic schema, and easy to drop. The free-form dict stays available for
-genuinely ad-hoc detector metadata, such as raw confidence scores.
+(rejected).** This existing free-form dict lives at `block.py:178`. It is
+untyped, invisible to the pydantic schema, and easy to drop, so it cannot hold
+the structural fields. It remains available for ad hoc detector metadata,
+such as raw confidence scores.
 
 ### 5.2 Structure detector
 
@@ -265,13 +265,13 @@ fields stay `None` and round-trip as absent or null.
 
 ### 6.2 Row-major cell sort
 
-`_sort_items` (`block.py:317`) today sorts by bbox top-left for
-`child_type=WORDS` and by bbox order for child blocks. For a `TABLE` this is
-**wrong**: a spanning cell or a slightly misaligned cell box can reorder the
-grid. Add a category-aware branch. When `block_category == TABLE`, sort the
-`CELL` children **row-major by `(row, col)`**, and fall back to bbox top-left
-only when grid coordinates are absent. The existing WORDS and generic branches
-do not change.
+`_sort_items` (`block.py:317`) currently sorts `child_type=WORDS` by bbox
+top-left and child blocks by bbox order. That behavior is **wrong** for a
+`TABLE`: a spanning cell or slightly misaligned cell box can reorder the grid.
+Add a category-aware branch. When `block_category == TABLE`, sort `CELL`
+children **row-major by `(row, col)`**. Fall back to bbox top-left only when
+grid coordinates are absent. Do not change the existing WORDS and generic
+branches.
 
 ### 6.3 Plain-text grid rendering
 
@@ -284,22 +284,22 @@ Non-Goals. A spanning cell renders once, in its origin slot.
 
 ### 6.4 Merged / spanning cells
 
-A spanning cell, meaning one with `rowspan` or `colspan` greater than 1, is
-stored **once**. It is the origin `CELL` at its top-left `(row, col)` with the
-span set. The grid slots it covers are **absent** from the parent `TABLE`'s
-items list. Consumers reconstruct the full grid from
-`(row, col, rowspan, colspan)`, **not** from the child count. This mirrors
-deepdoctection's rule that a spanning cell deactivates the simple cells it
-covers. So a `4×3` table with one cell spanning two columns has 11 `CELL`
-children, not 12.
+A spanning cell has a `rowspan` or `colspan` greater than 1 and is stored
+**once**. Its origin is the top-left `(row, col)` `CELL`, which holds the span.
+The parent `TABLE` omits the grid slots covered by that cell from its items
+list. Consumers reconstruct the full grid from
+`(row, col, rowspan, colspan)`, **not** from the child count. This design
+mirrors deepdoctection's rule that a spanning cell deactivates the simple cells
+it covers. A `4×3` table with one cell spanning two columns therefore has 11
+`CELL` children, not 12.
 
-This shapes traversal: any code that wants a dense grid must expand spans
-itself. The stored tree is the sparse, origin-only form.
+Any code that needs a dense grid must therefore expand spans. The stored tree
+uses the sparse, origin-only form.
 
 ### 6.5 Post-OCR structure pipeline
 
-The step runs **after OCR**, so words already exist on the page. The stages
-are:
+The step runs **after OCR**, when words already exist on the page. It has four
+stages:
 
 1. **Table-region detection (exists).** The `"table"` role label is already
    stamped at `page.py:3213` via `bubble_block_roles_from_layout` and the
@@ -335,16 +335,14 @@ are:
 
 ### 6.6 No-silent-drop invariant
 
-This is the authoritative statement of the invariant. Every OCR `Word` in a
-table region must end up assigned to a cell **or** placed somewhere on the
-page. Words are never dropped during table assembly, including under
-spanning-cell logic.
+Every OCR `Word` in a table region must be assigned to a cell **or** placed
+somewhere on the page. This is the authoritative statement of the invariant.
+Table assembly never drops words, including under spanning-cell logic.
 
-A word that falls outside every detected cell, from a detector gap or
-mis-detection, must be routed to a fallback. The fallback may be a nearest-cell
-assignment or a non-table block in reading order; see the open question in
-§9.2. A word is never deleted. Slice A and Slice B both ship explicit tests
-that assert word-count conservation:
+A detector gap or mis-detection can leave a word outside every detected cell.
+Such a word must use a fallback. The fallback may assign it to the nearest cell
+or place it in a non-table block in reading order; see §9.2. It is never
+deleted. Slice A and Slice B both ship explicit word-count conservation tests:
 `sum of words across cells + fallback == input word count`.
 
 ---
@@ -424,24 +422,23 @@ Each slice is independently shippable.
 
 ### 9.1 LINE grouping inside a cell
 
-How should assigned words inside a cell be grouped into `LINE` blocks? The
-options are to reuse the existing line-grouping heuristic from the reorganize
-pipeline, or to use a cell-local vertical clustering. Cells are small, so the
-page-level heuristic may be overkill.
+Assigned words inside a cell still need grouping into `LINE` blocks. The
+options are the reorganize pipeline's existing line-grouping heuristic or
+cell-local vertical clustering. Cells are small, so the page-level heuristic
+may be excessive.
 
 ### 9.2 Fallback placement for unassigned words
 
-When a word falls outside every detected cell (§6.6), what is the fallback? The
-options are a nearest-cell snap, a synthetic edge cell, or a non-table block
-adjacent to the table in reading order. Any choice must satisfy
-no-silent-drop.
+Words outside every detected cell (§6.6) need a defined fallback. The options
+are a nearest-cell snap, a synthetic edge cell, or a non-table block adjacent
+to the table in reading order. Any choice must satisfy no-silent-drop.
 
 ### 9.3 Defensive guard for CELL / TABLE shapes
 
-The LINE guard (`block.py:194-201`) is deliberately LINE-only. Do we add an
-optional defensive guard that a `CELL` or `TABLE` uses `child_type=BLOCKS`, or
-do we leave the shapes unvalidated to match PARAGRAPH and BLOCK? The current
-lean is toward **no new guard**, to match the existing leniency.
+The LINE guard (`block.py:194-201`) is deliberately LINE-only. One option adds
+a defensive guard that requires `child_type=BLOCKS` for a `CELL` or `TABLE`.
+The other leaves these shapes unvalidated to match PARAGRAPH and BLOCK. The
+current preference is **no new guard**, matching the existing leniency.
 
 ### 9.4 deepdoctection attribution (Apache-2.0)
 
