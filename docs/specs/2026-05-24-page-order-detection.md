@@ -12,8 +12,8 @@ Kind: spec
 > **Last updated**: 2026-05-24
 > **Spec-Issue**: pdomain/pdomain-book-tools#208
 
-Detect pages that are out of sequence in a scanned book and propose
-confident swap pairs for the user to review. The primary consumer is the
+Detect pages that are out of sequence in a scanned book. Propose confident
+swap pairs for the user to review. The primary consumer is the
 `pdomain-prep-for-pgdp` Stage 11 (`/projects/:id/page-order`) introduced in the
 `pdomain-ui` design handoff. The UI component that renders each detected swap is
 `SwapRow` at `pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf09/pages-tab.jsx:414-487`.
@@ -38,10 +38,10 @@ from pdomain_book_tools.page_order import detect_out_of_order_pages, SwapProposa
 proposals: list[SwapProposal] = detect_out_of_order_pages(pages)
 ```
 
-A `SwapProposal` identifies two pages that are likely swapped, with a
-`confidence` tier (`'high'` / `'medium'` / `'low'`) derived from agreement
-across up to three independent signals: filename sequence number, OCR-extracted
-page number, and perceptual-hash visual similarity.
+A `SwapProposal` identifies two pages that are likely swapped. Its `confidence`
+tier (`'high'` / `'medium'` / `'low'`) comes from agreement across up to three
+independent signals: filename sequence number, OCR-extracted page number, and
+perceptual-hash visual similarity.
 
 ---
 
@@ -49,10 +49,10 @@ page number, and perceptual-hash visual similarity.
 
 ### 2.1 Why page-order detection belongs in pdomain-book-tools
 
-Page reordering is a common artifact of physical scanning workflows —
-scanners mis-feed, operators grab pages in the wrong order, and older
-digitisation batches have known sorting errors. Every pdomain-* consumer that works
-with multi-page documents needs the same logic. Centralising it in the
+Page reordering is a common artifact of physical scanning workflows. Scanners
+mis-feed, operators grab pages in the wrong order, and older digitisation
+batches have known sorting errors. Every pdomain-* consumer that works with
+multi-page documents needs the same logic. Centralising it in the
 foundation library avoids duplication across `pdomain-prep-for-pgdp`,
 `pdomain-ocr-cli`, and future tools.
 
@@ -67,8 +67,8 @@ The `wf09/pages-tab.jsx` prototype shows:
   proposed (e.g. "filename seq", "page number", "visual sim").
 - Accept / Skip controls per row; an "Apply all high-confidence" shortcut.
 
-The backend that powers `SwapRow` is `GET /projects/:id/page-order/proposals`
-(new route in `pdomain-prep-for-pgdp`). That route calls
+The backend that powers `SwapRow` is the new
+`GET /projects/:id/page-order/proposals` route in `pdomain-prep-for-pgdp`. That route calls
 `detect_out_of_order_pages` and serialises the result. This spec owns the
 detection side; `pdomain-prep-for-pgdp` owns the route and serialisation.
 
@@ -129,14 +129,15 @@ detection side; `pdomain-prep-for-pgdp` owns the route and serialisation.
 
 ### O-A: Single-signal (filename only)
 
-Fast to implement; useful for the common case where files are named
-`IMG_0042.jpg`. Rejected: misses out-of-order scans that have been renamed,
+This option is fast to implement and useful when files have names such as
+`IMG_0042.jpg`. It was rejected because it misses renamed out-of-order scans
 and produces no confidence distinction.
 
 ### O-B: Two signals (filename + page number)
 
-Reliable when OCR is available. Rejected as sole approach: OCR may not have
-run yet at Stage 11, and filename-based alone gives no visual confirmation.
+This option is reliable when OCR is available. It was rejected as the sole
+approach because OCR may not have run yet at Stage 11. The filename signal
+alone also gives no visual confirmation.
 
 ### O-C: Three signals with weighted agreement (chosen)
 
@@ -148,7 +149,7 @@ tier is determined by how many signals agree:
 - `medium` — 2/3 signals agree (one disagrees or is unavailable).
 - `low` — only 1 signal available and it flags an anomaly (no corroboration).
 
-This approach is extensible — new signals (e.g. chapter-heading detection)
+This approach is extensible. New signals, such as chapter-heading detection,
 can add votes without changing the tier logic.
 
 ---
@@ -185,9 +186,9 @@ def detect_out_of_order_pages(
     ...
 ```
 
-The `signals` dict is intentionally untyped at the value level (dict values
-are `object`) to keep the `SwapProposal` dataclass serialisable without
-pulling in a discriminated-union machinery. Callers that need typed signal
+The `signals` dict is intentionally untyped at the value level: its values are
+`object`. This keeps the `SwapProposal` dataclass serialisable without adding
+discriminated-union machinery. Callers that need typed signal
 access can use typed helpers in the same module.
 
 ---
@@ -209,28 +210,28 @@ pdomain_book_tools/
 
 ### 7.2 Signal implementations
 
-**filename_signal.py** — extract the last continuous digit run from the
-basename of `Page.source_path`. For `IMG_0042.jpg` that is `42`. Sort all
-pages by their extracted digit; flag pairs where the sorted position diverges
-from the list position by more than a configurable tolerance (default: 2
-positions). Return proposed swap pairs.
+**filename_signal.py** — Extract the last continuous digit run from the
+basename of `Page.source_path`. For `IMG_0042.jpg`, that is `42`. Sort all
+pages by their extracted digit. Flag pairs where the sorted position differs
+from the list position by more than a configurable tolerance, which defaults
+to 2 positions. Return proposed swap pairs.
 
-**ocr_page_num.py** — scan `Page.blocks` for blocks with
+**ocr_page_num.py** — Scan `Page.blocks` for blocks with
 `block_role_labels` containing `footer` or `header`. Within those blocks,
 find `Word` text that parses as a bare integer in a plausible range (1 to
 `len(pages) * 2`). Cross-reference against the page's list index. Return
 `(page_id, detected_num)` pairs; caller drives the voting.
 
-**visual_hash.py** — compute an 8x8 average hash (`imagehash.average_hash`
+**visual_hash.py** — Compute an 8x8 average hash (`imagehash.average_hash`
 or a pure-numpy equivalent to avoid the `imagehash` dependency). For any
 pair of candidate pages, compute hash Hamming distance normalised to
 `[0.0, 1.0]`. A high-similarity pair (> `sim_threshold`) that appears in
 the wrong position reinforces a swap proposal; dissimilar pair weakens it.
 
-**voting.py** — given per-page signal outputs, enumerate adjacent and
-near-adjacent page pairs that any signal flagged, run the three-signal voting
-logic, and return `list[SwapProposal]` sorted by descending confidence then
-by list index of the first page.
+**voting.py** — Given per-page signal outputs, enumerate adjacent and
+near-adjacent page pairs that any signal flagged. Run the three-signal voting
+logic. Return `list[SwapProposal]` sorted first by descending confidence and
+then by the list index of the first page.
 
 ### 7.3 `__init__` exports
 
@@ -244,9 +245,9 @@ from pdomain_book_tools.page_order import (
 
 ### 7.4 Dependency notes
 
-Perceptual hashing requires either `imagehash` (new optional dep) or a
-~20-line pure-numpy implementation. Prefer the pure-numpy path first;
-add `imagehash` as an optional dep only if the accuracy delta is
+Perceptual hashing requires either `imagehash`, as a new optional dep, or a
+~20-line pure-numpy implementation. Prefer the pure-numpy path first. Add
+`imagehash` as an optional dep only if the accuracy delta is
 significant enough to justify it.
 
 ---
