@@ -12,12 +12,14 @@ Kind: spec
 > **Last updated**: 2026-05-24
 > **Spec-Issue**: pdomain/pdomain-book-tools#210
 
-Replace the unofficial Google Books JSON n-gram endpoint with a
-pre-indexed, locally-resident SQLite database of hyphen-pair frequency data
-extracted from the Google Books Ngrams corpus. The adapter interface
-(`HyphenNgramsClient`) is already named in the `pdomain-prep-for-pgdp` design
-handoff spec; Stage 15 slices (`S15-A` through `S15-F`) ship JSON-first via
-that interface and migrate to SQLite once this spec lands.
+Replace the unofficial Google Books JSON n-gram endpoint with a pre-indexed,
+local SQLite database. The database contains hyphen-pair frequency data from
+the Google Books Ngrams corpus.
+
+The `pdomain-prep-for-pgdp` design handoff spec already names the
+`HyphenNgramsClient` adapter interface. Stage 15 slices `S15-A` through
+`S15-F` first ship with JSON through that interface. They migrate to SQLite
+after this spec lands.
 
 Background reading: `pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf05/NOTES.md`
 documents both paths (live API and pre-indexed SQLite) and the rationale for
@@ -44,8 +46,8 @@ and two implementations:
   pre-indexed ~50 MB SQLite file derived from the raw Google Books Ngrams
   corpus dump (V1, this spec).
 
-Both implementations expose the same `HyphenNgramsClient` protocol so
-callers switch by construction only.
+Both implementations expose the same `HyphenNgramsClient` protocol. Callers
+switch implementations only when constructing the client.
 
 ---
 
@@ -53,25 +55,25 @@ callers switch by construction only.
 
 ### 2.1 The hyphen-join problem
 
-When a book is scanned and OCR'd, end-of-line hyphens appear throughout.
-Some hyphens are grammatical (compound words: "well-known") and some are
-purely typographic line-break artefacts (the word "re-" / "turn" spans two
-lines). The `pdomain-prep-for-pgdp` Stage 15 Hyphen Join workbench helps the
-user decide, for each hyphenated pair `(word_a, word_b)`, whether to join
-the words, keep the hyphen, or leave them separate.
+Scanned and OCR'd books contain many end-of-line hyphens. Some are grammatical,
+as in the compound word "well-known." Others are typographic line-break
+artefacts, as when "re-" and "turn" span two lines. For each hyphenated pair
+`(word_a, word_b)`, the `pdomain-prep-for-pgdp` Stage 15 Hyphen Join workbench
+helps the user choose among three actions: join the words, keep the hyphen, or
+leave the words separate.
 
-The key signal is historical frequency: how often do `word_a-word_b` (with
-hyphen) and `word_aword_b` (joined) appear in period-contemporary text? A
-high joined-form frequency suggests the hyphen is a line-break artefact; a
-high hyphenated-form frequency suggests the hyphen should be preserved.
+Historical frequency provides the key signal. The system compares how often
+`word_a-word_b` and `word_aword_b` appear in period-contemporary text. A high
+joined-form frequency suggests a line-break artefact. A high hyphenated-form
+frequency suggests preserving the hyphen.
 
 ### 2.2 Current state: unofficial JSON endpoint
 
 The Google Books Ngrams v2 JSON API (`books.google.com/ngrams/json`) provides
-frequency time-series for arbitrary phrases. It is unofficial, rate-limited,
-subject to removal without notice, and requires internet access at query time.
-The `wf05/NOTES.md` design note explicitly flags this fragility and recommends
-pre-indexing.
+frequency time series for arbitrary phrases. However, it is unofficial,
+rate-limited, and subject to removal without notice. It also requires internet
+access at query time. The `wf05/NOTES.md` design note identifies these risks
+and recommends pre-indexing.
 
 ### 2.3 Why pre-index into SQLite
 
@@ -86,15 +88,15 @@ fraction of the full corpus. A pre-extraction pipeline can:
 4. Store the result as a single ~50 MB SQLite file shipped as a
    downloadable data artifact.
 
-This removes the runtime internet dependency and enables sub-millisecond
-local lookups.
+This approach removes the runtime internet dependency. It also enables local
+lookups in under a millisecond.
 
 ### 2.4 Adapter interface in pdomain-prep-for-pgdp
 
-The `pdomain-prep-for-pgdp` plan introduces `HyphenNgramsClient` as a
-structural protocol (duck-typed, no `abc.ABC`). Stage 15 ships with
-`JsonApiClient` satisfying that protocol; this spec adds `SqliteClient`
-as a drop-in replacement.
+The `pdomain-prep-for-pgdp` plan defines `HyphenNgramsClient` as a structural,
+duck-typed protocol without `abc.ABC`. Stage 15 ships with `JsonApiClient`,
+which satisfies that protocol. This spec adds `SqliteClient` as a drop-in
+replacement.
 
 ---
 
@@ -155,26 +157,26 @@ strategy; retained only as a fallback.
 
 ### O-B: Embed the SQLite file in the pdomain-book-tools wheel
 
-A 50 MB file inside the wheel means every pip-install of pdomain-book-tools
-downloads it, even for users who never use the Hyphen Join feature. The wheel
-would exceed PyPI's 100 MB soft limit. Rejected.
+A 50 MB file inside the wheel would make every pdomain-book-tools pip install
+download it. This cost would affect even users who never use the Hyphen Join
+feature. The wheel would exceed PyPI's 100 MB soft limit. Rejected.
 
 ### O-C: Separate optional data wheel (`pdomain-book-tools-hyphen-data`)
 
-Publish a companion wheel containing only the SQLite file. Installs on
-demand via `pip install pdomain-book-tools[hyphen-data]`. Clean separation of
-code and data; wheel can be re-published when the corpus snapshot is
-refreshed. Complicates the pdomain-index release pipeline (two wheels to
-publish per release instead of one). Viable; see §6 decision.
+Publish a companion wheel that contains only the SQLite file. Users install it
+on demand through `pip install pdomain-book-tools[hyphen-data]`. This option
+separates code from data and allows republishing the wheel after a corpus
+snapshot refresh. It complicates the pdomain-index release pipeline because
+each release requires two wheels instead of one. Viable; see §6 decision.
 
 ### O-D: Download-on-first-use from a GitHub Release asset
 
-`SqliteClient` lazily downloads the database on first query and caches it
-at `platformdirs` user-data path. No new wheel or pip extra needed. User
-sees a one-time download delay (~50 MB). The download URL is versioned (a
-GitHub Release asset URL pinned in the pdomain-book-tools source). This matches
-the pattern used by `spacy` and `stanza` for language models. Selected as
-the primary mechanism for V1.
+`SqliteClient` lazily downloads the database on its first query. It caches the
+file at the `platformdirs` user-data path. This option needs no new wheel or
+pip extra, but the user waits once for an approximately 50 MB download. The
+versioned download URL is a GitHub Release asset pinned in the
+pdomain-book-tools source. This design matches the language-model pattern used
+by `spacy` and `stanza`. Selected as the primary V1 mechanism.
 
 ### O-E: Require user to run `pdomain-book-tools build-hyphen-db` manually
 
@@ -251,9 +253,9 @@ CREATE INDEX hp_lookup ON hyphen_pairs(word_a, word_b);
 
 WAL mode enabled at PRAGMA `journal_mode=WAL`.
 
-Frequencies are stored as relative frequency (count / total_tokens_that_decade)
-rather than raw counts, so the values are stable across corpus size variations
-and comparable across decades.
+Store frequencies as relative frequency, calculated as count divided by
+`total_tokens_that_decade`, instead of raw counts. This form keeps values
+stable across corpus size variations and comparable across decades.
 
 ### 6.3 Download URL convention
 
@@ -288,8 +290,9 @@ before downloading; if found, returns the cached path immediately.
 4. Write to SQLite with the schema above.
 5. Record `corpus_snapshot_date` in `metadata`.
 
-The pipeline is idempotent (re-running with `--overwrite` replaces the db);
-it is expected to take 30–60 minutes on a single core with adequate disk.
+The pipeline is idempotent: rerunning it with `--overwrite` replaces the
+database. With adequate disk space, it should take 30–60 minutes on a single
+core.
 
 ---
 
@@ -328,9 +331,8 @@ it is expected to take 30–60 minutes on a single core with adequate disk.
 | `test_ensure_db_cached` | same (monkeypatch) | If file present at path, no download attempted |
 | `test_build_pipeline_smoke` | `tests/test_hyphen_ngrams_build.py` | Script produces a valid SQLite with correct schema on a 10-row fixture TSV |
 
-The `test_sqlite_client_*` tests use a tiny fixture SQLite (3–5 rows)
-created at test time via `pytest` `tmp_path`; they do not require the full
-50 MB database to be present.
+The `test_sqlite_client_*` tests create a tiny 3–5-row SQLite fixture at test
+time through pytest's `tmp_path`. They do not require the full 50 MB database.
 
 ---
 
