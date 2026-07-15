@@ -36,7 +36,7 @@ from pdomain_book_tools.image_processing.grayscale_pipeline import ops_cpu
 # lets the module load on CPU-only installs; require_cupy() in each function
 # gives the actionable error before these names are dereferenced.
 try:
-    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingTypeStubs]
+    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]  # optional GPU import is guarded
         gaussian_filter as _cupy_gaussian_filter,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs
