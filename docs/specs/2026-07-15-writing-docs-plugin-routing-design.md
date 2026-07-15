@@ -1,5 +1,5 @@
 ---
-Status: draft
+Status: implemented
 Owner: CT
 Created: 2026-07-15
 Last verified: 2026-07-15
@@ -11,7 +11,7 @@ Kind: spec
 ## Agent Index
 
 - **Kind:** spec
-- **Status:** draft
+- **Status:** implemented
 - **Read when:** changing repository writing guidance or agent prose workflows.
 - **Search terms:** writing style, writing-docs, write-readably, edit-for-readability.
 

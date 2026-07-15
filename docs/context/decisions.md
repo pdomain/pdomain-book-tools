@@ -52,6 +52,22 @@ Kind: context
   code, tests, and Git history
 - **Remaining work:** none
 
+### 2026-07-15 — Corrected writing-plan retirement provenance
+
+- **Context:** The writing-docs routing implementation plan existed only as an
+  untracked session checklist. Commit `5067cde` recorded its retirement but did
+  not remove a Git-tracked file.
+- **Decision:** Treat the plan's removal commit as N/A. Retain `5067cde` only as
+  evidence of the retirement decision.
+- **Rationale:** Git history contains no version of
+  `docs/plans/2026-07-15-writing-docs-plugin-routing.md`, so no commit can be its
+  removal commit.
+- **Evidence:** `git log --all --full-history --
+  docs/plans/2026-07-15-writing-docs-plugin-routing.md` returns no commit;
+  `git show 5067cde^:docs/plans/2026-07-15-writing-docs-plugin-routing.md`
+  reports that the path does not exist.
+- **Remaining work:** none
+
 ### 2026-07-13 — Enforce required document sections
 
 - **Context:** The conformance migration updated 20 legacy documents and closed
