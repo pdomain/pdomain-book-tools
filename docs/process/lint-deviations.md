@@ -18,7 +18,8 @@ justification. Update this document whenever you add a suppression.
 
 **Files:** `pdomain_book_tools/image_processing/cupy_processing/_cupy_compat.py`,
 `contours.py`, `edge_finding.py`, `filters.py`, `morph.py`, `rescale.py`,
-`rotate.py`
+`rotate.py`, `denoise.py`, and
+`pdomain_book_tools/image_processing/grayscale_pipeline/ops_gpu.py`
 
 **Suppression form:** Add `# pyright: ignore[reportMissingImports]` to each
 `import cupy` or `import cupyx.*` line inside the guarded `try` block. For a
