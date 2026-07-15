@@ -8,9 +8,9 @@ Kind: process
 
 # Lint-rule Deviations — pdomain-book-tools
 
-Standing suppressions and per-file rule overrides in this repo.
-Each entry records: the rule, the tool, the file(s) affected, and
-the justification. Update this file whenever a new suppression is added.
+This document records every standing suppression and per-file rule override in
+this repository. Each entry names the rule, tool, affected files, and
+justification. Update this document whenever you add a suppression.
 
 ---
 
@@ -20,22 +20,22 @@ the justification. Update this file whenever a new suppression is added.
 `contours.py`, `edge_finding.py`, `filters.py`, `morph.py`, `rescale.py`,
 `rotate.py`
 
-**Suppression form:** `# pyright: ignore[reportMissingImports]` on each
-`import cupy` / `import cupyx.*` line inside the guarded `try` block. For
-multiline parenthesised `from ... import (...)` statements the comment must
-sit on the `from` line — that is the line basedpyright flags (it points at
-the module path, not the imported names). Placing it on an imported-name
-line inside the parentheses does not suppress the diagnostic.
+**Suppression form:** Add `# pyright: ignore[reportMissingImports]` to each
+`import cupy` or `import cupyx.*` line inside the guarded `try` block. For a
+multiline parenthesised `from ... import (...)` statement, put the comment on
+the `from` line. Basedpyright flags that line because it points to the module
+path, not the imported names. A comment on an imported-name line inside the
+parentheses does not suppress the diagnostic.
 
-**Justification.** `cupy` and `cupyx` are optional `[gpu]`-extra dependencies
-(see `pyproject.toml`). The import is wrapped in `try/except ImportError`
-so the module loads cleanly on CPU-only installs. `require_cupy()` in each
-GPU function raises a clear `ImportError` with install instructions before
-any of the guarded names are ever dereferenced. basedpyright 1.39.4 does not
-accept `# type: ignore[import-not-found]` (a mypy-specific code) for this
-diagnostic; `# pyright: ignore[reportMissingImports]` is the correct form.
-The suppression is intentionally scoped to the import lines inside the
-`try` block only — no other type checking is weakened.
+**Justification.** `cupy` and `cupyx` are optional dependencies in the `[gpu]`
+extra (see `pyproject.toml`). The `try/except ImportError` wrapper lets the
+module load cleanly on CPU-only installs. Each GPU function calls
+`require_cupy()` before dereferencing a guarded name. That function raises a
+clear `ImportError` with installation instructions. Basedpyright 1.39.4 does
+not accept the mypy-specific `# type: ignore[import-not-found]` code for this
+diagnostic. The correct form is
+`# pyright: ignore[reportMissingImports]`. The suppression applies only to
+import lines inside the `try` block, so it weakens no other type checking.
 
 ---
 
@@ -52,11 +52,11 @@ The suppression is intentionally scoped to the import lines inside the
 
 **Suppression form:** `# pyright: ignore[reportConstantRedefinition]` inline.
 
-**Justification.** These names follow ALL_CAPS convention for domain reasons
-(LTRB bounding-box coordinates are a well-established convention; the
-`_CUPY_AVAILABLE` flag needs to be re-bound in the `except` block). They are
-not true module-level constants — the assignments are intentional. Renaming
-to lowercase would hurt readability in context.
+**Justification.** These names use the ALL_CAPS convention for domain reasons.
+LTRB bounding-box coordinates are a well-established convention, and the
+`except` block must rebind `_CUPY_AVAILABLE`. These names are not true
+module-level constants, and their assignments are intentional. Lowercase
+names would be less readable in context.
 
 ---
 
@@ -66,13 +66,13 @@ to lowercase would hurt readability in context.
 
 **Suppression form:** `# pyright: ignore[reportOptionalMemberAccess]` inline.
 
-**Justification.** The suppressed accesses are all guarded by explicit
-`bounding_box is not None` filter steps earlier in the same function. The
-type narrowing does not survive pyright's flow analysis across the helper
-functions in this module (heavy imperative mutation on filtered lists). The
-suppressions are named and carry "filtered above" comments where possible.
-This module is in the annotation backlog; these suppressions should be
-eliminated when the module is refactored with typed containers.
+**Justification.** Explicit `bounding_box is not None` filters earlier in the
+same function guard every suppressed access. Pyright's flow analysis does not
+preserve that narrowing across this module's helper functions because they
+heavily mutate filtered lists. The suppressions are named and include
+"filtered above" comments where possible. This module remains in the
+annotation backlog. Refactoring it with typed containers should eliminate
+these suppressions.
 
 ---
 
@@ -107,12 +107,12 @@ morph, rotate)
 **Suppression form:** `# pyright: ignore[reportOptionalCall]` and
 `# pyright: ignore[reportOptionalCall,reportGeneralTypeIssues]` inline.
 
-**Justification.** The guarded cupy/cupyx names (e.g. `find_objects`,
-`convolve1d`, `sliding_window_view`) are assigned `None` in the
-CPU-only `except` branch. Every GPU function calls `require_cupy()`
-first, which raises before these names are ever called. Pyright cannot
-trace the `require_cupy()` guard as a narrowing step. These are
-intentional, guarded patterns — not accidental `None` calls.
+**Justification.** The CPU-only `except` branch assigns `None` to guarded
+cupy/cupyx names such as `find_objects`, `convolve1d`, and
+`sliding_window_view`. Every GPU function first calls `require_cupy()`, which
+raises before any of these names can be called. Pyright cannot treat that
+guard as a narrowing step. These calls are intentionally guarded, not
+accidental calls to `None`.
 
 The `reportGeneralTypeIssues` variant in `contours.py` additionally
 covers cupyx stubs that mistype a return as `int` where a tuple is
@@ -182,14 +182,13 @@ gap between the cv2 stub types and the actual values.
 `pdomain_book_tools/ocr/block.py`, `pdomain_book_tools/ocr/cv2_tesseract.py`,
 `pdomain_book_tools/image_processing/cupy_processing/threshold.py`
 
-**Resolution.** These were legacy mypy-style suppressions left over from
-before the basedpyright migration. They were audited by stripping every
-unscoped `# type: ignore` / `# type: ignore[...]` and re-running
-`basedpyright … --level error` (the level CI enforces). The stripped files
-produced **0 errors** — the suppressions silenced no diagnostic that CI
-enforces. They were mypy-era artifacts that, left in place, would also
-silence any *future* real basedpyright error on those lines. They have all
-been removed.
+**Resolution.** These legacy mypy-style suppressions predated the basedpyright
+migration. The audit removed every unscoped `# type: ignore` and
+`# type: ignore[...]`, then reran `basedpyright … --level error`, the level CI
+enforces. The stripped files produced **0 errors**. Therefore, the
+suppressions silenced no diagnostic that CI enforces. Leaving these mypy-era
+artifacts in place would also silence any *future* real basedpyright error on
+those lines. All of them have been removed.
 
 The dual-tool suppressions in `page.py` (lines carrying both a
 `# type: ignore[...]` mypy code and a `# pyright: ignore[...]` code) were
@@ -283,13 +282,13 @@ cost is acceptable for the correctness guarantee.
 **Files (historical):** `pdomain_book_tools/ocr/document.py` (2 occurrences)
 
 **Resolution.** The two suppressed comparisons were `val != val` and
-`f != f` in `Document._tesseract_text` / `Document._tesseract_confidence` —
-the classic "x is the only value not equal to itself" NaN test. The
-suppression was warranted (the comparison is intentional, not dead code),
-but the underlying construct is now expressed directly: both sites were
-rewritten to `math.isnan(...)`, which is clearer and needs no suppression
-at all. The `# noqa: PLR0124` comments have been removed. NaN handling for
-both helpers is regression-tested in `tests/ocr/test_document.py`
+`f != f` in `Document._tesseract_text` and
+`Document._tesseract_confidence`. They used the classic NaN test: x is the
+only value not equal to itself. The suppression was warranted because the
+comparison was intentional, not dead code. Both sites now express the test
+directly with `math.isnan(...)`, which is clearer and needs no suppression.
+The `# noqa: PLR0124` comments have been removed. Regression tests cover NaN
+handling for both helpers in `tests/ocr/test_document.py`:
 (`test_tesseract_confidence_treats_nan_as_none`,
 `test_tesseract_text_treats_nan_as_empty_string`).
 
