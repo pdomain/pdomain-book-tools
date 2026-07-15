@@ -17,13 +17,13 @@ Kind: context
 
 ## What matters now
 
-Docgraph is the documentation lifecycle and retrieval system for this repository.
-Live specs now declare whether they are active or implemented. Git history, not
-an archive directory, preserves retired documentation.
+Docgraph manages the documentation lifecycle and retrieval for this repository.
+Live specs now state whether they are active or implemented. Git history
+preserves retired documentation instead of an archive directory.
 
-Shipped geometry behavior lives in
+The shipped geometry behavior is documented in
 [`geometry-correction.md`](../architecture/geometry-correction.md). OCR model,
-blob, review, and schema ownership lives in
+blob, review, and schema ownership are documented in
 [`ocr-model-and-schema-boundaries.md`](../architecture/ocr-model-and-schema-boundaries.md).
 
 ## In-flight work
@@ -34,8 +34,9 @@ blob, review, and schema ownership lives in
 
 ## Risks
 
-- Required-section conformance is enforced as an error after the 2026-07-13
-  conformance migration closed all 37 findings and adversarially reviewed 15
-  specs.
-- The orphan queue is clear after promoting type-checking and layout-debug
-  behavior to architecture and retiring their implementation documents.
+- Required-section conformance is enforced as an error. This enforcement
+  followed the 2026-07-13 conformance migration, which closed all 37 findings
+  and completed adversarial review of 15 specs.
+- The orphan queue is clear after two changes. Type-checking and layout-debug
+  behavior were promoted to architecture, and their implementation documents
+  were retired.
