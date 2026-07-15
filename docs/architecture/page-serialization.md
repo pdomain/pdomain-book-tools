@@ -17,29 +17,59 @@ Kind: architecture
 
 ## Current structure
 
-`Page.to_dict()` serializes a recursive OCR tree. A Page contains Blocks; a Block contains either Words or nested Blocks according to `child_type`; Words are leaves. `Block.from_dict()` selects the child deserializer from that value. The model permits more than one nesting shape, so consumers traverse recursively instead of assuming fixed depths.
+`Page.to_dict()` serializes a recursive OCR tree. A Page contains Blocks. A
+Block contains either Words or nested Blocks, as set by `child_type`. Words are
+leaves. `Block.from_dict()` uses `child_type` to select the child deserializer.
+The model permits more than one nesting shape. Consumers therefore traverse it
+recursively instead of assuming fixed depths.
 
-`PageLayout` and `LayoutRegion` are separate detector-output types. They are inputs to layout-aware reorganization and are not embedded in the Page serialization tree.
+`PageLayout` and `LayoutRegion` are separate detector-output types. They are
+inputs to layout-aware reorganization. They are not embedded in the Page
+serialization tree.
 
 ## Page fields
 
-`Page.to_dict()` always emits `type`, `page_id`, `width`, `height`, `page_index`, `bounding_box`, and `items`. `type` is `"Page"`; `page_id` is the UUID string for the Page entity; `bounding_box` is a serialized box or `null`; and `items` is a list of serialized Blocks.
+`Page.to_dict()` always emits `type`, `page_id`, `width`, `height`, `page_index`,
+`bounding_box`, and `items`. The value of `type` is `"Page"`. The `page_id` is
+the UUID string for the Page entity. The `bounding_box` is a serialized box or
+`null`. The `items` field is a list of serialized Blocks.
 
-The serializer emits `page_labels`, `name`, `review`, `image_blob_hash`, and `thumbnail_blob_hash` only when they are not `None`. It emits `gt_orphans` only when the value exists and is not empty. It does not emit `ocr_provenance`, `image_path`, `rotation_applied`, or `source`.
+The serializer emits `page_labels`, `name`, `review`, `image_blob_hash`, and
+`thumbnail_blob_hash` only when they are not `None`. It emits `gt_orphans` only
+when the value exists and is not empty. It does not emit `ocr_provenance`,
+`image_path`, `rotation_applied`, or `source`.
 
-`Page.from_dict()` reconstructs nested Blocks and optional metadata. It restores a serialized UUID or creates a new UUID when older input has no `page_id`; a non-string, non-UUID `page_id` raises `TypeError`. JSON list entries used for orphan-line tuples are restored to tuples.
+`Page.from_dict()` reconstructs nested Blocks and optional metadata. It restores
+a serialized UUID. When older input has no `page_id`, it creates a new UUID. A
+non-string, non-UUID `page_id` raises `TypeError`. It also restores JSON list
+entries used for orphan-line tuples to tuples.
 
 ## Child serialization
 
-`Block.to_dict()` records its child type, block category, label collections, baseline, bounding box, serialized children, sort override, ground-truth matching data, additional attributes, and optional review metadata. `Block.from_dict()` defaults a missing child type to `WORDS` for compatibility and recursively loads the declared child kind.
+`Block.to_dict()` records its child type, block category, label collections,
+baseline, bounding box, serialized children, sort override, ground-truth
+matching data, additional attributes, and optional review metadata.
+`Block.from_dict()` defaults a missing child type to `WORDS` for compatibility.
+It recursively loads the declared child kind.
 
-`Word.to_dict()` records text, bounding box, OCR confidence, labels and components, baseline, ground-truth matching fields, and optional review and glyph annotations. `Word.from_dict()` requires text and bounding-box data and supplies compatibility defaults for optional collections.
+`Word.to_dict()` records text, bounding box, OCR confidence, labels and
+components, baseline, ground-truth matching fields, and optional review and
+glyph annotations. `Word.from_dict()` requires text and bounding-box data. It
+supplies compatibility defaults for optional collections.
 
-`BoundingBox.to_dict()` records `top_left`, `bottom_right`, and `is_normalized`. Each corner also carries `is_normalized`. `BoundingBox.from_dict()` accepts older data without the box-level flag and passes the available normalization state through `Point` and `BoundingBox` construction. Normalized and pixel coordinates remain distinct; serialization does not coerce between them.
+`BoundingBox.to_dict()` records `top_left`, `bottom_right`, and `is_normalized`.
+Each corner also carries `is_normalized`. `BoundingBox.from_dict()` accepts
+older data without the box-level flag. It passes the available normalization
+state through `Point` and `BoundingBox` construction. Normalized and pixel
+coordinates remain distinct. Serialization does not coerce between them.
 
 ## Vocabulary ownership
 
-Allowed block-role, block-position, line-role, and line-position labels live on `Block`. Word-component labels live in `ocr/label_normalization.py`. Layout-region vocabulary lives in `layout/types.py`. Those code definitions are authoritative; adding a vocabulary value requires updating its documentation drift test.
+Allowed block-role, block-position, line-role, and line-position labels live on
+`Block`. Word-component labels live in `ocr/label_normalization.py`.
+Layout-region vocabulary lives in `layout/types.py`. Those code definitions are
+authoritative. Adding a vocabulary value requires updating its documentation
+drift test.
 
 ### Block roles
 
@@ -63,15 +93,20 @@ Multiple position labels may describe the same block or line.
 
 ### Role-label normalization
 
-Role labels are stripped, lowercased, and normalized so underscores, hyphens,
-repeated whitespace, and compact spellings resolve to canonical values when
-possible. Block-role aliases include `block quote` → `blockquote`, `pageheader`
-→ `page header`, `pagefooter` → `page footer`, `pagenumber` → `page number`,
-`printer's mark` and `printersmark` → `printers mark`, and `poem` → `poetry`.
+Role labels are stripped and lowercased. They are also normalized so
+underscores, hyphens, repeated whitespace, and compact spellings resolve to
+canonical values when possible.
+
+Block-role aliases include `block quote` → `blockquote`, `pageheader` →
+`page header`, `pagefooter` → `page footer`, and `pagenumber` → `page number`.
+They also include `printer's mark` and `printersmark` → `printers mark`, and
+`poem` → `poetry`.
+
 Line-role aliases map the short forms `body`, `heading`, `verse`, `blockquote`,
 `header`, `footer`, `footnote`, and `caption` to their corresponding `… line`
-values; `page number` and `pagenumber` map to `page number line`. Unknown labels
-raise `ValueError`, and normalized duplicates collapse while preserving order.
+values. Both `page number` and `pagenumber` map to `page number line`. Unknown
+labels raise `ValueError`. Normalized duplicates collapse while preserving
+order.
 
 ### Word components
 
@@ -102,4 +137,8 @@ where their spelling overlaps.
 
 ## Residual intent
 
-A versioned, complete Page JSON Schema and a downstream compatibility gate remain deferred in `docs/context/intent-map.md`. This architecture document records the current Python serialization behavior; it does not promise cross-version or cross-repository compatibility beyond the cited implementation and tests.
+A versioned, complete Page JSON Schema and a downstream compatibility gate
+remain deferred in `docs/context/intent-map.md`. This architecture document
+records the current Python serialization behavior. It does not promise
+cross-version or cross-repository compatibility beyond the cited implementation
+and tests.
