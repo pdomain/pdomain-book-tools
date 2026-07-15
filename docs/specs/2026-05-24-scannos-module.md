@@ -12,11 +12,11 @@ Kind: spec
 > **Last updated**: 2026-05-24
 > **Spec-Issue**: pdomain/pdomain-book-tools#209
 
-Own the data model, storage, and API for the scannos (scanner
-error corrections) subsystem used across `pdomain-prep-for-pgdp` and future
-pdomain-* tools. This module gates all Stage 13 slices (`S13-A` through `S13-D`)
-in the `pdomain-prep-for-pgdp` design-handoff plan. The UI components it backs are
-designed in
+The `pdomain_book_tools.scannos` module will own the data model, storage, and
+API for scannos (scanner error corrections). `pdomain-prep-for-pgdp` and future
+pdomain-* tools will share this subsystem. The module gates all Stage 13 slices
+(`S13-A` through `S13-D`) in the `pdomain-prep-for-pgdp` design-handoff plan.
+Its UI components are designed in
 `pdomain-ui/docs/templates/design_handoff_pdomain_ui/wf05b/scanno-configure.jsx`
 and `wf05b/scanno-promote.jsx`; the domain model and design rationale appear
 in `wf05b/DISCUSSION.md`.
@@ -47,13 +47,13 @@ Add `pdomain_book_tools.scannos` owning:
 
 ---
 
-## 2. Context
+## 2. The shared scanno model
 
 ### 2.1 What scannos are
 
-A "scanno" is a word whose appearance in an OCR'd text is likely a scanner
-error rather than an authorial choice — "tbe" instead of "the", "rn" instead
-of "m", "liis" instead of "his". Two categories exist:
+A "scanno" is a word in OCR'd text that is likely a scanner error rather than
+an authorial choice. Examples include "tbe" instead of "the", "rn" instead of
+"m", and "liis" instead of "his". Two categories exist:
 
 - **Rule-driven**: a global library entry that applies across many books.
   A rule carries statistics (how many books it has fired in, how many total
@@ -76,9 +76,9 @@ The `wf05b` prototype shows three surfaces:
 - **Configure** (`S13-D`): the global rule library browser (search, filter by
   scope/auto/conflict, edit a rule's `sug` / `note` / `auto` flag).
 
-`wf05b/DISCUSSION.md` records the key domain decision: candidates and rules
-are separate entities with an explicit promotion step, rather than a single
-mutable record. This spec adopts that model.
+`wf05b/DISCUSSION.md` records the key domain decision. Candidates and rules are
+separate entities with an explicit promotion step, rather than one mutable
+record. This spec adopts that model.
 
 ### 2.3 Why pdomain-book-tools owns the schema
 
@@ -88,12 +88,12 @@ The rule library and candidate store are consumed by:
 - Potentially `pdomain-ocr-cli` (automatic scanno flagging in plain-text output)
 - Potentially `pdomain-ocr-labeler-spa` (inline token highlights during review)
 
-Centralising the schema and storage layer in pdomain-book-tools prevents each
-downstream tool from independently inventing its own format and migration path.
+Keeping the schema and storage layer in pdomain-book-tools prevents downstream
+tools from independently inventing formats and migration paths.
 
 ---
 
-## 3. Goals / Non-Goals
+## 3. Supported and excluded work
 
 ### Goals
 
@@ -127,7 +127,7 @@ downstream tool from independently inventing its own format and migration path.
 
 ---
 
-## 4. Constraints
+## 4. Storage and identity constraints
 
 - The global SQLite library must be readable by multiple pdomain-* processes
   concurrently (read-heavy; WAL mode required).
@@ -144,34 +144,34 @@ downstream tool from independently inventing its own format and migration path.
 
 ---
 
-## 5. Options Considered
+## 5. Storage options considered
 
 ### O-A: Single SQLite database for both rules and candidates
 
-Simple from a query perspective; candidates could be JOINed to rules in one
-query. Rejected: per-book candidate stores would accumulate in the global
-database, making it hard to share the rule library independently of any one
-book's working state. Also breaks the existing pdomain-* convention of book-level
-sidecars that travel with the book's output directory.
+This option makes queries simple because candidates could be JOINed to rules in
+one query. It is rejected because per-book candidates would accumulate in the
+global database. The rule library would then be hard to share independently of
+one book's working state. This option also breaks the existing pdomain-*
+convention of book-level sidecars that travel with the book's output directory.
 
 ### O-B: Two JSON files (global rules + per-book candidates)
 
-Pure JSON matches the pdomain-* sidecar convention everywhere. Rejected for the
-global library: querying hit counts, filtering by contributor, and pagination
-over thousands of rules is significantly harder on JSON than on SQLite. The
-global library is write-once-read-many from a single-user perspective, so
-SQLite's locking model is not a concern.
+Pure JSON matches the pdomain-* sidecar convention everywhere. It is rejected
+for the global library because JSON makes several operations harder than
+SQLite: querying hit counts, filtering by contributor, and paginating thousands
+of rules. From a single-user perspective, the global library is
+write-once-read-many, so SQLite's locking model is not a concern.
 
 ### O-C: SQLite for global library, JSON sidecar for per-book candidates (chosen)
 
-Combines the query power of SQLite for the shared library with the portability
-and git-friendliness of JSON for per-book state. Each book's output directory
+This option combines SQLite queries for the shared library with portable,
+git-friendly JSON for per-book state. Each book's output directory
 carries `<book-id>-scanno-candidates.json`; the global library lives at the
 `platformdirs` user-data path. This matches the rationale in `wf05b/DISCUSSION.md`.
 
 ---
 
-## 6. Decision
+## 6. The chosen module design
 
 Implement O-C. Module layout:
 
@@ -296,7 +296,7 @@ WAL mode is enabled at `PRAGMA journal_mode=WAL` on first open.
 
 ---
 
-## 7. Implementation Plan
+## 7. Implementation sequence
 
 1. Write `_models.py` with `ScannoRule` and `ScannoCandidate` dataclasses
    plus `to_dict` / `from_dict` round-trip.
@@ -324,7 +324,7 @@ WAL mode is enabled at `PRAGMA journal_mode=WAL` on first open.
 
 ---
 
-## 8. Test Plan
+## 8. Required tests
 
 | Test | Location | What it checks |
 |---|---|---|
@@ -344,7 +344,7 @@ WAL mode is enabled at `PRAGMA journal_mode=WAL` on first open.
 
 ---
 
-## 9. Open Questions
+## 9. Unresolved design questions
 
 - **Q-SC-1**: Should `CandidateStore` use a JSON array file or a directory of
   per-candidate JSON files? Array file is simpler and covers expected scale; a
