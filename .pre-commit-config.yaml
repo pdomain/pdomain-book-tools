@@ -52,12 +52,12 @@ repos:
         files: ^(pyproject\.toml|uv\.lock)$
 
     -   id: basedpyright
-        name: basedpyright type check (recommended mode; workspace canonical)
-        entry: uv run basedpyright pdomain_book_tools --level error
+        name: basedpyright type check (strict mode; zero diagnostics)
+        entry: uv run basedpyright
         language: system
         stages: [pre-commit]
         pass_filenames: false
-        files: ^pdomain_book_tools/.*\.py$
+        files: \.(py|pyi)$
 -   repo: https://github.com/jorisroovers/gitlint
     rev: v0.19.1
     hooks:
