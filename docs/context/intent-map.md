@@ -53,9 +53,13 @@ Kind: context
 - Decide whether glyph-span validation should become automatic and whether
   unknown future annotation kinds need tolerant reading. Evidence:
   docs/architecture/glyph-annotations.md.
-- Before retiring the dev-local spec, reconcile the local-upgrade restore
-  recipe, override semantics, and duplicate marker contracts. Evidence:
-  docs/specs/07-dev-local-upgrade-flow.md, Adversarial Review.
+- Consolidate the duplicate local-dev marker contracts
+  (`.venv/.pdomain-local-mode` for the shell scripts,
+  `.venv/.pdomain-dev-local` for the Python probe) into one shared contract,
+  and decide whether an intentional-clobber escape for `make upgrade-deps` is
+  wanted — the old advertised `PDOMAIN_DEV_LOCAL=0` escape never worked and its
+  message was removed. Evidence: docs/architecture/local-dev-mode.md, Residual
+  intent.
 - Protect active layout-debug runs with a liveness marker or lock, and test
   cleanup races and suppressed filesystem failures. Evidence:
   docs/architecture/layout-debug-cleanup.md.
@@ -71,8 +75,6 @@ None.
 
 ## Needs owner decision
 
-- Before promoting and retiring spec 07, reconcile the dev-local contract
-  drift. The other implemented specs now have architecture replacements.
 - Resolve the word-reference-lines coordinate, persistence, heuristic, mapping,
   font-fixture, and property-test contracts before implementation. Evidence:
   docs/specs/06b-word-reference-lines-api.md and

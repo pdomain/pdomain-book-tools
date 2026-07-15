@@ -115,24 +115,25 @@ upside-down scans, and the Peutinger map fixture. **No further work tracked here
 
 ## Open — developer tooling
 
-### dev-local-aware `upgrade-deps` flow — partial
+### dev-local-aware `upgrade-deps` flow — shipped
 
 Detection and the guard have shipped. `scripts/check_dev_local.py` reports
 dev-local mode (sibling pdomain-* editables, `[gpu]` extra installed,
 `.venv/.pdomain-dev-local` marker, or `PDOMAIN_DEV_LOCAL=1` env var) with
 exit-code contract (0 canonical / 1 dev-local) and a `--quiet`
-mode for Makefile branching. When it detects dev-local mode, `make upgrade-deps`
-now refuses to run and points to `make upgrade-deps-local`.
-`make upgrade-deps-local` runs the canonical sync, then reapplies
-the `[gpu]` extra via `make sync-gpu`. Spec
-[`docs/specs/07-dev-local-upgrade-flow.md`](../specs/07-dev-local-upgrade-flow.md).
+mode for Makefile branching. `make upgrade-deps` refuses with a
+pointer to `make local-upgrade-deps` when dev-local is detected;
+`make local-upgrade-deps` upgrades the lockfile and syncs with the
+`[gpu]` extra restored. The shipped contract is documented in
+[`docs/architecture/local-dev-mode.md`](../architecture/local-dev-mode.md);
+the originating spec is retired (Git history preserves it).
 
-The `make dev-local` recipe has shipped. It runs `sync-gpu`, which applies the
-`[gpu]` extra when an NVIDIA GPU is auto-detected) and writes the
-`.venv/.pdomain-dev-local` marker via `scripts/write_dev_local_marker.py`.
-Its lifecycle is tied to the venv: `make remove-venv` deletes the marker
-automatically. Downstream `pdomain-*` repos can now give users a stable
-instruction: "run `make dev-local` in pdomain-book-tools first".
+`make local-dev` shipped: syncs the `[gpu]` extra and writes the two
+mode markers (`.venv/.pdomain-local-mode` and `.venv/.pdomain-dev-local`,
+the latter via `scripts/write_dev_local_marker.py`). Lifecycle is
+anchored to the venv — a venv rebuild deletes the markers
+automatically. Downstream `pdomain-*` repos can now tell users
+"run `make local-dev` in pdomain-book-tools first" with a stable contract.
 
 Still open:
 

@@ -238,3 +238,27 @@ Kind: context
   `docs/specs/2026-07-15-writing-docs-plugin-routing-design.md` records the
   design and review; commit `140283e` records the implementation.
 - **Remaining work:** none
+### 2026-07-15 — Retire the dev-local upgrade-flow spec into architecture
+
+- **Context:** `docs/specs/07-dev-local-upgrade-flow.md` was implemented in
+  2026-05 and kept as the downstream contract record, but it described
+  deprecated target names, a single-marker design, and a
+  `PDOMAIN_DEV_LOCAL=0` clobber escape that never shipped.
+- **Decision:** Promote the shipped contract to
+  `docs/architecture/local-dev-mode.md` and delete the spec. Remove the
+  unimplemented `PDOMAIN_DEV_LOCAL=0` escape line from the `upgrade-deps`
+  refusal message, and point `check_dev_local.py` output at the canonical
+  `local-upgrade-deps` target instead of its deprecated alias.
+- **Rationale:** The restore recipe was reconciled by evidence — uv syncs the
+  `dev` group by default, so `uv sync --extra gpu` equals the promised
+  canonical sync plus GPU restore. The remaining drift items (two-marker
+  consolidation, an optional intentional-clobber escape) are design choices,
+  preserved as deferred intent rather than blocking retirement.
+- **Evidence:** `Makefile`, `scripts/check_dev_local.py`,
+  `scripts/local-dev.sh`, `scripts/local-upgrade-deps.sh`,
+  `tests/utility/test_check_dev_local.py`, and
+  `docs/architecture/local-dev-mode.md`. The retired spec and its 2026-07-13
+  adversarial review survive in Git history at the removal commit.
+- **Remaining work:** Marker consolidation and the clobber-escape decision are
+  in `docs/context/intent-map.md` (Deferred work); the deferred
+  DocTR-from-Git probe stays in `docs/plans/roadmap.md`.

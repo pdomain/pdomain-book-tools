@@ -122,7 +122,6 @@ upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if loc
 	  echo "❌ local-dev venv detected (GPU extras, editable siblings, or marker)." >&2; \
 	  echo "   Running 'uv sync' here would revert the venv to the canonical baseline." >&2; \
 	  echo "   Use:  make local-upgrade-deps   (lock + sync + restore GPU extras)" >&2; \
-	  echo "   Or:   PDOMAIN_DEV_LOCAL=0 make upgrade-deps   (intentional clobber)" >&2; \
 	  echo "" >&2; \
 	  exit 1; \
 	fi

@@ -1,12 +1,13 @@
 """Unit tests for ``scripts/check_dev_local.py``.
 
 The script detects whether the current venv is in **dev-local mode** —
-i.e. has overrides (the ``[gpu]`` extra, doctr-from-git, sibling-pdomain-*
+i.e. has overrides (the ``[gpu]`` extra, sibling-pdomain-*
 editable, or any non-project editable install) that ``uv sync --group
-dev`` would silently revert. These tests exercise its pure-function
+dev`` would silently revert. A DocTR-from-Git probe is deferred, not
+implemented — see the architecture doc's Residual intent. These tests exercise its pure-function
 core via importable helpers so we don't need to spin up a real venv.
 
-Spec: ``docs/specs/07-dev-local-upgrade-flow.md``.
+Architecture: ``docs/architecture/local-dev-mode.md``.
 """
 
 from __future__ import annotations
@@ -53,8 +54,9 @@ def _pkg(name, version="1.0.0", editable_location=None):
 
 def test_canonical_mode_returns_canonical(cdl, tmp_path):
     """A venv with only the project itself editable + no [gpu] extras
-    + no doctr-from-git is canonical. Every downstream `uv sync --group
-    dev` of this lockfile should produce this shape."""
+    is canonical (a registry-pinned python-doctr install included). Every
+    downstream `uv sync --group dev` of this lockfile should produce
+    this shape."""
     project_root = tmp_path
     pkgs = [
         _pkg("pdomain-book-tools", editable_location=str(project_root)),

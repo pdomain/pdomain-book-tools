@@ -25,12 +25,12 @@ The shipped geometry behavior is documented in
 [`geometry-correction.md`](../architecture/geometry-correction.md). OCR model,
 blob, review, and schema ownership are documented in
 [`ocr-model-and-schema-boundaries.md`](../architecture/ocr-model-and-schema-boundaries.md).
+The local-development mode and `upgrade-deps` guard contract lives in
+[`local-dev-mode.md`](../architecture/local-dev-mode.md).
 
 ## In-flight work
 
 - The conformance and lifecycle migration is on docs/docgraph-conformance.
-- Spec 07 remains implemented until its local-development command, override,
-  marker, and restore contracts are reconciled with current code.
 
 ## Risks
 

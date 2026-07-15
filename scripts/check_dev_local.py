@@ -1,18 +1,18 @@
 """Detect whether the current venv is in **dev-local mode**.
 
 A venv is dev-local when it has overrides — sibling pdomain-* editable
-installs, the ``[gpu]`` extra, doctr-from-git, an explicit
+installs, the ``[gpu]`` extra, an explicit
 ``PDOMAIN_DEV_LOCAL=1`` env var, or a ``.venv/.pdomain-dev-local`` marker file —
 that ``uv sync --group dev`` (the canonical sync) would silently
 revert. ``make upgrade-deps`` and any future recipe that rebuilds the
 venv invokes this script to refuse-rather-than-clobber.
 
-Spec: ``docs/specs/07-dev-local-upgrade-flow.md``.
+Architecture: ``docs/architecture/local-dev-mode.md``.
 
 Exit code:
 - 0 if canonical (Makefile recipe proceeds normally).
 - 1 if dev-local (Makefile recipe refuses with a message pointing the
-  user at ``upgrade-deps-local``).
+  user at ``local-upgrade-deps``).
 
 The detection logic is split into pure helpers so unit tests can drive
 it without spinning up real venvs.
@@ -162,7 +162,7 @@ def _format_summary(result: DetectionResult) -> str:
         "",
     ]
     lines.append(
-        "Run `make upgrade-deps-local` instead of `make upgrade-deps` "
+        "Run `make local-upgrade-deps` instead of `make upgrade-deps` "
         "to upgrade without clobbering these overrides."
     )
     return "\n".join(lines)
