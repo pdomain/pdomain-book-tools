@@ -12,11 +12,14 @@ Kind: process
 
 ## Rule: Write docs clearly
 
-**The rule.** Follow [Writing Style](docs/process/writing-style.md) for docs,
-reports, issue text, PR text, and user-facing copy.
+**The rule.** Use the `writing-docs` plugin for docs, reports, issue text, PR
+text, and user-facing copy. Apply its inline standard to short prose. Route new
+durable prose through `writing-docs:write-readably` and existing prose through
+`writing-docs:edit-for-readability`. Stop with a missing-skill error if either
+route is unavailable.
 
-**Why.** Detailed style guidance belongs in a process doc. CONVENTIONS.md
-should stay short.
+**Why.** The plugin is the only writing-style authority. CONVENTIONS.md should
+record the routes without duplicating their rules.
 
 ## Rule: No comments explaining what code does
 
