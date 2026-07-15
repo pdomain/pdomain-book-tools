@@ -12,11 +12,13 @@ Kind: spec
 > **Last updated**: 2026-05-21
 > **Split from**: the original spec, preserved in Git history
 
-Bottom-crop spec interaction, open questions (Q-RL-1 through Q-RL-10),
-decisions requested, testing approach, CI integration, and out-of-scope
-items for the four reference lines feature.
-This is part 3 of a three-part split of the original
-`06-word-reference-lines.md` spec (914 lines, exceeded the 800-line cap).
+This spec defines the bottom-crop interaction, decisions, and testing approach
+for the four reference lines feature. It covers open questions Q-RL-1 through
+Q-RL-10, CI integration, and out-of-scope items.
+
+This document is part 3 of a three-part split of the original
+`06-word-reference-lines.md` spec. That 914-line document exceeded the
+800-line cap.
 
 - Part 1: [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md) — Audit + gap analysis
 - Part 2: [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md) — API surface, heuristics, parameters, confidence
@@ -26,11 +28,11 @@ This is part 3 of a three-part split of the original
 
 ## TL;DR
 
-Land the reference-lines API before the bottom-crop tool so the
-bottom-crop spec can slim down to a thin wrapper. Synthetic PIL-drawn
-fixtures let tests assert exact pixel coordinates without font-file
-dependencies. Ten open questions (Q-RL-1 through Q-RL-10) are listed
-here; the minimum set needed to start coding is in section 10.
+Land the reference-lines API before the bottom-crop tool. This order lets the
+bottom-crop spec become a thin wrapper. Synthetic PIL-drawn fixtures let tests
+assert exact pixel coordinates without font-file dependencies. This document
+lists ten open questions, Q-RL-1 through Q-RL-10. Section 10 identifies the
+minimum decisions needed to start coding.
 
 ## Context
 
@@ -48,9 +50,9 @@ for the API surface and heuristics.
 
 ## Decision
 
-The bottom-crop spec should declare an explicit dependency on this
-reference-lines API rather than re-deriving baseline and x-height locally.
-Land this API first, then the bottom-crop tool. See section 8.
+The bottom-crop spec should explicitly depend on this reference-lines API. It
+should not rederive baseline and x-height locally. Land this API first, then
+the bottom-crop tool. See section 8.
 
 ## 8. Interaction with the bottom-crop spec
 
@@ -67,8 +69,8 @@ that spec) currently is:
   calls per-word.
 - `Page.crop_word_bottoms_to_baseline(...)` — page-level convenience.
 
-If this reference-lines spec lands first, the bottom-crop spec
-collapses cleanly into a thin wrapper:
+If this reference-lines spec lands first, the bottom-crop spec becomes a thin
+wrapper:
 
 ```python
 # Sketch of revised bottom-crop, post reference-lines API:
@@ -102,12 +104,12 @@ Specifically:
   `Block.estimate_word_reference_lines`.
 - The shared `DEFAULT_DESCENDER_CHARS` constant from this spec
   replaces the three current inline copies _and_ the bottom-crop
-  spec's proposed broadened set (section 2.1 of that spec). Single
-  source of truth.
-- The new bottom-crop tests for descender / no-descender words
-  (bottom-crop spec section 11.1) get cheaper because the
-  reference-lines API is independently tested and provides ground
-  truth for `baseline` / `x_height` in synthetic-glyph test fixtures.
+  spec's proposed broadened set (section 2.1 of that spec). It becomes the
+  single source of truth.
+- The new bottom-crop tests for descender and no-descender words
+  (bottom-crop spec section 11.1) require less work. The independently tested
+  reference-lines API provides ground truth for `baseline` and `x_height` in
+  synthetic-glyph test fixtures.
 
 **Recommendation: the bottom-crop spec should declare an explicit
 dependency on this reference-lines API** rather than re-deriving
@@ -127,20 +129,19 @@ tool. Concretely:
 - Bump `pdomain-ocr-labeler-spa`'s `tool.uv.sources` pin to `v0.11.0` and add
   the labeler-side UI plumbing.
 
-Alternative: implement the bottom-crop tool now against the existing
-narrow baseline API. Refactor it later when the reference-lines API
-lands. This is cheaper in the short term but creates a known refactor
-debt and means the bottom-crop tool ships with its own copy of the
-descender-set broadening.
+The alternative is to implement the bottom-crop tool now against the existing
+narrow baseline API. It would then need refactoring after the reference-lines
+API lands. This path costs less in the short term. However, it creates known
+refactoring debt and ships the bottom-crop tool with its own copy of the
+broadened descender set.
 
-The user can decide. Recommendation is the first path (do this
-spec's work first) because the bottom-crop spec already calls for
-the descender-set dedup as a side-effect, and doing it here once
-versus there once means it lands in pdomain-book-tools either way; the
-question is just ordering.
+The user decides between these paths. The recommendation is to complete this
+spec's work first. The bottom-crop spec already calls for deduplicating the
+descender set as a side effect. That work lands in pdomain-book-tools either
+way, so only its order changes.
 
-This spec **does not edit the bottom-crop spec.** It only
-cross-references it. The user decides whether to revise that spec.
+This spec **does not edit the bottom-crop spec.** It only cross-references that
+spec. The user decides whether to revise it.
 
 ## 9. Open questions
 
@@ -237,10 +238,10 @@ review.
 
 ## 11. Testing approach
 
-Same shape as the bottom-crop spec section 11. Synthetic PIL-drawn
-glyph fixtures with **known** reference-line positions so tests can
-assert exact pixel coordinates for the geometry-only cases, and use
-relative-tolerance assertions for the rendering-dependent ones.
+The testing approach follows bottom-crop spec section 11. Synthetic PIL-drawn
+glyph fixtures have **known** reference-line positions. Tests can therefore
+assert exact pixel coordinates for geometry-only cases and use relative
+tolerances for rendering-dependent cases.
 
 Live next to existing baseline tests
 (`tests/ocr/test_word.py:1332-1348` and
@@ -248,14 +249,13 @@ Live next to existing baseline tests
 
 ### 11.1 Unit tests for `Word.estimate_reference_lines`
 
-Helper in the test module: `_render_word(text, x_height_px,
-ascender_extra_px, descender_extra_px, baseline_y, font=None) -> ndarray`
-that draws the given text on a fixed-size grayscale canvas with
-known geometry. Use `PIL.ImageDraw` with the bundled default font
-(no font-file dependency, matching the bottom-crop spec section 11
-constraint) and use deterministic pixel positions for assertions
-where exact comparison matters; use tolerances (±1-2 px) for
-rendering-dependent assertions.
+The test module provides `_render_word(text, x_height_px,
+ascender_extra_px, descender_extra_px, baseline_y, font=None) -> ndarray`.
+This helper draws the given text with known geometry on a fixed-size grayscale
+canvas. It uses `PIL.ImageDraw` with the bundled default font, so it adds no
+font-file dependency and matches the bottom-crop spec section 11 constraint.
+Use deterministic pixel positions when exact comparison matters. Use
+tolerances of ±1-2 px for rendering-dependent assertions.
 
 Specific cases:
 
@@ -342,10 +342,10 @@ Lives in `tests/ocr/test_block.py` (alongside the existing
 
 ## 12. CI integration
 
-No CI changes required. New tests slot into the existing pytest run
-via `make test`; no new dependencies. The synthetic PIL glyph helper
-introduces no font-file dependency. Coverage targets: match existing
-posture (`fail_under = 0`), no new gate.
+No CI changes are required. New tests join the existing pytest run through
+`make test` and add no dependencies. The synthetic PIL glyph helper adds no
+font-file dependency. Coverage keeps the existing `fail_under = 0` posture,
+with no new gate.
 
 ## 13. Out of scope (v1)
 
