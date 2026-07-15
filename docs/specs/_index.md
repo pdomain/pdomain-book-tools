@@ -8,16 +8,16 @@ Kind: process
 
 # Specs
 
-Architecture decisions and planning specs for `pdomain-book-tools`. These are
-the durable, citable references that issues, code comments, and
-downstream pdomain-* repos point at when they need the rationale behind a
-behaviour or knob.
+This index lists the architecture decisions and planning specs for
+`pdomain-book-tools`. These durable, citable references explain the rationale
+behind a behaviour or knob. Issues, code comments, and downstream pdomain-*
+repos point to them.
 
-New specs follow the workspace 9-section template enforced by
-`/workspaces/ocr-container/scripts/lint-spec.py`. Existing specs were
-imported from `docs/architecture/` and `docs/planning/` and are
-allowlisted as `legacy:` in `.specrc` until migrated (Procedure 1 in
-the workspace's fixing-specs guide).
+New specs follow the workspace 9-section template. The script at
+`/workspaces/ocr-container/scripts/lint-spec.py` enforces this template.
+Existing specs were imported from `docs/architecture/` and `docs/planning/`.
+Until migrated, `.specrc` allowlists them as `legacy:` under Procedure 1 in
+the workspace's fixing-specs guide.
 
 ## Index
 
@@ -42,10 +42,10 @@ the workspace's fixing-specs guide).
 
 ## Historical numbering
 
-Spec numbers remain useful historical identifiers, but implemented specs move
-to `docs/architecture/` and their old paths may be deleted. New references
-must use the current architecture or active-spec path from this index instead
-of relying on a `Spec: NN-name` symbolic citation.
+Spec numbers remain useful historical identifiers. Implemented specs move to
+`docs/architecture/`, and their old paths may be deleted. New references must
+use the current architecture or active-spec path from this index. They must not
+rely on a `Spec: NN-name` symbolic citation.
 
-Headings in active specs remain stable while those specs are live. Retirement
-tombstones and Git history preserve older anchors after promotion.
+Headings in active specs remain stable while the specs are live. After
+promotion, retirement tombstones and Git history preserve older anchors.
