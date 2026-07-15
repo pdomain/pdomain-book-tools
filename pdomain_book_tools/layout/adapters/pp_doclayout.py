@@ -213,11 +213,11 @@ class PPDocLayoutPlusLDetector:
             load_kwargs["revision"] = rev
         if local_files_only:
             load_kwargs["local_files_only"] = True
-        processor_cls = cast("Any", RTDetrImageProcessor)  # pyright: ignore[reportAny,reportExplicitAny]
-        model_cls = cast("Any", RTDetrForObjectDetection)  # pyright: ignore[reportAny,reportExplicitAny]
-        self._processor = processor_cls.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportAny]
-        _loaded_model = model_cls.from_pretrained(repo, **load_kwargs)  # pyright: ignore[reportAny]
-        self._model = cast("RTDetrForObjectDetection", _loaded_model.to(device))  # pyright: ignore[reportAny]
+        processor_cls = cast("Any", RTDetrImageProcessor)
+        model_cls = cast("Any", RTDetrForObjectDetection)
+        self._processor = processor_cls.from_pretrained(repo, **load_kwargs)
+        _loaded_model = model_cls.from_pretrained(repo, **load_kwargs)
+        self._model = cast("RTDetrForObjectDetection", _loaded_model.to(device))
         _ = self._model.eval()
         self._device = device
         self._conf = float(confidence)
@@ -225,15 +225,15 @@ class PPDocLayoutPlusLDetector:
     @torch.inference_mode()
     def detect(self, source: str | Path | np.ndarray) -> PageLayout:
         img = self._to_pil(source)
-        inputs = cast("Any", self._processor(images=img, return_tensors="pt")).to(  # pyright: ignore[reportAny,reportExplicitAny]
+        inputs = cast("Any", self._processor(images=img, return_tensors="pt")).to(
             self._device
         )
-        outputs: Any = self._model(**inputs)  # pyright: ignore[reportAny,reportExplicitAny]
-        target = torch.tensor([img.size[::-1]]).to(self._device)  # pyright: ignore[reportPrivateImportUsage]
-        processor = cast("Any", self._processor)  # pyright: ignore[reportAny,reportExplicitAny]
+        outputs: Any = self._model(**inputs)
+        target = torch.tensor([img.size[::-1]]).to(self._device)
+        processor = cast("Any", self._processor)
         raw_results = cast(
             "list[dict[str, torch.Tensor]]",
-            processor.post_process_object_detection(  # pyright: ignore[reportAny]
+            processor.post_process_object_detection(
                 outputs,
                 target_sizes=target,
                 threshold=self._conf,
@@ -258,8 +258,8 @@ class PPDocLayoutPlusLDetector:
                     mapped,
                 )
                 continue
-            coords_any = cast("Any", box.detach().cpu())  # pyright: ignore[reportAny,reportExplicitAny]
-            coords = cast("list[float]", coords_any.tolist())  # pyright: ignore[reportAny]
+            coords_any = cast("Any", box.detach().cpu())
+            coords = cast("list[float]", coords_any.tolist())
             x1, y1, x2, y2 = coords
             x1, y1, x2, y2 = _clip_box_to_bounds(
                 x1, y1, x2, y2, img_width=int(img.width), img_height=int(img.height)

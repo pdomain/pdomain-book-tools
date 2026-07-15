@@ -181,7 +181,7 @@ class Word:
         return self._ground_truth_text or ""
 
     @ground_truth_text.setter
-    def ground_truth_text(self, value: str | None) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts persisted None; getter exposes legacy str contract
+    def ground_truth_text(self, value: str | None) -> None:
         # R-27: ``None`` is the canonical "no ground truth" value. Normalize
         # empty strings to ``None`` on assignment so the internal state is
         # consistent with what ``to_dict`` serializes (both round-trip as
@@ -1168,7 +1168,7 @@ class Word:
             merged_scopes[label] = "part" if "part" in (current, incoming) else "whole"
         self.text_style_label_scopes = merged_scopes
 
-    def crop_bottom(self, img_ndarray: ndarray) -> None:
+    def crop_bottom(self, img_ndarray: ndarray | None) -> None:
         """Crop the bottom of the word using bounding box crop_bottom method.
 
         The implementation lives in
@@ -1180,7 +1180,7 @@ class Word:
 
         crop_word_bottom(self, img_ndarray)
 
-    def crop_top(self, img_ndarray: ndarray) -> None:
+    def crop_top(self, img_ndarray: ndarray | None) -> None:
         """Crop the top of the word using bounding box crop_top method.
 
         The implementation lives in

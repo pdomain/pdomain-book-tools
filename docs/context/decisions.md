@@ -262,3 +262,28 @@ Kind: context
 - **Remaining work:** Marker consolidation and the clobber-escape decision are
   in `docs/context/intent-map.md` (Deferred work); the deferred
   DocTR-from-Git probe stays in `docs/plans/roadmap.md`.
+
+### 2026-07-15 — basedpyright to strict with zero diagnostics
+
+- **Context:** The repo ran basedpyright in recommended mode with an
+  errors-only, package-only CI gate. The workspace strict-config target
+  prescribes `typeCheckingMode = "strict"` plus
+  `reportUnnecessaryTypeIgnoreComment` and `reportImplicitOverride`.
+- **Decision:** Adopt strict with both escalations across the full include
+  (`pdomain_book_tools`, `tests`, `scripts`), drive all 7,697 surfaced
+  errors to zero, set `failOnWarnings = true`, and widen the Makefile
+  `typecheck` gate to `uv run basedpyright` over the whole include. Cover
+  untyped third-party libraries with local `typings/` stubs (cupy, cupyx,
+  pytesseract) and `pandas-stubs`. One scoped deviation:
+  `reportPrivateUsage` off for the `tests` execution environment.
+- **Rationale:** Annotations and honest narrowing everywhere beat a
+  grandfathered baseline; the empty `.basedpyright/baseline.json` stays
+  empty. Local stubs fix unknown-type propagation at the source instead of
+  suppressing it at hundreds of call sites.
+- **Evidence:** `pyproject.toml`, `Makefile`, `typings/`,
+  `docs/architecture/type-checking.md`,
+  `docs/process/lint-deviations.md` entries 6–7, and
+  `uv run basedpyright` reporting 0 errors, 0 warnings, 0 notes.
+- **Remaining work:** The ruff strict-config families (`FA`, `PIE`, `PLE`,
+  `PTH`) remain unadopted; tracked in the architecture doc's residual
+  intent.

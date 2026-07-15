@@ -196,7 +196,7 @@ class TestDenoiseBinaryEdgeCases:
         """3-D arrays must raise ValueError."""
         img_3d = np.zeros((10, 10, 3), dtype=np.uint8)
         with pytest.raises(ValueError, match="2-D"):
-            denoise_binary(img_3d)  # type: ignore[arg-type]
+            denoise_binary(img_3d)
 
     def test_invalid_dtype_raises(self):
         """Non-uint8 arrays must raise ValueError."""

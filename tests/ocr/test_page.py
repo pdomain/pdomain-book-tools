@@ -1,6 +1,13 @@
-from uuid import UUID
+from __future__ import annotations
 
+import json
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock
+from uuid import UUID, uuid4
+
+import cv2
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
@@ -8,11 +15,17 @@ from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.gt_orphans import GtOrphans
 from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.reorganize_page_utils import _detect_mixed_column_split
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+ImageArray = npt.NDArray[np.uint8]
 
 
 @pytest.fixture
-def minimal_page():
+def minimal_page() -> Page:
     return Page(width=100, height=100, page_index=0, blocks=[])
 
 
@@ -21,7 +34,7 @@ def minimal_page():
 # ============================================================================
 
 
-def test_page_initialization(sample_page):
+def test_page_initialization(sample_page: Page) -> None:
     assert sample_page.width == 100
     assert sample_page.height == 200
     assert sample_page.page_index == 1
@@ -30,25 +43,25 @@ def test_page_initialization(sample_page):
     assert isinstance(sample_page.bounding_box, BoundingBox)
 
 
-def test_page_text(sample_page):
+def test_page_text(sample_page: Page) -> None:
     text = sample_page.text
     assert isinstance(text, str)
     assert "word1 word2\nword3 word4\n\nword5 word6\n\nword7 word8\n" in text
 
 
-def test_page_words(sample_page):
+def test_page_words(sample_page: Page) -> None:
     words = sample_page.words
     assert isinstance(words, list)
     assert all(isinstance(word, Word) for word in words)
 
 
-def test_page_lines(sample_page):
+def test_page_lines(sample_page: Page) -> None:
     lines = sample_page.lines
     assert isinstance(lines, list)
     assert all(isinstance(line, Block) for line in lines)
 
 
-def test_page_to_dict(sample_page):
+def test_page_to_dict(sample_page: Page) -> None:
     page_dict = sample_page.to_dict()
     assert isinstance(page_dict, dict)
     assert "items" in page_dict
@@ -58,14 +71,14 @@ def test_page_to_dict(sample_page):
     assert "bounding_box" in page_dict
 
 
-def test_page_to_dict_does_not_include_ocr_provenance():
+def test_page_to_dict_does_not_include_ocr_provenance() -> None:
     """Task 4: ocr_provenance removed from Page; to_dict must not include it."""
     page = Page(width=100, height=200, page_index=1, blocks=[])
     page_dict = page.to_dict()
     assert "ocr_provenance" not in page_dict
 
 
-def test_page_from_dict(sample_page):
+def test_page_from_dict(sample_page: Page) -> None:
     page_dict = sample_page.to_dict()
     print(page_dict)  # debug helper for test inspection
     new_page = Page.from_dict(page_dict)
@@ -75,9 +88,9 @@ def test_page_from_dict(sample_page):
     assert len(new_page.items) == len(sample_page.items)
 
 
-def test_page_from_dict_ignores_ocr_provenance():
+def test_page_from_dict_ignores_ocr_provenance() -> None:
     """Task 4: from_dict silently ignores the old ocr_provenance key (backward compat)."""
-    page_dict = {
+    page_dict: dict[str, object] = {
         "width": 100,
         "height": 200,
         "page_index": 2,
@@ -94,9 +107,9 @@ def test_page_from_dict_ignores_ocr_provenance():
     assert not hasattr(page, "ocr_provenance")
 
 
-def test_page_from_dict_legacy_without_ocr_provenance():
+def test_page_from_dict_legacy_without_ocr_provenance() -> None:
     """Task 4: from_dict with no ocr_provenance key works fine."""
-    page_dict = {
+    page_dict: dict[str, object] = {
         "width": 100,
         "height": 200,
         "page_index": 3,
@@ -108,7 +121,7 @@ def test_page_from_dict_legacy_without_ocr_provenance():
     assert not hasattr(page, "ocr_provenance")
 
 
-def test_page_init_filters_none_bbox_items(sample_block4):
+def test_page_init_filters_none_bbox_items(sample_block4: Block) -> None:
     """H-19 regression: Page.__init__ must filter items with bounding_box=None
     before passing to BoundingBox.union (which raises AttributeError on None).
 
@@ -137,7 +150,7 @@ def test_page_init_filters_none_bbox_items(sample_block4):
     assert page.bounding_box == sample_block4.bounding_box
 
 
-def test_page_init_all_none_bboxes_yields_none():
+def test_page_init_all_none_bboxes_yields_none() -> None:
     """H-19 regression: when every item has bounding_box=None, Page.__init__
     should leave bounding_box as None (matching Page.recompute_bounding_box)
     rather than crashing inside BoundingBox.union.
@@ -159,7 +172,7 @@ def test_page_init_all_none_bboxes_yields_none():
     assert page.bounding_box is None
 
 
-def test_page_copy_produces_independent_instance():
+def test_page_copy_produces_independent_instance() -> None:
     """Task 4: ocr_provenance removed. copy() still produces independent instances."""
     page = Page(
         width=100,
@@ -183,7 +196,7 @@ def test_page_copy_produces_independent_instance():
 # ============================================================================
 
 
-def test_page_remove_ground_truth():
+def test_page_remove_ground_truth() -> None:
     """remove_ground_truth clears gt text/bboxes but preserves match keys"""
     # Create words with ground truth data
     word1 = Word(
@@ -244,7 +257,7 @@ def test_page_remove_ground_truth():
     assert words_after[1].bounding_box == BoundingBox.from_ltrb(10, 0, 20, 10)
 
 
-def test_page_remove_ground_truth_empty_page():
+def test_page_remove_ground_truth_empty_page() -> None:
     """remove_ground_truth on empty page is a no-op"""
     # Create an empty page
     page = Page(width=100, height=200, page_index=1, blocks=[])
@@ -257,7 +270,7 @@ def test_page_remove_ground_truth_empty_page():
     assert len(page.words) == 0
 
 
-def test_page_remove_ground_truth_no_ground_truth_data():
+def test_page_remove_ground_truth_no_ground_truth_data() -> None:
     """remove_ground_truth when no gt data present (idempotent)"""
     # Create words without ground truth data
     word1 = Word(
@@ -309,8 +322,10 @@ def test_page_remove_ground_truth_no_ground_truth_data():
 # ============================================================================
 
 
-def _make_line(texts, y_top, height=10, x_start=0):
-    words = []
+def _make_line(
+    texts: list[str], y_top: float, height: float = 10, x_start: float = 0
+) -> Block:
+    words: list[Word] = []
     x = x_start
     for t in texts:
         w = len(t) * 5 or 5
@@ -334,7 +349,7 @@ def _make_line(texts, y_top, height=10, x_start=0):
 # ============================================================================
 
 
-def test_page_add_and_remove_item(sample_page, sample_block4):
+def test_page_add_and_remove_item(sample_page: Page, sample_block4: Block) -> None:
     initial_count = len(sample_page.items)
     # Add new empty paragraph block (will have bbox None until recompute)
     new_block = Block(
@@ -350,16 +365,16 @@ def test_page_add_and_remove_item(sample_page, sample_block4):
         sample_page.remove_item(new_block)
 
 
-def test_page_items_setter_errors():
+def test_page_items_setter_errors() -> None:
     # Non-collection
     with pytest.raises(TypeError):
-        Page(width=10, height=10, page_index=0, blocks=None)  # type: ignore[arg-type]
+        Page(width=10, height=10, page_index=0, blocks=None)
     # Collection with non Block
     with pytest.raises(TypeError):
         Page(width=10, height=10, page_index=0, blocks=["notablock"])  # type: ignore[list-item]
 
 
-def test_page_recompute_bounding_box_empty():
+def test_page_recompute_bounding_box_empty() -> None:
     p = Page(width=10, height=20, page_index=0, blocks=[])
     # Initially no bbox
     assert p.bounding_box is None
@@ -376,7 +391,7 @@ def test_page_recompute_bounding_box_empty():
     assert p.bounding_box is None
 
 
-def test_page_recompute_bounding_box_h04_regression():
+def test_page_recompute_bounding_box_h04_regression() -> None:
     """Regression lock for H-04: ``Page.recompute_bounding_box`` must exist as
     an instance method and must be invokable without raising
     ``AttributeError`` from any of the call sites flagged in the May 2026
@@ -421,7 +436,7 @@ def test_page_recompute_bounding_box_h04_regression():
 # ============================================================================
 
 
-def test_page_scale_normalized():
+def test_page_scale_normalized() -> None:
     # Build normalized words
     w1 = Word(
         text="hello",
@@ -442,7 +457,12 @@ def test_page_scale_normalized():
     scaled = page.scale(1000, 2000)
     assert scaled.width == 1000
     assert scaled.height == 2000
-    assert not scaled.items[0].items[0].items[0].bounding_box.is_normalized
+    scaled_block = scaled.items[0].items[0]
+    assert isinstance(scaled_block, Block)
+    scaled_word = scaled_block.items[0]
+    assert isinstance(scaled_word, Word)
+    assert scaled_word.bounding_box is not None
+    assert not scaled_word.bounding_box.is_normalized
 
 
 # ============================================================================
@@ -450,7 +470,7 @@ def test_page_scale_normalized():
 # ============================================================================
 
 
-def test_page_ground_truth_text_and_match():
+def test_page_ground_truth_text_and_match() -> None:
     w1 = Word(
         text="abc",
         bounding_box=BoundingBox.from_ltrb(0, 0, 3, 3),
@@ -483,10 +503,11 @@ def test_page_ground_truth_text_and_match():
 # ============================================================================
 
 
-def test_page_reorganize_lines_merge():
+def test_page_reorganize_lines_merge() -> None:
     # Two lines that should merge (small x gap, same y range)
     line1 = _make_line(["hello"], 0, height=20)
     # shift start just after end of line1 with tiny gap
+    assert line1.bounding_box is not None
     last_x = line1.bounding_box.maxX
     line2_words = [
         Word(
@@ -511,7 +532,7 @@ def test_page_reorganize_lines_merge():
     assert "helloworld" in para.text.replace(" ", "")
 
 
-def test_page_compute_text_row_blocks():
+def test_page_compute_text_row_blocks() -> None:
     # Create three lines with a large vertical gap before third to force new block
     l1 = _make_line(["a"], 0)
     l2 = _make_line(["b"], 12)
@@ -522,7 +543,7 @@ def test_page_compute_text_row_blocks():
     assert len(rb.items) >= 2
 
 
-def test_page_compute_text_paragraph_blocks():
+def test_page_compute_text_paragraph_blocks() -> None:
     # First two lines narrow, third wide to trigger paragraph split
     l1 = _make_line(["short"], 0)
     l2 = _make_line(["short2"], 12)
@@ -533,7 +554,7 @@ def test_page_compute_text_paragraph_blocks():
     assert len(pb.items) >= 2  # paragraphs
 
 
-def test_page_remove_line_if_exists_nested():
+def test_page_remove_line_if_exists_nested() -> None:
     # Build nested structure: page -> block(BLOCK) -> paragraph -> lines
     l1 = _make_line(["a"], 0)
     l2 = _make_line(["b"], 10)
@@ -552,7 +573,7 @@ def test_page_remove_line_if_exists_nested():
     assert l2 not in page.lines
 
 
-def test_page_remove_empty_items():
+def test_page_remove_empty_items() -> None:
     # Block with empty child after removing line
     l1 = _make_line(["a"], 0)
     para = Block(
@@ -578,7 +599,8 @@ def test_page_remove_empty_items():
 # ============================================================================
 
 
-def test_page_refresh_page_images_and_setters(tmp_path):
+def test_page_refresh_page_images_and_setters(tmp_path: Path) -> None:
+    del tmp_path
     l1 = _make_line(["a"], 0)
     page = Page(
         width=20,
@@ -592,7 +614,7 @@ def test_page_refresh_page_images_and_setters(tmp_path):
             )
         ],
     )
-    img = np.zeros((20, 20, 3), dtype=np.uint8)
+    img: ImageArray = np.zeros((20, 20, 3), dtype=np.uint8)
     page.cv2_numpy_page_image = img
     assert page.cv2_numpy_page_image_page_with_bbox is not None
     assert page.cv2_numpy_page_image_blocks_with_bboxes is not None
@@ -607,10 +629,11 @@ def test_page_refresh_page_images_and_setters(tmp_path):
 # ============================================================================
 
 
-def test_page_doctr_detection_training_set(tmp_path):
+def test_page_doctr_detection_training_set(tmp_path: Path) -> None:
     l1 = _make_line(["abc"], 0)
     # Provide ground truth for recognition test later
     for w in l1.items:
+        assert isinstance(w, Word)
         w.ground_truth_text = w.text
     page = Page(
         width=20,
@@ -631,10 +654,11 @@ def test_page_doctr_detection_training_set(tmp_path):
     assert det_labels.exists()
 
 
-def test_page_doctr_recognition_training_set_skips_no_gt(tmp_path):
+def test_page_doctr_recognition_training_set_skips_no_gt(tmp_path: Path) -> None:
     l1 = _make_line(["abc"], 0)
     # Ensure ground_truth_text empty — should be skipped (not raise)
     for w in l1.items:
+        assert isinstance(w, Word)
         w.ground_truth_text = ""
     page = Page(
         width=20,
@@ -654,14 +678,13 @@ def test_page_doctr_recognition_training_set_skips_no_gt(tmp_path):
     page.generate_doctr_recognition_training_set(out, prefix="p")
     rec_labels = out / "recognition" / "labels.json"
     assert rec_labels.exists()
-    import json
 
     with open(rec_labels) as f:
         labels = json.load(f)
     assert len(labels) == 0
 
 
-def test_page_convert_to_training_set(tmp_path):
+def test_page_convert_to_training_set(tmp_path: Path) -> None:
     # Use normalized bbox so scaling inside recognition set succeeds
     w_norm = Word(
         text="abc",
@@ -687,13 +710,13 @@ def test_page_convert_to_training_set(tmp_path):
     assert (out / "recognition" / "labels.json").exists()
 
 
-def test_page_generate_doctr_checks_errors(tmp_path):
+def test_page_generate_doctr_checks_errors(tmp_path: Path) -> None:
     p = Page(width=10, height=10, page_index=0, blocks=[])
     with pytest.raises(ValueError):
         p.generate_doctr_detection_training_set(tmp_path / "out")
 
 
-def test_page_add_ground_truth_calls_refresh(sample_page):
+def test_page_add_ground_truth_calls_refresh(sample_page: Page) -> None:
     # Provide simple gt identical to text
     gt_text = sample_page.text
     # Should not raise
@@ -702,8 +725,8 @@ def test_page_add_ground_truth_calls_refresh(sample_page):
     assert any(w.ground_truth_text for w in sample_page.words)
 
 
-def test_page_add_rect_type_errors():
-    img = np.zeros((5, 5, 3), dtype=np.uint8)
+def test_page_add_rect_type_errors() -> None:
+    img: ImageArray = np.zeros((5, 5, 3), dtype=np.uint8)
     # _add_text_label expects Word; passing any non-Word is the
     # invariant under test. Use a valid BLOCK+BLOCKS shape — earlier
     # this test paired LINE+BLOCKS, which R-14 now correctly rejects
@@ -734,11 +757,11 @@ def test_page_add_rect_type_errors():
 # ============================================================================
 
 
-def test_page_detection_labels_overwrite(tmp_path):
+def test_page_detection_labels_overwrite(tmp_path: Path) -> None:
     # Existing labels file with a conflicting and a non-conflicting entry
     detection_dir = tmp_path / "detection"
     (detection_dir / "images").mkdir(parents=True, exist_ok=True)
-    existing = {
+    existing: dict[str, object] = {
         "oldprefix_5.png": {
             "img_dimensions": (10, 10),
             "img_hash": "abc",
@@ -747,8 +770,6 @@ def test_page_detection_labels_overwrite(tmp_path):
         "book_7.png": {"img_dimensions": (10, 10), "img_hash": "def", "polygons": []},
     }
     with open(detection_dir / "labels.json", "w") as f:
-        import json
-
         json.dump(existing, f)
     # Build page with page_index=7 so one entry replaced, oldprefix remains
     w = Word(
@@ -776,7 +797,7 @@ def test_page_detection_labels_overwrite(tmp_path):
     assert len([k for k in data if k.startswith("book_7")]) == 1
 
 
-def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
+def test_page_recognition_labels_overwrite_and_cleanup(tmp_path: Path) -> None:
     rec_dir = tmp_path / "recognition" / "images"
     rec_dir.mkdir(parents=True, exist_ok=True)
     # Pre-create an old cropped image file for same prefix/page index to ensure it's deleted
@@ -784,8 +805,6 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
     old_img.write_bytes(b"old")
     labels_path = tmp_path / "recognition" / "labels.json"
     with open(labels_path, "w") as f:
-        import json
-
         json.dump({"pref_9_0_10_0_10.png": "OLD"}, f)
     w = Word(
         text="word",
@@ -808,8 +827,6 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
     assert not old_img.exists()
     # labels replaced with new single label
     with open(labels_path) as f:
-        import json
-
         labels = json.load(f)
     assert len(labels) == 1
     assert next(iter(labels.values())) == "word"
@@ -820,7 +837,7 @@ def test_page_recognition_labels_overwrite_and_cleanup(tmp_path):
 # ============================================================================
 
 
-def test_page_detection_word_filter(tmp_path):
+def test_page_detection_word_filter(tmp_path: Path) -> None:
     """Detection export with word_filter produces only matching polygons."""
     w1 = Word(
         text="keep",
@@ -853,15 +870,13 @@ def test_page_detection_word_filter(tmp_path):
         prefix="filt",
         word_filter=lambda w: "italics" in (w.text_style_labels or []),
     )
-    import json
-
     with open(tmp_path / "detection" / "labels.json") as f:
         data = json.load(f)
     entry = next(iter(data.values()))
     assert len(entry["polygons"]) == 1  # only w1
 
 
-def test_page_recognition_word_filter(tmp_path):
+def test_page_recognition_word_filter(tmp_path: Path) -> None:
     """Recognition export with word_filter produces only matching crops."""
     w1 = Word(
         text="keep",
@@ -894,15 +909,13 @@ def test_page_recognition_word_filter(tmp_path):
         prefix="filt",
         word_filter=lambda w: "italics" in (w.text_style_labels or []),
     )
-    import json
-
     with open(tmp_path / "recognition" / "labels.json") as f:
         labels = json.load(f)
     assert len(labels) == 1
     assert next(iter(labels.values())) == "keep"
 
 
-def test_page_recognition_label_formatter(tmp_path):
+def test_page_recognition_label_formatter(tmp_path: Path) -> None:
     """Recognition export with label_formatter writes custom label values."""
     w1 = Word(
         text="word",
@@ -924,23 +937,21 @@ def test_page_recognition_label_formatter(tmp_path):
     page = Page(width=100, height=100, page_index=0, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((50, 50, 3), dtype=np.uint8)
 
-    def my_formatter(w):
+    def my_formatter(w: Word) -> dict[str, object]:
         return {"text": w.ground_truth_text, "italic": True}
 
     page.generate_doctr_recognition_training_set(
         tmp_path, prefix="fmt", label_formatter=my_formatter
     )
-    import json
-
     with open(tmp_path / "recognition" / "labels.json") as f:
         labels = json.load(f)
     entry = next(iter(labels.values()))
     assert entry == {"text": "word", "italic": True}
 
 
-def test_page_refresh_page_images_match_score_coloring():
+def test_page_refresh_page_images_match_score_coloring() -> None:
     # Create several words with different match score conditions
-    def mw(x1, x2, score, gt_text="w"):
+    def mw(x1: float, x2: float, score: int | None, gt_text: str = "w") -> Word:
         return Word(
             text="w",
             bounding_box=BoundingBox.from_ltrb(x1, 0, x2, 10),
@@ -967,6 +978,7 @@ def test_page_refresh_page_images_match_score_coloring():
     page = Page(width=300, height=100, page_index=0, blocks=[para])
     page.cv2_numpy_page_image = np.zeros((20, 40, 3), dtype=np.uint8)
     img = page.cv2_numpy_page_image_matched_word_with_colors
+    assert img is not None
     # First word region should remain all zeros, others should have some non-zero pixels
     first_region = img[0:10, 0:5]
     second_region = img[0:10, 6:11]
@@ -974,7 +986,7 @@ def test_page_refresh_page_images_match_score_coloring():
     assert np.count_nonzero(second_region) > 0
 
 
-def test_page_reorganize_lines_edge_branches():
+def test_page_reorganize_lines_edge_branches() -> None:
     # single line -> early return
     single = Block(
         items=[_make_line(["solo"], 0)],
@@ -996,6 +1008,7 @@ def test_page_reorganize_lines_edge_branches():
     # overlapping x too much (second starts inside first) => no merge
     a1 = _make_line(["abc"], 0)
     # create second starting before end of first to produce overlap_x_amount large
+    assert a1.bounding_box is not None
     overlap_word = Word(
         text="xyz",
         bounding_box=BoundingBox.from_ltrb(
@@ -1017,11 +1030,11 @@ def test_page_reorganize_lines_edge_branches():
     assert len(para2.items) == 2
 
 
-def test_page_compute_text_row_blocks_empty():
+def test_page_compute_text_row_blocks_empty() -> None:
     assert reorganize_page_utils.compute_text_row_blocks([]) is None
 
 
-def test_page_compute_text_row_blocks_single_line():
+def test_page_compute_text_row_blocks_single_line() -> None:
     line = _make_line(["solo"], 0)
 
     block = reorganize_page_utils.compute_text_row_blocks([line])
@@ -1035,7 +1048,7 @@ def test_page_compute_text_row_blocks_single_line():
 # ============================================================================
 
 
-def test_page_cv2_type_error():
+def test_page_cv2_type_error() -> None:
     w = Word(
         text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1), ocr_confidence=0.1
     )
@@ -1052,7 +1065,7 @@ def test_page_cv2_type_error():
         p.cv2_numpy_page_image = "bad"  # type: ignore[assignment]
 
 
-def test_page_scale_no_bounding_box():
+def test_page_scale_no_bounding_box() -> None:
     # empty page -> bounding_box None path
     p = Page(width=10, height=20, page_index=1, blocks=[])
     scaled = p.scale(100, 200)
@@ -1064,7 +1077,7 @@ def test_page_scale_no_bounding_box():
 # ============================================================================
 
 
-def test_page_init_with_explicit_bounding_box():
+def test_page_init_with_explicit_bounding_box() -> None:
     # Provide explicit bbox different from union to ensure it's used
     w = Word(
         text="a",
@@ -1082,13 +1095,12 @@ def test_page_init_with_explicit_bounding_box():
     explicit = BoundingBox.from_ltrb(0, 0, 50, 50)
     page = Page(width=60, height=60, page_index=2, blocks=[para], bounding_box=explicit)
     # Should retain explicit bbox not shrink to union
+    assert page.bounding_box is not None
     assert page.bounding_box.to_ltrb() == explicit.to_ltrb()
 
 
-def test_page_init_with_gt_orphans_lines():
+def test_page_init_with_gt_orphans_lines() -> None:
     """Task 4: unmatched_ground_truth_lines removed; data now lives in gt_orphans.lines."""
-    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
-
     w = Word(
         text="hello",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
@@ -1115,7 +1127,7 @@ def test_page_init_with_gt_orphans_lines():
     assert not hasattr(page, "unmatched_ground_truth_lines")
 
 
-def test_page_add_rect_with_normalized_block():
+def test_page_add_rect_with_normalized_block() -> None:
     # Normalized coordinates trigger scaling path (width<1)
     w = Word(
         text="n",
@@ -1131,7 +1143,7 @@ def test_page_add_rect_with_normalized_block():
         block_category=BlockCategory.BLOCK,
     )
     page = Page(width=100, height=100, page_index=0, blocks=[block_block])
-    img = np.zeros((50, 50, 3), dtype=np.uint8)
+    img: ImageArray = np.zeros((50, 50, 3), dtype=np.uint8)
     Page._add_rect(img, page)  # page color branch
     Page._add_rect(img, block_block)  # block color branch
     Page._add_rect(img, line)  # line color branch
@@ -1140,10 +1152,11 @@ def test_page_add_rect_with_normalized_block():
     assert np.count_nonzero(img) > 0
 
 
-def test_page_reorganize_page_flow():
+def test_page_reorganize_page_flow() -> None:
     # Two lines close enough to merge; ensure reorganize_page rewrites structure
     l1 = _make_line(["alpha"], 0)
     # create second line with small gap so they merge inside reorganize_lines
+    assert l1.bounding_box is not None
     last_x = l1.bounding_box.maxX
     l2_word = Word(
         text="beta",
@@ -1172,7 +1185,7 @@ def test_page_reorganize_page_flow():
     assert any("alphabeta" in blk.text.replace(" ", "") for blk in page.items)
 
 
-def test_page_detect_mixed_column_split_with_trailing_body_lines():
+def test_page_detect_mixed_column_split_with_trailing_body_lines() -> None:
     # Simulate side-by-side figure captions followed by full-width body lines
     # that all fell into one row block.  Caption lines are expanded to be wide
     # enough (>= 15% of page width) to pass the candidate-line filter inside
@@ -1192,6 +1205,7 @@ def test_page_detect_mixed_column_split_with_trailing_body_lines():
     # right stays > 500) and be wide enough to pass the minimum-width filter.
     for idx in range(6):  # caption lines
         bb = lines[idx].bounding_box
+        assert bb is not None
         lines[idx].bounding_box = BoundingBox.from_ltrb(
             bb.minX, bb.minY, bb.minX + 200, bb.maxY
         )
@@ -1199,9 +1213,8 @@ def test_page_detect_mixed_column_split_with_trailing_body_lines():
     # Expand the two body lines so they clearly span the middle gutter.
     for idx in (6, 7):
         bb = lines[idx].bounding_box
+        assert bb is not None
         lines[idx].bounding_box = BoundingBox.from_ltrb(40, bb.minY, 920, bb.maxY)
-
-    from pdomain_book_tools.ocr.reorganize_page_utils import _detect_mixed_column_split
 
     split = _detect_mixed_column_split(lines, page_width=1000)
     assert split is not None
@@ -1211,12 +1224,18 @@ def test_page_detect_mixed_column_split_with_trailing_body_lines():
     assert len(right_lines) == 3
     assert len(spanning_lines) == 2
 
-    assert all(l.bounding_box.maxX <= 500 for l in left_lines)
-    assert all(l.bounding_box.minX > 500 for l in right_lines)
-    assert all(l.bounding_box.minX < 500 < l.bounding_box.maxX for l in spanning_lines)
+    for lin in left_lines:
+        assert lin.bounding_box is not None
+        assert lin.bounding_box.maxX <= 500
+    for lin in right_lines:
+        assert lin.bounding_box is not None
+        assert lin.bounding_box.minX > 500
+    for lin in spanning_lines:
+        assert lin.bounding_box is not None
+        assert lin.bounding_box.minX < 500 < lin.bounding_box.maxX
 
 
-def test_page_convert_to_training_set_missing_image(tmp_path):
+def test_page_convert_to_training_set_missing_image(tmp_path: Path) -> None:
     w = Word(
         text="a",
         bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True),
@@ -1236,7 +1255,7 @@ def test_page_convert_to_training_set_missing_image(tmp_path):
         page.convert_to_training_set(tmp_path / "out", prefix="x")
 
 
-def test_page_detection_on_empty_items(tmp_path):
+def test_page_detection_on_empty_items(tmp_path: Path) -> None:
     # Page with no items but with an image exercises early return in checks
     page = Page(width=50, height=50, page_index=4, blocks=[])
     page.cv2_numpy_page_image = np.zeros((30, 30, 3), dtype=np.uint8)
@@ -1244,7 +1263,6 @@ def test_page_detection_on_empty_items(tmp_path):
     # labels.json should exist with one entry (no polygons) since method proceeds
     labels_path = tmp_path / "set" / "detection" / "labels.json"
     assert labels_path.exists()
-    import json
 
     data = json.loads(labels_path.read_text())
     assert len(data) == 1
@@ -1259,10 +1277,10 @@ def test_page_detection_on_empty_items(tmp_path):
 class TestPageMetadata:
     """Tests for metadata fields on Page (Task 4: operational fields removed)."""
 
-    def _make_page(self, **kwargs):
-        return Page(width=10, height=10, page_index=0, blocks=[], **kwargs)
+    def _make_page(self, **kwargs: object) -> Page:
+        return Page(width=10, height=10, page_index=0, blocks=[], **kwargs)  # type: ignore[arg-type]
 
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         """Task 4: removed operational fields; name is the only remaining optional metadata."""
         page = self._make_page()
         assert page.name is None
@@ -1273,30 +1291,30 @@ class TestPageMetadata:
         assert not hasattr(page, "provenance_saved_ocr")
         assert not hasattr(page, "provenance_saved")
 
-    def test_constructor_accepts_name(self):
+    def test_constructor_accepts_name(self) -> None:
         """name field is still present on Page."""
         page = self._make_page(name="page-001")
         assert page.name == "page-001"
 
-    def test_index_alias(self):
+    def test_index_alias(self) -> None:
         page = self._make_page()
         assert page.index == 0
         page.index = 5
         assert page.page_index == 5
         assert page.index == 5
 
-    def test_to_dict_omits_name_when_none(self):
+    def test_to_dict_omits_name_when_none(self) -> None:
         """name is omitted from to_dict when not set."""
         page = self._make_page()
         d = page.to_dict()
         assert "name" not in d
 
-    def test_to_dict_includes_name_when_set(self):
+    def test_to_dict_includes_name_when_set(self) -> None:
         page = self._make_page(name="my-page")
         d = page.to_dict()
         assert d["name"] == "my-page"
 
-    def test_to_dict_removed_fields_absent(self):
+    def test_to_dict_removed_fields_absent(self) -> None:
         """Task 4: removed fields must not appear in to_dict output."""
         page = self._make_page()
         d = page.to_dict()
@@ -1315,16 +1333,16 @@ class TestPageMetadata:
         ):
             assert removed not in d
 
-    def test_serialization_roundtrip(self):
+    def test_serialization_roundtrip(self) -> None:
         """to_dict / from_dict roundtrip preserves name."""
         page = self._make_page(name="b.png")
         d = page.to_dict()
         restored = Page.from_dict(d)
         assert restored.name == "b.png"
 
-    def test_from_dict_without_metadata_uses_defaults(self):
+    def test_from_dict_without_metadata_uses_defaults(self) -> None:
         """Loading older data without metadata keys works fine."""
-        d = {
+        d: dict[str, object] = {
             "type": "Page",
             "width": 10,
             "height": 10,
@@ -1335,9 +1353,9 @@ class TestPageMetadata:
         page = Page.from_dict(d)
         assert page.name is None
 
-    def test_from_dict_ignores_legacy_keys(self):
+    def test_from_dict_ignores_legacy_keys(self) -> None:
         """from_dict silently ignores old removed fields (backward compat)."""
-        d = {
+        d: dict[str, object] = {
             "type": "Page",
             "width": 10,
             "height": 10,
@@ -1355,7 +1373,7 @@ class TestPageMetadata:
         assert not hasattr(page, "rotation_applied")
         assert not hasattr(page, "ocr_provenance")
 
-    def test_copy_preserves_name(self):
+    def test_copy_preserves_name(self) -> None:
         page = self._make_page(name="x.png")
         copied = page.copy()
         assert copied.name == "x.png"
@@ -1366,39 +1384,38 @@ class TestPageMetadata:
 # ============================================================================
 
 
-def test_page_has_page_id(minimal_page):
+def test_page_has_page_id(minimal_page: Page) -> None:
     assert isinstance(minimal_page.page_id, UUID)
 
 
-def test_page_id_unique():
+def test_page_id_unique() -> None:
     p1 = Page(width=100, height=100, page_index=0, blocks=[])
     p2 = Page(width=100, height=100, page_index=0, blocks=[])
     assert p1.page_id != p2.page_id
 
 
-def test_page_id_explicit():
-    from uuid import uuid4
-
+def test_page_id_explicit() -> None:
     uid = uuid4()
     p = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
     assert p.page_id == uid
 
 
-def test_page_image_blob_hash_default_none(minimal_page):
+def test_page_image_blob_hash_default_none(minimal_page: Page) -> None:
     assert minimal_page.image_blob_hash is None
 
 
-def test_page_thumbnail_blob_hash_default_none(minimal_page):
+def test_page_thumbnail_blob_hash_default_none(minimal_page: Page) -> None:
     assert minimal_page.thumbnail_blob_hash is None
 
 
-def test_page_gt_orphans_default_none(minimal_page):
+def test_page_gt_orphans_default_none(minimal_page: Page) -> None:
     assert minimal_page.gt_orphans is None
 
 
-def test_page_gt_orphans_set():
+def test_page_gt_orphans_set() -> None:
     orphans = GtOrphans(lines=["unmatched line"])
     p = Page(width=100, height=100, page_index=0, blocks=[], gt_orphans=orphans)
+    assert p.gt_orphans is not None
     assert p.gt_orphans.lines == ["unmatched line"]
 
 
@@ -1407,23 +1424,14 @@ def test_page_gt_orphans_set():
 # ============================================================================
 
 
-def test_get_image_returns_none_without_hash(minimal_page):
-    from unittest.mock import MagicMock
-
+def test_get_image_returns_none_without_hash(minimal_page: Page) -> None:
     blob_store = MagicMock()
     assert minimal_page.get_image(blob_store) is None
     blob_store.read.assert_not_called()
 
 
-def test_get_image_lazy_loads_from_blob():
-    from unittest.mock import MagicMock
-
-    import cv2
-    import numpy as np
-
-    from pdomain_book_tools.ocr.page import Page
-
-    img = np.ones((4, 4, 3), dtype=np.uint8) * 255
+def test_get_image_lazy_loads_from_blob() -> None:
+    img: ImageArray = np.ones((4, 4, 3), dtype=np.uint8) * 255
     png_bytes = cv2.imencode(".png", img)[1].tobytes()
 
     blob_store = MagicMock()
@@ -1436,15 +1444,8 @@ def test_get_image_lazy_loads_from_blob():
     blob_store.read.assert_called_once_with("abc123")
 
 
-def test_get_image_caches_result():
-    from unittest.mock import MagicMock
-
-    import cv2
-    import numpy as np
-
-    from pdomain_book_tools.ocr.page import Page
-
-    img = np.ones((4, 4, 3), dtype=np.uint8) * 255
+def test_get_image_caches_result() -> None:
+    img: ImageArray = np.ones((4, 4, 3), dtype=np.uint8) * 255
     png_bytes = cv2.imencode(".png", img)[1].tobytes()
     blob_store = MagicMock()
     blob_store.read.return_value = png_bytes
@@ -1456,22 +1457,13 @@ def test_get_image_caches_result():
     assert blob_store.read.call_count == 1
 
 
-def test_get_thumbnail_returns_none_without_hash(minimal_page):
-    from unittest.mock import MagicMock
-
+def test_get_thumbnail_returns_none_without_hash(minimal_page: Page) -> None:
     blob_store = MagicMock()
     assert minimal_page.get_thumbnail(blob_store) is None
 
 
-def test_get_thumbnail_caches_result():
-    from unittest.mock import MagicMock
-
-    import cv2
-    import numpy as np
-
-    from pdomain_book_tools.ocr.page import Page
-
-    img = np.ones((2, 2, 3), dtype=np.uint8) * 128
+def test_get_thumbnail_caches_result() -> None:
+    img: ImageArray = np.ones((2, 2, 3), dtype=np.uint8) * 128
     png_bytes = cv2.imencode(".png", img)[1].tobytes()
     blob_store = MagicMock()
     blob_store.read.return_value = png_bytes
@@ -1483,11 +1475,7 @@ def test_get_thumbnail_caches_result():
     assert blob_store.read.call_count == 1
 
 
-def test_get_image_raises_on_corrupt_blob():
-    from unittest.mock import MagicMock
-
-    from pdomain_book_tools.ocr.page import Page
-
+def test_get_image_raises_on_corrupt_blob() -> None:
     blob_store = MagicMock()
     blob_store.read.return_value = b"not a valid png"
 
@@ -1498,14 +1486,10 @@ def test_get_image_raises_on_corrupt_blob():
     assert p._image_array is None
 
 
-def test_image_array_property_returns_cache():
-    import numpy as np
-
-    from pdomain_book_tools.ocr.page import Page
-
+def test_image_array_property_returns_cache() -> None:
     p = Page(width=4, height=4, page_index=0, blocks=[])
     assert p.image_array is None
-    arr = np.zeros((4, 4, 3), dtype=np.uint8)
+    arr: ImageArray = np.zeros((4, 4, 3), dtype=np.uint8)
     p._image_array = arr
     assert p.image_array is arr
 
@@ -1515,30 +1499,22 @@ def test_image_array_property_returns_cache():
 # ============================================================================
 
 
-def test_page_has_no_image_path():
-    from pdomain_book_tools.ocr.page import Page
-
+def test_page_has_no_image_path() -> None:
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert not hasattr(p, "image_path")
 
 
-def test_page_has_no_source():
-    from pdomain_book_tools.ocr.page import Page
-
+def test_page_has_no_source() -> None:
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert not hasattr(p, "source")
 
 
-def test_page_has_no_rotation_applied():
-    from pdomain_book_tools.ocr.page import Page
-
+def test_page_has_no_rotation_applied() -> None:
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert not hasattr(p, "rotation_applied")
 
 
-def test_page_has_no_ocr_provenance():
-    from pdomain_book_tools.ocr.page import Page
-
+def test_page_has_no_ocr_provenance() -> None:
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert not hasattr(p, "ocr_provenance")
 
@@ -1548,13 +1524,13 @@ def test_page_has_no_ocr_provenance():
 # ============================================================================
 
 
-def test_to_dict_includes_page_id(minimal_page):
+def test_to_dict_includes_page_id(minimal_page: Page) -> None:
     d = minimal_page.to_dict()
     assert "page_id" in d
     assert isinstance(d["page_id"], str)  # UUID serialized as str
 
 
-def test_to_dict_excludes_removed_fields(minimal_page):
+def test_to_dict_excludes_removed_fields(minimal_page: Page) -> None:
     d = minimal_page.to_dict()
     for field in (
         "image_path",
@@ -1572,18 +1548,13 @@ def test_to_dict_excludes_removed_fields(minimal_page):
         assert field not in d, f"Unexpected field in to_dict: {field}"
 
 
-def test_from_dict_round_trip_with_page_id(minimal_page):
-    from pdomain_book_tools.ocr.page import Page
-
+def test_from_dict_round_trip_with_page_id(minimal_page: Page) -> None:
     d = minimal_page.to_dict()
     restored = Page.from_dict(d)
     assert restored.page_id == minimal_page.page_id
 
 
-def test_to_dict_includes_gt_orphans_when_set():
-    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
-    from pdomain_book_tools.ocr.page import Page
-
+def test_to_dict_includes_gt_orphans_when_set() -> None:
     p = Page(
         width=100,
         height=100,
@@ -1593,7 +1564,9 @@ def test_to_dict_includes_gt_orphans_when_set():
     )
     d = p.to_dict()
     assert "gt_orphans" in d
-    assert d["gt_orphans"]["lines"] == ["orphan"]
+    gt_orphans = d["gt_orphans"]
+    assert isinstance(gt_orphans, dict)
+    assert gt_orphans["lines"] == ["orphan"]
 
 
 # ============================================================================
@@ -1601,37 +1574,24 @@ def test_to_dict_includes_gt_orphans_when_set():
 # ============================================================================
 
 
-def test_page_eq_same_content_and_page_id():
+def test_page_eq_same_content_and_page_id() -> None:
     """Two Pages with identical content AND identical page_id are equal."""
-    from uuid import UUID
-
-    from pdomain_book_tools.ocr.page import Page
-
     uid = UUID("12345678-1234-5678-1234-567812345678")
     p1 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
     p2 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
     assert p1 == p2
 
 
-def test_page_eq_same_content_different_page_id():
+def test_page_eq_same_content_different_page_id() -> None:
     """Two Pages with identical content but different page_ids are NOT equal."""
-    from uuid import uuid4
-
-    from pdomain_book_tools.ocr.page import Page
-
     p1 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uuid4())
     p2 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uuid4())
     assert p1.page_id != p2.page_id
     assert p1 != p2
 
 
-def test_page_eq_differs_only_in_gt_orphans():
+def test_page_eq_differs_only_in_gt_orphans() -> None:
     """Two Pages differing only in gt_orphans are NOT equal."""
-    from uuid import UUID
-
-    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
-    from pdomain_book_tools.ocr.page import Page
-
     uid = UUID("12345678-1234-5678-1234-567812345678")
     p1 = Page(width=100, height=100, page_index=0, blocks=[], page_id=uid)
     p2 = Page(
@@ -1650,28 +1610,21 @@ def test_page_eq_differs_only_in_gt_orphans():
 # ============================================================================
 
 
-def test_copy_preserves_page_id():
+def test_copy_preserves_page_id() -> None:
     """copy() routes through to_dict/from_dict and must preserve entity identity."""
-    from pdomain_book_tools.ocr.page import Page
-
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert p.copy().page_id == p.page_id
 
 
-def test_scale_preserves_page_id():
+def test_scale_preserves_page_id() -> None:
     """scale() is a view transform of the same entity; page_id must carry over."""
-    from pdomain_book_tools.ocr.page import Page
-
     p = Page(width=100, height=100, page_index=0, blocks=[])
     assert p.scale(200, 200).page_id == p.page_id
 
 
-def test_gt_orphans_lines_tuples_survive_round_trip():
+def test_gt_orphans_lines_tuples_survive_round_trip() -> None:
     """A round-trip restores 2-tuple line entries as tuples, not lists, so
     copy() is representation-stable; bare-string entries pass through."""
-    from pdomain_book_tools.ocr.gt_orphans import GtOrphans
-    from pdomain_book_tools.ocr.page import Page
-
     p = Page(
         width=100,
         height=100,

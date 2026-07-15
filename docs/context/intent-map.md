@@ -63,6 +63,15 @@ Kind: context
 - Protect active layout-debug runs with a liveness marker or lock, and test
   cleanup races and suppressed filesystem failures. Evidence:
   docs/architecture/layout-debug-cleanup.md.
+- Decide whether large mixed-order PGDP integration tests are wanted. Three
+  drafts (`test_pgdp_large_mixed_order_case1/2/3`) were removed 2026-07-15:
+  an indentation bug had nested them inside another test so pytest never
+  collected them, and their assertions assumed behaviors the pipeline does
+  not implement (space-separated footnote markers, trailing `-*`
+  end-of-line cleanup, quote conversion for an elision with attached
+  footnote digits such as `'Tis[77][88]`). Git history preserves the
+  drafts. Evidence: tests/pgdp/test_pgdp_page.py,
+  test_fix_footnotes_no_space_before_marker.
 
 ## Rejected directions
 

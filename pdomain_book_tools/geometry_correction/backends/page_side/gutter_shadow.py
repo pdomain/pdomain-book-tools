@@ -44,9 +44,9 @@ class GutterShadowPageSide:
         if contrast >= self.min_contrast:
             gutter: str = "left" if left_mean < right_mean else "right"
             conf = float(min(1.0, contrast / 128.0))
-            return PageSideResult(_SIDE_FOR_GUTTER[gutter], gutter, conf, self.name)  # type: ignore[arg-type]
+            return PageSideResult(_SIDE_FOR_GUTTER[gutter], gutter, conf, self.name)
         # weak/no detection: fall back to hint
         if hint in (PageSide.LEFT, PageSide.RIGHT):
             gutter = "right" if hint is PageSide.LEFT else "left"
-            return PageSideResult(hint, gutter, 0.3, self.name)  # type: ignore[arg-type]
+            return PageSideResult(hint, gutter, 0.3, self.name)
         return PageSideResult(PageSide.UNKNOWN, "none", 0.0, self.name)

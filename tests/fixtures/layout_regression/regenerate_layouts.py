@@ -32,6 +32,10 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pdomain_book_tools.layout.types import PageLayout
 
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "inputs"
@@ -70,7 +74,7 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 
-def _draw_overlay(png_path: Path, layout, dest: Path) -> None:
+def _draw_overlay(png_path: Path, layout: PageLayout, dest: Path) -> None:
     """Thin wrapper around :func:`pdomain_book_tools.layout.visualize.draw_layout_overlay`.
 
     Kept as a local name for backwards-compat with anyone shelling out to

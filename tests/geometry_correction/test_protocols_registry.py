@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from pdomain_book_tools.geometry_correction.protocols import (
@@ -9,12 +13,19 @@ from pdomain_book_tools.geometry_correction.protocols import (
 )
 from pdomain_book_tools.geometry_correction.transforms import GeometryTransform
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def test_pageside_enum_members():
+    import numpy as np
+
+    from pdomain_book_tools.geometry_correction.protocols import BBox
+
+
+def test_pageside_enum_members() -> None:
     assert {m.name for m in PageSide} == {"LEFT", "RIGHT", "SINGLE", "UNKNOWN"}
 
 
-def test_result_dataclasses_hold_transform():
+def test_result_dataclasses_hold_transform() -> None:
     t = GeometryTransform.identity((10, 10))
     d = DeskewResult(angle_degrees=1.5, confidence=0.9, transform=t, method="x")
     assert d.angle_degrees == 1.5
@@ -33,11 +44,7 @@ def test_result_dataclasses_hold_transform():
 
 # --- Task 4: registry ---
 
-from pdomain_book_tools.geometry_correction import (  # noqa: E402, F811
-    Deskew,
-    DeskewResult,
-    GeometryTransform,
-)
+from pdomain_book_tools.geometry_correction import Deskew  # noqa: E402
 from pdomain_book_tools.geometry_correction.registry import (  # noqa: E402
     available,
     get_deskew,
@@ -48,20 +55,26 @@ from pdomain_book_tools.geometry_correction.registry import (  # noqa: E402
 class _FakeDeskew:
     name = "fake"
 
-    def estimate(self, image, *, page_side=None, text_lines=None):
+    def estimate(
+        self,
+        image: np.ndarray,
+        *,
+        page_side: PageSide | None = None,
+        text_lines: Sequence[BBox] | None = None,
+    ) -> DeskewResult:
         return DeskewResult(
             0.0, 1.0, GeometryTransform.identity(image.shape[:2]), self.name
         )
 
 
-def test_register_and_get_roundtrip():
+def test_register_and_get_roundtrip() -> None:
     register_deskew("fake", _FakeDeskew)
     inst = get_deskew("fake")
     assert isinstance(inst, Deskew)  # satisfies the Protocol
     assert "fake" in available("deskew")
 
 
-def test_get_unknown_raises():
+def test_get_unknown_raises() -> None:
     with pytest.raises(KeyError):
         get_deskew("nope-not-registered")
 
@@ -69,7 +82,7 @@ def test_get_unknown_raises():
 # --- Task 13: defaults ---
 
 
-def test_builtin_backends_are_registered():
+def test_builtin_backends_are_registered() -> None:
     from pdomain_book_tools.geometry_correction import registry
 
     registry.ensure_defaults()
@@ -81,7 +94,7 @@ def test_builtin_backends_are_registered():
     assert "uvdoc" in registry.available("dewarp")  # registered even if extra absent
 
 
-def test_default_pipeline_builds_and_runs_on_flat_page():
+def test_default_pipeline_builds_and_runs_on_flat_page() -> None:
     import cv2
     import numpy as np
 

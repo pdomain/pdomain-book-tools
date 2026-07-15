@@ -1,13 +1,20 @@
 """Tests for cupy_processing.filters module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestGaussianFilterGpu:
-    def test_output_shape_and_dtype_grayscale(self, cupy_module):
+    def test_output_shape_and_dtype_grayscale(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
@@ -18,7 +25,7 @@ class TestGaussianFilterGpu:
         assert out.shape == img.shape
         assert out.dtype == cp.uint8
 
-    def test_output_shape_and_dtype_color(self, cupy_module):
+    def test_output_shape_and_dtype_color(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             gaussian_filter_gpu,
@@ -29,7 +36,7 @@ class TestGaussianFilterGpu:
         assert out.shape == img.shape
         assert out.dtype == cp.uint8
 
-    def test_uniform_image_unchanged(self, cupy_module):
+    def test_uniform_image_unchanged(self, cupy_module: ModuleType) -> None:
         """Blurring a constant image should return the same constant value."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
@@ -40,7 +47,7 @@ class TestGaussianFilterGpu:
         out = gaussian_filter_gpu(img, sigma=2.0)
         assert cp.all(out == 200)
 
-    def test_blur_reduces_sharp_edge(self, cupy_module):
+    def test_blur_reduces_sharp_edge(self, cupy_module: ModuleType) -> None:
         """A hard edge should become softer after Gaussian blur."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
@@ -53,7 +60,7 @@ class TestGaussianFilterGpu:
         # Pixels just left of the edge should be > 0 after blur
         assert int(out[15, 13]) > 0
 
-    def test_channels_filtered_independently(self, cupy_module):
+    def test_channels_filtered_independently(self, cupy_module: ModuleType) -> None:
         """Each colour channel should be blurred without bleeding into others."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
@@ -67,7 +74,7 @@ class TestGaussianFilterGpu:
         assert cp.all(out[:, :, 1] == 0)
         assert cp.all(out[:, :, 2] == 0)
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: ModuleType) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             np_uint8_gaussian_filter,
         )
@@ -82,7 +89,7 @@ class TestGaussianFilterGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestMedianFilterGpu:
-    def test_output_shape_and_dtype(self, cupy_module):
+    def test_output_shape_and_dtype(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
@@ -93,7 +100,7 @@ class TestMedianFilterGpu:
         assert out.shape == img.shape
         assert out.dtype == cp.uint8
 
-    def test_removes_single_bright_pixel(self, cupy_module):
+    def test_removes_single_bright_pixel(self, cupy_module: ModuleType) -> None:
         """Median filter should suppress a single salt pixel."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
@@ -105,7 +112,7 @@ class TestMedianFilterGpu:
         out = median_filter_gpu(img, size=3)
         assert int(out[10, 10]) == 0
 
-    def test_uniform_image_unchanged(self, cupy_module):
+    def test_uniform_image_unchanged(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
@@ -115,7 +122,7 @@ class TestMedianFilterGpu:
         out = median_filter_gpu(img)
         assert cp.all(out == 77)
 
-    def test_color_image_per_channel(self, cupy_module):
+    def test_color_image_per_channel(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             median_filter_gpu,
@@ -128,7 +135,7 @@ class TestMedianFilterGpu:
         assert int(out[10, 10, 0]) == 0  # B unaffected
         assert int(out[10, 10, 2]) == 0  # R unaffected
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: ModuleType) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             np_uint8_median_filter,
         )
@@ -143,7 +150,7 @@ class TestMedianFilterGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestUniformFilterGpu:
-    def test_output_shape_and_dtype(self, cupy_module):
+    def test_output_shape_and_dtype(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
@@ -154,7 +161,7 @@ class TestUniformFilterGpu:
         assert out.shape == img.shape
         assert out.dtype == cp.uint8
 
-    def test_uniform_image_unchanged(self, cupy_module):
+    def test_uniform_image_unchanged(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
@@ -164,7 +171,7 @@ class TestUniformFilterGpu:
         out = uniform_filter_gpu(img)
         assert cp.all(out == 50)
 
-    def test_averages_neighbourhood(self, cupy_module):
+    def test_averages_neighbourhood(self, cupy_module: ModuleType) -> None:
         """A 3\u00d73 box filter over a step edge should produce intermediate values."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
@@ -178,7 +185,7 @@ class TestUniformFilterGpu:
         mid = int(out[5, 5])
         assert 0 < mid < 255
 
-    def test_color_image_per_channel(self, cupy_module):
+    def test_color_image_per_channel(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             uniform_filter_gpu,
@@ -194,7 +201,7 @@ class TestUniformFilterGpu:
         assert int(out[10, 10, 1]) == 120
         assert int(out[10, 10, 2]) == 180
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: ModuleType) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.filters import (
             np_uint8_uniform_filter,
         )

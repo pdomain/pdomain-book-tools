@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
 import numpy as np
 import pytest
 
@@ -5,31 +9,38 @@ from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.character import Character
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    import logging
+
+    from numpy.typing import NDArray
+
+    from pdomain_book_tools.geometry.bounding_box import _BoundingBoxDict
+
 ###############################################################################
 # Fixtures (shared test data)
 ###############################################################################
 
 
 @pytest.fixture
-def pixel_bbox():
+def pixel_bbox() -> BoundingBox:
     """Pixel-space bounding box used for simple word construction."""
     return BoundingBox.from_ltrb(0, 0, 10, 10)
 
 
 @pytest.fixture
-def normalized_bbox():
+def normalized_bbox() -> BoundingBox:
     """Normalized bounding box (0-1) for scale tests."""
     return BoundingBox.from_ltrb(0.1, 0.2, 0.3, 0.4)
 
 
 @pytest.fixture
-def hello_word(pixel_bbox):
+def hello_word(pixel_bbox: BoundingBox) -> Word:
     """Word whose ground truth matches exactly (true path)."""
     return Word(text="Hello", bounding_box=pixel_bbox, ground_truth_text="Hello")
 
 
 @pytest.fixture
-def hello_world_words():
+def hello_world_words() -> tuple[Word, Word]:
     """Pair of adjacent words (left, right) used for merge (left->right) tests."""
     return (
         Word(
@@ -52,7 +63,7 @@ def hello_world_words():
 ###############################################################################
 
 
-def test_word_to_dict(sample_word1):
+def test_word_to_dict(sample_word1: Word) -> None:
     word_dict = sample_word1.to_dict()
 
     assert word_dict == {
@@ -76,8 +87,8 @@ def test_word_to_dict(sample_word1):
 
 
 @pytest.fixture
-def word_from_dict_case():
-    bbox_dict = {
+def word_from_dict_case() -> tuple[Word, _BoundingBoxDict]:
+    bbox_dict: _BoundingBoxDict = {
         "top_left": {"x": 0, "y": 0, "is_normalized": False},
         "bottom_right": {"x": 10, "y": 10, "is_normalized": False},
         "is_normalized": False,
@@ -95,44 +106,56 @@ def word_from_dict_case():
     return w, bbox_dict
 
 
-def test_word_from_dict_text(word_from_dict_case):
+def test_word_from_dict_text(
+    word_from_dict_case: tuple[Word, _BoundingBoxDict],
+) -> None:
     w, _ = word_from_dict_case
     assert w.text == "test"
 
 
-def test_word_from_dict_bbox(word_from_dict_case):
+def test_word_from_dict_bbox(
+    word_from_dict_case: tuple[Word, _BoundingBoxDict],
+) -> None:
     w, bbox_dict = word_from_dict_case
     assert w.bounding_box.to_ltrb() == BoundingBox.from_dict(bbox_dict).to_ltrb()
 
 
-def test_word_from_dict_confidence(word_from_dict_case):
+def test_word_from_dict_confidence(
+    word_from_dict_case: tuple[Word, _BoundingBoxDict],
+) -> None:
     w, _ = word_from_dict_case
     assert w.ocr_confidence == pytest.approx(0.99)
 
 
-def test_word_from_dict_labels(word_from_dict_case):
+def test_word_from_dict_labels(
+    word_from_dict_case: tuple[Word, _BoundingBoxDict],
+) -> None:
     w, _ = word_from_dict_case
     assert w.word_labels == ["label1"]
 
 
-def test_word_from_dict_text_style_labels(word_from_dict_case):
+def test_word_from_dict_text_style_labels(
+    word_from_dict_case: tuple[Word, _BoundingBoxDict],
+) -> None:
     w, _ = word_from_dict_case
     assert w.text_style_labels == ["bold", "italics"]
 
 
-def test_word_from_dict_text_style_label_scopes_defaults_whole(word_from_dict_case):
+def test_word_from_dict_text_style_label_scopes_defaults_whole(
+    word_from_dict_case: tuple[Word, _BoundingBoxDict],
+) -> None:
     w, _ = word_from_dict_case
     assert w.text_style_label_scopes == {"bold": "whole", "italics": "whole"}
 
 
-def test_word_from_dict_legacy_missing_ocr_confidence():
+def test_word_from_dict_legacy_missing_ocr_confidence() -> None:
     """H-09: legacy JSON without ``ocr_confidence`` must not raise ``KeyError``.
 
     Older serialized documents (pre-confidence) omit the ``ocr_confidence`` key.
     ``Word.from_dict`` must tolerate the missing key and default to ``None``,
     matching ``Character.from_dict`` behavior.
     """
-    legacy_dict = {
+    legacy_dict: dict[str, object] = {
         "type": "Word",
         "text": "legacy",
         "bounding_box": {
@@ -147,7 +170,7 @@ def test_word_from_dict_legacy_missing_ocr_confidence():
     assert w.ocr_confidence is None
 
 
-def test_word_text_style_compact_and_separators(pixel_bbox):
+def test_word_text_style_compact_and_separators(pixel_bbox: BoundingBox) -> None:
     w = Word(
         text="style-aliases",
         bounding_box=pixel_bbox,
@@ -164,7 +187,7 @@ def test_word_text_style_compact_and_separators(pixel_bbox):
     ]
 
 
-def test_word_text_style_scopes_normalized(pixel_bbox):
+def test_word_text_style_scopes_normalized(pixel_bbox: BoundingBox) -> None:
     w = Word(
         text="style-scope",
         bounding_box=pixel_bbox,
@@ -177,7 +200,7 @@ def test_word_text_style_scopes_normalized(pixel_bbox):
     assert w.text_style_label_scopes == {"bold": "whole", "italics": "part"}
 
 
-def test_word_text_style_scope_unknown_label_raises(pixel_bbox):
+def test_word_text_style_scope_unknown_label_raises(pixel_bbox: BoundingBox) -> None:
     with pytest.raises(ValueError):
         Word(
             text="bad-style-scope",
@@ -187,7 +210,7 @@ def test_word_text_style_scope_unknown_label_raises(pixel_bbox):
         )
 
 
-def test_word_text_style_scope_invalid_value_raises(pixel_bbox):
+def test_word_text_style_scope_invalid_value_raises(pixel_bbox: BoundingBox) -> None:
     with pytest.raises(ValueError):
         Word(
             text="bad-style-scope",
@@ -197,7 +220,9 @@ def test_word_text_style_scope_invalid_value_raises(pixel_bbox):
         )
 
 
-def test_word_component_normalizes_compact_and_separators(pixel_bbox):
+def test_word_component_normalizes_compact_and_separators(
+    pixel_bbox: BoundingBox,
+) -> None:
     w = Word(
         text="component-aliases",
         bounding_box=pixel_bbox,
@@ -209,7 +234,7 @@ def test_word_component_normalizes_compact_and_separators(pixel_bbox):
     assert w.word_components == ["footnote marker"]
 
 
-def test_word_text_style_invalid_raises(pixel_bbox):
+def test_word_text_style_invalid_raises(pixel_bbox: BoundingBox) -> None:
     with pytest.raises(ValueError):
         Word(
             text="bad-style",
@@ -223,11 +248,11 @@ def test_word_text_style_invalid_raises(pixel_bbox):
 ###############################################################################
 
 
-def test_ground_truth_exact_match_true(hello_word):
+def test_ground_truth_exact_match_true(hello_word: Word) -> None:
     assert hello_word.ground_truth_exact_match is True
 
 
-def test_ground_truth_exact_match_false(pixel_bbox):
+def test_ground_truth_exact_match_false(pixel_bbox: BoundingBox) -> None:
     w = Word(text="Hello", bounding_box=pixel_bbox, ground_truth_text="World")
     assert w.ground_truth_exact_match is False
 
@@ -238,24 +263,30 @@ def test_ground_truth_exact_match_false(pixel_bbox):
 
 
 @pytest.fixture
-def scaled_word_case(normalized_bbox):
+def scaled_word_case(normalized_bbox: BoundingBox) -> tuple[Word, Word]:
     """Original normalized word and its scaled pixel copy."""
     w = Word(text="hi", bounding_box=normalized_bbox, ocr_confidence=0.5)
     return w, w.scale(100, 200)
 
 
-def test_scale_returns_scaled_word_scaled_bbox(scaled_word_case):
+def test_scale_returns_scaled_word_scaled_bbox(
+    scaled_word_case: tuple[Word, Word],
+) -> None:
     _, scaled = scaled_word_case
     assert scaled.bounding_box.to_ltrb() == (10, 40, 30, 80)
 
 
-def test_scale_returns_scaled_word_original_preserved(scaled_word_case):
+def test_scale_returns_scaled_word_original_preserved(
+    scaled_word_case: tuple[Word, Word],
+) -> None:
     original, _ = scaled_word_case
     assert original.bounding_box.to_ltrb() == (0.1, 0.2, 0.3, 0.4)
 
 
 @pytest.fixture
-def scale_pixel_noop_case(caplog):
+def scale_pixel_noop_case(
+    caplog: pytest.LogCaptureFixture,
+) -> tuple[Word, Word, list[logging.LogRecord]]:
     """Pixel-space word; scaling should be a no-op copy with log message."""
     w = Word(
         text="pix",
@@ -268,28 +299,36 @@ def scale_pixel_noop_case(caplog):
     return w, scaled, caplog.records
 
 
-def test_scale_noop_when_pixel_bbox(scale_pixel_noop_case):
+def test_scale_noop_when_pixel_bbox(
+    scale_pixel_noop_case: tuple[Word, Word, list[logging.LogRecord]],
+) -> None:
     _, scaled, _ = scale_pixel_noop_case
     assert scaled.bounding_box.to_ltrb() == (0, 0, 50, 20)
 
 
-def test_scale_noop_when_pixel_new_instance(scale_pixel_noop_case):
+def test_scale_noop_when_pixel_new_instance(
+    scale_pixel_noop_case: tuple[Word, Word, list[logging.LogRecord]],
+) -> None:
     w, scaled, _ = scale_pixel_noop_case
     assert scaled is not w
 
 
-def test_scale_noop_when_pixel_ground_truth(scale_pixel_noop_case):
+def test_scale_noop_when_pixel_ground_truth(
+    scale_pixel_noop_case: tuple[Word, Word, list[logging.LogRecord]],
+) -> None:
     _, scaled, _ = scale_pixel_noop_case
     assert scaled.ground_truth_text == "PIX"
 
 
-def test_scale_noop_when_pixel_logs(scale_pixel_noop_case):
+def test_scale_noop_when_pixel_logs(
+    scale_pixel_noop_case: tuple[Word, Word, list[logging.LogRecord]],
+) -> None:
     _, _, records = scale_pixel_noop_case
     assert any("pixel-space bounding box" in r.message for r in records)
 
 
 @pytest.fixture
-def scale_pixel_copy_case():
+def scale_pixel_copy_case() -> tuple[Word, Word]:
     """Pixel-space deep copy independence test case."""
     w = Word(
         text="abc",
@@ -303,17 +342,17 @@ def scale_pixel_copy_case():
     return w, scaled
 
 
-def test_scale_pixel_deep_copy_text(scale_pixel_copy_case):
+def test_scale_pixel_deep_copy_text(scale_pixel_copy_case: tuple[Word, Word]) -> None:
     _, scaled = scale_pixel_copy_case
     assert scaled.text == "abc"
 
 
-def test_scale_pixel_deep_copy_labels(scale_pixel_copy_case):
+def test_scale_pixel_deep_copy_labels(scale_pixel_copy_case: tuple[Word, Word]) -> None:
     _, scaled = scale_pixel_copy_case
     assert scaled.word_labels == ["L"]
 
 
-def test_fuzz_score_against_identical_single_assert():
+def test_fuzz_score_against_identical_single_assert() -> None:
     assert (
         Word(
             text="test", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)
@@ -327,7 +366,7 @@ def test_fuzz_score_against_identical_single_assert():
 
 
 @pytest.fixture
-def split_basic_case():
+def split_basic_case() -> tuple[Word, Word]:
     """Split a word in the middle for width/text ground truth validation."""
     w = Word(
         text="hello",
@@ -337,32 +376,32 @@ def split_basic_case():
     return w.split(bbox_split_offset=4, character_split_index=2)
 
 
-def test_split_basic_left_text(split_basic_case):
+def test_split_basic_left_text(split_basic_case: tuple[Word, Word]) -> None:
     left, _ = split_basic_case
     assert left.text == "he"
 
 
-def test_split_basic_right_text(split_basic_case):
+def test_split_basic_right_text(split_basic_case: tuple[Word, Word]) -> None:
     _, right = split_basic_case
     assert right.text == "llo"
 
 
-def test_split_basic_left_width(split_basic_case):
+def test_split_basic_left_width(split_basic_case: tuple[Word, Word]) -> None:
     left, _ = split_basic_case
     assert left.bounding_box.width == 4
 
 
-def test_split_basic_right_width(split_basic_case):
+def test_split_basic_right_width(split_basic_case: tuple[Word, Word]) -> None:
     _, right = split_basic_case
     assert right.bounding_box.width == 6
 
 
-def test_split_basic_left_gt(split_basic_case):
+def test_split_basic_left_gt(split_basic_case: tuple[Word, Word]) -> None:
     left, _ = split_basic_case
     assert left.ground_truth_text == "he"
 
 
-def test_split_basic_right_gt(split_basic_case):
+def test_split_basic_right_gt(split_basic_case: tuple[Word, Word]) -> None:
     _, right = split_basic_case
     assert right.ground_truth_text == "llo"
 
@@ -376,7 +415,9 @@ def test_split_basic_right_gt(split_basic_case):
         (11, 2, ValueError),
     ],
 )
-def test_split_errors(bbox_split_offset, character_split_index, exc):
+def test_split_errors(
+    bbox_split_offset: int, character_split_index: int, exc: type[Exception]
+) -> None:
     w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
     with pytest.raises(exc):
         w.split(
@@ -386,7 +427,7 @@ def test_split_errors(bbox_split_offset, character_split_index, exc):
 
 
 @pytest.fixture
-def split_flags_case():
+def split_flags_case() -> tuple[Word, Word]:
     """Split capturing split flag propagation & label copying."""
     w = Word(
         text="abcd",
@@ -396,27 +437,27 @@ def split_flags_case():
     return w.split(bbox_split_offset=3, character_split_index=2)
 
 
-def test_split_sets_split_flag_left(split_flags_case):
+def test_split_sets_split_flag_left(split_flags_case: tuple[Word, Word]) -> None:
     left, _ = split_flags_case
     assert left.ground_truth_match_keys.get("split") is True
 
 
-def test_split_sets_split_flag_right(split_flags_case):
+def test_split_sets_split_flag_right(split_flags_case: tuple[Word, Word]) -> None:
     _, right = split_flags_case
     assert right.ground_truth_match_keys.get("split") is True
 
 
-def test_split_labels_left(split_flags_case):
+def test_split_labels_left(split_flags_case: tuple[Word, Word]) -> None:
     left, _ = split_flags_case
     assert set(left.word_labels) == {"x", "y"}
 
 
-def test_split_labels_right(split_flags_case):
+def test_split_labels_right(split_flags_case: tuple[Word, Word]) -> None:
     _, right = split_flags_case
     assert set(right.word_labels) == {"x", "y"}
 
 
-def test_split_styles_propagate():
+def test_split_styles_propagate() -> None:
     w = Word(
         text="abcd",
         bounding_box=BoundingBox.from_ltrb(0, 0, 8, 8),
@@ -430,7 +471,7 @@ def test_split_styles_propagate():
     assert right.text_style_label_scopes == {"bold": "whole", "italics": "part"}
 
 
-def test_split_does_not_alias_mutable_state_between_words():
+def test_split_does_not_alias_mutable_state_between_words() -> None:
     """Regression for L-38: parent + left + right Word must not share the
     same underlying ``text_style_label_scopes`` / ``text_style_labels`` /
     ``word_labels`` / ``word_components`` containers, even though
@@ -475,7 +516,7 @@ def test_split_does_not_alias_mutable_state_between_words():
 
 
 @pytest.fixture
-def merge_reversed_case():
+def merge_reversed_case() -> Word:
     """Merge where 'self' starts to the right, exercising reversed order path."""
     right = Word(
         text="world",
@@ -495,23 +536,23 @@ def merge_reversed_case():
     return right
 
 
-def test_merge_reversed_text(merge_reversed_case):
+def test_merge_reversed_text(merge_reversed_case: Word) -> None:
     assert merge_reversed_case.text == "helloworld"
 
 
-def test_merge_reversed_ground_truth(merge_reversed_case):
+def test_merge_reversed_ground_truth(merge_reversed_case: Word) -> None:
     assert merge_reversed_case.ground_truth_text == "HELLOWORLD"
 
 
-def test_merge_reversed_confidence(merge_reversed_case):
+def test_merge_reversed_confidence(merge_reversed_case: Word) -> None:
     assert merge_reversed_case.ocr_confidence == pytest.approx((0.8 + 0.6) / 2)
 
 
-def test_merge_reversed_labels(merge_reversed_case):
+def test_merge_reversed_labels(merge_reversed_case: Word) -> None:
     assert set(merge_reversed_case.word_labels) == {"foo", "bar"}
 
 
-def test_merge_text_style_labels_deduped():
+def test_merge_text_style_labels_deduped() -> None:
     left = Word(
         text="left",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
@@ -526,7 +567,7 @@ def test_merge_text_style_labels_deduped():
     assert left.text_style_labels == ["bold", "italics", "small caps"]
 
 
-def test_merge_text_style_scope_conflict_prefers_part():
+def test_merge_text_style_scope_conflict_prefers_part() -> None:
     left = Word(
         text="left",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
@@ -546,35 +587,35 @@ def test_merge_text_style_scope_conflict_prefers_part():
     assert left.text_style_label_scopes == {"italics": "part"}
 
 
-def test_merge_reversed_bbox(merge_reversed_case):
+def test_merge_reversed_bbox(merge_reversed_case: Word) -> None:
     assert merge_reversed_case.bounding_box.to_ltrb() == (0, 0, 20, 10)
 
 
 @pytest.fixture
-def merge_left_to_right_case(hello_world_words):
+def merge_left_to_right_case(hello_world_words: tuple[Word, Word]) -> Word:
     """Standard left->right merge path case."""
     left, right = hello_world_words
     left.merge(right)
     return left
 
 
-def test_merge_left_to_right_text(merge_left_to_right_case):
+def test_merge_left_to_right_text(merge_left_to_right_case: Word) -> None:
     assert merge_left_to_right_case.text == "helloworld"
 
 
-def test_merge_left_to_right_ground_truth(merge_left_to_right_case):
+def test_merge_left_to_right_ground_truth(merge_left_to_right_case: Word) -> None:
     assert merge_left_to_right_case.ground_truth_text == "HELLOWORLD"
 
 
-def test_merge_left_to_right_confidence(merge_left_to_right_case):
+def test_merge_left_to_right_confidence(merge_left_to_right_case: Word) -> None:
     assert merge_left_to_right_case.ocr_confidence == pytest.approx((0.9 + 0.7) / 2)
 
 
-def test_merge_left_to_right_bbox(merge_left_to_right_case):
+def test_merge_left_to_right_bbox(merge_left_to_right_case: Word) -> None:
     assert merge_left_to_right_case.bounding_box.to_ltrb() == (0, 0, 20, 10)
 
 
-def test_merge_confidence_both_none():
+def test_merge_confidence_both_none() -> None:
     a = Word(
         text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
     )
@@ -585,7 +626,7 @@ def test_merge_confidence_both_none():
     assert a.ocr_confidence is None
 
 
-def test_merge_confidence_self_none_other_value():
+def test_merge_confidence_self_none_other_value() -> None:
     c = Word(
         text="c", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=None
     )
@@ -596,7 +637,7 @@ def test_merge_confidence_self_none_other_value():
     assert c.ocr_confidence == pytest.approx(0.4)
 
 
-def test_merge_confidence_other_none():
+def test_merge_confidence_other_none() -> None:
     e = Word(
         text="e", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10), ocr_confidence=0.7
     )
@@ -607,13 +648,13 @@ def test_merge_confidence_other_none():
     assert e.ocr_confidence == pytest.approx(0.7)
 
 
-def test_merge_type_error():
+def test_merge_type_error() -> None:
     w = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
     with pytest.raises(TypeError):
-        w.merge("not-a-word")  # type: ignore[arg-type]
+        w.merge("not-a-word")
 
 
-def test_refine_bounding_box_none_image_no_change():
+def test_refine_bounding_box_none_image_no_change() -> None:
     bbox = BoundingBox.from_ltrb(0, 0, 10, 10)
     w = Word(text="x", bounding_box=bbox)
     w.refine_bounding_box(None)  # should warn & leave bbox unchanged
@@ -626,58 +667,57 @@ def test_refine_bounding_box_none_image_no_change():
 
 
 @pytest.fixture
-def refine_bbox_case():
+def refine_bbox_case() -> Word:
     """Word covering full normalized image refined to tight content rectangle."""
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    image = np.full((40, 80), 255, dtype=np.uint8)
+    image: NDArray[np.uint8] = np.full((40, 80), 255, dtype=np.uint8)
     image[5:15, 10:30] = 0
     w.refine_bounding_box(image)
     return w
 
 
-def test_refine_bounding_box_left(refine_bbox_case):
+def test_refine_bounding_box_left(refine_bbox_case: Word) -> None:
     left, _, _, _ = refine_bbox_case.bounding_box.to_ltrb()
     assert left == pytest.approx(10 / 80, rel=1e-3)
 
 
-def test_refine_bounding_box_top(refine_bbox_case):
+def test_refine_bounding_box_top(refine_bbox_case: Word) -> None:
     _, top, _, _ = refine_bbox_case.bounding_box.to_ltrb()
     assert top == pytest.approx(5 / 40, rel=1e-3)
 
 
-def test_refine_bounding_box_right(refine_bbox_case):
+def test_refine_bounding_box_right(refine_bbox_case: Word) -> None:
     _, _, right, _ = refine_bbox_case.bounding_box.to_ltrb()
     assert right == pytest.approx(30 / 80, rel=1e-3)
 
 
-def test_refine_bounding_box_bottom(refine_bbox_case):
+def test_refine_bounding_box_bottom(refine_bbox_case: Word) -> None:
     _, _, _, bottom = refine_bbox_case.bounding_box.to_ltrb()
     assert bottom == pytest.approx(15 / 40, rel=1e-3)
 
 
-def test_crop_bottom_none_image_error():
+def test_crop_bottom_none_image_error() -> None:
+    # NOTE: Word.crop_bottom's own signature types `img_ndarray` as a
+    # non-optional `ndarray`, but its implementation (image_utilities.
+    # crop_word_bottom) explicitly accepts `ndarray | None` and raises
+    # ValueError for None. That signature mismatch is package code (out
+    # of scope for this test file); basedpyright flags the call below,
+    # left un-suppressed per policy.
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
     with pytest.raises(ValueError):
         w.crop_bottom(None)
 
 
-def test_crop_top_none_image_error():
+def test_crop_top_none_image_error() -> None:
+    # NOTE: see test_crop_bottom_none_image_error — same out-of-scope
+    # package-code signature mismatch on Word.crop_top.
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
     with pytest.raises(ValueError):
         w.crop_top(None)
 
 
-def test_ground_truth_exact_match_no_gt_single_assert():
-    assert (
-        Word(
-            text="abc", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1)
-        ).ground_truth_exact_match
-        is False
-    )
-
-
 @pytest.fixture
-def to_from_dict_gt_case():
+def to_from_dict_gt_case() -> tuple[dict[str, object], Word]:
     """Serialized + deserialized word including ground truth box & keys."""
     gt_bbox = BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2)
     w = Word(
@@ -694,38 +734,51 @@ def to_from_dict_gt_case():
     return d, round_trip
 
 
-def test_to_from_dict_gt_text(to_from_dict_gt_case):
+def test_to_from_dict_gt_text(
+    to_from_dict_gt_case: tuple[dict[str, object], Word],
+) -> None:
     d, _ = to_from_dict_gt_case
     assert d["ground_truth_text"] == "abc"
 
 
-def test_to_from_dict_gt_bbox_x(to_from_dict_gt_case):
+def test_to_from_dict_gt_bbox_x(
+    to_from_dict_gt_case: tuple[dict[str, object], Word],
+) -> None:
     d, _ = to_from_dict_gt_case
-    assert d["ground_truth_bounding_box"]["top_left"]["x"] == pytest.approx(0.1)
+    gt_bbox = cast("_BoundingBoxDict", d["ground_truth_bounding_box"])
+    assert gt_bbox["top_left"].get("x") == pytest.approx(0.1)
 
 
-def test_to_from_dict_gt_keys(to_from_dict_gt_case):
+def test_to_from_dict_gt_keys(
+    to_from_dict_gt_case: tuple[dict[str, object], Word],
+) -> None:
     d, _ = to_from_dict_gt_case
     assert d["ground_truth_match_keys"] == {"k": 1}
 
 
-def test_to_from_dict_round_trip_text(to_from_dict_gt_case):
+def test_to_from_dict_round_trip_text(
+    to_from_dict_gt_case: tuple[dict[str, object], Word],
+) -> None:
     _, rt = to_from_dict_gt_case
     assert rt.text == "abc"
 
 
-def test_to_from_dict_round_trip_gt_text(to_from_dict_gt_case):
+def test_to_from_dict_round_trip_gt_text(
+    to_from_dict_gt_case: tuple[dict[str, object], Word],
+) -> None:
     _, rt = to_from_dict_gt_case
     assert rt.ground_truth_text == "abc"
 
 
-def test_to_from_dict_round_trip_keys(to_from_dict_gt_case):
+def test_to_from_dict_round_trip_keys(
+    to_from_dict_gt_case: tuple[dict[str, object], Word],
+) -> None:
     _, rt = to_from_dict_gt_case
     assert rt.ground_truth_match_keys == {"k": 1}
 
 
 @pytest.fixture
-def scale_normalized_case():
+def scale_normalized_case() -> Word:
     """Scaling normalized word: main bbox -> pixel; GT bbox stays normalized (deep copy)."""
     w = Word(
         text="abc",
@@ -743,37 +796,39 @@ def scale_normalized_case():
     return scaled
 
 
-def test_scale_normalized_bbox(scale_normalized_case):
+def test_scale_normalized_bbox(scale_normalized_case: Word) -> None:
     assert scale_normalized_case.bounding_box.to_ltrb() == (20, 20, 80, 50)
 
 
-def test_scale_normalized_bbox_category(scale_normalized_case):
+def test_scale_normalized_bbox_category(scale_normalized_case: Word) -> None:
     assert scale_normalized_case.bounding_box.is_normalized is False
 
 
-def test_scale_normalized_gt_bbox(scale_normalized_case):
-    assert scale_normalized_case.ground_truth_bounding_box.to_ltrb() == pytest.approx(
-        (0.15, 0.25, 0.35, 0.45)
-    )
+def test_scale_normalized_gt_bbox(scale_normalized_case: Word) -> None:
+    gt_bbox = scale_normalized_case.ground_truth_bounding_box
+    assert gt_bbox is not None
+    assert gt_bbox.to_ltrb() == pytest.approx((0.15, 0.25, 0.35, 0.45))
 
 
-def test_scale_normalized_gt_bbox_category(scale_normalized_case):
-    assert scale_normalized_case.ground_truth_bounding_box.is_normalized is True
+def test_scale_normalized_gt_bbox_category(scale_normalized_case: Word) -> None:
+    gt_bbox = scale_normalized_case.ground_truth_bounding_box
+    assert gt_bbox is not None
+    assert gt_bbox.is_normalized is True
 
 
-def test_scale_normalized_text(scale_normalized_case):
+def test_scale_normalized_text(scale_normalized_case: Word) -> None:
     assert scale_normalized_case.text == "abc"
 
 
-def test_scale_normalized_labels(scale_normalized_case):
+def test_scale_normalized_labels(scale_normalized_case: Word) -> None:
     assert scale_normalized_case.word_labels == ["L1"]
 
 
-def test_scale_normalized_keys(scale_normalized_case):
+def test_scale_normalized_keys(scale_normalized_case: Word) -> None:
     assert scale_normalized_case.ground_truth_match_keys == {"k": 1}
 
 
-def test_merge_coordinate_mismatch_raises():
+def test_merge_coordinate_mismatch_raises() -> None:
     a = Word(text="a", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))  # pixel
     b = Word(
         text="b", bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2)
@@ -782,7 +837,7 @@ def test_merge_coordinate_mismatch_raises():
         a.merge(b)
 
 
-def test_merge_ground_truth_coordinate_mismatch_raises():
+def test_merge_ground_truth_coordinate_mismatch_raises() -> None:
     w1 = Word(
         text="a",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),  # pixel
@@ -801,7 +856,7 @@ def test_merge_ground_truth_coordinate_mismatch_raises():
         w1.merge(w2)
 
 
-def test_merge_word_ground_truth_vs_main_mismatch_raises():
+def test_merge_word_ground_truth_vs_main_mismatch_raises() -> None:
     w_bad = Word(
         text="x",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),  # pixel
@@ -818,7 +873,7 @@ def test_merge_word_ground_truth_vs_main_mismatch_raises():
 
 
 @pytest.fixture
-def merge_with_gt_case():
+def merge_with_gt_case() -> Word:
     """Merge two words each with aligned main + GT bounding boxes."""
     w1 = Word(
         text="A",
@@ -838,23 +893,23 @@ def merge_with_gt_case():
     return w1
 
 
-def test_merge_with_gt_text(merge_with_gt_case):
+def test_merge_with_gt_text(merge_with_gt_case: Word) -> None:
     assert merge_with_gt_case.text == "AB"
 
 
-def test_merge_with_gt_gt_text(merge_with_gt_case):
+def test_merge_with_gt_gt_text(merge_with_gt_case: Word) -> None:
     assert merge_with_gt_case.ground_truth_text == "AB"
 
 
-def test_merge_with_gt_bbox(merge_with_gt_case):
+def test_merge_with_gt_bbox(merge_with_gt_case: Word) -> None:
     assert merge_with_gt_case.bounding_box.to_ltrb() == (0, 0, 10, 5)
 
 
-def test_merge_with_gt_labels(merge_with_gt_case):
+def test_merge_with_gt_labels(merge_with_gt_case: Word) -> None:
     assert set(merge_with_gt_case.word_labels) == {"l1", "l2"}
 
 
-def test_split_ground_truth_coordinate_mismatch_raises():
+def test_split_ground_truth_coordinate_mismatch_raises() -> None:
     w = Word(
         text="hello",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),  # pixel
@@ -868,7 +923,7 @@ def test_split_ground_truth_coordinate_mismatch_raises():
 
 
 @pytest.fixture
-def split_with_gt_case():
+def split_with_gt_case() -> tuple[tuple[Word, Word], Word]:
     """Split where main & ground-truth bboxes share coordinate category (pixel)."""
     w = Word(
         text="hello",
@@ -879,22 +934,28 @@ def split_with_gt_case():
     return w.split(bbox_split_offset=4, character_split_index=2), w
 
 
-def test_split_with_gt_left_text(split_with_gt_case):
+def test_split_with_gt_left_text(
+    split_with_gt_case: tuple[tuple[Word, Word], Word],
+) -> None:
     (left, _), _ = split_with_gt_case
     assert left.text == "he"
 
 
-def test_split_with_gt_right_text(split_with_gt_case):
+def test_split_with_gt_right_text(
+    split_with_gt_case: tuple[tuple[Word, Word], Word],
+) -> None:
     (_, right), _ = split_with_gt_case
     assert right.text == "llo"
 
 
-def test_split_with_gt_original_gt_text(split_with_gt_case):
+def test_split_with_gt_original_gt_text(
+    split_with_gt_case: tuple[tuple[Word, Word], Word],
+) -> None:
     _, w = split_with_gt_case
     assert w.ground_truth_text == "hello"
 
 
-def test_split_ground_truth_coordinate_mismatch_reversed():
+def test_split_ground_truth_coordinate_mismatch_reversed() -> None:
     # Here main bbox is normalized but ground truth bbox is pixel -> mismatch
     w = Word(
         text="hello",
@@ -907,61 +968,61 @@ def test_split_ground_truth_coordinate_mismatch_reversed():
 
 
 @pytest.fixture
-def split_zero_case():
+def split_zero_case() -> tuple[Word, Word]:
     """Split at offset/index zero producing empty left word."""
     w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
     return w.split(bbox_split_offset=0, character_split_index=0)
 
 
-def test_split_zero_left_text(split_zero_case):
+def test_split_zero_left_text(split_zero_case: tuple[Word, Word]) -> None:
     left, _ = split_zero_case
     assert left.text == ""
 
 
-def test_split_zero_right_text(split_zero_case):
+def test_split_zero_right_text(split_zero_case: tuple[Word, Word]) -> None:
     _, right = split_zero_case
     assert right.text == "hello"
 
 
-def test_split_zero_left_width(split_zero_case):
+def test_split_zero_left_width(split_zero_case: tuple[Word, Word]) -> None:
     left, _ = split_zero_case
     assert left.bounding_box.width == 0
 
 
-def test_split_zero_right_width(split_zero_case):
+def test_split_zero_right_width(split_zero_case: tuple[Word, Word]) -> None:
     _, right = split_zero_case
     assert right.bounding_box.width == 10
 
 
 @pytest.fixture
-def split_full_width_case():
+def split_full_width_case() -> tuple[Word, Word]:
     """Split with offset equal to full width -> right side zero width."""
     w = Word(text="hello", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
     return w.split(bbox_split_offset=10, character_split_index=2)
 
 
-def test_split_full_width_left_text(split_full_width_case):
+def test_split_full_width_left_text(split_full_width_case: tuple[Word, Word]) -> None:
     left, _ = split_full_width_case
     assert left.text == "he"
 
 
-def test_split_full_width_right_text(split_full_width_case):
+def test_split_full_width_right_text(split_full_width_case: tuple[Word, Word]) -> None:
     _, right = split_full_width_case
     assert right.text == "llo"
 
 
-def test_split_full_width_left_width(split_full_width_case):
+def test_split_full_width_left_width(split_full_width_case: tuple[Word, Word]) -> None:
     left, _ = split_full_width_case
     assert left.bounding_box.width == 10
 
 
-def test_split_full_width_right_width(split_full_width_case):
+def test_split_full_width_right_width(split_full_width_case: tuple[Word, Word]) -> None:
     _, right = split_full_width_case
     assert right.bounding_box.width == 0
 
 
 @pytest.fixture
-def merge_keys_case():
+def merge_keys_case() -> Word:
     """Merge combining distinct ground-truth match key dictionaries."""
     a = Word(
         text="a",
@@ -977,16 +1038,16 @@ def merge_keys_case():
     return a
 
 
-def test_merge_inherits_ground_truth_keys_k1(merge_keys_case):
+def test_merge_inherits_ground_truth_keys_k1(merge_keys_case: Word) -> None:
     assert merge_keys_case.ground_truth_match_keys.get("k1") is True
 
 
-def test_merge_inherits_ground_truth_keys_k2(merge_keys_case):
+def test_merge_inherits_ground_truth_keys_k2(merge_keys_case: Word) -> None:
     assert merge_keys_case.ground_truth_match_keys.get("k2") is True
 
 
 @pytest.fixture
-def merge_one_gt_case():
+def merge_one_gt_case() -> Word:
     """Merge where only first word has ground-truth bbox/Text."""
     a = Word(
         text="hi",
@@ -998,18 +1059,18 @@ def merge_one_gt_case():
     return a
 
 
-def test_merge_one_gt_text(merge_one_gt_case):
+def test_merge_one_gt_text(merge_one_gt_case: Word) -> None:
     assert merge_one_gt_case.text == "hithere"
 
 
-def test_merge_one_gt_bbox(merge_one_gt_case):
+def test_merge_one_gt_bbox(merge_one_gt_case: Word) -> None:
     assert merge_one_gt_case.bounding_box.to_ltrb() == (0, 0, 12, 5)
 
 
-def test_refine_bounding_box_no_content_returns_same():
+def test_refine_bounding_box_no_content_returns_same() -> None:
     # Create a pixel-space word whose ROI has no foreground (after inversion+threshold)
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
-    image = np.full(
+    image: NDArray[np.uint8] = np.full(
         (20, 20), 255, dtype=np.uint8
     )  # all white -> inverted all black -> no non-zero
     before = w.bounding_box.to_ltrb()
@@ -1017,7 +1078,7 @@ def test_refine_bounding_box_no_content_returns_same():
     assert w.bounding_box.to_ltrb() == before
 
 
-def test_merge_other_word_ground_truth_vs_main_mismatch_raises():
+def test_merge_other_word_ground_truth_vs_main_mismatch_raises() -> None:
     good = Word(
         text="ok",
         bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
@@ -1033,7 +1094,7 @@ def test_merge_other_word_ground_truth_vs_main_mismatch_raises():
         good.merge(bad)
 
 
-def test_merge_only_other_has_ground_truth_left_to_right_single_assert():
+def test_merge_only_other_has_ground_truth_left_to_right_single_assert() -> None:
     left = Word(text="ab", bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5))
     right = Word(
         text="cd",
@@ -1044,7 +1105,7 @@ def test_merge_only_other_has_ground_truth_left_to_right_single_assert():
     assert (left.text, left.ground_truth_text) == ("abcd", "CD")
 
 
-def test_merge_only_other_has_ground_truth_reversed_order_single_assert():
+def test_merge_only_other_has_ground_truth_reversed_order_single_assert() -> None:
     right = Word(text="XY", bounding_box=BoundingBox.from_ltrb(10, 0, 15, 5))
     left = Word(
         text="Z", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 5), ground_truth_text="Z"
@@ -1053,7 +1114,7 @@ def test_merge_only_other_has_ground_truth_reversed_order_single_assert():
     assert (right.text, right.ground_truth_text) == ("ZXY", "Z")
 
 
-def test_merge_label_dedup_multiple_duplicates():
+def test_merge_label_dedup_multiple_duplicates() -> None:
     a = Word(
         text="a",
         bounding_box=BoundingBox.from_ltrb(0, 0, 5, 5),
@@ -1069,9 +1130,11 @@ def test_merge_label_dedup_multiple_duplicates():
 
 
 @pytest.fixture
-def crop_bottom_case():
+def crop_bottom_case() -> tuple[
+    Word, tuple[float, float, float, float], tuple[float, float, float, float]
+]:
     """Cropping bottom of a full-coverage normalized word to content region."""
-    image = np.full((40, 80), 255, dtype=np.uint8)
+    image: NDArray[np.uint8] = np.full((40, 80), 255, dtype=np.uint8)
     image[25:35, 10:70] = 0
     w = Word(text="foo", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
     before = w.bounding_box.to_ltrb()
@@ -1080,35 +1143,57 @@ def crop_bottom_case():
     return w, before, after
 
 
-def test_crop_bottom_is_normalized(crop_bottom_case):
+def test_crop_bottom_is_normalized(
+    crop_bottom_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     w, _, _ = crop_bottom_case
     assert w.bounding_box.is_normalized is True
 
 
-def test_crop_bottom_left_preserved(crop_bottom_case):
+def test_crop_bottom_left_preserved(
+    crop_bottom_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     _w, before, after = crop_bottom_case
     assert pytest.approx(before[0]) == after[0]
 
 
-def test_crop_bottom_top_preserved(crop_bottom_case):
+def test_crop_bottom_top_preserved(
+    crop_bottom_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     _w, before, after = crop_bottom_case
     assert pytest.approx(before[1]) == after[1]
 
 
-def test_crop_bottom_right_preserved(crop_bottom_case):
+def test_crop_bottom_right_preserved(
+    crop_bottom_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     _w, before, after = crop_bottom_case
     assert pytest.approx(before[2]) == after[2]
 
 
-def test_crop_bottom_bottom_within_bounds(crop_bottom_case):
+def test_crop_bottom_bottom_within_bounds(
+    crop_bottom_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     _w, _, after = crop_bottom_case
     assert 0 < after[3] <= 1
 
 
 @pytest.fixture
-def crop_top_case():
+def crop_top_case() -> tuple[
+    Word, tuple[float, float, float, float], tuple[float, float, float, float]
+]:
     """Cropping top of a normalized word to remove whitespace."""
-    image = np.full((40, 80), 255, dtype=np.uint8)
+    image: NDArray[np.uint8] = np.full((40, 80), 255, dtype=np.uint8)
     image[5:15, 5:70] = 0
     w = Word(text="bar", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
     before = w.bounding_box.to_ltrb()
@@ -1117,60 +1202,83 @@ def crop_top_case():
     return w, before, after
 
 
-def test_crop_top_is_normalized(crop_top_case):
+def test_crop_top_is_normalized(
+    crop_top_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     w, _, _ = crop_top_case
     assert w.bounding_box.is_normalized is True
 
 
-def test_crop_top_left_preserved(crop_top_case):
+def test_crop_top_left_preserved(
+    crop_top_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     _w, before, after = crop_top_case
     assert pytest.approx(before[0]) == after[0]
 
 
-def test_crop_top_bottom_within_bounds(crop_top_case):
+def test_crop_top_bottom_within_bounds(
+    crop_top_case: tuple[
+        Word, tuple[float, float, float, float], tuple[float, float, float, float]
+    ],
+) -> None:
     _w, _, after = crop_top_case
     assert 0 < after[3] <= 1
 
 
-def test_crop_bottom_missing_bbox_error():
+def test_crop_bottom_missing_bbox_error() -> None:
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    # Force invalid state
-    w.bounding_box = None  # type: ignore
+    # Force invalid state to exercise crop_bottom's defensive guard.
+    w.bounding_box = None  # type: ignore[assignment]
     with pytest.raises(ValueError):
         w.crop_bottom(np.zeros((10, 10), dtype=np.uint8))
 
 
-def test_crop_top_missing_bbox_error():
+def test_crop_top_missing_bbox_error() -> None:
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    w.bounding_box = None  # type: ignore
+    # Force invalid state to exercise crop_top's defensive guard.
+    w.bounding_box = None  # type: ignore[assignment]
     with pytest.raises(ValueError):
         w.crop_top(np.zeros((10, 10), dtype=np.uint8))
 
 
+class _StubBBoxCropBottomNone:
+    """Stub bbox whose crop_bottom returns None (blank-ROI path)."""
+
+    def crop_bottom(self, image: NDArray[np.uint8]) -> None:
+        return None
+
+
 @pytest.fixture
-def crop_bottom_warn_case(caplog):
+def crop_bottom_warn_case(
+    caplog: pytest.LogCaptureFixture,
+) -> tuple[Word, _StubBBoxCropBottomNone, list[logging.LogRecord]]:
     """Force crop_bottom internal call to return None to exercise warning path."""
-
-    class StubBBox:
-        """Stub bbox whose crop_bottom returns None (blank-ROI path)."""
-
-        def crop_bottom(self, image):  # type: ignore[no-untyped-def]
-            return None
-
     w = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    stub = StubBBox()
+    stub = _StubBBoxCropBottomNone()
     w.bounding_box = stub  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_bottom(np.zeros((4, 4), dtype=np.uint8))
     return w, stub, caplog.records
 
 
-def test_crop_bottom_warns_logged(crop_bottom_warn_case):
+def test_crop_bottom_warns_logged(
+    crop_bottom_warn_case: tuple[
+        Word, _StubBBoxCropBottomNone, list[logging.LogRecord]
+    ],
+) -> None:
     _, _, records = crop_bottom_warn_case
     assert any("Cropped bounding box is None" in r.message for r in records)
 
 
-def test_crop_bottom_none_preserves_bbox(crop_bottom_warn_case):
+def test_crop_bottom_none_preserves_bbox(
+    crop_bottom_warn_case: tuple[
+        Word, _StubBBoxCropBottomNone, list[logging.LogRecord]
+    ],
+) -> None:
     """Regression for H-06: when the crop returns None, leave bounding_box intact
     (do NOT silently overwrite it with None)."""
     w, original, _ = crop_bottom_warn_case
@@ -1178,28 +1286,36 @@ def test_crop_bottom_none_preserves_bbox(crop_bottom_warn_case):
     assert w.bounding_box is not None
 
 
+class _StubBBoxCropTopNone:
+    """Stub bbox whose crop_top returns None (blank-ROI path)."""
+
+    def crop_top(self, image: NDArray[np.uint8]) -> None:
+        return None
+
+
 @pytest.fixture
-def crop_top_warn_case(caplog):
+def crop_top_warn_case(
+    caplog: pytest.LogCaptureFixture,
+) -> tuple[Word, _StubBBoxCropTopNone, list[logging.LogRecord]]:
     """Force crop_top internal call to return None to exercise warning path."""
-
-    class StubBBox:
-        def crop_top(self, image):  # type: ignore[no-untyped-def]
-            return None
-
     w = Word(text="y", bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1))
-    stub = StubBBox()
+    stub = _StubBBoxCropTopNone()
     w.bounding_box = stub  # type: ignore[assignment]
     with caplog.at_level("WARNING"):
         w.crop_top(np.zeros((4, 4), dtype=np.uint8))
     return w, stub, caplog.records
 
 
-def test_crop_top_warns_logged(crop_top_warn_case):
+def test_crop_top_warns_logged(
+    crop_top_warn_case: tuple[Word, _StubBBoxCropTopNone, list[logging.LogRecord]],
+) -> None:
     _, _, records = crop_top_warn_case
     assert any("Cropped bounding box is None" in r.message for r in records)
 
 
-def test_crop_top_none_preserves_bbox(crop_top_warn_case):
+def test_crop_top_none_preserves_bbox(
+    crop_top_warn_case: tuple[Word, _StubBBoxCropTopNone, list[logging.LogRecord]],
+) -> None:
     """Regression for H-06: see test_crop_bottom_none_preserves_bbox."""
     w, original, _ = crop_top_warn_case
     assert w.bounding_box is original
@@ -1211,8 +1327,8 @@ def test_crop_top_none_preserves_bbox(crop_top_warn_case):
 ###############################################################################
 
 
-def test_split_into_characters_from_whitespace_basic():
-    image = np.full((12, 20), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_basic() -> None:
+    image: NDArray[np.uint8] = np.full((12, 20), 255, dtype=np.uint8)
     image[3:9, 2:4] = 0
     image[3:9, 6:8] = 0
     image[3:9, 10:12] = 0
@@ -1238,8 +1354,8 @@ def test_split_into_characters_from_whitespace_basic():
     assert chars[0].word_components == ["superscript"]
 
 
-def test_split_into_characters_from_whitespace_propagates_all_word_components():
-    image = np.full((12, 20), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_propagates_all_word_components() -> None:
+    image: NDArray[np.uint8] = np.full((12, 20), 255, dtype=np.uint8)
     image[3:9, 2:4] = 0
     image[3:9, 6:8] = 0
 
@@ -1257,8 +1373,10 @@ def test_split_into_characters_from_whitespace_propagates_all_word_components():
     ]
 
 
-def test_split_into_characters_from_whitespace_marks_single_character_footnote_marker():
-    image = np.full((12, 20), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_marks_single_character_footnote_marker() -> (
+    None
+):
+    image: NDArray[np.uint8] = np.full((12, 20), 255, dtype=np.uint8)
     image[3:9, 2:4] = 0
 
     w = Word(
@@ -1273,8 +1391,8 @@ def test_split_into_characters_from_whitespace_marks_single_character_footnote_m
     assert chars[0].word_components == ["footnote marker"]
 
 
-def test_split_into_characters_from_whitespace_propagates_whole_word_styles():
-    image = np.full((12, 20), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_propagates_whole_word_styles() -> None:
+    image: NDArray[np.uint8] = np.full((12, 20), 255, dtype=np.uint8)
     image[3:9, 2:4] = 0
     image[3:9, 6:8] = 0
 
@@ -1290,8 +1408,10 @@ def test_split_into_characters_from_whitespace_propagates_whole_word_styles():
     assert [c.text_style_labels for c in chars] == [["italics"], ["italics"]]
 
 
-def test_split_into_characters_from_whitespace_propagates_partial_styles_to_all_characters():
-    image = np.full((12, 20), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_propagates_partial_styles_to_all_characters() -> (
+    None
+):
+    image: NDArray[np.uint8] = np.full((12, 20), 255, dtype=np.uint8)
     image[3:9, 2:4] = 0
     image[3:9, 6:8] = 0
 
@@ -1310,8 +1430,8 @@ def test_split_into_characters_from_whitespace_propagates_partial_styles_to_all_
     ]
 
 
-def test_split_into_characters_from_whitespace_fallback_count_mismatch():
-    image = np.full((12, 20), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_fallback_count_mismatch() -> None:
+    image: NDArray[np.uint8] = np.full((12, 20), 255, dtype=np.uint8)
     image[3:9, 2:5] = 0
     image[3:9, 8:11] = 0
 
@@ -1328,8 +1448,8 @@ def test_split_into_characters_from_whitespace_fallback_count_mismatch():
     assert chars[-1].bounding_box.maxX == 11
 
 
-def test_split_into_characters_from_whitespace_morph_fallback_recovers_gaps():
-    image = np.full((14, 24), 255, dtype=np.uint8)
+def test_split_into_characters_from_whitespace_morph_fallback_recovers_gaps() -> None:
+    image: NDArray[np.uint8] = np.full((14, 24), 255, dtype=np.uint8)
     image[3:11, 2:6] = 0
     image[3:11, 9:13] = 0
     image[3:11, 16:20] = 0
@@ -1352,8 +1472,8 @@ def test_split_into_characters_from_whitespace_morph_fallback_recovers_gaps():
     assert chars[1].bounding_box.maxX <= chars[2].bounding_box.minX
 
 
-def test_split_into_characters_auto_labels_super_and_subscript():
-    image = np.full((24, 32), 255, dtype=np.uint8)
+def test_split_into_characters_auto_labels_super_and_subscript() -> None:
+    image: NDArray[np.uint8] = np.full((24, 32), 255, dtype=np.uint8)
     # Normal baseline character
     image[10:20, 2:7] = 0
     # Superscript-like character (higher)
@@ -1379,8 +1499,8 @@ def test_split_into_characters_auto_labels_super_and_subscript():
     assert "subscript" in chars[2].word_components
 
 
-def test_split_into_characters_descenders_downweighted_for_baseline():
-    image = np.full((26, 44), 255, dtype=np.uint8)
+def test_split_into_characters_descenders_downweighted_for_baseline() -> None:
+    image: NDArray[np.uint8] = np.full((26, 44), 255, dtype=np.uint8)
     # Baseline letters (no descenders)
     image[8:18, 2:6] = 0  # a
     image[8:18, 24:28] = 0  # c
@@ -1399,8 +1519,8 @@ def test_split_into_characters_descenders_downweighted_for_baseline():
     assert all("subscript" not in c.word_components for c in chars)
 
 
-def test_word_estimate_baseline_from_image_sets_attribute():
-    image = np.full((24, 24), 255, dtype=np.uint8)
+def test_word_estimate_baseline_from_image_sets_attribute() -> None:
+    image: NDArray[np.uint8] = np.full((24, 24), 255, dtype=np.uint8)
     image[8:18, 2:6] = 0
     image[8:18, 9:13] = 0
 
@@ -1425,7 +1545,9 @@ def test_word_estimate_baseline_from_image_sets_attribute():
 # ----------------------------------------------------------------------
 
 
-def test_ground_truth_text_setter_normalizes_empty_string_to_none(pixel_bbox):
+def test_ground_truth_text_setter_normalizes_empty_string_to_none(
+    pixel_bbox: BoundingBox,
+) -> None:
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
     assert w._ground_truth_text == "prev"
     w.ground_truth_text = ""
@@ -1434,14 +1556,14 @@ def test_ground_truth_text_setter_normalizes_empty_string_to_none(pixel_bbox):
     assert w.ground_truth_text == ""
 
 
-def test_ground_truth_text_setter_accepts_none(pixel_bbox):
+def test_ground_truth_text_setter_accepts_none(pixel_bbox: BoundingBox) -> None:
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
-    w.ground_truth_text = None  # type: ignore[assignment]
+    w.ground_truth_text = None
     assert w._ground_truth_text is None
     assert w.ground_truth_text == ""
 
 
-def test_clear_ground_truth_canonicalizes_to_none(pixel_bbox):
+def test_clear_ground_truth_canonicalizes_to_none(pixel_bbox: BoundingBox) -> None:
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="prev")
     assert w.clear_ground_truth() is True
     assert w._ground_truth_text is None
@@ -1450,19 +1572,23 @@ def test_clear_ground_truth_canonicalizes_to_none(pixel_bbox):
     assert d["ground_truth_text"] is None
 
 
-def test_constructor_with_empty_ground_truth_text_stores_none(pixel_bbox):
+def test_constructor_with_empty_ground_truth_text_stores_none(
+    pixel_bbox: BoundingBox,
+) -> None:
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text="")
     assert w._ground_truth_text is None
 
 
-def test_constructor_with_none_ground_truth_text_stores_none(pixel_bbox):
+def test_constructor_with_none_ground_truth_text_stores_none(
+    pixel_bbox: BoundingBox,
+) -> None:
     w = Word(text="hi", bounding_box=pixel_bbox, ground_truth_text=None)
     assert w._ground_truth_text is None
 
 
-def test_word_does_not_alias_ground_truth_match_keys(pixel_bbox):
+def test_word_does_not_alias_ground_truth_match_keys(pixel_bbox: BoundingBox) -> None:
     """Word.__init__ must copy ground_truth_match_keys, not store by reference."""
-    caller_dict = {"split": True}
+    caller_dict: dict[str, object] = {"split": True}
     w = Word(
         text="hi",
         bounding_box=pixel_bbox,

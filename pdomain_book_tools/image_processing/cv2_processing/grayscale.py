@@ -107,7 +107,7 @@ def to_grayscale(
 def _validate_inputs(
     img: npt.NDArray[np.uint8],
     mode: str,
-    sampler_radius: int,
+    sampler_radius: object,
     gamma: float,
     output_range: tuple[int, int],
 ) -> None:

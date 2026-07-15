@@ -26,16 +26,24 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from pdomain_book_tools.ocr.document import Document
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from pdomain_book_tools.ocr.block import Block
+    from pdomain_book_tools.ocr.page import Page
+    from pdomain_book_tools.ocr.word import Word
+
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"
 
 
-def _load_and_reorganize(case: str):
+def _load_and_reorganize(case: str) -> Page:
     cv2 = pytest.importorskip("cv2")
     doc = Document.from_dict(
         json.loads((INPUT_DIR / f"{case}.json").read_text(encoding="utf-8"))
@@ -47,7 +55,9 @@ def _load_and_reorganize(case: str):
     return page
 
 
-def _line_holding(page, predicate):
+def _line_holding(
+    page: Page, predicate: Callable[[Word], bool]
+) -> tuple[Block, list[Word]] | tuple[None, None]:
     for line in page.lines:
         words = list(line.words)
         if any(predicate(w) for w in words):
@@ -55,7 +65,7 @@ def _line_holding(page, predicate):
     return None, None
 
 
-def test_credulities_cursive_cap_S_recovered():
+def test_credulities_cursive_cap_S_recovered() -> None:
     """Cap glyph OCR'd as ``"-"``; body word ``"UPERSTITIONS"`` → inferred
     ``"S"``, kept as its own ``Word`` tagged ``["drop cap"]`` at the front
     of the same line. ``Block.text``'s empty-string-join contract fuses
@@ -78,6 +88,7 @@ def test_credulities_cursive_cap_S_recovered():
     # the line, and the next Word holds the body text.
     line, words = _line_holding(page, lambda w: w is cap)
     assert line is not None, "cap word missing from final lines"
+    assert words is not None
     assert words[0] is cap, "cap should be the first word in the line"
     body = words[1]
     assert body.text == "UPERSTITIONS", f"body word={body.text!r}"
@@ -95,7 +106,7 @@ def test_credulities_cursive_cap_S_recovered():
     )
 
 
-def test_filial_duty_cursive_cap_O_recovered():
+def test_filial_duty_cursive_cap_O_recovered() -> None:
     """Cap glyph skipped by OCR; body word ``"NCE"`` → inferred ``"O"``,
     new Word synthesised at the CC bbox, ``Word.ocr_confidence`` is None.
     """
@@ -113,6 +124,7 @@ def test_filial_duty_cursive_cap_O_recovered():
     )
     line, words = _line_holding(page, lambda w: w is cap)
     assert line is not None
+    assert words is not None
     assert words[0] is cap
     body = words[1]
     assert body.text == "NCE", f"body word={body.text!r}"
@@ -120,7 +132,7 @@ def test_filial_duty_cursive_cap_O_recovered():
     assert line.text.startswith("ONCE"), f"line.text={line.text!r}"
 
 
-def test_footnotes_stacked_cursive_cap_unrecovered():
+def test_footnotes_stacked_cursive_cap_unrecovered() -> None:
     """Cap glyph skipped by OCR; body word ``"BELIEF"`` is already a
     valid English word, so single-letter prepend inference is ambiguous
     (multiple lexicon hits or none). The geometric trigger fires but
@@ -145,7 +157,7 @@ def test_footnotes_stacked_cursive_cap_unrecovered():
     assert "BELIEF" in page.text
 
 
-def test_body_page_no_false_positive():
+def test_body_page_no_false_positive() -> None:
     """Negative control. A plain body page (no drop cap, no chapter
     opener) must not grow phantom drop caps.
     """
@@ -185,7 +197,7 @@ _DROP_CAP_FIXTURES = [
 )
 def test_known_drop_cap_fixture_keeps_cap_as_separate_word(
     case: str, expected_cap: str, expected_body: str
-):
+) -> None:
     """Iteration B structural contract: the cap is its own ``Word`` tagged
     ``["drop cap"]``; the body Word that follows is untouched (NOT prepended
     with the cap letter); ``Block.text`` fuses them under the empty-string-
@@ -207,6 +219,7 @@ def test_known_drop_cap_fixture_keeps_cap_as_separate_word(
     # Find the line and verify the body word is its own Word, untouched.
     line, words = _line_holding(page, lambda w: w is cap)
     assert line is not None, f"{case}: cap word missing from final lines"
+    assert words is not None
     assert words[0] is cap, f"{case}: cap should be the first Word in its line"
     assert len(words) >= 2, f"{case}: cap must be followed by a body Word"
     body = words[1]

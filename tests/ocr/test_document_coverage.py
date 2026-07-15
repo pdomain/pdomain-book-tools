@@ -1,5 +1,7 @@
 """Coverage-focused tests for Document (init paths, scaling, image OCR, etc.)."""
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -13,12 +15,12 @@ from pdomain_book_tools.ocr.provenance import OCRModelProvenance
 
 
 @pytest.fixture
-def empty_doc():
+def empty_doc() -> Document:
     return Document(source_lib="lib", source_path=Path("img.png"), pages=[])
 
 
 @pytest.fixture
-def doc_with_pages():
+def doc_with_pages() -> Document:
     doc = Document(source_lib="lib", source_path=Path("img.png"), pages=[])
     for idx in (2, 0, 1):
         doc._pages.append(Page(page_index=idx, width=10, height=10, blocks=[]))
@@ -26,40 +28,48 @@ def doc_with_pages():
 
 
 class TestInit:
-    def test_string_source_path_is_converted(self):
+    def test_string_source_path_is_converted(self) -> None:
         doc = Document(source_lib="lib", source_path="some/path.png", pages=[])
         assert isinstance(doc.source_path, Path)
         assert doc.source_path == Path("some/path.png")
 
-    def test_none_source_path(self):
+    def test_none_source_path(self) -> None:
         doc = Document(source_lib="lib", source_path=None, pages=[])
         assert doc.source_path is None
 
-    def test_pages_setter_rejects_non_collection(self):
+    def test_pages_setter_rejects_non_collection(self) -> None:
         with pytest.raises(TypeError, match="must be a collection"):
-            Document(source_lib="lib", source_path=None, pages=42)
+            Document(
+                source_lib="lib",
+                source_path=None,
+                pages=42,  # pyright: ignore[reportArgumentType]  # intentionally invalid: asserts TypeError at runtime
+            )
 
-    def test_pages_setter_rejects_invalid_page(self):
+    def test_pages_setter_rejects_invalid_page(self) -> None:
         # An object missing page_index should raise
         class NotAPage:
             pass
 
         with pytest.raises(TypeError, match="page_index"):
-            Document(source_lib="lib", source_path=None, pages=[NotAPage()])
+            Document(
+                source_lib="lib",
+                source_path=None,
+                pages=[NotAPage()],  # pyright: ignore[reportArgumentType]  # intentionally invalid: asserts TypeError at runtime
+            )
 
 
 class TestPagesProperty:
-    def test_pages_sorted(self, doc_with_pages):
+    def test_pages_sorted(self, doc_with_pages: Document) -> None:
         assert [p.page_index for p in doc_with_pages.pages] == [0, 1, 2]
 
-    def test_pages_returns_copy(self, doc_with_pages):
+    def test_pages_returns_copy(self, doc_with_pages: Document) -> None:
         copy = doc_with_pages.pages
         copy.clear()
         assert len(doc_with_pages.pages) == 3
 
 
 class TestScale:
-    def test_scale_calls_each_page(self):
+    def test_scale_calls_each_page(self) -> None:
         doc = Document(source_lib="lib", source_path=Path("p.png"), pages=[])
         page = MagicMock()
         page.page_index = 0
@@ -75,7 +85,7 @@ class TestScale:
 
 
 class TestToFromJsonFile:
-    def test_round_trip(self, tmp_path):
+    def test_round_trip(self, tmp_path: Path) -> None:
         doc = Document(source_lib="my_lib", source_path=Path("p.png"), pages=[])
         doc._pages.append(Page(page_index=0, width=10, height=20, blocks=[]))
 
@@ -89,61 +99,63 @@ class TestToFromJsonFile:
 
 
 class TestSafeFloat:
-    def test_none_returns_zero(self):
+    def test_none_returns_zero(self) -> None:
         assert Document.safe_float(None) == 0.0
 
-    def test_with_item_method(self):
+    def test_with_item_method(self) -> None:
         # numpy scalars expose .item()
         scalar = np.float32(3.14)
         assert abs(Document.safe_float(scalar) - 3.14) < 1e-3
 
-    def test_invalid_returns_zero(self):
+    def test_invalid_returns_zero(self) -> None:
         assert Document.safe_float("not-a-number") == 0.0
 
-    def test_string_number(self):
+    def test_string_number(self) -> None:
         assert Document.safe_float("3.14") == 3.14
 
 
 class TestSafePackageVersion:
-    def test_unknown_package_returns_unknown(self):
+    def test_unknown_package_returns_unknown(self) -> None:
         assert (
             Document._safe_package_version("definitely-not-a-package-xyz") == "unknown"
         )
 
-    def test_known_package_returns_version_string(self):
+    def test_known_package_returns_version_string(self) -> None:
         # numpy is a transitive dep
         v = Document._safe_package_version("numpy")
         assert isinstance(v, str)
 
 
 class TestDetectTesseractEngineVersion:
-    def test_returns_string(self):
+    def test_returns_string(self) -> None:
         # When pytesseract is installed but tesseract binary is missing,
         # the helper should swallow the error and return "unknown".
         out = Document._detect_tesseract_engine_version()
         assert isinstance(out, str)
 
-    def test_pytesseract_missing_returns_unknown(self, monkeypatch):
+    def test_pytesseract_missing_returns_unknown(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(sys.modules, "pytesseract", None)
         assert Document._detect_tesseract_engine_version() == "unknown"
 
 
 class TestNormalizeOcrModels:
-    def test_non_list_returns_empty(self):
+    def test_non_list_returns_empty(self) -> None:
         assert Document._normalize_ocr_models("not a list") == []
 
-    def test_strings_become_models(self):
+    def test_strings_become_models(self) -> None:
         models = Document._normalize_ocr_models(["alpha", "beta"])
         assert models == [
             OCRModelProvenance(name="alpha"),
             OCRModelProvenance(name="beta"),
         ]
 
-    def test_dict_with_name_only(self):
+    def test_dict_with_name_only(self) -> None:
         models = Document._normalize_ocr_models([{"name": "ocr_v1"}])
         assert models == [OCRModelProvenance(name="ocr_v1")]
 
-    def test_dict_with_full_metadata(self):
+    def test_dict_with_full_metadata(self) -> None:
         models = Document._normalize_ocr_models(
             [
                 {
@@ -157,24 +169,24 @@ class TestNormalizeOcrModels:
             OCRModelProvenance(name="alpha", version="12", weights_id="7"),
         ]
 
-    def test_empty_string_skipped(self):
+    def test_empty_string_skipped(self) -> None:
         models = Document._normalize_ocr_models(["", {"name": ""}])
         assert models == []
 
-    def test_dict_without_name_skipped(self):
+    def test_dict_without_name_skipped(self) -> None:
         models = Document._normalize_ocr_models([{"foo": "bar"}])
         assert models == []
 
 
 class TestBuildOcrProvenance:
-    def test_explicit_fingerprint(self):
+    def test_explicit_fingerprint(self) -> None:
         prov = Document._build_ocr_provenance(
             engine="x",
             metadata={"config_fingerprint": 1234, "engine_version": "1.0"},
         )
         assert prov.config_fingerprint == "1234"
 
-    def test_constructed_fingerprint_from_source_lib(self):
+    def test_constructed_fingerprint_from_source_lib(self) -> None:
         prov = Document._build_ocr_provenance(
             engine="x",
             metadata={
@@ -185,13 +197,13 @@ class TestBuildOcrProvenance:
         # Constructed from source_lib + sorted model names
         assert prov.config_fingerprint == "src|a|b"
 
-    def test_no_fingerprint_when_no_parts(self):
+    def test_no_fingerprint_when_no_parts(self) -> None:
         prov = Document._build_ocr_provenance(engine="x", metadata={})
         assert prov.config_fingerprint is None
 
 
 class TestFromImageOcrViaDoctr:
-    def test_with_ndarray(self):
+    def test_with_ndarray(self) -> None:
         # Patch out the predictor and the doctr-output-conversion entirely
         fake_predictor = MagicMock()
         # Mock doctr_result with .render() and .export()
@@ -212,7 +224,7 @@ class TestFromImageOcrViaDoctr:
         assert doc.pages[0].cv2_numpy_page_image is img
         fake_predictor.assert_called_once()
 
-    def test_with_grayscale_ndarray(self):
+    def test_with_grayscale_ndarray(self) -> None:
         fake_predictor = MagicMock()
         doctr_result = MagicMock()
         doctr_result.render.return_value = ["rendered"]
@@ -228,7 +240,7 @@ class TestFromImageOcrViaDoctr:
         )
         assert isinstance(doc, Document)
 
-    def test_with_single_channel_3d_ndarray(self):
+    def test_with_single_channel_3d_ndarray(self) -> None:
         fake_predictor = MagicMock()
         doctr_result = MagicMock()
         doctr_result.render.return_value = ["rendered"]
@@ -244,7 +256,7 @@ class TestFromImageOcrViaDoctr:
         )
         assert isinstance(doc, Document)
 
-    def test_with_path_loads_via_imread(self, tmp_path):
+    def test_with_path_loads_via_imread(self, tmp_path: Path) -> None:
         # Create an actual PNG file
         import cv2
 
@@ -266,7 +278,7 @@ class TestFromImageOcrViaDoctr:
         assert isinstance(doc, Document)
         assert doc.source_path == Path(str(img_path))
 
-    def test_invalid_path_raises_value_error(self):
+    def test_invalid_path_raises_value_error(self) -> None:
         fake_predictor = MagicMock()
         with pytest.raises(ValueError, match="Failed to load image"):
             Document.from_image_ocr_via_doctr(
@@ -275,7 +287,7 @@ class TestFromImageOcrViaDoctr:
                 auto_rotate=False,
             )
 
-    def test_with_pil_image(self):
+    def test_with_pil_image(self) -> None:
         try:
             from PIL import Image as PILImageModule
         except ImportError:
@@ -299,7 +311,7 @@ class TestFromImageOcrViaDoctr:
         )
         assert isinstance(doc, Document)
 
-    def test_default_predictor_invokes_get_default_doctr_predictor(self):
+    def test_default_predictor_invokes_get_default_doctr_predictor(self) -> None:
         # Patch get_default_doctr_predictor inside document module
         fake_predictor = MagicMock()
         doctr_result = MagicMock()
@@ -318,7 +330,7 @@ class TestFromImageOcrViaDoctr:
             Document.from_image_ocr_via_doctr(img, auto_rotate=False)
             mock_get_default.assert_called_once()
 
-    def test_with_rgba_pil_image_covers_4channel_path(self):
+    def test_with_rgba_pil_image_covers_4channel_path(self) -> None:
         """Lines 156->169 (False) and 181: PIL image with 4 channels (RGBA)."""
         try:
             from PIL import Image as PILImageModule
@@ -346,8 +358,8 @@ class TestFromImageOcrViaDoctr:
 
 
 class TestFromDoctrOutputEdgeCases:
-    def test_geometry_missing_for_block_and_line(self):
-        doctr_output = {
+    def test_geometry_missing_for_block_and_line(self) -> None:
+        doctr_output: dict[str, object] = {
             "metadata": {},
             "pages": [
                 {
@@ -377,15 +389,15 @@ class TestFromDoctrOutputEdgeCases:
         assert isinstance(doc, Document)
         assert len(doc.pages) == 1
 
-    def test_string_source_path_converted(self):
+    def test_string_source_path_converted(self) -> None:
         doc = Document.from_doctr_output(
             {"metadata": {}, "pages": []}, source_path="some_path.png"
         )
         assert isinstance(doc.source_path, Path)
 
-    def test_metadata_not_dict_treated_as_empty(self):
+    def test_metadata_not_dict_treated_as_empty(self) -> None:
         """Task 4: ocr_provenance removed from Page. Build still succeeds."""
-        doctr_output = {
+        doctr_output: dict[str, object] = {
             "metadata": "not a dict",
             "pages": [{"dimensions": [10, 10], "blocks": []}],
         }
@@ -393,9 +405,9 @@ class TestFromDoctrOutputEdgeCases:
         assert len(doc.pages) == 1
         assert not hasattr(doc.pages[0], "ocr_provenance")
 
-    def test_with_original_text_assigned_per_page(self):
+    def test_with_original_text_assigned_per_page(self) -> None:
         """Task 4: original_ocr_tool_text removed from Page (TODO Task 5)."""
-        doctr_output = {
+        doctr_output: dict[str, object] = {
             "metadata": {},
             "pages": [{"dimensions": [10, 10], "blocks": []}],
         }
@@ -417,7 +429,7 @@ class TestFromDoctrResultRendersPerPage:
     construction still works (two pages produced, H-12 regression gated by count).
     """
 
-    def test_multipage_render_yields_per_page_text_not_characters(self):
+    def test_multipage_render_yields_per_page_text_not_characters(self) -> None:
         # Realistic DocTR API: doctr_result.render() returns one str for the
         # whole document; each page object exposes its own .render() returning
         # that page's text.
@@ -446,7 +458,9 @@ class TestFromDoctrResultRendersPerPage:
 
 
 class TestFromTesseractMissingPandas:
-    def test_missing_pandas_raises_import_error(self, monkeypatch):
+    def test_missing_pandas_raises_import_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(sys.modules, "pandas", None)
 
         with pytest.raises(ImportError, match="pandas"):
@@ -454,7 +468,7 @@ class TestFromTesseractMissingPandas:
 
 
 class TestFromTesseractStringFirstPage:
-    def test_tesseract_string_assigned(self):
+    def test_tesseract_string_assigned(self) -> None:
         """Task 4: original_ocr_tool_text removed from Page; tesseract_string param is accepted
         but not stored on Page (TODO Task 5/Plan 2: route into PageRecord/OcrCompleted)."""
         from pandas import DataFrame
@@ -508,21 +522,21 @@ class TestFromTesseractRecordsLanguageInProvenance:
             }
         )
 
-    def test_lang_recorded_as_model(self):
+    def test_lang_recorded_as_model(self) -> None:
         """Task 4: ocr_provenance removed from Page; build succeeds with lang param."""
         df = self._single_word_df()
         doc = Document.from_tesseract(df, lang="deu")
         assert len(doc.pages) == 1
         assert not hasattr(doc.pages[0], "ocr_provenance")
 
-    def test_lang_default_still_recorded(self):
+    def test_lang_default_still_recorded(self) -> None:
         """Task 4: ocr_provenance removed from Page; default lang build succeeds."""
         df = self._single_word_df()
         doc = Document.from_tesseract(df)
         assert len(doc.pages) == 1
         assert not hasattr(doc.pages[0], "ocr_provenance")
 
-    def test_different_langs_produce_different_provenance(self):
+    def test_different_langs_produce_different_provenance(self) -> None:
         """Task 4: Both lang builds succeed; Page has no ocr_provenance field."""
         df_a = self._single_word_df()
         df_b = self._single_word_df()
@@ -535,12 +549,12 @@ class TestFromTesseractRecordsLanguageInProvenance:
 
 
 class TestToFromDictEmptyPages:
-    def test_to_dict_empty_pages(self):
+    def test_to_dict_empty_pages(self) -> None:
         doc = Document(source_lib="x", source_path=None, pages=[])
         out = doc.to_dict()
         assert out["pages"] == []
 
-    def test_from_dict_default_paths(self):
+    def test_from_dict_default_paths(self) -> None:
         doc = Document.from_dict({})
         assert doc.source_lib == ""
         assert doc.source_path is None
@@ -548,11 +562,11 @@ class TestToFromDictEmptyPages:
 
 
 class TestSafePackageVersionExceptionClause:
-    def test_exception_returns_unknown(self, monkeypatch):
+    def test_exception_returns_unknown(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Line 376-377: catches generic Exception from package_version."""
         from pdomain_book_tools.ocr import document as doc_module
 
-        def raise_runtime(*args, **kwargs):
+        def raise_runtime(*args: object, **kwargs: object) -> None:
             raise RuntimeError("unexpected error")
 
         monkeypatch.setattr(doc_module, "package_version", raise_runtime)
@@ -561,16 +575,21 @@ class TestSafePackageVersionExceptionClause:
 
 
 class TestFromTesseractUnknownPytesseractVersion:
-    def test_unknown_version_skips_fingerprint(self, monkeypatch):
+    def test_unknown_version_skips_fingerprint(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Line 436->441 False branch: pytesseract_version == 'unknown'."""
         from pandas import DataFrame
 
         from pdomain_book_tools.ocr import document as doc_module
 
+        def _always_unknown(*args: object, **kwargs: object) -> str:
+            return "unknown"
+
         monkeypatch.setattr(
             doc_module.Document,
             "_safe_package_version",
-            lambda *args, **kwargs: "unknown",
+            _always_unknown,
         )
         df = DataFrame(
             {
@@ -595,7 +614,9 @@ class TestFromTesseractUnknownPytesseractVersion:
 
 
 class TestDetectTesseractVersionFalsyResult:
-    def test_falsy_detected_version_returns_unknown(self, monkeypatch):
+    def test_falsy_detected_version_returns_unknown(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Line 385->389: when get_tesseract_version returns falsy value."""
         import pytesseract
 
@@ -605,7 +626,7 @@ class TestDetectTesseractVersionFalsyResult:
 
 
 class TestFromTesseractEmptyPagesWithString:
-    def test_tesseract_string_not_assigned_when_no_pages(self):
+    def test_tesseract_string_not_assigned_when_no_pages(self) -> None:
         """Line 593->596 False branch: tesseract_string provided but no pages."""
         from pandas import DataFrame
 
@@ -630,7 +651,7 @@ class TestFromTesseractEmptyPagesWithString:
 
 
 class TestFromTesseractStringSourcePath:
-    def test_string_source_path_converted_to_path(self):
+    def test_string_source_path_converted_to_path(self) -> None:
         """Line 426: source_path as str is converted to Path."""
         from pandas import DataFrame
 

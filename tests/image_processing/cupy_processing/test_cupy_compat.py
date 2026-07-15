@@ -22,8 +22,13 @@ from __future__ import annotations
 import builtins
 import importlib
 import sys
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Generator, Mapping, Sequence
+    from types import ModuleType
 
 # Module names to scrub from sys.modules between simulations so each reload
 # re-runs the top-level import code with the current ``import cupy`` shim.
@@ -50,7 +55,7 @@ _CUPY_PROCESSING_MODULES = [
 
 
 @pytest.fixture
-def cupy_unavailable(monkeypatch):
+def cupy_unavailable(monkeypatch: pytest.MonkeyPatch) -> Generator[None]:
     """Simulate a CPU-only install where ``import cupy`` fails.
 
     Patches ``builtins.__import__`` to raise ``ImportError`` for any
@@ -61,14 +66,20 @@ def cupy_unavailable(monkeypatch):
     """
     real_import = builtins.__import__
 
-    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+    def fake_import(
+        name: str,
+        globals: Mapping[str, object] | None = None,
+        locals: Mapping[str, object] | None = None,
+        fromlist: Sequence[str] | None = (),
+        level: int = 0,
+    ) -> ModuleType:
         if name == "cupy" or name.startswith("cupy.") or name.startswith("cupyx"):
             raise ImportError(f"simulated: {name} not installed")
         return real_import(name, globals, locals, fromlist, level)
 
     # Save and remove any pre-imported cupy_processing modules + cupy itself
     # so the next import re-runs their top-level code under the patched import.
-    saved: dict[str, object] = {}
+    saved: dict[str, ModuleType] = {}
     for mod_name in list(sys.modules.keys()):
         if mod_name in _CUPY_PROCESSING_MODULES or mod_name.startswith(
             ("cupy", "cupyx")
@@ -89,7 +100,7 @@ def cupy_unavailable(monkeypatch):
     sys.modules.update(saved)
 
 
-def test_cupy_compat_imports_without_cupy(cupy_unavailable):
+def test_cupy_compat_imports_without_cupy(cupy_unavailable: None) -> None:
     """``_cupy_compat`` itself must import cleanly with cupy missing."""
     compat = importlib.import_module(
         "pdomain_book_tools.image_processing.cupy_processing._cupy_compat"
@@ -98,7 +109,7 @@ def test_cupy_compat_imports_without_cupy(cupy_unavailable):
     assert compat.cupy_available() is False
 
 
-def test_require_cupy_raises_with_install_hint(cupy_unavailable):
+def test_require_cupy_raises_with_install_hint(cupy_unavailable: None) -> None:
     """``require_cupy()`` must raise ImportError mentioning the gpu extra."""
     compat = importlib.import_module(
         "pdomain_book_tools.image_processing.cupy_processing._cupy_compat"
@@ -111,7 +122,9 @@ def test_require_cupy_raises_with_install_hint(cupy_unavailable):
 
 
 @pytest.mark.parametrize("mod_name", _CUPY_PROCESSING_MODULES)
-def test_cupy_processing_submodule_imports_without_cupy(cupy_unavailable, mod_name):
+def test_cupy_processing_submodule_imports_without_cupy(
+    cupy_unavailable: None, mod_name: str
+) -> None:
     """Every cupy_processing submodule must import cleanly with cupy missing.
 
     This is the L-40 contract: putting ``cupy-cuda12x`` behind the ``gpu``
@@ -124,7 +137,9 @@ def test_cupy_processing_submodule_imports_without_cupy(cupy_unavailable, mod_na
     importlib.import_module(mod_name)
 
 
-def test_calling_gpu_function_without_cupy_raises_install_hint(cupy_unavailable):
+def test_calling_gpu_function_without_cupy_raises_install_hint(
+    cupy_unavailable: None,
+) -> None:
     """Calling any public GPU function without cupy must raise the hint.
 
     Uses ``np_uint8_auto_deskew`` as a representative end-user entry point

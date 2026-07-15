@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-def test_v1_geometry_surface_present():
+
+def test_v1_geometry_surface_present() -> None:
     """This plan gates behind the v1 geometry_correction package. If this fails,
     implement docs/plans/2026-06-02-geometry-correction-book-tools.md first."""
     from pdomain_book_tools.geometry_correction import registry
@@ -28,7 +35,9 @@ def test_v1_geometry_surface_present():
     assert res.confidence == 1.0
 
 
-def _lined_gray(h=1000, w=760, n_lines=16, top=90, gap=58):
+def _lined_gray(
+    h: int = 1000, w: int = 760, n_lines: int = 16, top: int = 90, gap: int = 58
+) -> NDArray[np.uint8]:
     img = np.full((h, w), 255, np.uint8)
     for i in range(n_lines):
         y = top + i * gap
@@ -37,7 +46,7 @@ def _lined_gray(h=1000, w=760, n_lines=16, top=90, gap=58):
     return img
 
 
-def test_backend_satisfies_protocol_and_builds_grid():
+def test_backend_satisfies_protocol_and_builds_grid() -> None:
     from pdomain_book_tools.geometry_correction import Dewarp, DewarpResult
     from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
         TextlineDisparityDewarp,
@@ -51,10 +60,11 @@ def test_backend_satisfies_protocol_and_builds_grid():
     assert res.method == "textline_disparity"
     assert res.transform.kind == "grid"
     assert res.confidence > 0.0
+    assert res.transform.map_x is not None
     assert res.transform.map_x.shape == (1000, 760)
 
 
-def test_backend_sparse_page_falls_back_to_identity():
+def test_backend_sparse_page_falls_back_to_identity() -> None:
     from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
         TextlineDisparityDewarp,
     )
@@ -66,7 +76,7 @@ def test_backend_sparse_page_falls_back_to_identity():
     assert res.confidence == 0.0
 
 
-def test_backend_min_textlines_default_is_leptonica_15():
+def test_backend_min_textlines_default_is_leptonica_15() -> None:
     from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
         TextlineDisparityDewarp,
     )
@@ -74,16 +84,17 @@ def test_backend_min_textlines_default_is_leptonica_15():
     assert TextlineDisparityDewarp().min_textlines == 15
 
 
-def test_textline_backend_registered_as_default():
-    from pdomain_book_tools.geometry_correction import registry
+def test_textline_backend_registered_as_default() -> None:
+    from pdomain_book_tools.geometry_correction import Dewarp, registry
 
     registry.ensure_defaults()
     assert "textline_disparity" in registry.available("dewarp")
     backend = registry.get_dewarp("textline_disparity")
+    assert isinstance(backend, Dewarp)
     assert backend.name == "textline_disparity"
 
 
-def test_scanned_pipeline_routes_flat_curl_to_textline():
+def test_scanned_pipeline_routes_flat_curl_to_textline() -> None:
     from pdomain_book_tools.geometry_correction.defaults import scanned_pipeline
 
     pipe = scanned_pipeline()
@@ -97,10 +108,10 @@ def test_scanned_pipeline_routes_flat_curl_to_textline():
 # ---------------------------------------------------------------------------
 
 
-def _gradient_gray(h=1000, w=760, n_lines=16, top=90, gap=58):
+def _gradient_gray(
+    h: int = 1000, w: int = 760, n_lines: int = 16, top: int = 90, gap: int = 58
+) -> NDArray[np.uint8]:
     """Dark-text-on-light-background page with an illumination gradient (for binarize tests)."""
-    import numpy as np
-
     bg = np.linspace(240, 120, w, dtype=np.float32)
     img = np.tile(bg, (h, 1)).astype(np.uint8)
     for i in range(n_lines):
@@ -110,7 +121,7 @@ def _gradient_gray(h=1000, w=760, n_lines=16, top=90, gap=58):
     return img
 
 
-def test_backend_default_binarization_is_otsu():
+def test_backend_default_binarization_is_otsu() -> None:
     from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
         TextlineDisparityDewarp,
     )
@@ -120,7 +131,7 @@ def test_backend_default_binarization_is_otsu():
     assert backend.binarization_params is None
 
 
-def test_backend_sauvola_returns_valid_result():
+def test_backend_sauvola_returns_valid_result() -> None:
     """TextlineDisparityDewarp(binarization='sauvola').estimate() must not raise."""
     from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
         TextlineDisparityDewarp,
@@ -134,7 +145,7 @@ def test_backend_sauvola_returns_valid_result():
     assert res.confidence >= 0.0
 
 
-def test_backend_injected_detector_ignores_binarization_params():
+def test_backend_injected_detector_ignores_binarization_params() -> None:
     """When a detector is injected explicitly, it's used as-is regardless of binarization."""
 
     from pdomain_book_tools.geometry_correction.backends.dewarp.textline import (
@@ -148,4 +159,5 @@ def test_backend_injected_detector_ignores_binarization_params():
     backend = TextlineDisparityDewarp(detector=injected, binarization="sauvola")
     # The injected detector takes precedence; the backend wraps it unchanged
     assert backend.detector is injected
+    assert isinstance(backend.detector, MorphCentroidDetector)
     assert backend.detector.binarization == "niblack"  # not overridden to "sauvola"

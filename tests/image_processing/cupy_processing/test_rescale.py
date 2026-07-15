@@ -1,13 +1,38 @@
 """Tests for cupy_processing.rescale module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def full(
+        self, shape: tuple[int, ...], fill_value: object, dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def asarray(self, a: object) -> cupy.ndarray[np.generic]: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestRescaleImageGpu:
-    def test_portrait_short_side_becomes_target(self, cupy_module):
+    def test_portrait_short_side_becomes_target(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
@@ -18,7 +43,9 @@ class TestRescaleImageGpu:
         assert out.shape[1] == 100  # width is short side
         assert out.shape[0] == 200  # height scales by 0.5
 
-    def test_landscape_short_side_becomes_target(self, cupy_module):
+    def test_landscape_short_side_becomes_target(
+        self, cupy_module: _CupyModule
+    ) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
@@ -29,7 +56,7 @@ class TestRescaleImageGpu:
         assert out.shape[0] == 100  # height is short side
         assert out.shape[1] == 200
 
-    def test_output_is_uint8(self, cupy_module):
+    def test_output_is_uint8(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
@@ -39,7 +66,7 @@ class TestRescaleImageGpu:
         out = rescale_image_gpu(img, target_short_side=100)
         assert out.dtype == cp.uint8
 
-    def test_color_image_preserves_channels(self, cupy_module):
+    def test_color_image_preserves_channels(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             rescale_image_gpu,
@@ -50,7 +77,7 @@ class TestRescaleImageGpu:
         assert out.ndim == 3
         assert out.shape[2] == 3
 
-    def test_matches_cpu_output_shape(self, cupy_module):
+    def test_matches_cpu_output_shape(self, cupy_module: _CupyModule) -> None:
         """GPU output shape must exactly match CPU reference."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -67,7 +94,7 @@ class TestRescaleImageGpu:
 
         assert cpu_out.shape == tuple(gpu_out.shape)
 
-    def test_np_uint8_rescale_image_wrapper(self, cupy_module):
+    def test_np_uint8_rescale_image_wrapper(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.rescale import (
             np_uint8_rescale_image,
         )

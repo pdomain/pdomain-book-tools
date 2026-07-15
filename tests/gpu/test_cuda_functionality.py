@@ -34,21 +34,44 @@ Usage:
     CI=true uv run pytest -n auto tests/gpu/ -v
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol, TypeVar
+
 import numpy as np
 import pytest
 
 from tests.conftest import skipif_ci, skipif_no_cuda
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from types import ModuleType
+
+    import cupy
+    import torch
+
+    _ScalarT = TypeVar("_ScalarT", bound=np.generic)
+
+    class GpuArrayFactory(Protocol):
+        """Matches ``tests/conftest.py``'s ``gpu_array_factory`` fixture."""
+
+        def __call__(
+            self,
+            shape: Sequence[int],
+            dtype: type[_ScalarT] | None = None,
+            fill_value: float | None = None,
+        ) -> cupy.ndarray[_ScalarT]: ...
+
 
 class TestGPUAvailability:
     """Basic tests for GPU availability and configuration."""
 
-    def test_always_runs(self):
+    def test_always_runs(self) -> None:
         """This test always runs, regardless of GPU availability."""
         assert True
 
     @pytest.mark.gpu
-    def test_conditional_gpu_logic(self, cuda_available):
+    def test_conditional_gpu_logic(self, cuda_available: bool) -> None:
         """Example of conditional GPU vs CPU logic."""
         if cuda_available:
             # GPU code path
@@ -63,7 +86,7 @@ class TestGPUAvailability:
 
     @skipif_ci
     @pytest.mark.gpu
-    def test_skip_in_ci_example(self, cuda_available):
+    def test_skip_in_ci_example(self, cuda_available: bool) -> None:
         """This test will skip in GitHub Actions but run locally with GPU."""
         assert cuda_available, "This should only run when CUDA is available"
 
@@ -73,20 +96,22 @@ class TestGPUAvailability:
 class TestCupyProcessing:
     """Tests for CuPy-based GPU image processing operations."""
 
-    def test_cupy_basic_operations(self, cupy_module):
+    def test_cupy_basic_operations(self, cupy_module: ModuleType) -> None:
         """Test basic CuPy array operations on GPU."""
         cp = cupy_module
 
         # Create array on GPU
-        gpu_array = cp.array([1, 2, 3, 4, 5])
+        gpu_array: cupy.ndarray[np.int_] = cp.array([1, 2, 3, 4, 5])
 
         # Perform computation
-        result = cp.sum(gpu_array)
+        result: cupy.ndarray[np.int_] = cp.sum(gpu_array)
 
         # Convert back to CPU for assertion
         assert result.get() == 15
 
-    def test_cupy_image_processing(self, cupy_module, sample_gpu_image):
+    def test_cupy_image_processing(
+        self, cupy_module: ModuleType, sample_gpu_image: cupy.ndarray[np.uint8]
+    ) -> None:
         """Test CuPy image processing functions."""
         cp = cupy_module
 
@@ -103,7 +128,12 @@ class TestCupyProcessing:
         assert isinstance(result_cpu, np.ndarray)
 
     @pytest.mark.parametrize("image_size", [(50, 50), (100, 100), (200, 200)])
-    def test_cupy_array_factory(self, cupy_module, gpu_array_factory, image_size):
+    def test_cupy_array_factory(
+        self,
+        cupy_module: ModuleType,
+        gpu_array_factory: GpuArrayFactory,
+        image_size: tuple[int, int],
+    ) -> None:
         """Test GPU array factory with different sizes."""
         cp = cupy_module
 
@@ -116,7 +146,9 @@ class TestCupyProcessing:
         assert gpu_image.shape == image_size
 
     @pytest.mark.slow
-    def test_cupy_morphology_operations(self, cupy_module, sample_gpu_image):
+    def test_cupy_morphology_operations(
+        self, cupy_module: ModuleType, sample_gpu_image: cupy.ndarray[np.uint8]
+    ) -> None:
         """Test actual CuPy morphology processing modules."""
         cp = cupy_module
 
@@ -131,7 +163,7 @@ class TestCupyProcessing:
             pytest.skip("CuPy processing module not available")
 
         # Create kernel
-        kernel = cp.ones((3, 3), dtype=cp.uint8)
+        kernel: cupy.ndarray[np.uint8] = cp.ones((3, 3), dtype=cp.uint8)
 
         # Test dilation
         result = dilate(sample_gpu_image, kernel)
@@ -152,13 +184,13 @@ class TestCupyProcessing:
         assert filled.shape == sample_gpu_image.shape
 
     @skipif_no_cuda
-    def test_cupy_when_available(self, cupy_module):
+    def test_cupy_when_available(self, cupy_module: ModuleType) -> None:
         """Test CuPy functionality when available, skip otherwise."""
         cp = cupy_module
 
         # Basic CuPy operations
-        arr = cp.array([1, 2, 3, 4, 5])
-        result = cp.sum(arr)
+        arr: cupy.ndarray[np.int_] = cp.array([1, 2, 3, 4, 5])
+        result: cupy.ndarray[np.int_] = cp.sum(arr)
         assert result.get() == 15
 
 
@@ -167,44 +199,46 @@ class TestCupyProcessing:
 class TestTorchCuda:
     """Tests for PyTorch CUDA functionality."""
 
-    def test_torch_cuda_basic(self, torch_cuda):
+    def test_torch_cuda_basic(self, torch_cuda: ModuleType) -> None:
         """Test basic PyTorch CUDA operations."""
-        torch = torch_cuda
+        torch_mod = torch_cuda
 
         # Create tensor on GPU
-        device = torch.device("cuda:0")
-        tensor = torch.tensor([1.0, 2.0, 3.0]).to(device)
+        device: torch.device = torch_mod.device("cuda:0")
+        tensor: torch.Tensor = torch_mod.tensor([1.0, 2.0, 3.0]).to(device)
 
         # Verify it's on GPU
         assert tensor.device.type == "cuda"
 
         # Perform computation
-        result = torch.sum(tensor)
+        result = torch_mod.sum(tensor)
         assert result.item() == 6.0
 
     @skipif_ci
-    def test_doctr_gpu_integration(self, torch_cuda):
+    def test_doctr_gpu_integration(self, torch_cuda: ModuleType) -> None:
         """Test DocTR with GPU support."""
-        torch = torch_cuda
+        torch_mod = torch_cuda
 
         # Test device selection logic
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device: torch.device = torch_mod.device(
+            "cuda" if torch_mod.cuda.is_available() else "cpu"
+        )
         assert device.type == "cuda"
 
         # Create a simple tensor on GPU
-        tensor = torch.randn(10, 10).to(device)
+        tensor: torch.Tensor = torch_mod.randn(10, 10).to(device)
         assert tensor.is_cuda
 
-    def test_doctr_cuda_support(self, torch_cuda):
+    def test_doctr_cuda_support(self, torch_cuda: ModuleType) -> None:
         """Test DocTR CUDA functionality if available."""
-        torch = torch_cuda
+        torch_mod = torch_cuda
         pytest.importorskip("doctr")
 
         # Test that CUDA is detected by torch
-        assert torch.cuda.is_available()
+        assert torch_mod.cuda.is_available()
 
         # Test device detection logic
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        device = "cuda" if torch_mod.cuda.is_available() else "cpu"
         assert device == "cuda"
 
 
@@ -213,12 +247,16 @@ class TestTorchCuda:
 class TestGPUIntegration:
     """Integration tests for complete GPU processing pipelines."""
 
-    def test_full_gpu_pipeline(self, cupy_module, gpu_array_factory):
+    def test_full_gpu_pipeline(
+        self, cupy_module: ModuleType, gpu_array_factory: GpuArrayFactory
+    ) -> None:
         """Test complete GPU processing pipeline."""
         cp = cupy_module
 
         # Create sample image using factory
-        gpu_image = gpu_array_factory((200, 200), dtype=cp.uint8, fill_value=128)
+        gpu_image: cupy.ndarray[np.uint8] = gpu_array_factory(
+            (200, 200), dtype=cp.uint8, fill_value=128
+        )
 
         # Simulate processing pipeline
         processed = gpu_image * 0.5  # Simple processing
@@ -230,7 +268,9 @@ class TestGPUIntegration:
         assert result.dtype == np.uint8
 
     @pytest.mark.slow
-    def test_gpu_vs_cpu_performance(self, cupy_module, cuda_available, ci_environment):
+    def test_gpu_vs_cpu_performance(
+        self, cupy_module: ModuleType, cuda_available: bool, ci_environment: bool
+    ) -> None:
         """Compare GPU vs CPU processing speed (skip in CI)."""
         if ci_environment:
             pytest.skip("Performance tests not needed in CI")
@@ -244,7 +284,7 @@ class TestGPUIntegration:
         cpu_array = np.random.randint(0, 255, size, dtype=np.uint8)
 
         # GPU version
-        gpu_array = cp.asarray(cpu_array)
+        gpu_array: cupy.ndarray[np.uint8] = cp.asarray(cpu_array)
 
         # Simple operation timing (just verify it works, not actual benchmarking)
         cpu_result = cpu_array * 2

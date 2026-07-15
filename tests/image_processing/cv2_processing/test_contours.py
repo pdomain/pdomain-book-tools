@@ -1,14 +1,42 @@
 """Tests for cv2_processing.contours module."""
 
+from __future__ import annotations
+
+from typing import cast
+
 import numpy as np
 import pytest
 
 pytest.importorskip("cv2")
 
+from cv2 import (
+    CHAIN_APPROX_SIMPLE,
+    RETR_EXTERNAL,
+    findContours,
+)
+
 from pdomain_book_tools.image_processing.cv2_processing.contours import (
+    Contour,
+    ImageArray,
     find_and_draw_contours,
     remove_small_contours,
 )
+
+
+def _find_contours(img: ImageArray) -> tuple[Contour, ...]:
+    """Wrap ``cv2.findContours`` and narrow its ``MatLike`` result to ``Contour``.
+
+    Mirrors the cast used in ``contours.find_and_draw_contours`` — cv2's
+    stubs return the broader ``MatLike`` element type, but this codebase's
+    contour arrays are always ``int32``.
+    """
+    raw_contours, _ = findContours(img, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+    return cast("tuple[Contour, ...]", tuple(raw_contours))
+
+
+def _no_contours_stub(*args: object, **kwargs: object) -> tuple[list[Contour], None]:
+    """Typed stand-in for ``cv2.findContours`` that always reports no contours."""
+    return [], None
 
 
 def _binary_image_with_blobs() -> np.ndarray:
@@ -22,7 +50,7 @@ def _binary_image_with_blobs() -> np.ndarray:
 
 
 class TestFindAndDrawContours:
-    def test_finds_contours_and_returns_visualization(self):
+    def test_finds_contours_and_returns_visualization(self) -> None:
         img = _binary_image_with_blobs()
         out_img, contours = find_and_draw_contours(img.copy())
         assert out_img is not None
@@ -32,7 +60,7 @@ class TestFindAndDrawContours:
         assert out_img.ndim == 3
         assert out_img.shape[2] == 3
 
-    def test_no_contours_returns_bgr(self):
+    def test_no_contours_returns_bgr(self) -> None:
         # An all-zero image has no contours.
         # Output must still be a 3-channel BGR image so callers don't have
         # to runtime-dispatch on shape (regression for M-10).
@@ -43,7 +71,7 @@ class TestFindAndDrawContours:
         assert out_img.shape == (50, 50, 3)
         assert out_img.dtype == img.dtype
 
-    def test_return_ndim_consistent_with_and_without_contours(self):
+    def test_return_ndim_consistent_with_and_without_contours(self) -> None:
         """Regression for M-10: ndim/dtype must match across both branches."""
         empty = np.zeros((50, 50), dtype=np.uint8)
         out_empty, c_empty = find_and_draw_contours(empty.copy())
@@ -58,7 +86,9 @@ class TestFindAndDrawContours:
         assert out_empty.shape[2] == out_blob.shape[2] == 3
         assert out_empty.dtype == out_blob.dtype
 
-    def test_gray2bgr_conversion_semantics(self, monkeypatch):
+    def test_gray2bgr_conversion_semantics(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Regression for M-11: gray->BGR conversion must use COLOR_GRAY2BGR.
 
         COLOR_GRAY2BGR replicates the single grayscale channel into all
@@ -85,7 +115,7 @@ class TestFindAndDrawContours:
         img[9, 9] = 255
 
         # Force the no-contours path so cv2.rectangle does not overdraw.
-        monkeypatch.setattr(mod.cv2, "findContours", lambda *a, **k: ([], None))
+        monkeypatch.setattr(mod.cv2, "findContours", _no_contours_stub)
 
         out, contours = find_and_draw_contours(img.copy())
         assert len(contours) == 0
@@ -103,7 +133,7 @@ class TestFindAndDrawContours:
 
 
 class TestRemoveSmallContours:
-    def test_does_not_mutate_input_image(self):
+    def test_does_not_mutate_input_image(self) -> None:
         """L-13: ``remove_small_contours`` must not mutate the caller's array.
 
         The cupy backend (``remove_small_contours_gpu``) operates on
@@ -111,16 +141,10 @@ class TestRemoveSmallContours:
         ``img[y:y+h, x:x+w] = 0`` directly into the input. Aligning the
         two backends so callers don't have to remember which one mutates.
         """
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
         img = _binary_image_with_blobs()
         # Snapshot of the *exact* bytes the caller is passing in.
         original = img.copy()
-        contours, _ = findContours(img, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(img)
 
         cleaned, _ = remove_small_contours(img, contours)
 
@@ -130,22 +154,16 @@ class TestRemoveSmallContours:
         # passed in (no in-place mutation).
         np.testing.assert_array_equal(img, original)
 
-    def test_no_contours_returns_image_unchanged(self):
+    def test_no_contours_returns_image_unchanged(self) -> None:
         img = np.zeros((50, 50), dtype=np.uint8)
         out_img, vis = remove_small_contours(img.copy(), [])
         np.testing.assert_array_equal(out_img, img)
         # Visualization should be a 3-channel BGR
         assert vis.shape == (50, 50, 3)
 
-    def test_removes_tiny_contour(self):
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
+    def test_removes_tiny_contour(self) -> None:
         img = _binary_image_with_blobs()
-        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(img.copy())
         # Initial image has tiny blob at [5:9, 5:9]
         assert (img[5:9, 5:9] == 255).all()
         cleaned, _ = remove_small_contours(img.copy(), contours)
@@ -154,14 +172,8 @@ class TestRemoveSmallContours:
         # Big blob should remain
         assert (cleaned[30:70, 30:70] == 255).all()
 
-    def test_medium_contour_with_nearby_pixels_kept(self):
+    def test_medium_contour_with_nearby_pixels_kept(self) -> None:
         """Medium contour with significant nearby pixels should be retained."""
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
         # Create an image where a medium contour sits close to a large blob
         img = np.zeros((200, 200), dtype=np.uint8)
         # Large support blob
@@ -169,47 +181,35 @@ class TestRemoveSmallContours:
         # Medium-sized contour next to it - within size threshold but with neighbors
         img[60:75, 60:80] = 255
 
-        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(img.copy())
         _cleaned, vis = remove_small_contours(img.copy(), contours)
         # Visualization should be a 3-channel image
         assert vis.ndim == 3
         assert vis.shape[2] == 3
 
-    def test_medium_contour_isolated_removed(self):
+    def test_medium_contour_isolated_removed(self) -> None:
         """Medium contour with no nearby pixels should be removed."""
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
         img = np.zeros((200, 200), dtype=np.uint8)
         # An isolated medium-sized contour
         img[100:108, 100:108] = 255
 
-        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(img.copy())
         cleaned, _ = remove_small_contours(
             img.copy(), contours, min_w_pct=0.10, min_h_pct=0.10
         )
         # The isolated medium contour should be cleared
         assert (cleaned[100:108, 100:108] == 0).all()
 
-    def test_already_zeroed_contour_skipped(self):
+    def test_already_zeroed_contour_skipped(self) -> None:
         """Covers line 65 (continue): contour region already all zeros.
 
         Pass a contour whose bounding region in the image is all zeros;
         the function should skip it and return the image unchanged.
         """
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
         # Create a temporary image with a blob to get a valid contour
         template = np.zeros((100, 100), dtype=np.uint8)
         template[10:20, 10:20] = 255
-        contours, _ = findContours(template.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(template.copy())
 
         # Now pass a blank image (all zeros) so contour_sum == 0 → continue
         blank = np.zeros((100, 100), dtype=np.uint8)
@@ -217,7 +217,7 @@ class TestRemoveSmallContours:
         # Image should remain all zeros
         assert np.sum(out) == 0
 
-    def test_medium_contour_below_size_threshold_covers_search_area(self):
+    def test_medium_contour_below_size_threshold_covers_search_area(self) -> None:
         """Covers lines 75-91: contour is NOT tiny but IS below pixels_w/h threshold.
 
         Use small_contour_w/h=5 (tiny threshold) and min_w_pct/min_h_pct=0.20
@@ -228,16 +228,10 @@ class TestRemoveSmallContours:
         The nearby_pixel_count threshold determines if the contour is removed (low count)
         or kept (high count, red rectangle drawn at line 91).
         """
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
         img = np.zeros((200, 200), dtype=np.uint8)
         # Isolated medium contour: 12x12 -- above tiny (5) but below size threshold (40)
         img[50:62, 50:62] = 255
-        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(img.copy())
 
         # nearby_pixel_count=100 → threshold_sum = 25500, search_sum < 25500 → removed
         out_removed, _vis_removed = remove_small_contours(
@@ -254,7 +248,7 @@ class TestRemoveSmallContours:
         # nearby_pixel_count=0 → threshold_sum=0, search_sum >= 0 → kept (red rect drawn)
         img2 = np.zeros((200, 200), dtype=np.uint8)
         img2[50:62, 50:62] = 255
-        contours2, _ = findContours(img2.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours2 = _find_contours(img2.copy())
         out_kept, _vis_kept = remove_small_contours(
             img2.copy(),
             contours2,
@@ -267,7 +261,7 @@ class TestRemoveSmallContours:
         # The contour should NOT be removed (search_sum >= threshold_sum=0)
         assert (out_kept[50:62, 50:62] == 255).all()
 
-    def test_l27_small_contour_fast_path_disabled_with_zero_thresholds(self):
+    def test_l27_small_contour_fast_path_disabled_with_zero_thresholds(self) -> None:
         """L-27: passing ``small_contour_w=0, small_contour_h=0`` disables the
         cv2-only unconditional fast-path so cv2 mirrors the cupy backend's
         neighborhood-only behavior.
@@ -281,19 +275,13 @@ class TestRemoveSmallContours:
         BOTH outcomes so a future change cannot silently flip the cv2
         default behavior or remove the escape-hatch contract.
         """
-        from cv2 import (
-            CHAIN_APPROX_SIMPLE,
-            RETR_EXTERNAL,
-            findContours,
-        )
-
         img = np.zeros((200, 200), dtype=np.uint8)
         # Big neighbor blob: provides plenty of nearby pixels
         img[80:160, 20:180] = 255
         # Tiny 6x6 dot directly above the big blob (well within search radius)
         img[60:66, 60:66] = 255
 
-        contours, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours = _find_contours(img.copy())
 
         # Default fast path: tiny dot < 10x10 -> unconditionally removed.
         cleaned_default, _ = remove_small_contours(img.copy(), contours)
@@ -301,7 +289,7 @@ class TestRemoveSmallContours:
 
         # Fast path disabled (mirrors cupy): neighborhood check sees the
         # adjacent big blob and the dot is KEPT.
-        contours2, _ = findContours(img.copy(), RETR_EXTERNAL, CHAIN_APPROX_SIMPLE)
+        contours2 = _find_contours(img.copy())
         cleaned_no_fastpath, _ = remove_small_contours(
             img.copy(),
             contours2,
@@ -312,7 +300,7 @@ class TestRemoveSmallContours:
         # And the big blob is unaffected in either case.
         assert (cleaned_no_fastpath[80:160, 20:180] == 255).all()
 
-    def test_l27_divergence_is_documented(self):
+    def test_l27_divergence_is_documented(self) -> None:
         """L-27: the behavioral divergence between cv2 and cupy backends
         must remain documented so future maintainers don't quietly delete
         the escape-hatch contract.

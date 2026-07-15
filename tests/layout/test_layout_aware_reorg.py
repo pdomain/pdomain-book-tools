@@ -9,6 +9,10 @@ Covers:
     figure region.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
@@ -30,11 +34,16 @@ from pdomain_book_tools.ocr.layout_aware_reorg import (
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from collections.abc import Collection, Sequence
+
 PAGE_W = 1000
 PAGE_H = 1500
 
 
-def _word(text, L, T, R, B, *, normalized=False):
+def _word(
+    text: str, L: float, T: float, R: float, B: float, *, normalized: bool = False
+) -> Word:
     if normalized:
         bbox = BoundingBox(
             top_left=Point(L, T, is_normalized=True),
@@ -50,7 +59,7 @@ def _word(text, L, T, R, B, *, normalized=False):
     return Word(text=text, bounding_box=bbox, ocr_confidence=0.9)
 
 
-def _line_block(words):
+def _line_block(words: Sequence[Word]) -> Block:
     return Block(
         items=words,
         child_type=BlockChildType.WORDS,
@@ -58,7 +67,7 @@ def _line_block(words):
     )
 
 
-def _paragraph_block(line_blocks):
+def _paragraph_block(line_blocks: Sequence[Block]) -> Block:
     return Block(
         items=line_blocks,
         child_type=BlockChildType.BLOCKS,
@@ -66,26 +75,26 @@ def _paragraph_block(line_blocks):
     )
 
 
-def _make_page(blocks):
+def _make_page(blocks: Collection[Block]) -> Page:
     return Page(width=PAGE_W, height=PAGE_H, page_index=0, blocks=blocks)
 
 
 class TestWordsInside:
-    def test_pixel_word_inside_pixel_region(self):
+    def test_pixel_word_inside_pixel_region(self) -> None:
         w = _word("hi", 100, 100, 200, 130)
         region = LayoutRegion(
             type=RegionType.text, L=0, R=300, T=50, B=200, confidence=1.0
         )
         assert words_inside(region, [w], PAGE_W, PAGE_H, PAGE_W, PAGE_H) == [w]
 
-    def test_pixel_word_outside_region(self):
+    def test_pixel_word_outside_region(self) -> None:
         w = _word("hi", 800, 800, 850, 830)
         region = LayoutRegion(
             type=RegionType.text, L=0, R=300, T=50, B=200, confidence=1.0
         )
         assert words_inside(region, [w], PAGE_W, PAGE_H, PAGE_W, PAGE_H) == []
 
-    def test_normalized_word(self):
+    def test_normalized_word(self) -> None:
         # Word centered at (0.15, 0.1) in normalized coords → page-pixel (150, 150)
         w = _word("hi", 0.1, 0.05, 0.2, 0.15, normalized=True)
         region = LayoutRegion(
@@ -95,7 +104,7 @@ class TestWordsInside:
 
 
 class TestDropLayoutRegions:
-    def _page_with_header_and_body(self):
+    def _page_with_header_and_body(self) -> Page:
         header_words = [
             _word("PAGE", 100, 30, 200, 60),
             _word("TITLE", 210, 30, 350, 60),
@@ -111,7 +120,7 @@ class TestDropLayoutRegions:
             ]
         )
 
-    def test_drops_high_confidence_header(self):
+    def test_drops_high_confidence_header(self) -> None:
         page = self._page_with_header_and_body()
         layout = PageLayout(
             regions=[
@@ -134,7 +143,7 @@ class TestDropLayoutRegions:
         remaining_text = [w.text for w in page.words]
         assert remaining_text == ["body", "text"]
 
-    def test_low_confidence_header_kept(self):
+    def test_low_confidence_header_kept(self) -> None:
         page = self._page_with_header_and_body()
         layout = PageLayout(
             regions=[
@@ -155,7 +164,7 @@ class TestDropLayoutRegions:
         assert removed == 0
         assert {w.text for w in page.words} == {"PAGE", "TITLE", "body", "text"}
 
-    def test_only_listed_drop_types_removed(self):
+    def test_only_listed_drop_types_removed(self) -> None:
         page = self._page_with_header_and_body()
         layout = PageLayout(
             regions=[
@@ -183,7 +192,7 @@ class TestDropLayoutRegionsPerTypeConfidence:
     figures) while requiring ≥0.7 for ``header`` (the noisiest class).
     """
 
-    def _page_with_header_and_footer(self):
+    def _page_with_header_and_footer(self) -> Page:
         header_words = [_word("PAGE", 100, 30, 200, 60)]
         footer_words = [_word("FOOT", 100, 1400, 200, 1430)]
         body_words = [_word("body", 100, 700, 200, 730)]
@@ -195,7 +204,9 @@ class TestDropLayoutRegionsPerTypeConfidence:
             ]
         )
 
-    def _layout_header_and_footer(self, header_conf=0.5, footer_conf=0.5):
+    def _layout_header_and_footer(
+        self, header_conf: float = 0.5, footer_conf: float = 0.5
+    ) -> PageLayout:
         return PageLayout(
             regions=[
                 LayoutRegion(
@@ -220,7 +231,7 @@ class TestDropLayoutRegionsPerTypeConfidence:
             detector="test",
         )
 
-    def test_per_type_threshold_drops_only_above_per_type_bar(self):
+    def test_per_type_threshold_drops_only_above_per_type_bar(self) -> None:
         # Header @ 0.6, footer @ 0.55. Per-type policy keeps headers
         # only at ≥0.7 but footers at ≥0.5 — so footer drops, header
         # stays.
@@ -240,7 +251,7 @@ class TestDropLayoutRegionsPerTypeConfidence:
         # Footer dropped, header + body kept.
         assert remaining == {"PAGE", "body"}
 
-    def test_per_type_threshold_falls_back_for_missing_types(self):
+    def test_per_type_threshold_falls_back_for_missing_types(self) -> None:
         # Header type missing from the dict — should fall back to
         # DEFAULT_DROP_CONFIDENCE (0.7); footer present at 0.5.
         page = self._page_with_header_and_footer()
@@ -256,7 +267,7 @@ class TestDropLayoutRegionsPerTypeConfidence:
         remaining = {w.text for w in page.words}
         assert remaining == {"PAGE", "body"}
 
-    def test_float_threshold_still_works(self):
+    def test_float_threshold_still_works(self) -> None:
         """Backwards compatibility: float threshold preserves legacy
         single-bar behaviour."""
         page = self._page_with_header_and_footer()
@@ -272,10 +283,10 @@ class TestDropLayoutRegionsPerTypeConfidence:
 
 
 class TestEmitCaptionBlock:
-    def test_returns_none_for_empty(self):
+    def test_returns_none_for_empty(self) -> None:
         assert emit_caption_block([]) is None
 
-    def test_role_label_set(self):
+    def test_role_label_set(self) -> None:
         words = [_word("Fig.", 100, 100, 150, 130), _word("1", 160, 100, 180, 130)]
         block = emit_caption_block(words)
         assert block is not None
@@ -283,7 +294,7 @@ class TestEmitCaptionBlock:
 
 
 class TestReorganizeAcceptsLayoutKwarg:
-    def test_signature_accepts_layout_keyword(self):
+    def test_signature_accepts_layout_keyword(self) -> None:
         # Tiny page: a single line block with two words. Goal here is just
         # to verify reorganize_page(layout=None) is a no-op vs the no-arg
         # call shape (the rest of the reorg tests in tests/ocr/ exercise
@@ -306,7 +317,7 @@ class TestReorganizeSidenoteMaxHeightRatio:
     the kwarg default on ``detect_geometric_sidenotes`` itself).
     """
 
-    def _page_with_body_and_x_cluster(self):
+    def _page_with_body_and_x_cluster(self) -> tuple[Page, list[Word]]:
         """Body column at x=80..600 plus a same-height x-cluster at the
         right margin. Geometric x-only detection tags it; the glyph-size
         gate (when active) rejects it because the cluster height matches
@@ -325,7 +336,7 @@ class TestReorganizeSidenoteMaxHeightRatio:
         )
         return page, same_height_margin
 
-    def _trivial_layout(self):
+    def _trivial_layout(self) -> PageLayout:
         # A full-page text region so ``layout is not None`` triggers Step
         # Layout-1b without dropping any words.
         return PageLayout(
@@ -344,13 +355,13 @@ class TestReorganizeSidenoteMaxHeightRatio:
             detector="test",
         )
 
-    def test_default_none_preserves_legacy_xonly_tagging(self):
+    def test_default_none_preserves_legacy_xonly_tagging(self) -> None:
         page, margin = self._page_with_body_and_x_cluster()
         page.reorganize_page(layout=self._trivial_layout())
         # Legacy x-only detection tags the same-height margin column.
         assert all("layout:sidenote" in w.word_labels for w in margin)
 
-    def test_opt_in_rejects_same_height_cluster(self):
+    def test_opt_in_rejects_same_height_cluster(self) -> None:
         page, margin = self._page_with_body_and_x_cluster()
         page.reorganize_page(
             layout=self._trivial_layout(),
@@ -381,7 +392,7 @@ class TestReorganizeDropLayoutWordsFlag:
     ``Page.reorganize_page`` entry point with a synthetic page.
     """
 
-    def _page_with_body_and_footnote(self):
+    def _page_with_body_and_footnote(self) -> Page:
         # Body paragraph in the upper two-thirds, footnote paragraph
         # near the bottom — wide enough x-extents that geometric heuristics
         # treat the body line as real content.
@@ -400,7 +411,7 @@ class TestReorganizeDropLayoutWordsFlag:
             ]
         )
 
-    def _layout_with_footnote_band(self):
+    def _layout_with_footnote_band(self) -> PageLayout:
         # High-confidence footnote region covering the footnote band, plus
         # a body text region so the body line keeps its layout:text tag.
         return PageLayout(
@@ -427,7 +438,7 @@ class TestReorganizeDropLayoutWordsFlag:
             detector="test",
         )
 
-    def test_default_preserves_footnote_words(self):
+    def test_default_preserves_footnote_words(self) -> None:
         page = self._page_with_body_and_footnote()
         layout = self._layout_with_footnote_band()
         page.reorganize_page(layout=layout)
@@ -439,7 +450,7 @@ class TestReorganizeDropLayoutWordsFlag:
         # Body words obviously also survive.
         assert {"body", "text"}.issubset(remaining_text)
 
-    def test_opt_in_still_preserves_footnote_words(self):
+    def test_opt_in_still_preserves_footnote_words(self) -> None:
         # Even with ``drop_layout_words=True`` (the experimental
         # opt-in), footnote / header / footer / abandoned regions are
         # NEVER dropped — that flag now governs only the two
@@ -454,7 +465,7 @@ class TestReorganizeDropLayoutWordsFlag:
         assert "note" in remaining_text
         assert {"body", "text"}.issubset(remaining_text)
 
-    def test_footnote_words_keep_layout_tag(self):
+    def test_footnote_words_keep_layout_tag(self) -> None:
         # Per-word ``layout:footnote`` tags are stamped by
         # ``tag_words_with_layout`` and survive the rest of the
         # pipeline, so consumers can still dispatch on the per-word
@@ -471,7 +482,7 @@ class TestReorganizeDropLayoutWordsFlag:
 
 
 class TestAssociateCaptions:
-    def test_caption_attached_to_figure(self):
+    def test_caption_attached_to_figure(self) -> None:
         # Body paragraph
         body = _paragraph_block([_line_block([_word("body", 100, 200, 200, 230)])])
         # Caption words at y=720..760, just below the figure's bottom (700)
@@ -523,7 +534,7 @@ class TestAssociateCaptions:
         words_in_caption = caption_block.words
         assert {w.text for w in words_in_caption} == {"Fig.", "1.", "Demo."}
 
-    def test_emit_placeholders_false_skips_illustration_block(self):
+    def test_emit_placeholders_false_skips_illustration_block(self) -> None:
         """ROADMAP "Opt-in suppression of placeholder illustration blocks":
         when the caller asks not to emit placeholders, no illustration-roled
         block is added — but the caption is still emitted as a normal
@@ -588,7 +599,7 @@ class TestAssociateCaptions:
         # body words unchanged).
         assert {w.text for w in page.words} == original_word_texts
 
-    def test_emit_placeholders_default_true_preserves_legacy_behaviour(self):
+    def test_emit_placeholders_default_true_preserves_legacy_behaviour(self) -> None:
         """Default behaviour unchanged: placeholder illustration block
         still emitted when ``emit_placeholders`` is omitted."""
         body = _paragraph_block([_line_block([_word("body", 100, 200, 200, 230)])])
@@ -611,7 +622,7 @@ class TestAssociateCaptions:
         associate_captions(page, layout)  # default
         assert any("illustration" in b.block_role_labels for b in page.items)
 
-    def test_reorganize_page_threads_emit_placeholders_kwarg(self):
+    def test_reorganize_page_threads_emit_placeholders_kwarg(self) -> None:
         """``Page.reorganize_page(emit_illustration_placeholders=False)``
         threads through to ``associate_captions`` so the CLI / downstream
         callers can flip the placeholder emission off without reaching
@@ -654,7 +665,7 @@ class TestAssociateCaptions:
         # All words preserved.
         assert {w.text for w in page.words} == original_word_texts
 
-    def test_low_confidence_figure_skipped(self):
+    def test_low_confidence_figure_skipped(self) -> None:
         body = _paragraph_block([_line_block([_word("body", 100, 200, 200, 230)])])
         page = _make_page([body])
 
@@ -678,7 +689,7 @@ class TestAssociateCaptions:
 
 
 class TestTagWordsWithLayout:
-    def test_word_in_caption_region_gets_tag(self):
+    def test_word_in_caption_region_gets_tag(self) -> None:
         words = [_word("Fig.", 100, 100, 200, 130), _word("body", 100, 600, 200, 630)]
         page = _make_page([_paragraph_block([_line_block(words)])])
         layout = PageLayout(
@@ -709,7 +720,7 @@ class TestTagWordsWithLayout:
         assert word_layout_tags(words[0]) == ["caption"]
         assert word_layout_tags(words[1]) == ["text"]
 
-    def test_low_confidence_region_ignored(self):
+    def test_low_confidence_region_ignored(self) -> None:
         words = [_word("hi", 100, 100, 200, 130)]
         page = _make_page([_paragraph_block([_line_block(words)])])
         layout = PageLayout(
@@ -730,7 +741,7 @@ class TestTagWordsWithLayout:
         assert tag_words_with_layout(page, layout) == 0
         assert word_layout_tags(words[0]) == []
 
-    def test_idempotent(self):
+    def test_idempotent(self) -> None:
         words = [_word("hi", 100, 100, 200, 130)]
         page = _make_page([_paragraph_block([_line_block(words)])])
         layout = PageLayout(
@@ -754,7 +765,11 @@ class TestTagWordsWithLayout:
 
 
 class TestDropFigureInternalWords:
-    def _layout_with_figure(self, fig_box, extra_regions=()):
+    def _layout_with_figure(
+        self,
+        fig_box: tuple[int, int, int, int],
+        extra_regions: Sequence[LayoutRegion] = (),
+    ) -> PageLayout:
         return PageLayout(
             regions=[
                 LayoutRegion(
@@ -772,7 +787,7 @@ class TestDropFigureInternalWords:
             detector="test",
         )
 
-    def test_drops_pure_figure_only_line(self):
+    def test_drops_pure_figure_only_line(self) -> None:
         # Single line, all words inside the figure region only — drop.
         words = [
             _word(t, 100 + 50 * i, 200, 140 + 50 * i, 230)
@@ -785,7 +800,7 @@ class TestDropFigureInternalWords:
         assert n == 3
         assert page.words == []
 
-    def test_preserves_wrap_around_body(self):
+    def test_preserves_wrap_around_body(self) -> None:
         # Two words: one inside the figure (would be tagged figure-only) and
         # one inside an adjacent text region (tagged text-only). They are
         # in DIFFERENT lines — only the figure-only line should drop.
@@ -815,7 +830,7 @@ class TestDropFigureInternalWords:
         assert n == 1
         assert {w.text for w in page.words} == {"real"}
 
-    def test_keeps_line_with_mixed_tags(self):
+    def test_keeps_line_with_mixed_tags(self) -> None:
         # A single line where one word is inside both a figure AND a text
         # region (multi-tagged) should NOT be dropped — that's the wrap-around
         # signal we care about preserving.
@@ -842,7 +857,7 @@ class TestDropFigureInternalWords:
         assert n == 0
         assert {w.text for w in page.words} == {"wrap", "text"}
 
-    def test_keeps_caption_words_inside_figure_bbox(self):
+    def test_keeps_caption_words_inside_figure_bbox(self) -> None:
         # If a caption region overlaps a figure region, caption words have
         # both layout:figure and layout:caption tags — they must NOT be
         # treated as figure-internal noise.
@@ -866,7 +881,7 @@ class TestDropFigureInternalWords:
         assert n == 0
         assert {w.text for w in page.words} == {"Fig.", "1."}
 
-    def test_no_op_without_tagging(self):
+    def test_no_op_without_tagging(self) -> None:
         # If tag_words_with_layout never ran, words have no layout tags →
         # the helper drops nothing (we only act on positive evidence).
         words = [_word("a", 100, 200, 140, 230)]
@@ -877,17 +892,19 @@ class TestDropFigureInternalWords:
 
 
 class TestDetectGeometricSidenotes:
-    def _body_word(self, text, idx, *, x_left=80, x_right=600):
+    def _body_word(
+        self, text: str, idx: int, *, x_left: int = 80, x_right: int = 600
+    ) -> Word:
         # 12 body words stacked vertically — wide x-range establishes
         # the "body column" in the histogram.
         y = 100 + idx * 40
         return _word(text, x_left, y, x_right, y + 30)
 
-    def _make_body(self):
+    def _make_body(self) -> tuple[list[Word], Page]:
         words = [self._body_word(f"body{i}", i) for i in range(12)]
         return words, _make_page([_paragraph_block([_line_block(words)])])
 
-    def test_right_margin_cluster_tagged(self):
+    def test_right_margin_cluster_tagged(self) -> None:
         body_words, page = self._make_body()
         # Add a sidenote: 5 words in a tight column at x=820..900,
         # comfortably beyond the body's right edge of 600 (with page width 1000).
@@ -902,7 +919,7 @@ class TestDetectGeometricSidenotes:
         # Body words must NOT pick up the sidenote tag.
         assert not any("layout:sidenote" in w.word_labels for w in body_words)
 
-    def test_left_margin_cluster_tagged(self):
+    def test_left_margin_cluster_tagged(self) -> None:
         # Body shifted right so x_left=300; sidenote at x=20..100.
         body_words = [
             _word(f"body{i}", 300, 100 + i * 40, 800, 130 + i * 40) for i in range(12)
@@ -918,7 +935,7 @@ class TestDetectGeometricSidenotes:
         assert n == 5
         assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
 
-    def test_below_min_cluster_size_ignored(self):
+    def test_below_min_cluster_size_ignored(self) -> None:
         _body_words, page = self._make_body()
         # Only 2 words in the right margin — below default min_cluster_words=4.
         stray = [
@@ -930,7 +947,7 @@ class TestDetectGeometricSidenotes:
         assert n == 0
         assert not any("layout:sidenote" in w.word_labels for w in stray)
 
-    def test_wide_cluster_rejected(self):
+    def test_wide_cluster_rejected(self) -> None:
         # A "cluster" that spans most of the page width is not a sidenote
         # column — it's noise across the whole page (or a full-width line).
         _body_words, page = self._make_body()
@@ -943,7 +960,7 @@ class TestDetectGeometricSidenotes:
         # The wide spread is well beyond the max_column_width_ratio cap.
         assert n == 0
 
-    def test_glyph_height_filter_accepts_smaller_cluster(self):
+    def test_glyph_height_filter_accepts_smaller_cluster(self) -> None:
         # Body words have height=30 (see _body_word). Sidenote candidates with
         # height=20 are 20/30 ≈ 0.667 → comfortably under the 0.80 ratio bar.
         _body_words, page = self._make_body()
@@ -956,7 +973,7 @@ class TestDetectGeometricSidenotes:
         assert n == 5
         assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
 
-    def test_glyph_height_filter_rejects_body_height_cluster(self):
+    def test_glyph_height_filter_rejects_body_height_cluster(self) -> None:
         # Body words have height=30. Candidate margin words ALSO have
         # height=30 — geometric x-cluster matches but glyph-size says it's
         # the same font as body, so reject.
@@ -970,7 +987,7 @@ class TestDetectGeometricSidenotes:
         assert n == 0
         assert not any("layout:sidenote" in w.word_labels for w in same_height)
 
-    def test_glyph_height_filter_default_none_preserves_legacy(self):
+    def test_glyph_height_filter_default_none_preserves_legacy(self) -> None:
         # Without max_height_ratio, a same-height cluster is still tagged
         # — preserves pre-glyph-size behaviour for callers that don't opt in.
         _body_words, page = self._make_body()
@@ -984,13 +1001,21 @@ class TestDetectGeometricSidenotes:
 
 
 class TestRouteSidenoteReadingOrder:
-    def _sidenote_block(self, text, *, x_left, x_right, y_top=300, y_bot=500):
+    def _sidenote_block(
+        self,
+        text: str,
+        *,
+        x_left: int,
+        x_right: int,
+        y_top: int = 300,
+        y_bot: int = 500,
+    ) -> Block:
         words = [_word(text, x_left, y_top, x_right, y_bot)]
         block = _paragraph_block([_line_block(words)])
         block.block_role_labels = ["sidenote"]
         return block
 
-    def test_right_sidenote_pushed_to_bottom(self):
+    def test_right_sidenote_pushed_to_bottom(self) -> None:
         body_block = _paragraph_block(
             [_line_block([_word("body", 100, 100, 800, 130)])]
         )
@@ -999,9 +1024,10 @@ class TestRouteSidenoteReadingOrder:
 
         n = route_sidenote_reading_order(page)
         assert n == 1
+        assert right_sn.override_page_sort_order is not None
         assert right_sn.override_page_sort_order >= _RIGHT_SIDENOTE_SORT_ORDER
 
-    def test_left_sidenote_pushed_to_top(self):
+    def test_left_sidenote_pushed_to_top(self) -> None:
         body_block = _paragraph_block(
             [_line_block([_word("body", 200, 100, 800, 130)])]
         )
@@ -1010,9 +1036,10 @@ class TestRouteSidenoteReadingOrder:
 
         n = route_sidenote_reading_order(page)
         assert n == 1
+        assert left_sn.override_page_sort_order is not None
         assert left_sn.override_page_sort_order <= _LEFT_SIDENOTE_SORT_ORDER + 100
 
-    def test_multiple_left_sidenotes_preserve_top_to_bottom(self):
+    def test_multiple_left_sidenotes_preserve_top_to_bottom(self) -> None:
         sn_top = self._sidenote_block(
             "top", x_left=20, x_right=120, y_top=200, y_bot=240
         )
@@ -1024,9 +1051,11 @@ class TestRouteSidenoteReadingOrder:
 
         route_sidenote_reading_order(page)
         # Top block should come first (lower override_page_sort_order)
+        assert sn_top.override_page_sort_order is not None
+        assert sn_bot.override_page_sort_order is not None
         assert sn_top.override_page_sort_order < sn_bot.override_page_sort_order
 
-    def test_non_sidenote_blocks_untouched(self):
+    def test_non_sidenote_blocks_untouched(self) -> None:
         body = _paragraph_block([_line_block([_word("body", 100, 100, 800, 130)])])
         body.override_page_sort_order = 5
         page = _make_page([body])
@@ -1036,7 +1065,7 @@ class TestRouteSidenoteReadingOrder:
 
 
 class TestBubbleBlockRolesFromLayout:
-    def test_dominant_caption_words_set_caption_role(self):
+    def test_dominant_caption_words_set_caption_role(self) -> None:
         words = [
             _word("Fig.", 100, 100, 200, 130),
             _word("1.", 210, 100, 240, 130),
@@ -1049,7 +1078,7 @@ class TestBubbleBlockRolesFromLayout:
         assert n == 1
         assert "caption" in block.block_role_labels
 
-    def test_paragraph_role_not_added(self):
+    def test_paragraph_role_not_added(self) -> None:
         # Pure body text should NOT add "paragraph" — it's the default role
         # and adding it pollutes labels.
         words = [_word("hello", 100, 100, 200, 130)]
@@ -1058,13 +1087,13 @@ class TestBubbleBlockRolesFromLayout:
         bubble_block_roles_from_layout([block])
         assert "paragraph" not in block.block_role_labels
 
-    def test_no_tags_no_change(self):
+    def test_no_tags_no_change(self) -> None:
         block = _paragraph_block([_line_block([_word("a", 100, 100, 200, 130)])])
         before = list(block.block_role_labels)
         bubble_block_roles_from_layout([block])
         assert block.block_role_labels == before
 
-    def test_skip_block_already_layout_tagged(self):
+    def test_skip_block_already_layout_tagged(self) -> None:
         words = [_word("a", 100, 100, 200, 130)]
         block = _paragraph_block([_line_block(words)])
         words[0].word_labels.append("layout:caption")
@@ -1073,7 +1102,7 @@ class TestBubbleBlockRolesFromLayout:
         assert n == 0
         assert "caption" not in block.block_role_labels
 
-    def test_non_text_dominates_text(self):
+    def test_non_text_dominates_text(self) -> None:
         # Mixed: 2 caption-tagged + 5 text-tagged → should still pick caption,
         # because "text" is a parent region the model often emits around
         # nested caption / heading regions.
@@ -1111,7 +1140,7 @@ class TestBubbleBlockRolesFromLayout:
 class TestAssociateCaptionsDuplication:
     """Regression tests for #178 — caption duplication across nearby figures."""
 
-    def test_caption_not_duplicated_across_nearby_figures(self):
+    def test_caption_not_duplicated_across_nearby_figures(self) -> None:
         """Two nearby figures must not both claim the same wide caption.
 
         Two overlapping figure regions sit side-by-side (figures overlap each

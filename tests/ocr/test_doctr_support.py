@@ -5,16 +5,24 @@ require the docTR / PyTorch dependencies to be installed. The heavy-weight
 predictor builders are exercised with mocks.
 """
 
+from __future__ import annotations
+
 import sys
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TestGetDefaultDoctrPredictor:
     """Cover the import-error branch of get_default_doctr_predictor."""
 
-    def test_import_error_raises_helpful_error(self, monkeypatch):
+    def test_import_error_raises_helpful_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """When doctr.models is unavailable, the helper should raise ImportError."""
         # Ensure the import inside the function fails by removing doctr.models
         monkeypatch.setitem(sys.modules, "doctr.models", None)
@@ -24,7 +32,7 @@ class TestGetDefaultDoctrPredictor:
         with pytest.raises(ImportError, match="docTR library is required"):
             get_default_doctr_predictor()
 
-    def test_returns_predictor_when_doctr_available(self):
+    def test_returns_predictor_when_doctr_available(self) -> None:
         """When doctr is mocked-in, get_default_doctr_predictor should return its result."""
         fake_predictor = MagicMock(name="fake_predictor")
         fake_module = MagicMock()
@@ -48,7 +56,9 @@ class TestGetDefaultDoctrPredictor:
 class TestGetFinetunedTorchDoctrPredictor:
     """Cover the import-error branch of get_finetuned_torch_doctr_predictor."""
 
-    def test_import_error_when_torch_missing(self, monkeypatch, tmp_path):
+    def test_import_error_when_torch_missing(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         # Force the inline `from torch import load` to fail
         monkeypatch.setitem(sys.modules, "torch", None)
 
@@ -62,7 +72,9 @@ class TestGetFinetunedTorchDoctrPredictor:
                 recognition_pt_file=tmp_path / "reco.pt",
             )
 
-    def test_missing_files_raises_file_not_found(self, monkeypatch, tmp_path):
+    def test_missing_files_raises_file_not_found(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Regression for M-22: missing checkpoint files must raise FileNotFoundError.
 
         Pre-fix, the function silently returned ``None`` and callers crashed
@@ -107,7 +119,9 @@ class TestGetFinetunedTorchDoctrPredictor:
         msg = str(exc_info.value)
         assert "missing_det.pt" in msg or "missing_reco.pt" in msg
 
-    def test_missing_one_file_raises_file_not_found(self, monkeypatch, tmp_path):
+    def test_missing_one_file_raises_file_not_found(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """When only one of the two checkpoints is missing, still raise."""
         # Detection file exists, recognition file does not.
         det_path = tmp_path / "det.pt"
@@ -144,7 +158,9 @@ class TestGetFinetunedTorchDoctrPredictor:
             )
         assert "missing_reco.pt" in str(exc_info.value)
 
-    def test_missing_files_with_str_paths_raises(self, monkeypatch, tmp_path):
+    def test_missing_files_with_str_paths_raises(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Regression for H-13 + M-22: ``str`` paths must hit the same branch.
 
         H-13 fixed ``Path.exists(x)`` (which raised ``AttributeError`` on
@@ -183,7 +199,9 @@ class TestGetFinetunedTorchDoctrPredictor:
                 recognition_pt_file=str(tmp_path / "missing_reco.pt"),
             )
 
-    def test_happy_path_with_existing_files(self, monkeypatch, tmp_path):
+    def test_happy_path_with_existing_files(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """With pretrained files present, the helper should construct a predictor."""
         det_path = tmp_path / "det.pt"
         reco_path = tmp_path / "reco.pt"
@@ -233,7 +251,9 @@ class TestGetFinetunedTorchDoctrPredictor:
         assert fake_predictor.det_predictor is fake_det_predictor
         assert fake_predictor.reco_predictor is fake_reco_predictor
 
-    def test_happy_path_with_custom_vocab(self, monkeypatch, tmp_path):
+    def test_happy_path_with_custom_vocab(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """If vocab is provided explicitly, it should be passed through."""
         det_path = tmp_path / "det.pt"
         reco_path = tmp_path / "reco.pt"
@@ -278,8 +298,8 @@ class TestGetFinetunedTorchDoctrPredictor:
         assert kwargs["vocab"] == "custom_vocab"
 
     def test_det_load_state_dict_failure_names_checkpoint_and_arch(
-        self, monkeypatch, tmp_path
-    ):
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Regression for M-23: a detection-model load_state_dict failure must
         re-raise with the offending checkpoint path and detected architecture
         name in the message.
@@ -343,8 +363,8 @@ class TestGetFinetunedTorchDoctrPredictor:
         assert "size mismatch" in str(exc_info.value.__cause__)
 
     def test_reco_load_state_dict_failure_names_checkpoint_and_arch(
-        self, monkeypatch, tmp_path
-    ):
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Regression for M-23: same contract for the recognition model.
 
         A ``KeyError`` (missing key) raised by torch deep inside
@@ -401,7 +421,9 @@ class TestGetFinetunedTorchDoctrPredictor:
         # Original cause preserved.
         assert isinstance(exc_info.value.__cause__, KeyError)
 
-    def test_arch_construction_skips_pretrained_download(self, monkeypatch, tmp_path):
+    def test_arch_construction_skips_pretrained_download(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Regression for M-24: arch construction must pass ``pretrained=False``.
 
         The next statement after each ``_build_arch`` call is
@@ -477,7 +499,9 @@ class TestGetFinetunedTorchDoctrPredictor:
             "but should be False — load_state_dict overwrites the entire model"
         )
 
-    def test_happy_path_with_cuda_available(self, monkeypatch, tmp_path):
+    def test_happy_path_with_cuda_available(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """When CUDA is available, the helper should use the cuda device strings."""
         det_path = tmp_path / "det.pt"
         reco_path = tmp_path / "reco.pt"
@@ -529,7 +553,9 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
     called. When omitted (default ``None``), it must be called as before.
     """
 
-    def _make_stubs(self, monkeypatch, tmp_path):
+    def _make_stubs(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> tuple[Path, Path, MagicMock]:
         """Create two real (empty) checkpoint files and patch all heavy imports."""
         det_path = tmp_path / "det.pt"
         reco_path = tmp_path / "reco.pt"
@@ -563,7 +589,9 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
 
         return det_path, reco_path, fake_torch
 
-    def test_explicit_device_skips_auto_detection(self, monkeypatch, tmp_path):
+    def test_explicit_device_skips_auto_detection(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Passing device='cpu' must bypass _select_torch_device entirely.
 
         This matters for callers that need reproducible behaviour (e.g. tests
@@ -582,7 +610,9 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
 
         mock_select.assert_not_called()
 
-    def test_explicit_device_is_passed_to_torch_load(self, monkeypatch, tmp_path):
+    def test_explicit_device_is_passed_to_torch_load(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """When device='cpu', torch.load must receive map_location='cpu'."""
         det_path, reco_path, fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
@@ -601,7 +631,9 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
                 f"Expected map_location='cpu', got {call.kwargs.get('map_location')!r}"
             )
 
-    def test_no_device_calls_auto_detection(self, monkeypatch, tmp_path):
+    def test_no_device_calls_auto_detection(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Omitting device= must call _select_torch_device (existing behaviour)."""
         det_path, reco_path, _fake_torch = self._make_stubs(monkeypatch, tmp_path)
 
@@ -623,7 +655,13 @@ class TestGetFinetunedTorchDoctrPredictorDeviceParam:
 class _CheckpointSecurityStubs:
     """Shared stub factory for checkpoint-security test classes."""
 
-    def _make_stubs(self, monkeypatch, tmp_path, *, load_return_value=None):
+    def _make_stubs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+        *,
+        load_return_value: dict[str, object] | None = None,
+    ) -> tuple[Path, Path, MagicMock]:
         """Common stub factory used across security tests."""
         det_path = tmp_path / "det.pt"
         reco_path = tmp_path / "reco.pt"
@@ -672,7 +710,9 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
       this repo pins >= 2.6).
     """
 
-    def test_custom_torch_load_is_forwarded(self, monkeypatch, tmp_path):
+    def test_custom_torch_load_is_forwarded(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """Passing a custom ``torch_load`` callable must be used instead of the
         default ``partial(torch.load, weights_only=True)``.
 
@@ -698,7 +738,9 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
             f"Expected custom_loader to be called twice, got {custom_loader.call_count}"
         )
 
-    def test_custom_torch_load_is_keyword_only(self, monkeypatch, tmp_path):
+    def test_custom_torch_load_is_keyword_only(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """``torch_load`` must be keyword-only so existing positional callers
         are not broken.
         """
@@ -716,7 +758,9 @@ class TestTorchLoadParameter(_CheckpointSecurityStubs):
             "callers are not silently broken"
         )
 
-    def test_default_torch_load_uses_weights_only(self, monkeypatch, tmp_path):
+    def test_default_torch_load_uses_weights_only(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """When no custom ``torch_load`` is supplied, the default must use
         ``weights_only=True`` to prevent arbitrary code execution via
         pickle (PyTorch >= 2.4 requirement; this repo pins >= 2.6).
@@ -750,7 +794,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
     - Validator is applied inside ``_load_det_model`` and ``_load_reco_model``.
     """
 
-    def test_validate_state_dict_accepts_plain_dict_of_tensors(self, monkeypatch):
+    def test_validate_state_dict_accepts_plain_dict_of_tensors(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``_validate_state_dict`` must not raise for a normal state-dict
         (all values are ``torch.Tensor`` instances).
         """
@@ -766,7 +812,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         # Should not raise.
         _validate_state_dict({"layer.weight": fake_tensor}, path="model.pt")
 
-    def test_validate_state_dict_rejects_non_dict(self, monkeypatch):
+    def test_validate_state_dict_rejects_non_dict(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``_validate_state_dict`` must raise ``ValueError`` when the loaded
         object is not a ``dict`` — e.g. a pickled model instance instead of
         a state dict.
@@ -776,7 +824,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         with pytest.raises(ValueError, match="not a dict"):
             _validate_state_dict("this is a string, not a state dict", path="bad.pt")
 
-    def test_validate_state_dict_rejects_dict_with_non_tensor_value(self, monkeypatch):
+    def test_validate_state_dict_rejects_dict_with_non_tensor_value(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """``_validate_state_dict`` must raise ``ValueError`` when the dict
         contains a non-Tensor value — catching checkpoints that smuggled an
         arbitrary Python object as a "weight".
@@ -795,7 +845,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         with pytest.raises(ValueError, match=r"layer\.weight"):
             _validate_state_dict(bad_dict, path="bad.pt")
 
-    def test_validate_state_dict_accepts_empty_dict(self, monkeypatch):
+    def test_validate_state_dict_accepts_empty_dict(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """An empty dict (no keys) is a valid (empty) state dict and must not
         raise — some unit tests exercise this path.
         """
@@ -812,7 +864,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
         # Empty dict is valid (pretrained=False fresh model or test stub).
         _validate_state_dict({}, path="empty.pt")
 
-    def test_validator_is_applied_to_det_checkpoint(self, monkeypatch, tmp_path):
+    def test_validator_is_applied_to_det_checkpoint(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """When the det checkpoint loads a non-dict object, ``_load_det_model``
         must raise ``ValueError`` before attempting ``load_state_dict``.
         """
@@ -831,7 +885,9 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
                 torch_load=custom_loader,
             )
 
-    def test_validator_is_applied_to_reco_checkpoint(self, monkeypatch, tmp_path):
+    def test_validator_is_applied_to_reco_checkpoint(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
         """When the reco checkpoint loads a non-dict object, ``_load_reco_model``
         must raise ``ValueError``.
 
@@ -841,7 +897,7 @@ class TestStateDictValidator(_CheckpointSecurityStubs):
 
         call_count = 0
 
-        def _custom_loader(*args, **kwargs):
+        def _custom_loader(*args: object, **kwargs: object) -> dict[str, object] | str:
             nonlocal call_count
             call_count += 1
             # First call = det (return valid empty dict), second = reco (bad)
@@ -869,7 +925,7 @@ class TestR15ExtractedHelpers:
     - ``_assemble_doctr_predictor`` (det+reco -> wrapped OCRPredictor)
     """
 
-    def test_select_torch_device_cuda(self, monkeypatch):
+    def test_select_torch_device_cuda(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_torch = MagicMock()
         fake_torch.cuda.is_available = MagicMock(return_value=True)
         fake_torch.backends.mps.is_available = MagicMock(return_value=False)
@@ -880,7 +936,7 @@ class TestR15ExtractedHelpers:
 
         assert _select_torch_device() == ("cuda", "cuda:0")
 
-    def test_select_torch_device_mps(self, monkeypatch):
+    def test_select_torch_device_mps(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_torch = MagicMock()
         fake_torch.cuda.is_available = MagicMock(return_value=False)
         fake_torch.backends.mps.is_available = MagicMock(return_value=True)
@@ -891,7 +947,7 @@ class TestR15ExtractedHelpers:
 
         assert _select_torch_device() == ("mps", "mps")
 
-    def test_select_torch_device_cpu(self, monkeypatch):
+    def test_select_torch_device_cpu(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_torch = MagicMock()
         fake_torch.cuda.is_available = MagicMock(return_value=False)
         # No MPS attribute available
@@ -903,7 +959,7 @@ class TestR15ExtractedHelpers:
 
         assert _select_torch_device() == ("cpu", "cpu")
 
-    def test_build_doctr_arch_known_name(self, monkeypatch):
+    def test_build_doctr_arch_known_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_models_mod = MagicMock()
         sentinel = object()
         fake_models_mod.parseq = MagicMock(return_value=sentinel)
@@ -922,14 +978,16 @@ class TestR15ExtractedHelpers:
         assert result is sentinel
         fake_models_mod.parseq.assert_called_once_with(vocab="abc")
 
-    def test_build_doctr_arch_unknown_falls_back_to_crnn(self, monkeypatch):
+    def test_build_doctr_arch_unknown_falls_back_to_crnn(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Unknown recognition-style name should fall back to crnn_vgg16_bn
         sentinel = object()
         # Configure attribute fallback via __getattr__-style explicit attrs
         fake_models_mod_dict = {"crnn_vgg16_bn": MagicMock(return_value=sentinel)}
 
         class _Stub:
-            def __getattr__(self, name):
+            def __getattr__(self, name: str) -> MagicMock:
                 if name in fake_models_mod_dict:
                     return fake_models_mod_dict[name]
                 raise AttributeError(name)
@@ -946,13 +1004,13 @@ class TestR15ExtractedHelpers:
         assert result is sentinel
 
     def test_build_doctr_arch_unknown_detection_style_falls_back_to_db_resnet50(
-        self, monkeypatch
-    ):
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         sentinel = object()
         fake_models_mod_dict = {"db_resnet50": MagicMock(return_value=sentinel)}
 
         class _Stub:
-            def __getattr__(self, name):
+            def __getattr__(self, name: str) -> MagicMock:
                 if name in fake_models_mod_dict:
                     return fake_models_mod_dict[name]
                 raise AttributeError(name)
@@ -968,8 +1026,8 @@ class TestR15ExtractedHelpers:
         assert result is sentinel
 
     def test_assemble_doctr_predictor_attaches_det_and_reco_predictors(
-        self, monkeypatch
-    ):
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         fake_full = MagicMock()
         fake_det_pred = MagicMock()
         fake_reco_pred = MagicMock()
@@ -999,7 +1057,9 @@ class TestR15ExtractedHelpers:
 class TestAssembleDoctrPredictorBatchSize:
     """det_bs / reco_bs kwargs flow through to all three DocTR factories."""
 
-    def _make_fake_models(self):
+    def _make_fake_models(
+        self,
+    ) -> tuple[MagicMock, MagicMock, MagicMock, MagicMock]:
         fake_full = MagicMock(name="full_predictor")
         fake_det_pred = MagicMock(name="det_predictor")
         fake_reco_pred = MagicMock(name="reco_predictor")
@@ -1009,7 +1069,9 @@ class TestAssembleDoctrPredictorBatchSize:
         fake_models.recognition_predictor = MagicMock(return_value=fake_reco_pred)
         return fake_models, fake_full, fake_det_pred, fake_reco_pred
 
-    def test_custom_batch_sizes_forwarded(self, monkeypatch):
+    def test_custom_batch_sizes_forwarded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         fake_models, fake_full, _fake_det_pred, _fake_reco_pred = (
             self._make_fake_models()
         )
@@ -1032,7 +1094,7 @@ class TestAssembleDoctrPredictorBatchSize:
         reco_kwargs = fake_models.recognition_predictor.call_args.kwargs
         assert reco_kwargs["batch_size"] == 256
 
-    def test_defaults_preserved(self, monkeypatch):
+    def test_defaults_preserved(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_models, _fake_full, _, _ = self._make_fake_models()
         monkeypatch.setitem(sys.modules, "doctr.models", fake_models)
 

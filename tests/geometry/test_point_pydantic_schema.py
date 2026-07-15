@@ -7,7 +7,7 @@ from pydantic import TypeAdapter
 from pdomain_book_tools.geometry.point import Point
 
 
-def test_point_type_adapter_does_not_raise():
+def test_point_type_adapter_does_not_raise() -> None:
     # Before the hook was added, TypeAdapter(Point) raised
     # ``pydantic.errors.PydanticSchemaGenerationError: Unable to generate
     # pydantic-core schema for <class 'pdomain_book_tools.geometry.point.Point'>``.
@@ -15,7 +15,7 @@ def test_point_type_adapter_does_not_raise():
     assert adapter is not None
 
 
-def test_point_json_schema_shape():
+def test_point_json_schema_shape() -> None:
     schema = TypeAdapter(Point).json_schema()
     assert schema["type"] == "object"
     props = schema["properties"]
@@ -28,7 +28,7 @@ def test_point_json_schema_shape():
     assert set(schema["required"]) == {"x", "y", "is_normalized"}
 
 
-def test_point_validate_from_dict_roundtrip():
+def test_point_validate_from_dict_roundtrip() -> None:
     adapter = TypeAdapter(Point)
     p = Point(0.5, 0.5, is_normalized=True)
     d = p.to_dict()
@@ -40,7 +40,7 @@ def test_point_validate_from_dict_roundtrip():
     assert dumped == d
 
 
-def test_point_validate_legacy_dict_without_is_normalized():
+def test_point_validate_legacy_dict_without_is_normalized() -> None:
     # from_dict() infers is_normalized when the key is absent; the schema
     # marks the key as required, but legacy data may omit it. We tolerate
     # the omission via from_dict's existing fallback (.get("is_normalized")).

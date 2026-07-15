@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
 
@@ -7,8 +11,13 @@ from pdomain_book_tools.geometry_correction.detectors.textline import (
 )
 from pdomain_book_tools.image_processing.textline_types import LineSamples
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-def _lined_page(h=900, w=700, n_lines=14, top=90, gap=55):
+
+def _lined_page(
+    h: int = 900, w: int = 700, n_lines: int = 14, top: int = 90, gap: int = 55
+) -> NDArray[np.uint8]:
     img = np.zeros((h, w), np.uint8)
     for i in range(n_lines):
         y = top + i * gap
@@ -20,7 +29,9 @@ def _lined_page(h=900, w=700, n_lines=14, top=90, gap=55):
 class _FakeDetector:
     name = "fake"
 
-    def detect(self, binary, *, page_width):
+    def detect(
+        self, binary: NDArray[np.uint8], *, page_width: int
+    ) -> list[LineSamples]:
         return [
             LineSamples(
                 xs=np.arange(page_width, dtype=np.float64), ys=np.full(page_width, 5.0)
@@ -28,7 +39,7 @@ class _FakeDetector:
         ]
 
 
-def test_fake_detector_satisfies_protocol():
+def test_fake_detector_satisfies_protocol() -> None:
     det = _FakeDetector()
     assert isinstance(det, TextlineDetector)  # runtime_checkable Protocol
     out = det.detect(np.zeros((10, 20), np.uint8), page_width=20)
@@ -36,7 +47,7 @@ def test_fake_detector_satisfies_protocol():
     assert out[0].ys.mean() == 5.0
 
 
-def test_morph_centroid_detector_recovers_lines():
+def test_morph_centroid_detector_recovers_lines() -> None:
     det = MorphCentroidDetector()
     assert det.name == "morph_centroid"
     page = _lined_page()
@@ -44,13 +55,13 @@ def test_morph_centroid_detector_recovers_lines():
     assert 12 <= len(lines) <= 14
 
 
-def test_morph_centroid_detector_default_binarization_is_otsu():
+def test_morph_centroid_detector_default_binarization_is_otsu() -> None:
     det = MorphCentroidDetector()
     assert det.binarization == "otsu"
     assert det.binarization_params is None
 
 
-def test_morph_centroid_detector_binarization_param_threaded():
+def test_morph_centroid_detector_binarization_param_threaded() -> None:
     """binarization kwarg is stored and forwarded (smoke test — no GPU needed)."""
     det = MorphCentroidDetector(binarization="sauvola", binarization_params={"k": 0.3})
     assert det.binarization == "sauvola"

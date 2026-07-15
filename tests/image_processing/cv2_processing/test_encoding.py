@@ -39,6 +39,7 @@ class TestEncodeBgrImageAsPng:
 
         buf = encode_bgr_image_as_png(bgr)
         decoded = cv2.imdecode(np.asarray(buf), cv2.IMREAD_COLOR)
+        assert decoded is not None
         # cv2.imdecode returns BGR; should match the input BGR exactly.
         assert decoded.shape == bgr.shape
         # Check the pixel value at (0,0): with the bug, channels are swapped

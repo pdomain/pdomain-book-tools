@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
 
@@ -5,15 +9,18 @@ from pdomain_book_tools.geometry_correction.backends.curvature.image_based impor
     ImageBasedCurvature,
 )
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-def _flat_text(h=300, w=400):
+
+def _flat_text(h: int = 300, w: int = 400) -> NDArray[np.uint8]:
     img = np.full((h, w), 255, np.uint8)
     for y in range(40, h - 40, 18):
         cv2.rectangle(img, (40, y), (w - 40, y + 5), 0, -1)
     return img
 
 
-def _curved_text(h=300, w=400, amp=14):
+def _curved_text(h: int = 300, w: int = 400, amp: int = 14) -> NDArray[np.uint8]:
     img = np.full((h, w), 255, np.uint8)
     xs = np.arange(w)
     for y0 in range(40, h - 40, 18):

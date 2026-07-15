@@ -69,11 +69,14 @@ class GrayscaleConfig:
         except ValueError as exc:
             raise ValueError(f"unknown converter: {d.get('converter')!r}") from exc
         rng = d.get("output_range")
+        flatten_kwargs: dict[str, Any] = d.get("flatten") or {}
+        color2gray_kwargs: dict[str, Any] = d.get("color2gray") or {}
+        clahe_kwargs: dict[str, Any] = d.get("clahe") or {}
         return cls(
-            flatten=FlattenConfig(**(d.get("flatten") or {})),
+            flatten=FlattenConfig(**flatten_kwargs),
             converter=conv,
             channel=d.get("channel", "green"),
-            color2gray=Color2GrayParams(**(d.get("color2gray") or {})),
-            clahe=ClaheConfig(**(d.get("clahe") or {})),
+            color2gray=Color2GrayParams(**color2gray_kwargs),
+            clahe=ClaheConfig(**clahe_kwargs),
             output_range=(int(rng[0]), int(rng[1])) if rng else None,
         )

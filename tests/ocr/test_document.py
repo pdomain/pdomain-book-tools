@@ -1,16 +1,37 @@
+from __future__ import annotations
+
 import json
+from collections.abc import Sized
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from pandas import DataFrame
 
+from pdomain_book_tools.ocr.block import Block
 from pdomain_book_tools.ocr.document import Document
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.provenance import OCRProvenance
+from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from pdomain_book_tools.ocr.document import _TesseractRow
+
+
+def _as_block(node: Word | Block) -> Block:
+    """Narrow a ``Block.items`` element to ``Block``, asserting the shape."""
+    assert isinstance(node, Block)
+    return node
+
+
+def _as_word(node: Word | Block) -> Word:
+    """Narrow a ``Block.items`` element to ``Word``, asserting the shape."""
+    assert isinstance(node, Word)
+    return node
 
 
 @pytest.fixture
-def sample_doctr_output():
+def sample_doctr_output() -> dict[str, object]:
     return {
         "pages": [
             {
@@ -38,7 +59,7 @@ def sample_doctr_output():
 
 
 @pytest.fixture
-def sample_tesseract_output():
+def sample_tesseract_output() -> DataFrame:
     df = DataFrame(
         {
             "level": [1, 2, 3, 4, 5],
@@ -58,18 +79,20 @@ def sample_tesseract_output():
     return df
 
 
-def test_document_to_dict():
+def test_document_to_dict() -> None:
     doc = Document(source_lib="test_lib", source_path=Path("test_path"), pages=[])
     page = Page(page_index=0, width=800, height=1000, blocks=[])
     doc._pages.append(page)
     doc_dict = doc.to_dict()
     assert doc_dict["source_lib"] == "test_lib"
     assert doc_dict["source_path"] == "test_path"
-    assert len(doc_dict["pages"]) == 1
+    doc_pages = doc_dict["pages"]
+    assert isinstance(doc_pages, Sized)
+    assert len(doc_pages) == 1
 
 
-def test_document_from_dict():
-    doc_dict = {
+def test_document_from_dict() -> None:
+    doc_dict: dict[str, object] = {
         "source_lib": "test_lib",
         "source_path": "test_path",
         "pages": [{"page_index": 0, "width": 800, "height": 1000, "items": []}],
@@ -80,7 +103,7 @@ def test_document_from_dict():
     assert len(doc.pages) == 1
 
 
-def test_document_source_path_none_round_trips_as_none():
+def test_document_source_path_none_round_trips_as_none() -> None:
     """Regression test for M-07.
 
     `Document.to_dict` previously did `str(self.source_path)`, which yields
@@ -101,11 +124,11 @@ def test_document_source_path_none_round_trips_as_none():
     assert restored.source_path != Path("None")
 
 
-def test_document_from_dict_tolerates_legacy_none_string():
+def test_document_from_dict_tolerates_legacy_none_string() -> None:
     """Backward-compat: legacy JSON files written before M-07 contain the
     literal string ``"None"`` for missing source paths. ``from_dict`` should
     treat that as ``None`` rather than ``Path("None")``."""
-    doc_dict = {
+    doc_dict: dict[str, object] = {
         "source_lib": "test_lib",
         "source_path": "None",
         "pages": [],
@@ -114,20 +137,22 @@ def test_document_from_dict_tolerates_legacy_none_string():
     assert doc.source_path is None
 
 
-def test_document_to_json_file(tmp_path):
+def test_document_to_json_file(tmp_path: Path) -> None:
     doc = Document(source_lib="test_lib", source_path=Path("test_path"), pages=[])
     page = Page(page_index=0, width=800, height=1000, blocks=[])
     doc._pages.append(page)
     file_path = tmp_path / "test.json"
     doc.to_json_file(file_path)
     with open(file_path, encoding="utf-8") as f:
-        data = json.load(f)
+        data: dict[str, object] = json.load(f)
     assert data["source_lib"] == "test_lib"
     assert data["source_path"] == "test_path"
-    assert len(data["pages"]) == 1
+    data_pages = data["pages"]
+    assert isinstance(data_pages, Sized)
+    assert len(data_pages) == 1
 
 
-def test_document_from_doctr_word_missing_confidence_is_none():
+def test_document_from_doctr_word_missing_confidence_is_none() -> None:
     """L-19: a DocTR word with no ``confidence`` key must surface as
     ``ocr_confidence=None`` (\"unknown\"), not ``0.0`` (\"near certainty
     of error\"). Pre-fix the adapter did
@@ -135,7 +160,7 @@ def test_document_from_doctr_word_missing_confidence_is_none():
     so confidence-based filters and quality reports were silently
     polluted with phantom 0.0-score words.
     """
-    doctr_output = {
+    doctr_output: dict[str, object] = {
         "pages": [
             {
                 "dimensions": [1000, 800],
@@ -160,12 +185,15 @@ def test_document_from_doctr_word_missing_confidence_is_none():
         ]
     }
     doc = Document.from_doctr_output(doctr_output)
-    word = doc.pages[0].items[0].items[0].items[0].items[0]
+    block_l1 = _as_block(doc.pages[0].items[0])
+    block_l2 = _as_block(block_l1.items[0])
+    block_l3 = _as_block(block_l2.items[0])
+    word = _as_word(block_l3.items[0])
     assert word.text == "Hello"
     assert word.ocr_confidence is None
 
 
-def test_document_from_doctr_output(sample_doctr_output):
+def test_document_from_doctr_output(sample_doctr_output: dict[str, object]) -> None:
     doc = Document.from_doctr_output(sample_doctr_output, source_path="test_path")
     assert doc.source_lib == "doctr"
     assert doc.source_path == Path("test_path")
@@ -177,8 +205,8 @@ def test_document_from_doctr_output(sample_doctr_output):
 
 
 def test_document_from_doctr_output_matches_tesseract_nesting_depth(
-    sample_doctr_output, sample_tesseract_output
-):
+    sample_doctr_output: dict[str, object], sample_tesseract_output: DataFrame
+) -> None:
     """Regression test for M-14.
 
     The DocTR adapter previously produced ``Page -> Block(PARAGRAPH) ->
@@ -195,13 +223,13 @@ def test_document_from_doctr_output_matches_tesseract_nesting_depth(
     doctr_doc = Document.from_doctr_output(sample_doctr_output)
     tess_doc = Document.from_tesseract(sample_tesseract_output)
 
-    def category_path(page):
+    def category_path(page: Page) -> tuple[BlockCategory, ...]:
         # Walk leftmost child until a non-Block (Word) is reached, collecting
         # block categories. Returns a tuple like
         # (BLOCK, PARAGRAPH, LINE).
-        path = []
-        node = page.items[0]
-        while hasattr(node, "block_category") and node.block_category is not None:
+        path: list[BlockCategory] = []
+        node: Word | Block = page.items[0]
+        while isinstance(node, Block) and node.block_category is not None:
             path.append(node.block_category)
             if not node.items:
                 break
@@ -226,7 +254,7 @@ def test_document_from_doctr_output_matches_tesseract_nesting_depth(
     assert [w.text for w in doctr_words] == ["Hello"]
 
 
-def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
+def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks() -> None:
     """Regression test for M-15.
 
     DocTR's block export carries both ``"lines"`` (text) and ``"artefacts"``
@@ -245,7 +273,7 @@ def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
     """
     from pdomain_book_tools.ocr.block import BlockCategory, BlockChildType
 
-    doctr_output = {
+    doctr_output: dict[str, object] = {
         "metadata": {},
         "pages": [
             {
@@ -309,14 +337,20 @@ def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
 
     # DocTR's classification (type) and confidence must be preserved so the
     # artefact's identity is not lost.
-    types = sorted(
-        a.additional_block_attributes.get("artefact_type") for a in artefact_blocks
-    )
+    types: list[str] = []
+    for a in artefact_blocks:
+        artefact_type = a.additional_block_attributes.get("artefact_type")
+        assert isinstance(artefact_type, str)
+        types.append(artefact_type)
+    types.sort()
     assert types == ["barcode", "qr_code"]
-    confidences = sorted(
-        a.additional_block_attributes.get("artefact_confidence")
-        for a in artefact_blocks
-    )
+
+    confidences: list[float] = []
+    for a in artefact_blocks:
+        artefact_confidence = a.additional_block_attributes.get("artefact_confidence")
+        assert isinstance(artefact_confidence, float)
+        confidences.append(artefact_confidence)
+    confidences.sort()
     assert confidences == [0.42, 0.88]
 
     # Artefact blocks contribute zero words to ``page.words`` — they are
@@ -324,7 +358,7 @@ def test_document_from_doctr_output_preserves_artefacts_as_role_tagged_blocks():
     assert len(page.words) == 1
 
 
-def test_document_from_doctr_output_tolerates_missing_word_geometry():
+def test_document_from_doctr_output_tolerates_missing_word_geometry() -> None:
     """Regression test for M-16.
 
     The DocTR adapter previously accessed ``word_data["geometry"]`` with
@@ -335,7 +369,7 @@ def test_document_from_doctr_output_tolerates_missing_word_geometry():
     ``bounding_box=None``, consistent with the existing None-bbox
     handling at the block / line / artefact levels.
     """
-    doctr_output = {
+    doctr_output: dict[str, object] = {
         "pages": [
             {
                 "dimensions": [1000, 800],
@@ -388,9 +422,9 @@ def test_document_from_doctr_output_tolerates_missing_word_geometry():
     assert by_text["world"].ocr_confidence == 0.40
 
 
-def test_document_from_doctr_output_normalizes_model_provenance():
+def test_document_from_doctr_output_normalizes_model_provenance() -> None:
     """Task 4: ocr_provenance removed from Page. Document builds provenance but no longer stores it on Page."""
-    doctr_output = {
+    doctr_output: dict[str, object] = {
         "metadata": {
             "source_lib": "doctr-custom",
             "engine_version": "0.12.1",
@@ -415,7 +449,7 @@ def test_document_from_doctr_output_normalizes_model_provenance():
     assert len(doc.pages) == 1
 
 
-def test_document_from_tesseract(sample_tesseract_output):
+def test_document_from_tesseract(sample_tesseract_output: DataFrame) -> None:
     doc = Document.from_tesseract(sample_tesseract_output, source_path="test_path")
     assert doc.source_lib == "tesseract"
     assert doc.source_path == Path("test_path")
@@ -427,7 +461,7 @@ def test_document_from_tesseract(sample_tesseract_output):
     assert not hasattr(doc.pages[0], "ocr_provenance")
 
 
-def test_document_from_tesseract_treats_conf_minus_one_as_none():
+def test_document_from_tesseract_treats_conf_minus_one_as_none() -> None:
     """Regression test for H-10.
 
     Tesseract returns ``conf == -1`` for rejected/empty words. That sentinel
@@ -474,7 +508,7 @@ def test_document_from_tesseract_treats_conf_minus_one_as_none():
     assert mean_conf == 95.0
 
 
-def test_document_from_tesseract_skips_nan_text_rows():
+def test_document_from_tesseract_skips_nan_text_rows() -> None:
     """Regression test for H-11.
 
     Tesseract emits rejected/empty rows where the ``text`` cell is a pandas
@@ -515,7 +549,7 @@ def test_document_from_tesseract_skips_nan_text_rows():
     assert "Hello" in word_texts
 
 
-def test_document_from_tesseract_handles_noncontiguous_block_numbers():
+def test_document_from_tesseract_handles_noncontiguous_block_numbers() -> None:
     """Regression test for H-18.
 
     Tesseract's hierarchy fields (``block_num``, ``par_num``, ``line_num``)
@@ -586,7 +620,7 @@ def test_document_from_tesseract_handles_noncontiguous_block_numbers():
 # ---------------------------------------------------------------------------
 
 
-def test_word_from_doctr_preserves_confidence_and_geometry():
+def test_word_from_doctr_preserves_confidence_and_geometry() -> None:
     word = Document._word_from_doctr(
         {
             "value": "Hello",
@@ -599,20 +633,20 @@ def test_word_from_doctr_preserves_confidence_and_geometry():
     assert word.bounding_box is not None
 
 
-def test_word_from_doctr_missing_geometry_yields_none_bbox():
+def test_word_from_doctr_missing_geometry_yields_none_bbox() -> None:
     # M-16: missing geometry must NOT raise; the word survives with bbox=None
     word = Document._word_from_doctr({"value": "x", "confidence": 0.5})
     assert word.text == "x"
     assert word.bounding_box is None
 
 
-def test_word_from_doctr_missing_confidence_is_none_not_zero():
+def test_word_from_doctr_missing_confidence_is_none_not_zero() -> None:
     # L-19: missing confidence is "unknown", not "0% confident"
     word = Document._word_from_doctr({"value": "x"})
     assert word.ocr_confidence is None
 
 
-def test_line_from_doctr_builds_line_block_with_words():
+def test_line_from_doctr_builds_line_block_with_words() -> None:
     line = Document._line_from_doctr(
         {
             "geometry": [[0.1, 0.1], [0.5, 0.2]],
@@ -626,7 +660,9 @@ def test_line_from_doctr_builds_line_block_with_words():
     assert line.bounding_box is not None
 
 
-def test_block_from_doctr_wraps_in_block_paragraph_line_and_yields_artefact_siblings():
+def test_block_from_doctr_wraps_in_block_paragraph_line_and_yields_artefact_siblings() -> (
+    None
+):
     blocks = Document._block_from_doctr(
         {
             "geometry": [[0.1, 0.1], [0.5, 0.5]],
@@ -650,12 +686,15 @@ def test_block_from_doctr_wraps_in_block_paragraph_line_and_yields_artefact_sibl
     canonical, artefact = blocks
 
     # Canonical: BLOCK -> PARAGRAPH -> LINE -> Word
+    assert canonical.block_category is not None
     assert canonical.block_category.name == "BLOCK"
-    paragraph = canonical.items[0]
+    paragraph = _as_block(canonical.items[0])
+    assert paragraph.block_category is not None
     assert paragraph.block_category.name == "PARAGRAPH"
-    line = paragraph.items[0]
+    line = _as_block(paragraph.items[0])
+    assert line.block_category is not None
     assert line.block_category.name == "LINE"
-    assert [w.text for w in line.items] == ["hi"]
+    assert [_as_word(w).text for w in line.items] == ["hi"]
 
     # Artefact: empty items, role-labelled, attrs preserved
     assert artefact.items == []
@@ -665,7 +704,7 @@ def test_block_from_doctr_wraps_in_block_paragraph_line_and_yields_artefact_sibl
     assert artefact.additional_block_attributes["artefact_confidence"] == 0.4
 
 
-def test_artefact_from_doctr_with_no_metadata_has_empty_attrs():
+def test_artefact_from_doctr_with_no_metadata_has_empty_attrs() -> None:
     # ``Block`` normalizes ``additional_block_attributes`` to ``{}`` even
     # when ``None`` is passed in, so what we pin here is that no spurious
     # type/confidence keys leak in when DocTR didn't supply any.
@@ -674,11 +713,11 @@ def test_artefact_from_doctr_with_no_metadata_has_empty_attrs():
     assert not block.additional_block_attributes
 
 
-def test_page_from_doctr_uses_dimensions_and_threads_original_text():
+def test_page_from_doctr_uses_dimensions_and_threads_original_text() -> None:
     """Task 4: ocr_provenance and original_ocr_tool_text removed from Page.
     _page_from_doctr still accepts the params but discards them (TODO Task 5).
     """
-    provenance = OCRProvenance(engine="doctr", models=[], engine_version="x")
+    provenance = OCRProvenance(engine="doctr", models=(), engine_version="x")
     page = Document._page_from_doctr(
         page_data={
             "dimensions": [1000, 800],
@@ -802,7 +841,7 @@ def _tesseract_minimal_df():
     )
 
 
-def test_tesseract_filter_level_applies_equality_filters():
+def test_tesseract_filter_level_applies_equality_filters() -> None:
     df = _tesseract_minimal_df()
     rows = Document._tesseract_filter_level(df, level=5.0, page_num=1, block_num=1)
     assert len(rows) == 1
@@ -810,10 +849,12 @@ def test_tesseract_filter_level_applies_equality_filters():
     assert word["text"] == "Hello"
 
 
-def test_word_from_tesseract_drops_negative_conf_sentinel():
+def test_word_from_tesseract_drops_negative_conf_sentinel() -> None:
     df = _tesseract_minimal_df()
     word_row = next(Document._tesseract_filter_level(df, level=5.0).itertuples())
-    word = Document._word_from_tesseract(word_row)
+    word = Document._word_from_tesseract(
+        cast("_TesseractRow", cast("object", word_row))
+    )
     assert word.text == "Hello"
     # conf=88 > 0, so this is preserved (the sentinel-drop test is in
     # ``_tesseract_confidence`` coverage; here we just pin that real
@@ -821,7 +862,7 @@ def test_word_from_tesseract_drops_negative_conf_sentinel():
     assert word.ocr_confidence == 88.0
 
 
-def test_tesseract_confidence_treats_nan_as_none():
+def test_tesseract_confidence_treats_nan_as_none() -> None:
     """A NaN ``conf`` cell must be excluded from aggregation, not averaged in.
 
     Tesseract can emit a ``NaN`` confidence for rejected/empty rows. ``NaN``
@@ -839,7 +880,7 @@ def test_tesseract_confidence_treats_nan_as_none():
     assert Document._tesseract_confidence("garbage") is None
 
 
-def test_tesseract_text_treats_nan_as_empty_string():
+def test_tesseract_text_treats_nan_as_empty_string() -> None:
     """A NaN ``text`` cell must render as ``""``, never the string ``'nan'``."""
     import math
 
@@ -849,7 +890,7 @@ def test_tesseract_text_treats_nan_as_empty_string():
     assert Document._tesseract_text(None) == ""
 
 
-def test_block_from_tesseract_handles_non_contiguous_ids():
+def test_block_from_tesseract_handles_non_contiguous_ids() -> None:
     """H-18 regression: filtering must use the row's actual ids."""
     df = DataFrame(
         [
@@ -927,6 +968,8 @@ def test_block_from_tesseract_handles_non_contiguous_ids():
         ]
     )
     block_row = next(Document._tesseract_filter_level(df, level=2.0).itertuples())
-    block = Document._block_from_tesseract(block_row, df=df, page_num=1)
+    block = Document._block_from_tesseract(
+        cast("_TesseractRow", cast("object", block_row)), df=df, page_num=1
+    )
     word_texts = [w.text for w in block.words]
     assert word_texts == ["non-contig"]

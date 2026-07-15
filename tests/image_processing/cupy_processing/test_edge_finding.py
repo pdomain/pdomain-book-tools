@@ -1,13 +1,35 @@
 """Tests for cupy_processing.edge_finding module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def asarray(self, a: object) -> cupy.ndarray[np.generic]: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestFindEdgesGpu:
-    def test_blank_image_returns_full_extents(self, cupy_module):
+    def test_blank_image_returns_full_extents(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
@@ -20,7 +42,7 @@ class TestFindEdgesGpu:
         assert minY == 0
         assert maxY == 100
 
-    def test_central_block_detected(self, cupy_module):
+    def test_central_block_detected(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
@@ -36,7 +58,7 @@ class TestFindEdgesGpu:
         assert minY <= 50
         assert maxY >= 149
 
-    def test_returns_python_ints(self, cupy_module):
+    def test_returns_python_ints(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             find_edges_gpu,
@@ -49,7 +71,7 @@ class TestFindEdgesGpu:
         )
         assert all(isinstance(v, int) for v in result)
 
-    def test_threshold_uses_255_not_256(self, cupy_module):
+    def test_threshold_uses_255_not_256(self, cupy_module: _CupyModule) -> None:
         """Regression for M-02: threshold multiplier must be `* 255`, not `* 256`.
 
         A column with exactly `pixel_count_columns` fully-bright (255) pixels
@@ -80,7 +102,7 @@ class TestFindEdgesGpu:
         assert minY == 100, f"expected minY=100 (row detected), got {minY}"
         assert maxY == 100, f"expected maxY=100 (row detected), got {maxY}"
 
-    def test_fuzzy_px_override_zero(self, cupy_module):
+    def test_fuzzy_px_override_zero(self, cupy_module: _CupyModule) -> None:
         """fuzzy_px_w_override=0 should be respected (not treated as falsy)."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
@@ -99,7 +121,7 @@ class TestFindEdgesGpu:
         assert minX <= 40
         assert maxX >= 59
 
-    def test_matches_cpu_reference(self, cupy_module):
+    def test_matches_cpu_reference(self, cupy_module: _CupyModule) -> None:
         """GPU result must be within ±2 pixels of the CPU reference on the same image."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
@@ -120,7 +142,7 @@ class TestFindEdgesGpu:
         for cpu_val, gpu_val in zip(cpu, gpu, strict=False):
             assert abs(cpu_val - gpu_val) <= 2, f"CPU={cpu} GPU={gpu}"
 
-    def test_np_uint8_find_edges_wrapper(self, cupy_module):
+    def test_np_uint8_find_edges_wrapper(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.edge_finding import (
             np_uint8_find_edges,
         )
@@ -136,7 +158,9 @@ class TestFindEdgesGpu:
         assert minY <= 20
         assert maxY >= 79
 
-    def test_border_convolution_matches_cpu_zero_padding(self, cupy_module):
+    def test_border_convolution_matches_cpu_zero_padding(
+        self, cupy_module: _CupyModule
+    ) -> None:
         """GPU convolution boundary mode must match CPU zero-padding contract.
 
         np.convolve(mode='same') zero-pads outside the array. convolve1d with

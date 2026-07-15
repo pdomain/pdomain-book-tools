@@ -1,18 +1,27 @@
+from __future__ import annotations
+
 import datetime
 import json
 import os
 from difflib import unified_diff
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.ocr.block import Block
 from pdomain_book_tools.ocr.document import Document
 from pdomain_book_tools.ocr.reorganize_page_utils import (
     build_word_seeded_row_blocks,
     validate_word_preservation,
 )
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from _pytest.mark import ParameterSet
+
+    from pdomain_book_tools.ocr.page import Page
 
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"
@@ -112,12 +121,11 @@ def test_seeded_row_blocks_keep_single_word_component() -> None:
     )
 
     assert row_blocks is not None
-    post_words = [
-        word
-        for paragraph in row_blocks.items
-        for line in paragraph.lines
-        for word in line.words
-    ]
+    post_words: list[Word] = []
+    for paragraph in row_blocks.items:
+        assert isinstance(paragraph, Block)
+        for line in paragraph.lines:
+            post_words.extend(line.words)
     drops = validate_word_preservation(pre_words, post_words)
     assert drops == [], drops
     assert any((w.text or "") == "PREFACE." for w in post_words), (
@@ -171,7 +179,7 @@ def run_dir() -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _wipe_text_outputs():
+def wipe_text_outputs() -> None:
     """Wipe per-run text output directories at session start.
 
     The text-comparison output dirs (``current`` / ``diff``) have no
@@ -198,7 +206,7 @@ def _wipe_text_outputs():
         shutil.rmtree(d, ignore_errors=True)
 
 
-def _load_fixture_page(case_name: str):
+def _load_fixture_page(case_name: str) -> Page:
     doc_dict = json.loads((INPUT_DIR / f"{case_name}.json").read_text(encoding="utf-8"))
     page = Document.from_dict(doc_dict).pages[0]
     page.name = case_name
@@ -238,7 +246,7 @@ KNOWN_FAILING_BASELINES: dict[str, str] = {
 }
 
 
-def _all_baseline_cases() -> list:
+def _all_baseline_cases() -> list[str | ParameterSet]:
     """Enumerate every case that has both an OCR fixture and a baseline.
 
     Auto-discovery so adding a new fixture (its `.png` + `.json` + a
@@ -250,7 +258,7 @@ def _all_baseline_cases() -> list:
     """
     if not TEXT_BASELINE_DIR.exists():
         return []
-    cases = []
+    cases: list[str | ParameterSet] = []
     for baseline in sorted(TEXT_BASELINE_DIR.glob("*.reorganize.txt")):
         case = baseline.stem.replace(".reorganize", "")
         if (INPUT_DIR / f"{case}.png").exists() and (

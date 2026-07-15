@@ -1,7 +1,40 @@
-from collections.abc import Mapping
+from __future__ import annotations
+
 from logging import getLogger
-from os import PathLike
 from pathlib import Path
+from typing import TYPE_CHECKING, Protocol, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+    from os import PathLike
+
+    from doctr.models.predictor import OCRPredictor
+
+    class _DoctrModel(Protocol):
+        """Structural contract for a loaded/loadable DocTR det/reco model.
+
+        Matches only the ``torch.nn.Module`` surface this module actually
+        calls (``.to()`` / ``.load_state_dict()``); ``unittest.mock.MagicMock``
+        (used throughout the test suite) satisfies this structurally via its
+        typed ``__getattr__``.
+        """
+
+        def to(self, device: str) -> _DoctrModel: ...
+        def load_state_dict(self, state_dict: Mapping[str, object]) -> object: ...
+
+    class _DoctrModelsModule(Protocol):
+        """Structural contract for the (possibly mocked) ``doctr.models`` module.
+
+        Only ``getattr(doctr_models, arch_name)`` is used, so any object
+        exposing arbitrary architecture-factory attributes satisfies this —
+        including a real module (``types.ModuleType``, whose ``__getattr__``
+        typeshed stub is equally permissive) and ``unittest.mock.MagicMock``.
+        """
+
+        def __getattr__(self, name: str, /) -> Callable[..., _DoctrModel]: ...
+
+    TorchLoadFn = Callable[..., object]
+    BuildArchFn = Callable[..., _DoctrModel]
 
 logger = getLogger(__name__)
 
@@ -106,7 +139,7 @@ def _detect_detection_arch(state_dict: Mapping[str, object]) -> str:
 def get_default_doctr_predictor(
     det_bs: int = 2,
     reco_bs: int = 128,
-):
+) -> OCRPredictor:
     """Get the pre-trained OCR predictor from the doctr library."""
     try:
         from doctr.models import (
@@ -150,7 +183,9 @@ def _select_torch_device() -> tuple[str, str]:
     return "cpu", "cpu"
 
 
-def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # doctr.models has no stubs
+def _build_doctr_arch(
+    arch_name: str, doctr_models: _DoctrModelsModule | None, **kwargs: object
+) -> _DoctrModel:
     """Resolve a DocTR model factory by name with a safe fallback.
 
     Looks up ``arch_name`` on the (possibly mocked) ``doctr.models``
@@ -169,7 +204,16 @@ def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):  # pyright: ignor
         db_resnet50,
     )
 
-    factory = getattr(doctr_models, arch_name, None) if doctr_models else None  # pyright: ignore[reportUnknownArgumentType]
+    # getattr's non-literal-name overload always resolves to Any; cast to the
+    # honest declared factory type instead of letting the Any propagate into
+    # (and confuse the narrowing of) the ``factory`` variable below.
+    factory: Callable[..., _DoctrModel] | None = (
+        cast(
+            "Callable[..., _DoctrModel] | None", getattr(doctr_models, arch_name, None)
+        )
+        if doctr_models
+        else None
+    )
     if factory is None:
         fallback = (
             "db_resnet50"
@@ -179,21 +223,24 @@ def _build_doctr_arch(arch_name: str, doctr_models, **kwargs):  # pyright: ignor
             else "crnn_vgg16_bn"
         )
         factory = (
-            getattr(doctr_models, fallback)  # pyright: ignore[reportUnknownArgumentType]
+            cast("Callable[..., _DoctrModel]", getattr(doctr_models, fallback))
             if doctr_models
-            else (db_resnet50 if fallback == "db_resnet50" else crnn_vgg16_bn)
+            else cast(
+                "Callable[..., _DoctrModel]",
+                db_resnet50 if fallback == "db_resnet50" else crnn_vgg16_bn,
+            )
         )
-    return factory(**kwargs)  # pyright: ignore[reportUnknownArgumentType]  # kwargs from unannotated **kwargs param
+    return factory(**kwargs)
 
 
-def _assemble_doctr_predictor(  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque DocTR model types
-    det_model,
-    reco_model,
+def _assemble_doctr_predictor(
+    det_model: _DoctrModel,
+    reco_model: _DoctrModel,
     *,
     pretrained: bool,
     det_bs: int = 2,
     reco_bs: int = 128,
-):
+) -> OCRPredictor:
     """Wrap loaded det/reco models into a DocTR ``OCRPredictor``.
 
     Builds the full ``ocr_predictor`` plus the standalone
@@ -265,7 +312,11 @@ def _validate_state_dict(obj: object, *, path: str) -> None:
             "Ensure the checkpoint was saved with model.state_dict() "
             "and comes from a trusted source."
         )
-    for key, value in obj.items():
+    # isinstance against the unparameterized dict erases the key/value types
+    # to Unknown; the cast restores the honest key/value types this function
+    # actually validates (str keys, arbitrary values checked below).
+    obj_dict = cast("dict[str, object]", obj)
+    for key, value in obj_dict.items():
         if not isinstance(value, _torch.Tensor):
             raise ValueError(
                 f"Checkpoint {path!r}: value for key {key!r} is not a "
@@ -274,14 +325,14 @@ def _validate_state_dict(obj: object, *, path: str) -> None:
             )
 
 
-def _load_det_model(  # pyright: ignore[reportUnknownParameterType]
+def _load_det_model(
     *,
     det_path: Path,
-    torch_load,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: torch.load; returns dict[str, Tensor]
+    torch_load: TorchLoadFn,
     device: str,
     device_nbr: str,
-    build_arch,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: arch factory callable
-):
+    build_arch: BuildArchFn,
+) -> _DoctrModel:
     """Load and return a DocTR detection model from ``det_path``.
 
     Architecture is read from the ``.arch`` sidecar when present and falls
@@ -293,28 +344,31 @@ def _load_det_model(  # pyright: ignore[reportUnknownParameterType]
     so the offending file and detected arch surface in the message
     instead of a bare framework error (M-23).
     """
-    det_params = torch_load(det_path, map_location=device_nbr)  # pyright: ignore[reportUnknownVariableType]
+    det_params = torch_load(det_path, map_location=device_nbr)
     _validate_state_dict(det_params, path=str(det_path))
-    det_arch_name = _read_arch_sidecar(det_path) or _detect_detection_arch(det_params)  # pyright: ignore[reportUnknownArgumentType]
-    det_model = build_arch(det_arch_name, pretrained=False).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+    # _validate_state_dict raises unless obj is a dict; safe to treat as a
+    # state_dict-shaped mapping from here on.
+    det_state = cast("Mapping[str, object]", det_params)
+    det_arch_name = _read_arch_sidecar(det_path) or _detect_detection_arch(det_state)
+    det_model = build_arch(det_arch_name, pretrained=False).to(device)
     try:
-        det_model.load_state_dict(det_params)  # pyright: ignore[reportUnknownMemberType]
+        det_model.load_state_dict(det_state)
     except (RuntimeError, KeyError) as e:
         raise RuntimeError(
             f"Failed to load DocTR detection checkpoint {det_path} into architecture {det_arch_name!r}: {e}"
         ) from e
-    return det_model  # pyright: ignore[reportUnknownVariableType]
+    return det_model
 
 
-def _load_reco_model(  # pyright: ignore[reportUnknownParameterType]
+def _load_reco_model(
     *,
     reco_path: Path,
     vocab: str,
-    torch_load,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: torch.load; returns dict[str, Tensor]
+    torch_load: TorchLoadFn,
     device: str,
     device_nbr: str,
-    build_arch,  # pyright: ignore[reportUnknownParameterType, reportMissingParameterType]  # opaque: arch factory callable
-):
+    build_arch: BuildArchFn,
+) -> _DoctrModel:
     """Load and return a DocTR recognition model from ``reco_path``.
 
     Same ``pretrained=False`` reasoning as :func:`_load_det_model`: the
@@ -324,28 +378,31 @@ def _load_reco_model(  # pyright: ignore[reportUnknownParameterType]
     ``pretrained_backbone`` kwarg, so a ``TypeError`` triggers a retry
     without it. Load failures are wrapped (M-23).
     """
-    reco_params = torch_load(reco_path, map_location=device_nbr)  # pyright: ignore[reportUnknownVariableType]
+    reco_params = torch_load(reco_path, map_location=device_nbr)
     _validate_state_dict(reco_params, path=str(reco_path))
+    # _validate_state_dict raises unless obj is a dict; safe to treat as a
+    # state_dict-shaped mapping from here on.
+    reco_state = cast("Mapping[str, object]", reco_params)
     reco_arch_name = _read_arch_sidecar(reco_path) or _detect_recognition_arch(
-        reco_params  # pyright: ignore[reportUnknownArgumentType]
+        reco_state
     )
-    reco_kwargs = {
+    reco_kwargs: dict[str, object] = {
         "pretrained": False,
         "pretrained_backbone": False,
         "vocab": vocab,
     }
     try:
-        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
     except TypeError:
         _ = reco_kwargs.pop("pretrained_backbone", None)
-        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]
+        reco_model = build_arch(reco_arch_name, **reco_kwargs).to(device)
     try:
-        reco_model.load_state_dict(reco_params)  # pyright: ignore[reportUnknownMemberType]
+        reco_model.load_state_dict(reco_state)
     except (RuntimeError, KeyError) as e:
         raise RuntimeError(
             f"Failed to load DocTR recognition checkpoint {reco_path} into architecture {reco_arch_name!r}: {e}"
         ) from e
-    return reco_model  # pyright: ignore[reportUnknownVariableType]
+    return reco_model
 
 
 def get_finetuned_torch_doctr_predictor(
@@ -353,13 +410,13 @@ def get_finetuned_torch_doctr_predictor(
     recognition_pt_file: str | PathLike[str],
     vocab: str = "",
     pretrained: bool = True,
-    pretrained_backbone: bool = True,  # pyright: ignore[reportUnusedParameter]  # public API; _load_reco_model hardcodes pretrained_backbone=False
+    pretrained_backbone: bool = True,  # public API; _load_reco_model hardcodes pretrained_backbone=False
     device: str | None = None,
     *,
     det_bs: int = 2,
     reco_bs: int = 128,
-    torch_load=None,  # pyright: ignore[reportMissingParameterType]
-):
+    torch_load: TorchLoadFn | None = None,
+) -> OCRPredictor:
     """Load a fine-tuned DocTR OCR predictor from local ``.pt`` checkpoint files.
 
     Parameters
@@ -416,7 +473,7 @@ def get_finetuned_torch_doctr_predictor(
     _ = (crnn_vgg16_bn, db_resnet50)
     _doctr_models = _sys.modules.get("doctr.models")
 
-    def _build_arch(arch_name: str, **kwargs: object) -> object:
+    def _build_arch(arch_name: str, **kwargs: object) -> _DoctrModel:
         """Closure adapter: bind ``_doctr_models`` to the module-level helper."""
         return _build_doctr_arch(arch_name, _doctr_models, **kwargs)
 
@@ -437,7 +494,7 @@ def get_finetuned_torch_doctr_predictor(
     logger.info("Using device: %s", device)
 
     # ---- Detection model -------------------------------------------------
-    det_model = _load_det_model(  # pyright: ignore[reportUnknownVariableType]
+    det_model = _load_det_model(
         det_path=det_path,
         torch_load=torch_load,
         device=device,
@@ -458,7 +515,7 @@ def get_finetuned_torch_doctr_predictor(
         )
 
     # ---- Recognition model ----------------------------------------------
-    reco_model = _load_reco_model(  # pyright: ignore[reportUnknownVariableType]
+    reco_model = _load_reco_model(
         reco_path=reco_path,
         vocab=vocab,
         torch_load=torch_load,
@@ -469,4 +526,4 @@ def get_finetuned_torch_doctr_predictor(
 
     return _assemble_doctr_predictor(
         det_model, reco_model, pretrained=pretrained, det_bs=det_bs, reco_bs=reco_bs
-    )  # pyright: ignore[reportUnknownArgumentType]
+    )

@@ -1,5 +1,7 @@
 """Coverage tests for ocr.provenance helpers."""
 
+from __future__ import annotations
+
 import pytest
 
 from pdomain_book_tools.ocr.provenance import (
@@ -43,7 +45,7 @@ class TestOCRProvenance:
         p = OCRProvenance(
             engine="doctr",
             engine_version="0.8.1",
-            models=[OCRModelProvenance(name="m1")],
+            models=(OCRModelProvenance(name="m1"),),
             config_fingerprint="fp",
         )
         d = p.to_dict()
@@ -107,7 +109,12 @@ class TestOCRProvenanceImmutability:
     """
 
     def test_models_is_tuple_not_list(self):
-        p = OCRProvenance(engine="x", models=[OCRModelProvenance(name="m1")])
+        # Deliberately passes a list to the tuple-typed field: the back-compat
+        # coercion in __post_init__ is exactly what this test pins.
+        p = OCRProvenance(
+            engine="x",
+            models=[OCRModelProvenance(name="m1")],  # pyright: ignore[reportArgumentType]
+        )
         assert isinstance(p.models, tuple)
 
     def test_models_default_is_tuple(self):
@@ -124,7 +131,10 @@ class TestOCRProvenanceImmutability:
         # Back-compat: callers passing a list still work; it's converted.
         p = OCRProvenance(
             engine="x",
-            models=[OCRModelProvenance(name="m1"), OCRModelProvenance(name="m2")],
+            models=[  # pyright: ignore[reportArgumentType]
+                OCRModelProvenance(name="m1"),
+                OCRModelProvenance(name="m2"),
+            ],
         )
         assert p.models == (
             OCRModelProvenance(name="m1"),

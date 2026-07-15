@@ -50,7 +50,7 @@ class TestMapContentOntoScaledCanvas:
         "alignment",
         [Alignment.TOP, Alignment.CENTER, Alignment.BOTTOM, Alignment.DEFAULT],
     )
-    def test_alignment_options(self, alignment):
+    def test_alignment_options(self, alignment: Alignment):
         img = _make_image(165, 100)
         out = map_content_onto_scaled_canvas(img, force_align=alignment)
         assert out.shape[0] >= img.shape[0]

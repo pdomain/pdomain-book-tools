@@ -1,8 +1,11 @@
 """Tests for cv2_tesseract OCR adapter module."""
 
+from __future__ import annotations
+
 import importlib.util
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import numpy as np
@@ -14,6 +17,9 @@ from pdomain_book_tools.ocr.cv2_tesseract import tesseract_ocr_cv2_image
 from pdomain_book_tools.ocr.document import Document
 from pdomain_book_tools.ocr.page import Page
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
 # Check if pytesseract is available for integration tests
 _pytesseract_available = importlib.util.find_spec("pytesseract") is not None
 _tesseract_binary_available = shutil.which("tesseract") is not None
@@ -23,17 +29,17 @@ class TestTesseractOcrCv2Image:
     """Test the main OCR function."""
 
     @pytest.fixture
-    def sample_grayscale_image(self):
+    def sample_grayscale_image(self) -> NDArray[np.uint8]:
         """Create a sample grayscale image."""
         return np.random.randint(0, 255, size=(100, 100), dtype=np.uint8)
 
     @pytest.fixture
-    def sample_color_image(self):
+    def sample_color_image(self) -> NDArray[np.uint8]:
         """Create a sample color image."""
         return np.random.randint(0, 255, size=(100, 100, 3), dtype=np.uint8)
 
     @pytest.fixture
-    def mock_tesseract_dataframe(self):
+    def mock_tesseract_dataframe(self) -> pd.DataFrame:
         """Mock Tesseract dataframe output."""
         return pd.DataFrame(
             {
@@ -53,7 +59,7 @@ class TestTesseractOcrCv2Image:
         )
 
     @pytest.fixture
-    def mock_tesseract_string(self):
+    def mock_tesseract_string(self) -> str:
         """Mock Tesseract string output."""
         return "test\n"
 
@@ -62,13 +68,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_with_grayscale_image(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """Test OCR with grayscale image."""
         # Setup mocks
         mock_image_to_data.return_value = mock_tesseract_dataframe
@@ -115,14 +121,14 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_with_color_image(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        mock_cvtColor,
-        sample_color_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        mock_cvtColor: Mock,
+        sample_color_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """Test OCR with color image (should convert to grayscale)."""
         # Setup mocks
         mock_grayscale = np.random.randint(0, 255, size=(100, 100), dtype=np.uint8)
@@ -155,13 +161,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_with_empty_source_path(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """Test OCR with empty source path."""
         # Setup mocks
         mock_image_to_data.return_value = mock_tesseract_dataframe
@@ -193,13 +199,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_ocr_default_source_path(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """Test OCR with default source path (not provided)."""
         # Setup mocks
         mock_image_to_data.return_value = mock_tesseract_dataframe
@@ -226,7 +232,7 @@ class TestTesseractOcrCv2Image:
             tesseract_config="--oem 3 -c textord_noise_rej=1 --dpi 300",
         )
 
-    def test_tesseract_ocr_invalid_image_dimensions(self):
+    def test_tesseract_ocr_invalid_image_dimensions(self) -> None:
         """Test OCR with invalid image dimensions."""
         # Create invalid image (1D array)
         invalid_image = np.random.randint(0, 255, size=(100,), dtype=np.uint8)
@@ -238,7 +244,7 @@ class TestTesseractOcrCv2Image:
         ):  # intentionally broad: behavior depends on opencv version
             tesseract_ocr_cv2_image(invalid_image)
 
-    def test_tesseract_config_string_format(self):
+    def test_tesseract_config_string_format(self) -> None:
         """Test that the Tesseract configuration string is properly formatted."""
         expected_config_parts = [
             "--oem 3",
@@ -255,13 +261,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_config_no_textord_noise_debug(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """M-21 regression: the default Tesseract config must NOT include
         ``-c textord_noise_debug=1``. That flag forces Tesseract to emit
         noise-detection debug messages to the caller's stderr on every OCR
@@ -288,13 +294,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_dpi_parameter_overrides_default(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """M-19 regression: dpi=150 must reach Tesseract as ``--dpi 150``,
         not the hardcoded ``--dpi 300`` default."""
         mock_image_to_data.return_value = mock_tesseract_dataframe
@@ -317,13 +323,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_dpi_default_preserves_300(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """M-19 regression: omitting dpi keeps the historical 300 default,
         so existing callers do not silently change behavior."""
         mock_image_to_data.return_value = mock_tesseract_dataframe
@@ -345,13 +351,13 @@ class TestTesseractOcrCv2Image:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_tesseract_dpi_600(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        sample_grayscale_image,
-        mock_tesseract_dataframe,
-        mock_tesseract_string,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        sample_grayscale_image: NDArray[np.uint8],
+        mock_tesseract_dataframe: pd.DataFrame,
+        mock_tesseract_string: str,
+    ) -> None:
         """M-19 regression: high-resolution scans (e.g. 600 DPI) flow
         through the parameter unmodified."""
         mock_image_to_data.return_value = mock_tesseract_dataframe
@@ -379,7 +385,7 @@ class TestM20InputShapeDispatch:
     """
 
     @pytest.fixture
-    def mock_tesseract_dataframe(self):
+    def mock_tesseract_dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(
             {
                 "level": [1, 2, 3, 4, 5],
@@ -402,11 +408,11 @@ class TestM20InputShapeDispatch:
     @patch("pdomain_book_tools.ocr.document.Document.from_tesseract")
     def test_rgba_input_drops_alpha_and_calls_tesseract(
         self,
-        mock_from_tesseract,
-        mock_image_to_string,
-        mock_image_to_data,
-        mock_tesseract_dataframe,
-    ):
+        mock_from_tesseract: Mock,
+        mock_image_to_string: Mock,
+        mock_image_to_data: Mock,
+        mock_tesseract_dataframe: pd.DataFrame,
+    ) -> None:
         """RGBA / 4-channel input must be accepted: alpha is dropped (matches
         cv2 COLOR_BGRA2GRAY semantics, mirroring the M-18 cupy fix) and a
         valid 2D grayscale array is forwarded to pytesseract."""
@@ -432,9 +438,10 @@ class TestM20InputShapeDispatch:
         # pytesseract must have been called with an actual 2D grayscale
         # array, not None.
         assert mock_image_to_data.call_count == 1
-        forwarded = mock_image_to_data.call_args[0][0]
-        assert forwarded is not None
-        assert isinstance(forwarded, np.ndarray)
+        forwarded_arg = mock_image_to_data.call_args[0][0]
+        assert forwarded_arg is not None
+        assert isinstance(forwarded_arg, np.ndarray)
+        forwarded: NDArray[np.uint8] = mock_image_to_data.call_args[0][0]
         assert forwarded.ndim == 2
         assert forwarded.shape == (20, 30)
 
@@ -446,7 +453,7 @@ class TestM20InputShapeDispatch:
         expected = real_cvtColor(rgba, COLOR_BGRA2GRAY)
         np.testing.assert_array_equal(forwarded, expected)
 
-    def test_unsupported_two_channel_raises_value_error(self):
+    def test_unsupported_two_channel_raises_value_error(self) -> None:
         """A 3D image with 2 channels (neither grayscale nor BGR/BGRA) must
         raise a clear ValueError naming the actual shape, not silently pass
         ``None`` to pytesseract."""
@@ -454,7 +461,7 @@ class TestM20InputShapeDispatch:
         with pytest.raises(ValueError, match=r"shape="):
             tesseract_ocr_cv2_image(bad)
 
-    def test_unsupported_ndim_raises_value_error(self):
+    def test_unsupported_ndim_raises_value_error(self) -> None:
         """A 4D array (e.g. accidental batch dimension) must raise a clear
         ValueError, not silently fall through to pytesseract with None."""
         bad = np.zeros((1, 10, 10, 3), dtype=np.uint8)
@@ -465,7 +472,7 @@ class TestM20InputShapeDispatch:
 class TestImportError:
     """Test import error handling."""
 
-    def test_import_error_message(self):
+    def test_import_error_message(self) -> None:
         """Test that import error has appropriate message."""
         # This tests the import error at module level
         # We can't easily test this without mocking the import system
@@ -485,7 +492,7 @@ class TestImportError:
         assert "pytesseract is not installed" in content
         assert "Please install extra dependency [tesseract]" in content
 
-    def test_tesseract_ocr_without_pytesseract_raises_clear_error(self):
+    def test_tesseract_ocr_without_pytesseract_raises_clear_error(self) -> None:
         """When pytesseract is not available, calling tesseract_ocr_cv2_image
         raises a clear ImportError with helpful guidance."""
         import numpy as np
@@ -509,11 +516,11 @@ class TestRealImageIntegration:
     """Integration tests with real images (requires pytesseract)."""
 
     @pytest.fixture
-    def test_image_path(self):
+    def test_image_path(self) -> Path:
         """Path to the test image."""
         return Path(__file__).parent.parent / "ocr-test-image.png"
 
-    def test_real_image_ocr(self, test_image_path):
+    def test_real_image_ocr(self, test_image_path: Path) -> None:
         """Test OCR with real test image."""
         # Load the test image
         image = imread(str(test_image_path))
@@ -531,7 +538,7 @@ class TestRealImageIntegration:
         # We don't assert specific text since OCR results can vary
         assert hasattr(result_page, "items")
 
-    def test_real_image_grayscale_vs_color(self, test_image_path):
+    def test_real_image_grayscale_vs_color(self, test_image_path: Path) -> None:
         """Test that grayscale and color versions of same image produce similar results."""
         from cv2 import IMREAD_COLOR, IMREAD_GRAYSCALE, imread
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
@@ -9,6 +11,9 @@ from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def _bbox(x1: int, y1: int, x2: int, y2: int) -> BoundingBox:
@@ -43,7 +48,7 @@ def _paragraph(lines: list[Block], y: int) -> Block:
 
 
 class TestMergeLines:
-    def test_merge_lines_success(self):
+    def test_merge_lines_success(self) -> None:
         """Merging multiple lines into the first selected line."""
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
@@ -58,7 +63,7 @@ class TestMergeLines:
         assert page.lines[0].text == "a c"
         assert page.lines[0].ground_truth_text == "A C"
 
-    def test_merge_lines_requires_two_indices(self):
+    def test_merge_lines_requires_two_indices(self) -> None:
         """Merge fails when fewer than two lines are selected."""
         page = Page(
             width=100,
@@ -70,7 +75,7 @@ class TestMergeLines:
         assert page.merge_lines([0]) is False
         assert page.merge_lines([]) is False
 
-    def test_merge_lines_invalid_index(self):
+    def test_merge_lines_invalid_index(self) -> None:
         """Merge fails with out-of-range indices."""
         page = Page(
             width=100,
@@ -84,7 +89,7 @@ class TestMergeLines:
         assert result is False
         assert len(page.lines) == 2
 
-    def test_merge_lines_recomputes_paragraph_bbox_across_paragraphs(self):
+    def test_merge_lines_recomputes_paragraph_bbox_across_paragraphs(self) -> None:
         """Merging lines across paragraphs should recompute destination paragraph bbox."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
@@ -112,13 +117,15 @@ class TestMergeLines:
         assert merged_paragraph.bounding_box.top_left.x == 0
         assert merged_paragraph.bounding_box.bottom_right.x == 30
 
-    def test_merge_lines_falls_back_on_malformed_bbox_metadata(self, monkeypatch):
+    def test_merge_lines_falls_back_on_malformed_bbox_metadata(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Merge should still succeed when Block.merge fails with NoneType.is_normalized."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
         page = Page(width=100, height=100, page_index=0, blocks=[line1, line2])
 
-        def _broken_merge(_self, _other):
+        def _broken_merge(_self: Block, _other: Block) -> None:
             raise AttributeError("'NoneType' object has no attribute 'is_normalized'")
 
         monkeypatch.setattr(Block, "merge", _broken_merge)
@@ -129,7 +136,9 @@ class TestMergeLines:
         assert len(page.lines) == 1
         assert [word.text for word in page.lines[0].words] == ["alpha", "beta"]
 
-    def test_merge_lines_ignores_finalize_malformed_bbox_error(self, monkeypatch):
+    def test_merge_lines_ignores_finalize_malformed_bbox_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Merge should succeed when finalize recompute raises NoneType.is_normalized."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
@@ -137,10 +146,10 @@ class TestMergeLines:
 
         original_recompute = Block.recompute_bounding_box
 
-        def _broken_merge(_self, _other):
+        def _broken_merge(_self: Block, _other: Block) -> None:
             raise AttributeError("'NoneType' object has no attribute 'is_normalized'")
 
-        def _sometimes_broken_recompute(self):
+        def _sometimes_broken_recompute(self: Block) -> None:
             if self is page.lines[0]:
                 raise AttributeError(
                     "'NoneType' object has no attribute 'is_normalized'"
@@ -159,8 +168,8 @@ class TestMergeLines:
         assert [word.text for word in page.lines[0].words] == ["alpha", "beta"]
 
     def test_merge_lines_removes_empty_paragraphs_when_finalize_is_malformed(
-        self, monkeypatch
-    ):
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Even when finalize path hits malformed geometry, empty paragraphs are removed."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
@@ -185,7 +194,7 @@ class TestMergeLines:
 
 
 class TestDeleteLines:
-    def test_delete_lines_success(self):
+    def test_delete_lines_success(self) -> None:
         """Deleting selected lines removes them from the page."""
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
@@ -198,7 +207,7 @@ class TestDeleteLines:
         assert len(page.lines) == 1
         assert page.lines[0].text == "a"
 
-    def test_delete_lines_requires_selection(self):
+    def test_delete_lines_requires_selection(self) -> None:
         """Deletion fails when no lines are selected."""
         page = Page(
             width=100,
@@ -209,7 +218,7 @@ class TestDeleteLines:
 
         assert page.delete_lines([]) is False
 
-    def test_delete_lines_invalid_index(self):
+    def test_delete_lines_invalid_index(self) -> None:
         """Deletion fails with out-of-range indices."""
         page = Page(
             width=100,
@@ -225,7 +234,7 @@ class TestDeleteLines:
 
 
 class TestDeleteParagraphs:
-    def test_delete_paragraphs_success(self):
+    def test_delete_paragraphs_success(self) -> None:
         """Deleting selected paragraphs removes them from the page."""
         para1 = _paragraph([_line([_word("a", "A", 0)], 0)], 0)
         para2 = _paragraph([_line([_word("b", "B", 20)], 20)], 30)
@@ -237,7 +246,7 @@ class TestDeleteParagraphs:
         assert len(page.paragraphs) == 1
         assert page.paragraphs[0].text == "a"
 
-    def test_merge_paragraphs_handles_malformed_bbox_during_remove_item(self):
+    def test_merge_paragraphs_handles_malformed_bbox_during_remove_item(self) -> None:
         """Paragraph merge should succeed when remove_item recompute hits malformed geometry."""
         para1 = _paragraph([_line([_word("a", "A", 0)], 0)], 0)
         para2 = _paragraph([_line([_word("b", "B", 20)], 20)], 30)
@@ -265,7 +274,7 @@ class TestDeleteParagraphs:
 
 
 class TestDeleteWords:
-    def test_delete_words_success(self):
+    def test_delete_words_success(self) -> None:
         """Deleting selected words removes only the targeted words."""
         line = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
@@ -278,7 +287,7 @@ class TestDeleteWords:
         assert result is True
         assert [word.text for word in page.lines[0].words] == ["alpha", "gamma"]
 
-    def test_delete_words_removes_line_when_it_becomes_empty(self):
+    def test_delete_words_removes_line_when_it_becomes_empty(self) -> None:
         """Deleting the final word from a line removes the now-empty line."""
         line1 = _line([_word("alpha", "A", 0)], 0)
         line2 = _line([_word("beta", "B", 20)], 20)
@@ -293,7 +302,7 @@ class TestDeleteWords:
 
 
 class TestMergeWords:
-    def test_merge_word_left_success(self):
+    def test_merge_word_left_success(self) -> None:
         """Merging word left concatenates with the immediate left neighbor."""
         line = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
@@ -310,7 +319,7 @@ class TestMergeWords:
         assert merged_box.top_left.x == 0
         assert merged_box.bottom_right.x == 30
 
-    def test_merge_word_right_success(self):
+    def test_merge_word_right_success(self) -> None:
         """Merging word right concatenates with the immediate right neighbor."""
         line = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
@@ -327,7 +336,7 @@ class TestMergeWords:
         assert merged_box.top_left.x == 20
         assert merged_box.bottom_right.x == 50
 
-    def test_merge_word_left_fails_for_first_word(self):
+    def test_merge_word_left_fails_for_first_word(self) -> None:
         """Merging left on the first word fails."""
         line = _line([_word("alpha", "A", 0), _word("beta", "B", 20)], 0)
         page = Page(width=100, height=100, page_index=0, blocks=[line])
@@ -339,7 +348,7 @@ class TestMergeWords:
 
 
 class TestSplitWord:
-    def test_split_word_success(self):
+    def test_split_word_success(self) -> None:
         """Splitting a word creates two words and clears GT for the line."""
         line = _line([_word("alphabet", "ALPHABET", 0), _word("gamma", "GAMMA", 20)], 0)
         page = Page(width=100, height=100, page_index=0, blocks=[line])
@@ -350,7 +359,7 @@ class TestSplitWord:
         assert [word.text for word in page.lines[0].words] == ["alph", "abet", "gamma"]
         assert [word.ground_truth_text for word in page.lines[0].words] == ["", "", ""]
 
-    def test_split_word_rejects_edge_fraction(self):
+    def test_split_word_rejects_edge_fraction(self) -> None:
         """Split fails when requested at start/end boundaries."""
         line = _line([_word("alpha", "A", 0)], 0)
         page = Page(width=100, height=100, page_index=0, blocks=[line])
@@ -358,7 +367,7 @@ class TestSplitWord:
         assert page.split_word(0, 0, 0.0) is False
         assert page.split_word(0, 0, 1.0) is False
 
-    def test_split_word_vertical_assigns_split_pieces_to_closest_line(self):
+    def test_split_word_vertical_assigns_split_pieces_to_closest_line(self) -> None:
         """Vertical split moves both split words to the closest line by midpoint."""
         source_word = Word(
             text="alphabet",
@@ -399,7 +408,7 @@ class TestSplitWord:
 
 
 class TestReboxWord:
-    def test_rebox_word_replaces_word_bounding_box(self):
+    def test_rebox_word_replaces_word_bounding_box(self) -> None:
         """Reboxing replaces the target word bounding box coordinates."""
         line = _line([_word("alpha", "A", 0)], 0)
         page = Page(width=200, height=100, page_index=0, blocks=[line])
@@ -413,7 +422,9 @@ class TestReboxWord:
         assert updated_bbox.bottom_right.x == 70.0
         assert updated_bbox.bottom_right.y == 25.0
 
-    def test_rebox_word_runs_word_refine_helpers(self, monkeypatch):
+    def test_rebox_word_runs_word_refine_helpers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Rebox auto-refines the updated word when a page image exists."""
         line = _line([_word("alpha", "A", 0)], 0)
         page = Page(width=200, height=100, page_index=0, blocks=[line])
@@ -424,8 +435,12 @@ class TestReboxWord:
             type(page), "cv2_numpy_page_image", property(lambda self: dummy_image)
         )
 
-        seen = []
-        target_word.crop_bottom = lambda img: seen.append("crop")
+        seen: list[str] = []
+
+        def _fake_crop_bottom(img_ndarray: np.ndarray | None) -> None:
+            seen.append("crop")
+
+        target_word.crop_bottom = _fake_crop_bottom
 
         result = page.rebox_word(0, 0, 30.0, 5.0, 70.0, 25.0)
 
@@ -433,7 +448,7 @@ class TestReboxWord:
 
 
 class TestNudgeWordBbox:
-    def test_nudge_word_bbox_expands_and_contracts_size(self):
+    def test_nudge_word_bbox_expands_and_contracts_size(self) -> None:
         """Nudging resizes bbox dimensions, not translation."""
         line = _line([_word("alpha", "A", 20)], 20)
         page = Page(width=200, height=100, page_index=0, blocks=[line])
@@ -456,7 +471,9 @@ class TestNudgeWordBbox:
         assert contracted_bbox.bottom_right.x == 31.0
         assert contracted_bbox.bottom_right.y == 11.0
 
-    def test_nudge_word_bbox_can_skip_refine_helpers(self, monkeypatch):
+    def test_nudge_word_bbox_can_skip_refine_helpers(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Nudging with refine_after=False does not call word refine helpers."""
         from unittest.mock import MagicMock
 
@@ -465,17 +482,20 @@ class TestNudgeWordBbox:
         word = page.lines[0].words[0]
 
         word.crop_bottom = MagicMock()
-        word.expand_to_content = MagicMock()
+        # ``expand_to_content`` is not a real Word attribute; this is a
+        # defensive dynamic attribute set/assert (legal on an unslotted
+        # instance) pinning that no such helper is ever invoked here.
+        word.expand_to_content = MagicMock()  # pyright: ignore[reportAttributeAccessIssue]
 
         result = page.nudge_word_bbox(0, 0, 3.0, 3.0, 2.0, 2.0, refine_after=False)
 
         assert result is True
         word.crop_bottom.assert_not_called()
-        word.expand_to_content.assert_not_called()
+        word.expand_to_content.assert_not_called()  # pyright: ignore[reportAttributeAccessIssue]
 
 
 class TestParagraphSplitting:
-    def test_split_paragraph_after_line_success(self):
+    def test_split_paragraph_after_line_success(self) -> None:
         """Splitting after selected line splits one paragraph into two."""
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
@@ -489,7 +509,7 @@ class TestParagraphSplitting:
         assert page.paragraphs[0].lines[0].text == "a"
         assert page.paragraphs[1].lines[0].text == "b"
 
-    def test_split_paragraph_after_line_fails_on_last_line(self):
+    def test_split_paragraph_after_line_fails_on_last_line(self) -> None:
         """Splitting after last line fails (no trailing segment)."""
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
@@ -501,7 +521,7 @@ class TestParagraphSplitting:
         assert result is False
         assert len(page.paragraphs) == 1
 
-    def test_split_paragraph_with_selected_lines_success(self):
+    def test_split_paragraph_with_selected_lines_success(self) -> None:
         """Selected lines split a paragraph into selected and unselected groups."""
         line1 = _line([_word("a", "A", 0)], 0)
         line2 = _line([_word("b", "B", 20)], 20)
@@ -516,7 +536,7 @@ class TestParagraphSplitting:
         assert [line.text for line in page.paragraphs[0].lines] == ["a", "c"]
         assert [line.text for line in page.paragraphs[1].lines] == ["b"]
 
-    def test_split_paragraph_with_selected_lines_fails_across_paragraphs(self):
+    def test_split_paragraph_with_selected_lines_fails_across_paragraphs(self) -> None:
         """Split-by-selection fails when lines span multiple paragraphs."""
         para1 = _paragraph([_line([_word("a", "A", 0)], 0)], 0)
         para2 = _paragraph([_line([_word("b", "B", 20)], 20)], 30)
@@ -529,7 +549,7 @@ class TestParagraphSplitting:
 
 
 class TestSplitLineOps:
-    def test_split_line_after_word_success(self):
+    def test_split_line_after_word_success(self) -> None:
         """Splitting a line after a selected word produces two lines."""
         line = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
@@ -545,7 +565,7 @@ class TestSplitLineOps:
         assert [word.text for word in page.lines[0].words] == ["alpha"]
         assert [word.text for word in page.lines[1].words] == ["beta", "gamma"]
 
-    def test_split_line_after_word_fails_on_last_word(self):
+    def test_split_line_after_word_fails_on_last_word(self) -> None:
         """Splitting after the last word fails because trailing segment is empty."""
         line = _line([_word("alpha", "A", 0), _word("beta", "B", 20)], 0)
         para = _paragraph([line], 0)
@@ -555,7 +575,9 @@ class TestSplitLineOps:
 
         assert result is False
 
-    def test_split_line_with_selected_words_moves_words_into_single_new_line(self):
+    def test_split_line_with_selected_words_moves_words_into_single_new_line(
+        self,
+    ) -> None:
         """Selected words from multiple lines move into one new line."""
         line1 = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
@@ -613,7 +635,7 @@ class TestSplitLineOps:
         ]
         assert len(page.lines) == 3
 
-    def test_split_line_with_selected_words_all_words_from_line_succeeds(self):
+    def test_split_line_with_selected_words_all_words_from_line_succeeds(self) -> None:
         """Selecting all words from a line is a valid extraction."""
         line = _line(
             [
@@ -640,7 +662,7 @@ class TestSplitLineOps:
 
 
 class TestGroupSelectedWords:
-    def test_group_selected_words_into_new_paragraph_success(self):
+    def test_group_selected_words_into_new_paragraph_success(self) -> None:
         """Selected words move to a new paragraph with one line per source line."""
         line1 = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
@@ -667,7 +689,9 @@ class TestGroupSelectedWords:
         ]
         assert sorted(new_paragraph_lines) == sorted([("beta",), ("delta", "zeta")])
 
-    def test_group_selected_words_into_new_paragraph_allows_full_line_selection(self):
+    def test_group_selected_words_into_new_paragraph_allows_full_line_selection(
+        self,
+    ) -> None:
         """Grouping allows moving all words from a selected line."""
         line = _line([_word("alpha", "A", 0), _word("beta", "B", 20)], 0)
         para = _paragraph([line], 0)
@@ -767,7 +791,9 @@ class TestGroupSelectedWords:
 class TestAddWordToPage:
     """Tests for Page.add_word_to_page, including 2D nearest-line selection."""
 
-    def _make_line(self, words, x1, y1, x2, y2):
+    def _make_line(
+        self, words: list[Word], x1: float, y1: float, x2: float, y2: float
+    ) -> Block:
         return Block(
             items=words,
             bounding_box=BoundingBox(Point(x1, y1), Point(x2, y2), is_normalized=False),
@@ -775,7 +801,7 @@ class TestAddWordToPage:
             block_category=BlockCategory.LINE,
         )
 
-    def test_add_word_inserts_into_only_line(self):
+    def test_add_word_inserts_into_only_line(self) -> None:
         """A word drawn over the single line is inserted into it."""
         line = self._make_line([_word("hello", "Hello", 0)], 0, 0, 100, 10)
         page = Page(width=200, height=100, page_index=0, blocks=[line])
@@ -786,7 +812,7 @@ class TestAddWordToPage:
         word_texts = [w.text for w in page.lines[0].words]
         assert "new" in word_texts
 
-    def test_add_word_selects_line_by_y_range(self):
+    def test_add_word_selects_line_by_y_range(self) -> None:
         """center_y inside line2's Y range but not line1's goes to line2."""
         line1 = self._make_line([_word("top", "Top", 0)], 0, 0, 100, 10)
         line2 = self._make_line([_word("bottom", "Bottom", 0)], 0, 50, 100, 60)
@@ -800,7 +826,7 @@ class TestAddWordToPage:
         line1_texts = [w.text for w in page.lines[0].words]
         assert "near" not in line1_texts
 
-    def test_add_word_parallel_columns_x_breaks_tie(self):
+    def test_add_word_parallel_columns_x_breaks_tie(self) -> None:
         """Parallel columns at same Y: both are Y-range candidates, X breaks the tie."""
         left_line = self._make_line([_word("left", "Left", 5)], 0, 40, 80, 60)
         right_line = self._make_line([_word("right", "Right", 125)], 120, 40, 200, 60)
@@ -815,7 +841,7 @@ class TestAddWordToPage:
         assert "col" in right_words
         assert "col" not in left_words
 
-    def test_add_word_x_breaks_tie_when_both_lines_contain_center_y(self):
+    def test_add_word_x_breaks_tie_when_both_lines_contain_center_y(self) -> None:
         """Both lines span center_y; the one with the nearer center X wins."""
         line_a = self._make_line([_word("a", "A", 0)], 0, 30, 60, 50)
         line_b = self._make_line([_word("b", "B", 140)], 140, 30, 200, 50)

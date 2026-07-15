@@ -36,11 +36,11 @@ from pdomain_book_tools.image_processing.grayscale_pipeline import ops_cpu
 # lets the module load on CPU-only installs; require_cupy() in each function
 # gives the actionable error before these names are dereferenced.
 try:
-    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]  # optional GPU import is guarded
+    from cupyx.scipy.ndimage import (
         gaussian_filter as _cupy_gaussian_filter,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs
-    _cupy_gaussian_filter = None  # type: ignore[assignment]
+    _cupy_gaussian_filter = None
 
 if TYPE_CHECKING:
     CuPyArray = npt.NDArray[np.generic]
@@ -161,7 +161,7 @@ def flatten_gpu(img: U8, *, radius: int = 64, strength: float = 1.0) -> U8:
         ch = cast("CuPyArray", img_cp[..., c].astype(cp.float32) + one)
         bg = cast(
             "CuPyArray",
-            _cupy_gaussian_filter(ch, sigma=sigma).astype(cp.float32)  # pyright: ignore[reportOptionalCall,reportOptionalMemberAccess]  # guarded by require_cupy()
+            _cupy_gaussian_filter(ch, sigma=sigma).astype(cp.float32)  # pyright: ignore[reportOptionalCall]  # guarded by require_cupy()
             + one,
         )
         norm = cast("CuPyArray", ch / bg * cp.float32(float(cp.mean(bg))))  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on NDArray-like alias

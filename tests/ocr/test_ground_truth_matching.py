@@ -1,5 +1,9 @@
 """Tests for ground truth matching functionality."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
@@ -15,10 +19,13 @@ from pdomain_book_tools.ocr.ground_truth_matching_helpers.character_groups impor
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def _make_line(text_words, y):
+
+def _make_line(text_words: Sequence[str], y: float) -> Block:
     """Build a simple Block(LINE) at y-row from a sequence of word strings."""
-    words = []
+    words: list[Word] = []
     x = 0
     for w in text_words:
         width = max(8, len(w) * 8)
@@ -38,7 +45,7 @@ def _make_line(text_words, y):
     )
 
 
-def _make_page(lines_of_words):
+def _make_page(lines_of_words: Sequence[Sequence[str]]) -> Page:
     """Build a Page from an ordered list of word-string lists, one per line."""
     line_blocks = [
         _make_line(words, y=20 + i * 30) for i, words in enumerate(lines_of_words)
@@ -51,7 +58,7 @@ class TestGroundTruthMatching:
 
     def test_update_line_with_ground_truth_replace_words_preserves_existing_unmatched(
         self,
-    ):
+    ) -> None:
         """Test that replace words operation preserves existing unmatched ground truth words."""
         # Create a line with some OCR words
         words = [
@@ -114,7 +121,7 @@ class TestGroundTruthMatching:
         # Should have 3 total unmatched words
         assert len(line.unmatched_ground_truth_words) == 3
 
-    def test_update_line_with_ground_truth_multiple_replace_operations(self):
+    def test_update_line_with_ground_truth_multiple_replace_operations(self) -> None:
         """Test that multiple replace operations preserve all unmatched ground truth words."""
         # Create a line with OCR words
         words = [
@@ -171,7 +178,9 @@ class TestGroundTruthMatching:
             "Should have exactly 2 unmatched words"
         )
 
-    def test_update_line_with_ground_truth_replace_words_empty_initial_list(self):
+    def test_update_line_with_ground_truth_replace_words_empty_initial_list(
+        self,
+    ) -> None:
         """Test that function works correctly when starting with empty unmatched list."""
         words = [
             Word(
@@ -215,7 +224,7 @@ class TestGroundTruthMatching:
         assert len(line.unmatched_ground_truth_words) == 1
         assert line.unmatched_ground_truth_words[0][1] == "extra"
 
-    def test_no_combined_words_found_with_misspelled_ocr(self):
+    def test_no_combined_words_found_with_misspelled_ocr(self) -> None:
         """Test that no combined words are found when OCR has misspellings that don't combine well."""
         # Create OCR words with misspellings: ['tbe', 'Jounding','of','tbe', 'Gopernment']
         words = [
@@ -288,11 +297,13 @@ class TestGroundTruthMatching:
                 != "difflib-line-replace-word-replace-combined"
             ), f"Word '{word.text}' should not be marked as combined"
 
-    def test_try_matching_combined_words_individual_scores_higher(self):
+    def test_try_matching_combined_words_individual_scores_higher(self) -> None:
         """Test case where individual word matches better than combined."""
 
         # Helper to create a Word object for testing
-        def create_test_word(text, x=0, y=0, width=10, height=10):
+        def create_test_word(
+            text: str, x: float = 0, y: float = 0, width: float = 10, height: float = 10
+        ) -> Word:
             top_left = Point(x=x, y=y)
             bottom_right = Point(x=x + width, y=y + height)
             bbox = BoundingBox(top_left=top_left, bottom_right=bottom_right)
@@ -316,11 +327,13 @@ class TestGroundTruthMatching:
             "Should not combine when individual words score perfectly"
         )
 
-    def test_try_matching_combined_words_combination_scores_higher(self):
+    def test_try_matching_combined_words_combination_scores_higher(self) -> None:
         """Test case where combination matches better than individuals."""
 
         # Helper to create a Word object for testing
-        def create_test_word(text, x=0, y=0, width=10, height=10):
+        def create_test_word(
+            text: str, x: float = 0, y: float = 0, width: float = 10, height: float = 10
+        ) -> Word:
             top_left = Point(x=x, y=y)
             bottom_right = Point(x=x + width, y=y + height)
             bbox = BoundingBox(top_left=top_left, bottom_right=bottom_right)
@@ -347,7 +360,9 @@ class TestGroundTruthMatching:
                 f"Expected GT text 'hello', got '{combined_word.ground_truth_text}'"
             )
 
-    def test_try_matching_combined_words_two_word_ending_quote_promotes_match(self):
+    def test_try_matching_combined_words_two_word_ending_quote_promotes_match(
+        self,
+    ) -> None:
         """Regression test for H-21.
 
         With a two-word OCR span there is exactly ONE combination, so
@@ -381,7 +396,9 @@ class TestGroundTruthMatching:
           downstream filter.
         """
 
-        def create_test_word(text, x, y, width, height):
+        def create_test_word(
+            text: str, x: float, y: float, width: float, height: float
+        ) -> Word:
             top_left = Point(x=x, y=y)
             bottom_right = Point(x=x + width, y=y + height)
             bbox = BoundingBox(top_left=top_left, bottom_right=bottom_right)
@@ -418,22 +435,22 @@ class TestGroundTruthMatching:
 class TestCharacterGroups:
     """Test the CharacterGroups enum functionality."""
 
-    def test_character_groups_hyphen_contains(self):
+    def test_character_groups_hyphen_contains(self) -> None:
         """Test that hyphen group contains expected characters."""
         assert "-" in CharacterGroups.HYPHEN
         assert "a" not in CharacterGroups.HYPHEN
 
-    def test_character_groups_endash_contains(self):
+    def test_character_groups_endash_contains(self) -> None:
         """Test that en-dash group contains expected characters."""
         assert "\u2013" in CharacterGroups.ENDASH  # EN DASH
         assert "-" not in CharacterGroups.ENDASH
 
-    def test_character_groups_emdash_contains(self):
+    def test_character_groups_emdash_contains(self) -> None:
         """Test that em-dash group contains expected characters."""
         assert "\u2014" in CharacterGroups.EMDASH  # EM DASH
         assert "-" not in CharacterGroups.EMDASH
 
-    def test_character_groups_all_dashes(self):
+    def test_character_groups_all_dashes(self) -> None:
         """Test that DASHES contains all dash types."""
         assert "-" in CharacterGroups.DASHES  # hyphen
         assert "\u2013" in CharacterGroups.DASHES  # en-dash
@@ -446,21 +463,21 @@ class TestCharacterGroups:
         assert "\u2212" in CharacterGroups.DASHES  # minus
         assert "a" not in CharacterGroups.DASHES
 
-    def test_character_groups_single_quote_contains(self):
+    def test_character_groups_single_quote_contains(self) -> None:
         """Test that single quote group contains expected characters."""
         assert "'" in CharacterGroups.SINGLE_QUOTE
         assert "'" in CharacterGroups.SINGLE_QUOTE
         assert "'" in CharacterGroups.SINGLE_QUOTE
         assert '"' not in CharacterGroups.SINGLE_QUOTE
 
-    def test_character_groups_double_quote_contains(self):
+    def test_character_groups_double_quote_contains(self) -> None:
         """Test that double quote group contains expected characters."""
         assert '"' in CharacterGroups.DOUBLE_QUOTE
         assert '"' in CharacterGroups.DOUBLE_QUOTE  # left double quote
         assert '"' in CharacterGroups.DOUBLE_QUOTE  # right double quote
         assert "'" not in CharacterGroups.DOUBLE_QUOTE
 
-    def test_character_groups_quotes_contains_both(self):
+    def test_character_groups_quotes_contains_both(self) -> None:
         """Test that QUOTES contains both single and double quotes."""
         assert "'" in CharacterGroups.QUOTES
         assert "'" in CharacterGroups.QUOTES
@@ -469,7 +486,7 @@ class TestCharacterGroups:
         assert '"' in CharacterGroups.QUOTES  # right double quote
         assert "a" not in CharacterGroups.QUOTES
 
-    def test_character_groups_primes_contains(self):
+    def test_character_groups_primes_contains(self) -> None:
         """Test that primes group contains expected characters."""
         assert "\u2032" in CharacterGroups.SINGLE_PRIME  # PRIME
         assert "\u2033" in CharacterGroups.DOUBLE_PRIME  # DOUBLE PRIME
@@ -477,7 +494,7 @@ class TestCharacterGroups:
         assert "\u2033" in CharacterGroups.PRIMES  # DOUBLE PRIME
         assert "a" not in CharacterGroups.PRIMES
 
-    def test_character_groups_quotes_and_primes(self):
+    def test_character_groups_quotes_and_primes(self) -> None:
         """Test that QUOTES_AND_PRIMES contains all quote and prime characters."""
         assert "'" in CharacterGroups.QUOTES_AND_PRIMES
         assert "'" in CharacterGroups.QUOTES_AND_PRIMES
@@ -497,10 +514,10 @@ class TestUpdatePageWithGroundTruthText:
     different position in OCR vs ground truth).
     """
 
-    def _gt_lines(self, page):
+    def _gt_lines(self, page: Page) -> list[tuple[str, str]]:
         return [(line.text, line.base_ground_truth_text or "") for line in page.lines]
 
-    def test_paragraph_rearranged_around_caption_matches_correctly(self):
+    def test_paragraph_rearranged_around_caption_matches_correctly(self) -> None:
         """Regression test: caption between paragraph halves in OCR but
         moved past the paragraph in GT must NOT positionally match the
         caption line to a paragraph line just because line counts agree.
@@ -582,7 +599,7 @@ class TestUpdatePageWithGroundTruthText:
         assert "valueless" in gts[para_third_idx] or "fell" in gts[para_third_idx]
         assert "GEORGE" not in gts[para_third_idx]
 
-    def test_same_count_replace_with_rearranged_lines_uses_similarity(self):
+    def test_same_count_replace_with_rearranged_lines_uses_similarity(self) -> None:
         """Two lines with OCR errors that are reordered between OCR and GT
         produce a same-count `replace` opcode. The similarity-based fallback
         should still pair them correctly rather than positionally."""
@@ -613,7 +630,7 @@ class TestUpdatePageWithGroundTruthText:
         assert "dog" in gts[1]
         assert "fox" not in gts[1]
 
-    def test_aligned_lines_still_match_positionally(self):
+    def test_aligned_lines_still_match_positionally(self) -> None:
         """Sanity check: when OCR and GT lines align, matching is unchanged
         and each line gets its corresponding GT text."""
         ocr_lines = [
@@ -643,7 +660,7 @@ class TestUpdatePageWithGroundTruthText:
             joined_gt = " ".join((w.ground_truth_text or "") for w in line.words)
             assert joined_gt == expected
 
-    def test_aligned_lines_with_minor_ocr_errors_match_positionally(self):
+    def test_aligned_lines_with_minor_ocr_errors_match_positionally(self) -> None:
         """Same-count replace block with minor per-line errors should still
         use positional pairing (no fallback), since each pair scores high."""
         ocr_lines = [
@@ -669,7 +686,7 @@ class TestUpdatePageWithGroundTruthText:
         assert "dog" in gts[1]
         assert "away" in gts[2]
 
-    def test_unmatched_gt_lines_recorded(self):
+    def test_unmatched_gt_lines_recorded(self) -> None:
         """Task 4: unmatched GT lines now route into page.gt_orphans.lines."""
         ocr_lines = [
             ["First", "line", "of", "text"],
@@ -687,10 +704,20 @@ class TestUpdatePageWithGroundTruthText:
         update_page_with_ground_truth_text(page, gt_text)
 
         unmatched = page.gt_orphans.lines if page.gt_orphans is not None else []
-        unmatched_texts = [t for _, t in unmatched]
+        unmatched_texts: list[str] = []
+        for entry in unmatched:
+            # ``GtOrphans.lines`` is ``list[object]`` (schema not yet
+            # refined — see the TODO in ground_truth_matching.py); the
+            # runtime shape is a ``(line_index, text)`` pair, confirmed by
+            # ``isinstance`` at runtime. ``cast`` only narrows the tuple's
+            # element types, which ``isinstance`` cannot check for a
+            # parameterized generic.
+            assert isinstance(entry, tuple)
+            _, text_value = cast("tuple[int, str]", entry)
+            unmatched_texts.append(text_value)
         assert any("entirely different middle line" in t for t in unmatched_texts)
 
-    def test_header_and_page_number_ignored_but_inline_name_lines_match(self):
+    def test_header_and_page_number_ignored_but_inline_name_lines_match(self) -> None:
         """Regression: non-GT header/page number OCR lines should not block
         matching for intervening content lines like 'ROBERT'/'MORRIS'.
         """
@@ -807,7 +834,9 @@ class TestUpdatePageWithGroundTruthText:
         assert line2_gt == "But even Morris, trained merchant and financier that"
         assert line5_gt == "he was, could not make something out of nothing. The"
 
-    def test_hyphenated_line_break_preserves_split_when_previous_line_matches(self):
+    def test_hyphenated_line_break_preserves_split_when_previous_line_matches(
+        self,
+    ) -> None:
         """Regression: when OCR splits a GT word across lines with a trailing dash,
         keep the split as 'op-' and 'posed' when the preceding line already aligns.
         """
@@ -872,7 +901,9 @@ class TestUpdatePageWithGroundTruthText:
         assert page.lines[2].words[0].text == "posed"
         assert page.lines[2].words[0].ground_truth_text == "posed"
 
-    def test_line_end_soft_wrap_without_visible_hyphen_still_restores_split(self):
+    def test_line_end_soft_wrap_without_visible_hyphen_still_restores_split(
+        self,
+    ) -> None:
         """If OCR misses the trailing hyphen at line end (e.g. 'op'), still
         restore a wrapped GT split as 'op-' and carry 'posed' to next line.
         """

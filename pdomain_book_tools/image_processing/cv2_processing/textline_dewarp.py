@@ -11,12 +11,15 @@ plan's "Confirmed Leptonica constants" table.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import cv2
 import numpy as np
 
 from pdomain_book_tools.image_processing.textline_types import LineSamples, QuadCoeffs
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 # --- Leptonica dewarp2.c constants (confirmed verbatim against master) ---------
 MIN_CSIZE1 = 15  # csize1 = max(15, w/80)  (dewarp2.c:832)
@@ -187,11 +190,19 @@ def build_vertical_disparity(
         d_pts = refs - fitted[:, x]  # signed offset: pull bow toward its mean row
         order = np.argsort(y_pts)
         deg = min(2, len(coeffs) - 1)
-        cc = np.polyfit(y_pts[order], d_pts[order], deg)
+        # numpy's polyfit stub only matches known-dtype array-likes; the
+        # generic-dtype fitted/refs arrays above don't satisfy it precisely,
+        # so the return type resolves to Unknown without this cast.
+        cc = cast(
+            "npt.NDArray[np.float64]", np.polyfit(y_pts[order], d_pts[order], deg)
+        )
         samp[:, j] = np.polyval(cc, rows_full)
     disparity = np.empty((h, w), np.float32)
     for r in range(h):
-        disparity[r] = np.interp(np.arange(w), sample_x, samp[r]).astype(np.float32)
+        interp_row = cast(
+            "npt.NDArray[np.float64]", np.interp(np.arange(w), sample_x, samp[r])
+        )
+        disparity[r] = interp_row.astype(np.float32)
     return disparity
 
 
@@ -199,7 +210,7 @@ def apply_disparity(
     image: np.ndarray, map_x: np.ndarray, map_y: np.ndarray
 ) -> np.ndarray:
     """Resample ``image`` through backward maps via cv2.remap (cubic, replicate border)."""
-    return cv2.remap(  # type: ignore[return-value]
+    return cv2.remap(
         image,
         np.asarray(map_x, np.float32),
         np.asarray(map_y, np.float32),

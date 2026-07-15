@@ -15,12 +15,12 @@ def _bbox() -> BoundingBox:
     )
 
 
-def test_bounding_box_type_adapter_does_not_raise():
+def test_bounding_box_type_adapter_does_not_raise() -> None:
     adapter = TypeAdapter(BoundingBox)
     assert adapter is not None
 
 
-def test_bounding_box_json_schema_shape():
+def test_bounding_box_json_schema_shape() -> None:
     schema = TypeAdapter(BoundingBox).json_schema()
     assert schema["type"] == "object"
     props = schema["properties"]
@@ -41,7 +41,7 @@ def test_bounding_box_json_schema_shape():
     assert set(schema["required"]) == {"top_left", "bottom_right", "is_normalized"}
 
 
-def test_bounding_box_validate_from_dict_roundtrip():
+def test_bounding_box_validate_from_dict_roundtrip() -> None:
     adapter = TypeAdapter(BoundingBox)
     bb = _bbox()
     d = bb.to_dict()

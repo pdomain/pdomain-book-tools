@@ -1,14 +1,24 @@
 """Coverage tests for page.py training-set generator helpers (lines ~2810-3234)."""
 
+from __future__ import annotations
+
 import json
+from typing import TYPE_CHECKING
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+ImageArray = npt.NDArray[np.uint8]
 
 
 def _make_word(
@@ -31,7 +41,7 @@ def _make_word(
     return word
 
 
-def _make_line(words):
+def _make_line(words: Sequence[Word]) -> Block:
     """Create a LINE block from words."""
     return Block(
         items=list(words),
@@ -40,7 +50,7 @@ def _make_line(words):
     )
 
 
-def _make_paragraph(lines):
+def _make_paragraph(lines: Sequence[Block]) -> Block:
     """Create a PARAGRAPH block from lines."""
     return Block(
         items=list(lines),
@@ -49,16 +59,18 @@ def _make_paragraph(lines):
     )
 
 
-def _make_test_image(height: int = 100, width: int = 100) -> np.ndarray:
+def _make_test_image(height: int = 100, width: int = 100) -> ImageArray:
     """Create a simple BGR test image."""
     return np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
 
 
 def _make_page_with_words(
-    words_list: list[str], image=None, normalized: bool = True
+    words_list: list[str],
+    image: ImageArray | None = None,
+    normalized: bool = True,
 ) -> Page:
     """Create a page with words positioned horizontally."""
-    words = []
+    words: list[Word] = []
     if normalized:
         # Normalized coordinates: distribute words across [0.0, 1.0] range
         spacing = 0.2
@@ -105,7 +117,7 @@ def _make_page_with_words(
 class TestGenerateDoctrChecks:
     """Test the generate_doctr_checks helper method."""
 
-    def test_checks_creates_output_parent_if_exists(self, tmp_path):
+    def test_checks_creates_output_parent_if_exists(self, tmp_path: Path) -> None:
         """generate_doctr_checks validates output path exists."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -113,7 +125,7 @@ class TestGenerateDoctrChecks:
         page = _make_page_with_words(["hello", "world"])
         page.generate_doctr_checks(output_path)
 
-    def test_checks_raises_on_nonexistent_parent(self, tmp_path):
+    def test_checks_raises_on_nonexistent_parent(self, tmp_path: Path) -> None:
         """generate_doctr_checks raises ValueError when parent doesn't exist."""
         output_path = tmp_path / "nonexistent" / "training_set"
 
@@ -121,7 +133,7 @@ class TestGenerateDoctrChecks:
         with pytest.raises(ValueError, match="Output path does not exist"):
             page.generate_doctr_checks(output_path)
 
-    def test_checks_with_no_items(self, tmp_path):
+    def test_checks_with_no_items(self, tmp_path: Path) -> None:
         """generate_doctr_checks handles page with no items."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -135,7 +147,7 @@ class TestGenerateDoctrChecks:
 class TestGenerateDoctrDetectionTrainingSet:
     """Test detection training set generation."""
 
-    def test_detection_creates_directory_structure(self, tmp_path):
+    def test_detection_creates_directory_structure(self, tmp_path: Path) -> None:
         """Detection export creates detection/images/ and labels.json."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -150,7 +162,7 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert (detection_path / "images").exists()
         assert (detection_path / "labels.json").exists()
 
-    def test_detection_writes_image_file(self, tmp_path):
+    def test_detection_writes_image_file(self, tmp_path: Path) -> None:
         """Detection export writes PNG image to detection/images/."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -164,7 +176,7 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert len(image_files) == 1
         assert image_files[0].name == "test_0.png"
 
-    def test_detection_labels_json_structure(self, tmp_path):
+    def test_detection_labels_json_structure(self, tmp_path: Path) -> None:
         """Detection labels.json has correct structure."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -183,7 +195,7 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert "polygons" in labels["test_0.png"]
         assert len(labels["test_0.png"]["polygons"]) == 2
 
-    def test_detection_image_hash_in_labels(self, tmp_path):
+    def test_detection_image_hash_in_labels(self, tmp_path: Path) -> None:
         """Detection labels include sha256 hash of image."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -200,7 +212,7 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert len(img_hash) == 64
         assert all(c in "0123456789abcdef" for c in img_hash)
 
-    def test_detection_with_word_filter(self, tmp_path):
+    def test_detection_with_word_filter(self, tmp_path: Path) -> None:
         """Detection export respects word_filter predicate."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -220,7 +232,7 @@ class TestGenerateDoctrDetectionTrainingSet:
 
         assert len(labels["test_0.png"]["polygons"]) == 1
 
-    def test_detection_empty_page(self, tmp_path):
+    def test_detection_empty_page(self, tmp_path: Path) -> None:
         """Detection export handles page with no words."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -238,7 +250,7 @@ class TestGenerateDoctrDetectionTrainingSet:
         assert "test_0.png" in labels
         assert len(labels["test_0.png"]["polygons"]) == 0
 
-    def test_detection_overwrites_existing_page_labels(self, tmp_path):
+    def test_detection_overwrites_existing_page_labels(self, tmp_path: Path) -> None:
         """Detection export overwrites labels for same prefix+page_index."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -262,7 +274,7 @@ class TestGenerateDoctrDetectionTrainingSet:
 
         assert len(labels_v2["test_0.png"]["polygons"]) == 1
 
-    def test_detection_multiple_pages_accumulate(self, tmp_path):
+    def test_detection_multiple_pages_accumulate(self, tmp_path: Path) -> None:
         """Detection export preserves labels from other pages."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -288,7 +300,7 @@ class TestGenerateDoctrDetectionTrainingSet:
 class TestGenerateDoctrRecognitionTrainingSet:
     """Test recognition training set generation."""
 
-    def test_recognition_creates_directory_structure(self, tmp_path):
+    def test_recognition_creates_directory_structure(self, tmp_path: Path) -> None:
         """Recognition export creates recognition/images/ and labels.json."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -303,7 +315,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert (recognition_path / "images").exists()
         assert (recognition_path / "labels.json").exists()
 
-    def test_recognition_cropped_images_written(self, tmp_path):
+    def test_recognition_cropped_images_written(self, tmp_path: Path) -> None:
         """Recognition export writes cropped word images."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -316,7 +328,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         image_files = list((output_path / "recognition" / "images").glob("*.png"))
         assert len(image_files) == 2
 
-    def test_recognition_labels_json_structure(self, tmp_path):
+    def test_recognition_labels_json_structure(self, tmp_path: Path) -> None:
         """Recognition labels.json maps image names to ground truth text."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -335,7 +347,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert "hello" in label_values
         assert "world" in label_values
 
-    def test_recognition_with_word_filter(self, tmp_path):
+    def test_recognition_with_word_filter(self, tmp_path: Path) -> None:
         """Recognition export respects word_filter predicate."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -355,7 +367,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert len(labels) == 1
         assert "world" in labels.values()
 
-    def test_recognition_with_label_formatter(self, tmp_path):
+    def test_recognition_with_label_formatter(self, tmp_path: Path) -> None:
         """Recognition export uses custom label_formatter if provided."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -376,7 +388,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert "HELLO" in label_values
         assert "WORLD" in label_values
 
-    def test_recognition_skips_words_without_ground_truth(self, tmp_path):
+    def test_recognition_skips_words_without_ground_truth(self, tmp_path: Path) -> None:
         """Recognition export skips words without ground_truth_text (no formatter)."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -407,7 +419,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         assert len(labels) == 1
         assert "hello" in labels.values()
 
-    def test_recognition_cleans_old_images(self, tmp_path):
+    def test_recognition_cleans_old_images(self, tmp_path: Path) -> None:
         """Recognition export deletes old cropped images for same prefix+page_index."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -428,7 +440,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
         image_files_v2 = list((output_path / "recognition" / "images").glob("*.png"))
         assert len(image_files_v2) == 1
 
-    def test_recognition_accumulates_across_pages(self, tmp_path):
+    def test_recognition_accumulates_across_pages(self, tmp_path: Path) -> None:
         """Recognition export preserves labels from other pages."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -453,7 +465,7 @@ class TestGenerateDoctrRecognitionTrainingSet:
 class TestConvertToTrainingSet:
     """Test the unified convert_to_training_set method."""
 
-    def test_convert_creates_both_datasets(self, tmp_path):
+    def test_convert_creates_both_datasets(self, tmp_path: Path) -> None:
         """convert_to_training_set creates both detection and recognition sets."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -469,7 +481,7 @@ class TestConvertToTrainingSet:
         assert (output_path / "recognition" / "images").exists()
         assert (output_path / "recognition" / "labels.json").exists()
 
-    def test_convert_with_word_filter(self, tmp_path):
+    def test_convert_with_word_filter(self, tmp_path: Path) -> None:
         """convert_to_training_set applies word_filter to both datasets."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -492,7 +504,7 @@ class TestConvertToTrainingSet:
         assert len(recognition_labels) == 1
         assert "hello" in recognition_labels.values()
 
-    def test_convert_empty_page(self, tmp_path):
+    def test_convert_empty_page(self, tmp_path: Path) -> None:
         """convert_to_training_set handles page with no words."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -560,7 +572,9 @@ class TestPixelSpaceExport:
     # Detection export — pixel-space
     # ------------------------------------------------------------------
 
-    def test_detection_pixel_space_polygon_coords_are_in_bounds(self, tmp_path):
+    def test_detection_pixel_space_polygon_coords_are_in_bounds(
+        self, tmp_path: Path
+    ) -> None:
         """Detection export with pixel-space boxes must NOT multiply coords by image dims.
 
         Before fix: word at (10,10)-(30,40) on a 200x100 image was scaled to
@@ -592,7 +606,9 @@ class TestPixelSpaceExport:
                     f"y={y} out of bounds [0, {img_h}]; pixel-space coords were wrongly scaled"
                 )
 
-    def test_detection_pixel_space_polygon_values_are_correct(self, tmp_path):
+    def test_detection_pixel_space_polygon_values_are_correct(
+        self, tmp_path: Path
+    ) -> None:
         """Detection export must produce the original pixel coordinates, not scaled ones."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -626,7 +642,7 @@ class TestPixelSpaceExport:
     # Recognition export — pixel-space
     # ------------------------------------------------------------------
 
-    def test_recognition_pixel_space_does_not_raise(self, tmp_path):
+    def test_recognition_pixel_space_does_not_raise(self, tmp_path: Path) -> None:
         """Recognition export with pixel-space boxes must not raise ValueError.
 
         Before fix: bbox.scale() was called unconditionally and raised
@@ -641,7 +657,7 @@ class TestPixelSpaceExport:
             output_path=output_path, prefix="test"
         )
 
-    def test_recognition_pixel_space_writes_correct_crops(self, tmp_path):
+    def test_recognition_pixel_space_writes_correct_crops(self, tmp_path: Path) -> None:
         """Recognition export with pixel-space boxes writes non-empty crops."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -661,7 +677,9 @@ class TestPixelSpaceExport:
         assert "hello" in label_values
         assert "world" in label_values
 
-    def test_recognition_pixel_space_crop_filename_uses_pixel_coords(self, tmp_path):
+    def test_recognition_pixel_space_crop_filename_uses_pixel_coords(
+        self, tmp_path: Path
+    ) -> None:
         """Recognition export uses the original pixel coords in the crop filename."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -691,7 +709,7 @@ class TestPixelSpaceExport:
     # Normalized parity — confirm existing normalized behavior unchanged
     # ------------------------------------------------------------------
 
-    def test_detection_normalized_parity(self, tmp_path):
+    def test_detection_normalized_parity(self, tmp_path: Path) -> None:
         """Normalized-space detection export still produces scaled-up polygon coords."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -733,7 +751,7 @@ class TestPixelSpaceExport:
         assert min(ys) == 10
         assert max(ys) == 40
 
-    def test_recognition_normalized_parity(self, tmp_path):
+    def test_recognition_normalized_parity(self, tmp_path: Path) -> None:
         """Normalized-space recognition export still produces correct crops."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -754,7 +772,7 @@ class TestPixelSpaceExport:
 class TestTrainingSetGeneratorErrorHandling:
     """Test error handling in training set generators."""
 
-    def test_detection_raises_without_image(self, tmp_path):
+    def test_detection_raises_without_image(self, tmp_path: Path) -> None:
         """generate_doctr_detection_training_set raises when no image is set."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -767,7 +785,7 @@ class TestTrainingSetGeneratorErrorHandling:
                 output_path=output_path, prefix="test"
             )
 
-    def test_recognition_raises_without_image(self, tmp_path):
+    def test_recognition_raises_without_image(self, tmp_path: Path) -> None:
         """generate_doctr_recognition_training_set raises when no image is set."""
         output_path = tmp_path / "training_set"
         output_path.mkdir(parents=True, exist_ok=True)
@@ -780,7 +798,7 @@ class TestTrainingSetGeneratorErrorHandling:
                 output_path=output_path, prefix="test"
             )
 
-    def test_detection_raises_nonexistent_parent(self, tmp_path):
+    def test_detection_raises_nonexistent_parent(self, tmp_path: Path) -> None:
         """generate_doctr_detection_training_set raises on nonexistent parent."""
         output_path = tmp_path / "nonexistent" / "training_set"
 
@@ -791,7 +809,7 @@ class TestTrainingSetGeneratorErrorHandling:
                 output_path=output_path, prefix="test"
             )
 
-    def test_recognition_raises_nonexistent_parent(self, tmp_path):
+    def test_recognition_raises_nonexistent_parent(self, tmp_path: Path) -> None:
         """generate_doctr_recognition_training_set raises on nonexistent parent."""
         output_path = tmp_path / "nonexistent" / "training_set"
 
@@ -806,7 +824,7 @@ class TestTrainingSetGeneratorErrorHandling:
 class TestPrefixValidation:
     """#174: training-set prefix must not contain path separators or be absolute."""
 
-    def test_detection_rejects_prefix_with_slash(self, tmp_path):
+    def test_detection_rejects_prefix_with_slash(self, tmp_path: Path) -> None:
         """Detection generator rejects prefix containing '/'."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -814,7 +832,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="evil/prefix"
             )
 
-    def test_detection_rejects_prefix_with_backslash(self, tmp_path):
+    def test_detection_rejects_prefix_with_backslash(self, tmp_path: Path) -> None:
         """Detection generator rejects prefix containing '\\'."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -822,7 +840,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="evil\\prefix"
             )
 
-    def test_detection_rejects_absolute_prefix(self, tmp_path):
+    def test_detection_rejects_absolute_prefix(self, tmp_path: Path) -> None:
         """Detection generator rejects an absolute-path prefix."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -830,7 +848,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="/etc/passwd"
             )
 
-    def test_detection_rejects_dotdot_prefix(self, tmp_path):
+    def test_detection_rejects_dotdot_prefix(self, tmp_path: Path) -> None:
         """Detection generator rejects prefix containing '..'."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -838,7 +856,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="../escape"
             )
 
-    def test_recognition_rejects_prefix_with_slash(self, tmp_path):
+    def test_recognition_rejects_prefix_with_slash(self, tmp_path: Path) -> None:
         """Recognition generator rejects prefix containing '/'."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -846,7 +864,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="evil/prefix"
             )
 
-    def test_recognition_rejects_absolute_prefix(self, tmp_path):
+    def test_recognition_rejects_absolute_prefix(self, tmp_path: Path) -> None:
         """Recognition generator rejects an absolute-path prefix."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -854,7 +872,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="/etc/passwd"
             )
 
-    def test_recognition_rejects_dotdot_prefix(self, tmp_path):
+    def test_recognition_rejects_dotdot_prefix(self, tmp_path: Path) -> None:
         """Recognition generator rejects prefix containing '..'."""
         page = _make_page_with_words(["hello"])
         with pytest.raises(ValueError, match="Prefix"):
@@ -862,7 +880,7 @@ class TestPrefixValidation:
                 output_path=tmp_path, prefix="../escape"
             )
 
-    def test_detection_accepts_valid_prefix(self, tmp_path):
+    def test_detection_accepts_valid_prefix(self, tmp_path: Path) -> None:
         """Detection generator accepts a plain basename prefix."""
         page = _make_page_with_words(["hello"])
         # Should not raise
@@ -870,7 +888,7 @@ class TestPrefixValidation:
             output_path=tmp_path, prefix="book_001"
         )
 
-    def test_recognition_accepts_valid_prefix(self, tmp_path):
+    def test_recognition_accepts_valid_prefix(self, tmp_path: Path) -> None:
         """Recognition generator accepts a plain basename prefix."""
         page = _make_page_with_words(["hello"])
         # Should not raise (no GT words but the prefix check happens first)
@@ -878,7 +896,7 @@ class TestPrefixValidation:
             output_path=tmp_path, prefix="book_001"
         )
 
-    def test_empty_prefix_accepted(self, tmp_path):
+    def test_empty_prefix_accepted(self, tmp_path: Path) -> None:
         """Empty prefix (the default) is always safe."""
         page = _make_page_with_words(["hello"])
         page.generate_doctr_detection_training_set(output_path=tmp_path, prefix="")

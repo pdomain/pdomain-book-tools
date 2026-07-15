@@ -1,17 +1,28 @@
 """Coverage tests for page.py operational methods (merge, delete, split, rebox)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    import pytest
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_word(text, x=0, y=0, w=60, h=20):
+def _make_word(
+    text: str, x: float = 0, y: float = 0, w: float = 60, h: float = 20
+) -> Word:
     return Word(
         text=text,
         bounding_box=BoundingBox.from_ltrb(x, y, x + w, y + h, is_normalized=False),
@@ -19,7 +30,9 @@ def _make_word(text, x=0, y=0, w=60, h=20):
     )
 
 
-def _make_word_normalized(text, x=0.05, y=0.05, w=0.05, h=0.02):
+def _make_word_normalized(
+    text: str, x: float = 0.05, y: float = 0.05, w: float = 0.05, h: float = 0.02
+) -> Word:
     return Word(
         text=text,
         bounding_box=BoundingBox.from_ltrb(x, y, x + w, y + h, is_normalized=True),
@@ -27,7 +40,7 @@ def _make_word_normalized(text, x=0.05, y=0.05, w=0.05, h=0.02):
     )
 
 
-def _make_line(words_texts, y_offset=0):
+def _make_line(words_texts: Sequence[str], y_offset: float = 0) -> Block:
     words = [_make_word(t, x=i * 70, y=y_offset) for i, t in enumerate(words_texts)]
     return Block(
         items=words,
@@ -36,7 +49,7 @@ def _make_line(words_texts, y_offset=0):
     )
 
 
-def _make_paragraph(lines):
+def _make_paragraph(lines: Sequence[Block]) -> Block:
     return Block(
         items=lines,
         block_category=BlockCategory.PARAGRAPH,
@@ -44,17 +57,17 @@ def _make_paragraph(lines):
     )
 
 
-def _make_page(*paragraph_defs):
+def _make_page(*paragraph_defs: Sequence[Sequence[str]]) -> Page:
     """Build a Page from paragraph definitions.
 
     Each paragraph_def is a list of line word-text lists, e.g.:
         _make_page([["hello", "world"], ["foo", "bar"]])
     Creates 1 paragraph with 2 lines.
     """
-    items = []
+    items: list[Block] = []
     y = 0
     for para_def in paragraph_defs:
-        lines = []
+        lines: list[Block] = []
         for line_texts in para_def:
             line = _make_line(line_texts, y_offset=y)
             lines.append(line)
@@ -63,7 +76,9 @@ def _make_page(*paragraph_defs):
     return Page(width=1000, height=1000, page_index=0, blocks=items)
 
 
-def _make_empty_line_with_bbox(x1=0, y1=0, x2=100, y2=20):
+def _make_empty_line_with_bbox(
+    x1: float = 0, y1: float = 0, x2: float = 100, y2: float = 20
+) -> Block:
     """Create an empty LINE block (no words) with a bounding box.
 
     An empty LINE block's .paragraphs property returns [] without AttributeError
@@ -84,13 +99,13 @@ def _make_empty_line_with_bbox(x1=0, y1=0, x2=100, y2=20):
 
 
 class TestMergeParagraphsErrors:
-    def test_rejects_single_index(self):
+    def test_rejects_single_index(self) -> None:
         """merge_paragraphs with only one index returns False."""
         page = _make_page([["hello"]], [["world"]])
         result = page.merge_paragraphs([0])
         assert result is False
 
-    def test_rejects_out_of_range_index(self):
+    def test_rejects_out_of_range_index(self) -> None:
         """merge_paragraphs with out-of-range index returns False."""
         page = _make_page([["hello"]], [["world"]])
         result = page.merge_paragraphs([0, 5])
@@ -103,19 +118,19 @@ class TestMergeParagraphsErrors:
 
 
 class TestDeleteParagraphsErrors:
-    def test_rejects_empty_indices(self):
+    def test_rejects_empty_indices(self) -> None:
         """delete_paragraphs with empty list returns False (lines 908-912)."""
         page = _make_page([["hello"]])
         result = page.delete_paragraphs([])
         assert result is False
 
-    def test_rejects_out_of_range_index(self):
+    def test_rejects_out_of_range_index(self) -> None:
         """delete_paragraphs with out-of-range index returns False (lines 926-928)."""
         page = _make_page([["hello"]])
         result = page.delete_paragraphs([0, 5])
         assert result is False
 
-    def test_deletes_paragraph_successfully(self):
+    def test_deletes_paragraph_successfully(self) -> None:
         """delete_paragraphs removes the specified paragraph."""
         page = _make_page([["hello"]], [["world"]])
         assert len(page.paragraphs) == 2
@@ -130,13 +145,13 @@ class TestDeleteParagraphsErrors:
 
 
 class TestSplitParagraphAfterLineErrors:
-    def test_rejects_out_of_range_line_index(self):
+    def test_rejects_out_of_range_line_index(self) -> None:
         """split_paragraph_after_line with out-of-range index returns False."""
         page = _make_page([["line one"], ["line two"]])
         result = page.split_paragraph_after_line(5)
         assert result is False
 
-    def test_rejects_line_not_in_any_paragraph(self):
+    def test_rejects_line_not_in_any_paragraph(self) -> None:
         """split_paragraph_after_line when line is orphan (not in any para) returns False."""
         # Use an empty LINE block with bbox so page.paragraphs returns [] without
         # raising AttributeError. This covers the target_paragraph is None path (lines 1024-1028).
@@ -146,7 +161,7 @@ class TestSplitParagraphAfterLineErrors:
         result = page.split_paragraph_after_line(0)
         assert result is False
 
-    def test_splits_line_in_second_paragraph(self):
+    def test_splits_line_in_second_paragraph(self) -> None:
         """split_paragraph_after_line with line in 2nd paragraph covers loop False branch."""
         # 2 paragraphs each with 2 lines; line index 2 is the first line of para 2
         page = _make_page([["p1 line1"], ["p1 line2"]], [["p2 line1"], ["p2 line2"]])
@@ -156,7 +171,7 @@ class TestSplitParagraphAfterLineErrors:
         assert result is True
         assert len(page.paragraphs) == 3
 
-    def test_rejects_split_after_last_line_of_paragraph(self):
+    def test_rejects_split_after_last_line_of_paragraph(self) -> None:
         """split_paragraph_after_line on last line returns False."""
         # 1 paragraph with 2 lines; line index 1 is the last one
         page = _make_page([["first line"], ["second line"]])
@@ -164,7 +179,7 @@ class TestSplitParagraphAfterLineErrors:
         result = page.split_paragraph_after_line(1)
         assert result is False
 
-    def test_splits_paragraph_at_first_line(self):
+    def test_splits_paragraph_at_first_line(self) -> None:
         """split_paragraph_after_line on non-last line succeeds."""
         page = _make_page([["first line"], ["second line"]])
         paragraphs_before = len(page.paragraphs)
@@ -172,7 +187,7 @@ class TestSplitParagraphAfterLineErrors:
         assert result is True
         assert len(page.paragraphs) == paragraphs_before + 1
 
-    def test_except_handler_when_paragraphs_property_raises(self):
+    def test_except_handler_when_paragraphs_property_raises(self) -> None:
         """Covers except handler (1086-1092) when page.paragraphs raises AttributeError.
 
         A LINE block with Word children placed directly in page.items causes
@@ -191,25 +206,25 @@ class TestSplitParagraphAfterLineErrors:
 
 
 class TestSplitParagraphWithSelectedLinesErrors:
-    def test_rejects_empty_indices(self):
+    def test_rejects_empty_indices(self) -> None:
         """split_paragraph_with_selected_lines with empty list returns False."""
         page = _make_page([["line one"], ["line two"]])
         result = page.split_paragraph_with_selected_lines([])
         assert result is False
 
-    def test_rejects_out_of_range_index(self):
+    def test_rejects_out_of_range_index(self) -> None:
         """split_paragraph_with_selected_lines with out-of-range index returns False."""
         page = _make_page([["line one"], ["line two"]])
         result = page.split_paragraph_with_selected_lines([5])
         assert result is False
 
-    def test_rejects_selecting_all_lines_same_paragraph(self):
+    def test_rejects_selecting_all_lines_same_paragraph(self) -> None:
         """Selecting ALL lines (no unselected) returns False."""
         page = _make_page([["line one"], ["line two"]])  # 1 para, 2 lines
         result = page.split_paragraph_with_selected_lines([0, 1])
         assert result is False
 
-    def test_rejects_lines_spanning_multiple_paragraphs(self):
+    def test_rejects_lines_spanning_multiple_paragraphs(self) -> None:
         """Lines from different paragraphs returns False."""
         # 2 paragraphs each with 1 line
         page = _make_page([["para one line"]], [["para two line"]])
@@ -217,7 +232,7 @@ class TestSplitParagraphWithSelectedLinesErrors:
         result = page.split_paragraph_with_selected_lines([0, 1])
         assert result is False
 
-    def test_rejects_no_paragraph_contains_line(self):
+    def test_rejects_no_paragraph_contains_line(self) -> None:
         """When line is orphan (not in any paragraph) returns False (1130-1134)."""
         # Use empty LINE block so page.paragraphs returns [] without raising.
         orphan_line = _make_empty_line_with_bbox()
@@ -225,7 +240,7 @@ class TestSplitParagraphWithSelectedLinesErrors:
         result = page.split_paragraph_with_selected_lines([0])
         assert result is False
 
-    def test_splits_by_selecting_line_in_second_paragraph(self):
+    def test_splits_by_selecting_line_in_second_paragraph(self) -> None:
         """Select a line in 2nd paragraph (covers loop False branch 1124->1122)."""
         # 2 paragraphs with 2 lines each; select the first line of para 2 (line index 2)
         page = _make_page([["p1 line1"], ["p1 line2"]], [["p2 line1"], ["p2 line2"]])
@@ -235,7 +250,7 @@ class TestSplitParagraphWithSelectedLinesErrors:
         assert result is True
         assert len(page.paragraphs) == paragraphs_before + 1
 
-    def test_splits_by_selecting_first_line(self):
+    def test_splits_by_selecting_first_line(self) -> None:
         """Selecting a strict subset of lines succeeds."""
         page = _make_page([["line A"], ["line B"], ["line C"]])  # 1 para, 3 lines
         paragraphs_before = len(page.paragraphs)
@@ -243,7 +258,7 @@ class TestSplitParagraphWithSelectedLinesErrors:
         assert result is True
         assert len(page.paragraphs) == paragraphs_before + 1
 
-    def test_except_handler_when_paragraphs_property_raises(self):
+    def test_except_handler_when_paragraphs_property_raises(self) -> None:
         """Covers except handler (1201-1207) when page.paragraphs raises AttributeError.
 
         A LINE block with Word children placed directly in page.items causes
@@ -262,19 +277,19 @@ class TestSplitParagraphWithSelectedLinesErrors:
 
 
 class TestMergeLinesErrors:
-    def test_rejects_page_with_single_line(self):
+    def test_rejects_page_with_single_line(self) -> None:
         """merge_lines when page has only 1 line returns False."""
         page = _make_page([["only line"]])
         result = page.merge_lines([0, 1])
         assert result is False
 
-    def test_rejects_single_selected_index(self):
+    def test_rejects_single_selected_index(self) -> None:
         """merge_lines with fewer than 2 selected indices returns False."""
         page = _make_page([["line one"], ["line two"]])
         result = page.merge_lines([0])
         assert result is False
 
-    def test_rejects_out_of_range_index(self):
+    def test_rejects_out_of_range_index(self) -> None:
         """merge_lines with out-of-range index returns False."""
         page = _make_page([["line one"], ["line two"]])
         result = page.merge_lines([0, 5])
@@ -287,25 +302,25 @@ class TestMergeLinesErrors:
 
 
 class TestDeleteWordsErrors:
-    def test_rejects_empty_keys(self):
+    def test_rejects_empty_keys(self) -> None:
         """delete_words with empty list returns False."""
         page = _make_page([["hello"]])
         result = page.delete_words([])
         assert result is False
 
-    def test_rejects_word_index_out_of_range(self):
+    def test_rejects_word_index_out_of_range(self) -> None:
         """delete_words with word index out of range returns False."""
         page = _make_page([["hello"]])
         result = page.delete_words([(0, 5)])
         assert result is False
 
-    def test_rejects_line_index_out_of_range(self):
+    def test_rejects_line_index_out_of_range(self) -> None:
         """delete_words with line index out of range returns False."""
         page = _make_page([["hello"]])
         result = page.delete_words([(5, 0)])
         assert result is False
 
-    def test_deletes_word_successfully(self):
+    def test_deletes_word_successfully(self) -> None:
         """delete_words removes the specified word."""
         page = _make_page([["hello", "world"]])
         words_before = len(page.words)
@@ -313,7 +328,7 @@ class TestDeleteWordsErrors:
         assert result is True
         assert len(page.words) == words_before - 1
 
-    def test_deletes_two_words_from_same_line(self):
+    def test_deletes_two_words_from_same_line(self) -> None:
         """delete_words with 2 words from same line covers cached line_words (1561->1566).
 
         On the second iteration of the unique_keys loop, validated_by_line already has
@@ -334,45 +349,49 @@ class TestDeleteWordsErrors:
 
 
 class TestSplitWordErrors:
-    def test_rejects_fraction_zero(self):
+    def test_rejects_fraction_zero(self) -> None:
         """split_word with fraction 0.0 returns False."""
         page = _make_page([["hello"]])
         assert page.split_word(0, 0, 0.0) is False
 
-    def test_rejects_fraction_one(self):
+    def test_rejects_fraction_one(self) -> None:
         """split_word with fraction 1.0 returns False."""
         page = _make_page([["hello"]])
         assert page.split_word(0, 0, 1.0) is False
 
-    def test_rejects_out_of_range_line_index(self):
+    def test_rejects_out_of_range_line_index(self) -> None:
         """split_word with out-of-range line index returns False."""
         page = _make_page([["hello"]])
         result = page.split_word(5, 0, 0.5)
         assert result is False
 
-    def test_rejects_out_of_range_word_index(self):
+    def test_rejects_out_of_range_word_index(self) -> None:
         """split_word with out-of-range word index returns False."""
         page = _make_page([["hello"]])
         result = page.split_word(0, 5, 0.5)
         assert result is False
 
-    def test_rejects_single_char_word(self):
+    def test_rejects_single_char_word(self) -> None:
         """split_word on word with < 2 chars returns False."""
         page = _make_page([["A"]])
         result = page.split_word(0, 0, 0.5)
         assert result is False
 
-    def test_rejects_word_with_none_bbox(self):
+    def test_rejects_word_with_none_bbox(self) -> None:
         """split_word when word has no bbox returns False."""
         page = _make_page([["hello"]])
         # Get the actual word object and clear its bbox
         lines = page.lines
         words = list(lines[0].words)
-        words[0].bounding_box = None
+        # ``Word.bounding_box`` is declared non-Optional, but the codebase
+        # treats it as optional at runtime (see the ``cast("BoundingBox |
+        # None", ...)`` reads in word.py); this test exercises that
+        # defensive no-bbox path.
+        words[0].bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]
         result = page.split_word(0, 0, 0.5)
         assert result is False
 
-    def test_splits_word_successfully(self):
+    def test_splits_word_successfully(self) -> None:
         """split_word with valid args succeeds."""
         page = _make_page([["hello"]])
         words_before = len(page.words)
@@ -387,13 +406,13 @@ class TestSplitWordErrors:
 
 
 class TestSplitWordVerticallyErrors:
-    def test_rejects_out_of_range_line_index(self):
+    def test_rejects_out_of_range_line_index(self) -> None:
         """split_word_vertically with out-of-range line index returns False."""
         page = _make_page([["hello"]])
         result = page.split_word_vertically_and_assign_to_closest_line(5, 0, 0.5)
         assert result is False
 
-    def test_succeeds_normal_case(self):
+    def test_succeeds_normal_case(self) -> None:
         """split_word_vertically succeeds when args are valid."""
         page = _make_page([["hello"]])
         result = page.split_word_vertically_and_assign_to_closest_line(0, 0, 0.5)
@@ -406,13 +425,13 @@ class TestSplitWordVerticallyErrors:
 
 
 class TestReboxWord:
-    def test_rebox_word_pixel_coords(self):
+    def test_rebox_word_pixel_coords(self) -> None:
         """rebox_word with pixel bboxes completes successfully."""
         page = _make_page([["hello"]])
         result = page.rebox_word(0, 0, 10, 10, 50, 30, refine_after=False)
         assert result is True
 
-    def test_rebox_word_normalized_coords(self):
+    def test_rebox_word_normalized_coords(self) -> None:
         """rebox_word uses normalized path when existing bbox is normalized."""
         norm_word = _make_word_normalized("hello", x=0.1, y=0.1)
         line = Block(
@@ -426,20 +445,20 @@ class TestReboxWord:
         result = page.rebox_word(0, 0, 50, 50, 200, 100, refine_after=False)
         assert result is True
 
-    def test_rebox_word_out_of_range_word_index(self):
+    def test_rebox_word_out_of_range_word_index(self) -> None:
         """rebox_word with out-of-range word index returns False."""
         page = _make_page([["hello"]])
         result = page.rebox_word(0, 5, 10, 10, 50, 30, refine_after=False)
         assert result is False
 
-    def test_rebox_word_invalid_rect(self):
+    def test_rebox_word_invalid_rect(self) -> None:
         """rebox_word with degenerate rectangle (equal x coords) returns False."""
         page = _make_page([["hello"]])
         # x1 == x2 → after min/max rx1 == rx2 → condition rx2 <= rx1 is True
         result = page.rebox_word(0, 0, 50, 50, 50, 100, refine_after=False)
         assert result is False
 
-    def test_rebox_word_normalized_zero_dims(self):
+    def test_rebox_word_normalized_zero_dims(self) -> None:
         """rebox_word on normalized word with zero-dim page returns False (1938-1941)."""
         norm_word = _make_word_normalized("hello", x=0.1, y=0.1)
         line = Block(
@@ -461,13 +480,13 @@ class TestReboxWord:
 
 
 class TestAddWordToPage:
-    def test_rejects_page_with_no_lines(self):
+    def test_rejects_page_with_no_lines(self) -> None:
         """add_word_to_page when page has no lines returns False."""
         empty_page = Page(width=1000, height=1000, page_index=0, blocks=[])
         result = empty_page.add_word_to_page(10.0, 10.0, 50.0, 30.0)
         assert result is False
 
-    def test_adds_word_to_nearest_line(self):
+    def test_adds_word_to_nearest_line(self) -> None:
         """add_word_to_page inserts a new word into the nearest line."""
         page = _make_page([["hello"]])
         words_before = len(page.words)
@@ -475,14 +494,14 @@ class TestAddWordToPage:
         assert result is True
         assert len(page.words) > words_before
 
-    def test_rejects_invalid_rect(self):
+    def test_rejects_invalid_rect(self) -> None:
         """add_word_to_page with degenerate rect (equal x coords) returns False."""
         page = _make_page([["hello"]])
         # x1 == x2 → after min/max rx1 == rx2 → returns False
         result = page.add_word_to_page(50.0, 10.0, 50.0, 30.0)
         assert result is False
 
-    def test_add_word_to_normalized_page_success(self):
+    def test_add_word_to_normalized_page_success(self) -> None:
         """add_word_to_page on normalized page with valid dims succeeds (2011, 2015, 2036-2037)."""
         norm_word = _make_word_normalized("hello", x=0.1, y=0.1)
         line = Block(
@@ -499,7 +518,7 @@ class TestAddWordToPage:
         assert result is True
         assert len(page.words) > words_before
 
-    def test_add_word_to_normalized_page_zero_dims(self):
+    def test_add_word_to_normalized_page_zero_dims(self) -> None:
         """add_word_to_page on normalized page with zero dims returns False (2011-2014)."""
         norm_word = _make_word_normalized("hello", x=0.1, y=0.1)
         line = Block(
@@ -521,14 +540,14 @@ class TestAddWordToPage:
 
 
 class TestSplitLineAfterWordErrors:
-    def test_rejects_single_word_line(self):
+    def test_rejects_single_word_line(self) -> None:
         """split_line_after_word on a line with only 1 word returns False (1807-1811)."""
         page = _make_page([["only"]])
         # line has 1 word; split requires >= 2 words
         result = page.split_line_after_word(0, 0)
         assert result is False
 
-    def test_rejects_orphan_line_no_paragraph(self):
+    def test_rejects_orphan_line_no_paragraph(self) -> None:
         """split_line_after_word when line is orphan (not in any para) returns False."""
         # Place a LINE block with 2 words directly in page items (no wrapping paragraph).
         # page.paragraphs returns [] for this orphan LINE block, so the for-paragraph
@@ -573,7 +592,9 @@ class TestSplitLineAfterWordErrors:
         # skip; covered by test_rejects_single_word_line_in_empty_orphan below
         pass
 
-    def test_rejects_line_not_in_any_paragraph_via_monkeypatch(self, monkeypatch):
+    def test_rejects_line_not_in_any_paragraph_via_monkeypatch(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Covers 1827->1832 + 1833-1836: line with 2+ words but not in any paragraph.
 
         Monkeypatching paragraphs to return [] ensures the for-paragraph loop at
@@ -586,7 +607,7 @@ class TestSplitLineAfterWordErrors:
         result = page.split_line_after_word(0, 0)
         assert result is False
 
-    def test_rejects_orphan_empty_line(self):
+    def test_rejects_orphan_empty_line(self) -> None:
         """split_line_after_word on empty orphan line (< 2 words) returns False."""
         # Empty orphan line has 0 words -> len(line_words) < 2 -> covers 1807-1811
         orphan_line = _make_empty_line_with_bbox()
@@ -594,7 +615,7 @@ class TestSplitLineAfterWordErrors:
         result = page.split_line_after_word(0, 0)
         assert result is False
 
-    def test_splits_line_in_second_paragraph_after_word(self):
+    def test_splits_line_in_second_paragraph_after_word(self) -> None:
         """split_line_after_word with line in 2nd paragraph covers loop False branch (1828->1827)."""
         # 2 paragraphs; target line is in the 2nd paragraph
         page = _make_page(
@@ -607,17 +628,21 @@ class TestSplitLineAfterWordErrors:
         result = page.split_line_after_word(1, 0)
         assert result is True
 
-    def test_rejects_split_after_last_word(self):
+    def test_rejects_split_after_last_word(self) -> None:
         """split_line_after_word on last word of a 2-word line returns False."""
         page = _make_page([["word1", "word2"]])
         # word_index 1 is last (valid range 0..0 for 2-word line)
         result = page.split_line_after_word(0, 1)
         assert result is False
 
-    def test_parent_none_returns_false(self, monkeypatch):
+    def test_parent_none_returns_false(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Covers 1840-1845: find_parent_block returns None for target_paragraph."""
         page = _make_page([["word1", "word2"]])
-        monkeypatch.setattr(type(page), "find_parent_block", lambda self, target: None)
+
+        def _no_parent(self: Page, target: Block) -> Page | Block | None:
+            return None
+
+        monkeypatch.setattr(type(page), "find_parent_block", _no_parent)
         result = page.split_line_after_word(0, 0)
         assert result is False
 
@@ -628,21 +653,23 @@ class TestSplitLineAfterWordErrors:
 
 
 class TestGroupSelectedWordsErrors:
-    def test_rejects_word_index_out_of_range(self):
+    def test_rejects_word_index_out_of_range(self) -> None:
         """group_selected_words: valid line index but invalid word index (1289-1295)."""
         page = _make_page([["hello", "world"]])  # line 0 has 2 words (index 0, 1)
         # word index 5 is out of range (0-1 for 2-word line)
         result = page.group_selected_words_into_new_paragraph([(0, 5)])
         assert result is False
 
-    def test_rejects_split_word_vertically_when_inner_split_fails(self):
+    def test_rejects_split_word_vertically_when_inner_split_fails(self) -> None:
         """split_word_vertically returns False when split_word() returns False (line 1719)."""
         # A single-char word cannot be split by split_word -> split_word returns False
         page = _make_page([["a"]])
         result = page.split_word_vertically_and_assign_to_closest_line(0, 0, 0.5)
         assert result is False
 
-    def test_orphan_line_not_in_any_paragraph_via_monkeypatch(self, monkeypatch):
+    def test_orphan_line_not_in_any_paragraph_via_monkeypatch(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Covers 1252->1257 + 1258-1262: line not found in any paragraph.
 
         Monkeypatching paragraphs to return [] ensures the for-paragraph inner loop
@@ -653,7 +680,7 @@ class TestGroupSelectedWordsErrors:
         result = page.group_selected_words_into_new_paragraph([(0, 0)])
         assert result is False
 
-    def test_two_para_word_in_second_para_covers_loop_false_branch(self):
+    def test_two_para_word_in_second_para_covers_loop_false_branch(self) -> None:
         """Covers 1267->1266 False branch: iterates over first para that doesn't match.
 
         With 2 paragraphs, word selected from line in para 1 (index 1).
@@ -674,7 +701,7 @@ class TestGroupSelectedWordsErrors:
 
 
 class TestSplitLineWithSelectedWordsEdge:
-    def test_rejects_line_with_no_words(self):
+    def test_rejects_line_with_no_words(self) -> None:
         """split_line_with_selected_words when target line has no words (2106-2107)."""
         # Create an empty line (no words) within a proper paragraph
         empty_line = Block(
@@ -689,7 +716,7 @@ class TestSplitLineWithSelectedWordsEdge:
         # line has 0 words -> len(line_words) < 1 -> warning -> return False
         assert result is False
 
-    def test_rejects_orphan_line_no_containing_paragraph(self):
+    def test_rejects_orphan_line_no_containing_paragraph(self) -> None:
         """split_line_with_selected_words when target line not in any para (2149-2152)."""
         # proper_para has line0. Orphan empty line is at index 1 but no paragraph contains it.
         proper_line = _make_line(["hello", "world"], y_offset=0)
@@ -714,7 +741,7 @@ class TestSplitLineWithSelectedWordsEdge:
         result = page.split_line_with_selected_words([(0, 0)])
         assert result is True  # success path
 
-    def test_line_without_bbox_covers_no_bbox_branch(self):
+    def test_line_without_bbox_covers_no_bbox_branch(self) -> None:
         """split_line_with_selected_words when line has no bbox covers 2135->2141.
 
         When source_line_original_bbox is None (line.bounding_box was cleared),
@@ -728,7 +755,9 @@ class TestSplitLineWithSelectedWordsEdge:
         result = page.split_line_with_selected_words([(0, 0)])
         assert result is True  # succeeds even with no line bbox
 
-    def test_monkeypatched_empty_paragraphs_returns_false(self, monkeypatch):
+    def test_monkeypatched_empty_paragraphs_returns_false(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Covers 2143->2148 + 2149-2152 when paragraphs is empty (orphan line scenario)."""
         page = _make_page([["word1", "word2"]])
         monkeypatch.setattr(type(page), "paragraphs", property(lambda self: []))
@@ -742,7 +771,7 @@ class TestSplitLineWithSelectedWordsEdge:
 
 
 class TestSplitLinesIntoSelectedUnselectedEdge:
-    def test_all_words_selected_continues_and_returns_false(self):
+    def test_all_words_selected_continues_and_returns_false(self) -> None:
         """Selecting ALL words from a line leaves no unselected words (2347-2351).
 
         When unselected_words is empty, the 'if not selected_words or not unselected_words:'
@@ -754,7 +783,9 @@ class TestSplitLinesIntoSelectedUnselectedEdge:
         result = page.split_lines_into_selected_and_unselected_words([(0, 0), (0, 1)])
         assert result is False
 
-    def test_orphan_line_not_in_any_paragraph(self, monkeypatch):
+    def test_orphan_line_not_in_any_paragraph(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Covers 2355->2360 and 2361-2364 when paragraphs is empty.
 
         Monkeypatching paragraphs to return [] ensures the for-paragraph loop
@@ -766,7 +797,7 @@ class TestSplitLinesIntoSelectedUnselectedEdge:
         result = page.split_lines_into_selected_and_unselected_words([(0, 0)])
         assert result is False
 
-    def test_word_in_second_paragraph_covers_loop_continue(self):
+    def test_word_in_second_paragraph_covers_loop_continue(self) -> None:
         """Covers 2356->2355 (False branch of if-in-loop) when line is in 2nd paragraph.
 
         With 2 paragraphs, iterating para 0 first fails (line not in para0.lines),
@@ -785,7 +816,7 @@ class TestSplitLinesIntoSelectedUnselectedEdge:
 
 
 class TestNudgeWordBboxEdge:
-    def test_rejects_word_with_none_bbox(self):
+    def test_rejects_word_with_none_bbox(self) -> None:
         """nudge_word_bbox returns False when target word has no bounding box (2444-2449)."""
         # Create word with valid bbox first (items setter requires non-None bbox),
         # then clear bbox after adding to the block.
@@ -797,12 +828,16 @@ class TestNudgeWordBboxEdge:
         )
         para = _make_paragraph([line])
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
-        # Now clear the bbox after the block structure is set up
-        word.bounding_box = None
+        # Now clear the bbox after the block structure is set up.
+        # ``Word.bounding_box`` is declared non-Optional, but the codebase
+        # treats it as optional at runtime (see the ``cast("BoundingBox |
+        # None", ...)`` reads in word.py); this test exercises that
+        # defensive no-bbox path.
+        word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]
         result = page.nudge_word_bbox(0, 0, 1.0, 1.0, 1.0, 1.0)
         assert result is False
 
-    def test_rejects_collapsed_bbox_after_nudge(self):
+    def test_rejects_collapsed_bbox_after_nudge(self) -> None:
         """nudge_word_bbox returns False when nudge collapses the bbox (2483-2492)."""
         # word bbox: (50, 50, 60, 70) - width=10, height=20
         word = _make_word("hi", x=50, y=50, w=10, h=20)
@@ -818,13 +853,13 @@ class TestNudgeWordBboxEdge:
         result = page.nudge_word_bbox(0, 0, 0.0, -20.0, 0.0, 0.0)
         assert result is False
 
-    def test_rejects_word_index_out_of_range(self):
+    def test_rejects_word_index_out_of_range(self) -> None:
         """nudge_word_bbox returns False when word index is out of range (2432-2439)."""
         page = _make_page([["hello"]])
         result = page.nudge_word_bbox(0, 5, 1.0, 1.0, 1.0, 1.0)
         assert result is False
 
-    def test_normalized_word_zero_dims_returns_false(self):
+    def test_normalized_word_zero_dims_returns_false(self) -> None:
         """nudge_word_bbox on normalized word with zero-dim page returns False (2453-2458)."""
         norm_word = _make_word_normalized("hello", x=0.1, y=0.1)
         line = Block(
@@ -837,7 +872,7 @@ class TestNudgeWordBboxEdge:
         result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0)
         assert result is False
 
-    def test_normalized_word_valid_page_succeeds(self):
+    def test_normalized_word_valid_page_succeeds(self) -> None:
         """nudge_word_bbox on normalized word with valid page succeeds (2459-2462)."""
         norm_word = _make_word_normalized("hello", x=0.1, y=0.1)
         line = Block(
@@ -850,7 +885,7 @@ class TestNudgeWordBboxEdge:
         result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0, refine_after=False)
         assert result is True
 
-    def test_pixel_word_zero_dim_page_skips_clamping(self):
+    def test_pixel_word_zero_dim_page_skips_clamping(self) -> None:
         """nudge_word_bbox on pixel word with zero-dim page covers 2477->2479, 2479->2482.
 
         When page_width == 0 and page_height == 0, the clamping branches
@@ -878,7 +913,7 @@ class TestNudgeWordBboxEdge:
 
 
 class TestReorganizeLinesEdge:
-    def test_skips_pair_where_first_line_has_no_bbox(self):
+    def test_skips_pair_where_first_line_has_no_bbox(self) -> None:
         """reorganize_lines skips pair when first line has None bbox (line 2749)."""
         # Create both lines with valid bboxes first, then clear line1's bbox.
         # _reorganize_lines_check_overlap: line has no bbox -> returns False
@@ -906,7 +941,7 @@ class TestReorganizeLinesEdge:
         reorganize_page_utils.reorganize_lines(para)
         assert len(para.items) == 2
 
-    def test_skips_pair_with_large_height_difference_and_no_x_overlap(self):
+    def test_skips_pair_with_large_height_difference_and_no_x_overlap(self) -> None:
         """reorganize_lines skips pair when height differs too much (2765-2768)."""
         # l1: x=[0,80], y=[0,10], height=10
         # l2: x=[100,180], y=[0,40], height=40 (no x overlap)
@@ -933,7 +968,7 @@ class TestReorganizeLinesEdge:
         reorganize_page_utils.reorganize_lines(para)
         assert len(para.items) == 2  # no merge due to height diff
 
-    def test_reorders_and_skips_lines_with_large_x_space(self):
+    def test_reorders_and_skips_lines_with_large_x_space(self) -> None:
         """reorganize_lines reorders and skips when x_space >= 10% median (2772, 2795-2798)."""
         # l1: x=[100,180], y=[0,10], height=10 (starts AFTER l2 on x axis)
         # l2: x=[0,70], y=[0,10], height=10
@@ -968,7 +1003,7 @@ class TestReorganizeLinesEdge:
         # No merge because x_space is large (columns)
         assert len(para.items) == 2
 
-    def test_skips_pair_where_second_line_has_no_bbox(self):
+    def test_skips_pair_where_second_line_has_no_bbox(self) -> None:
         """reorganize_lines skips pair when second line has None bbox (lines 2670-2675).
 
         Create two lines; clear the SECOND line's bbox after building the paragraph.
@@ -1005,7 +1040,7 @@ class TestReorganizeLinesEdge:
 
 
 class TestRefineBoundingBoxesEdge:
-    def test_returns_false_word_with_none_bbox_on_is_normalized_check(self):
+    def test_returns_false_word_with_none_bbox_on_is_normalized_check(self) -> None:
         """is_content_normalized handles a mix of empty and normal lines."""
         # Create a page with 2 lines in a para: first line is empty (no words),
         # second line has a normal word with bbox
@@ -1035,7 +1070,7 @@ class TestRefineBoundingBoxesEdge:
 
 
 class TestIsContentNormalizedBranches:
-    def test_returns_false_for_line_with_no_words(self):
+    def test_returns_false_for_line_with_no_words(self) -> None:
         """is_content_normalized: loop over empty line covers 502->501 branch."""
         empty_line = Block(
             items=[],
@@ -1049,7 +1084,7 @@ class TestIsContentNormalizedBranches:
         result = page.is_content_normalized
         assert result is False
 
-    def test_raises_on_mixed_normalized_and_pixel_words(self):
+    def test_raises_on_mixed_normalized_and_pixel_words(self) -> None:
         """L-14: a page with both normalized and pixel-space word bboxes
         is a logic error upstream \u2014 surface it loudly instead of silently  # EM DASH
         returning whichever convention the first word happens to use.
@@ -1083,7 +1118,7 @@ class TestIsContentNormalizedBranches:
         with pytest.raises(ValueError, match="mix of normalized and pixel"):
             _ = page.is_content_normalized
 
-    def test_homogeneous_normalized_returns_true(self):
+    def test_homogeneous_normalized_returns_true(self) -> None:
         """L-14: when every word agrees on normalized=True, return True
         (regardless of which one we encountered first).
         """
@@ -1098,7 +1133,7 @@ class TestIsContentNormalizedBranches:
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         assert page.is_content_normalized is True
 
-    def test_returns_false_for_word_with_none_bbox(self):
+    def test_returns_false_for_word_with_none_bbox(self) -> None:
         """is_content_normalized: word with None bbox covers 503->502 branch."""
         # Create word with valid bbox, then clear it after structure is set
         word = _make_word("x", x=0, y=0, w=10, h=10)
@@ -1109,8 +1144,12 @@ class TestIsContentNormalizedBranches:
         )
         para = _make_paragraph([line])
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
-        # Clear bbox after structure is set
-        word.bounding_box = None
+        # Clear bbox after structure is set.
+        # ``Word.bounding_box`` is declared non-Optional, but the codebase
+        # treats it as optional at runtime (see the ``cast("BoundingBox |
+        # None", ...)`` reads in word.py); this test exercises that
+        # defensive no-bbox path.
+        word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]
         # word.bounding_box is None -> if condition False -> continues -> 503->502 branch
         result = page.is_content_normalized
         assert result is False

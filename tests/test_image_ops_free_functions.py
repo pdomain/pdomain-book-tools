@@ -157,7 +157,11 @@ def test_crop_word_top_no_image_raises():
 
 
 def test_crop_word_bottom_no_bbox_raises():
-    word = Word(text="foo", bounding_box=None, ocr_confidence=0.9)
+    word = Word(
+        text="foo",
+        bounding_box=None,  # pyright: ignore[reportArgumentType]  # intentional: exercises crop_word_bottom's missing-bbox validation
+        ocr_confidence=0.9,
+    )
     img = _make_text_image()
     with pytest.raises(ValueError, match="Bounding box"):
         crop_word_bottom(word, img)

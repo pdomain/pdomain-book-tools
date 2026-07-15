@@ -469,11 +469,14 @@ class Block:
         # Empty words are directly removed with remove_item, do not need to be handled here
 
     @items.setter
-    def items(self, value: object) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts any collection; getter returns a sorted copy
+    def items(self, value: object) -> None:
         if not isinstance(value, Collection):
             raise TypeError("items must be a collection (e.g., list, tuple, set)")
+        # isinstance against the unparameterized ABC erases the element type to
+        # Unknown; the cast restores it to the widest honest type (object).
+        collection_value = cast("Collection[object]", value)
         typed_items: list[Word | Block] = []
-        for item in value:
+        for item in collection_value:
             # M-16 / H-19: allow items whose ``bounding_box`` is ``None``.
             # ``recompute_bounding_box`` already filters None bboxes
             # (block.py line 329), and ``Page.__init__`` was hardened for

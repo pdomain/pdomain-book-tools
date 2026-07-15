@@ -1,13 +1,22 @@
 """Tests for cupy_processing.contours module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    import cupy
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestRemoveSmallContoursGpu:
-    def test_blank_image_returns_zeros(self, cupy_module):
+    def test_blank_image_returns_zeros(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             remove_small_contours_gpu,
@@ -17,7 +26,7 @@ class TestRemoveSmallContoursGpu:
         out = remove_small_contours_gpu(img)
         assert cp.all(out == 0)
 
-    def test_output_shape_matches_input(self, cupy_module):
+    def test_output_shape_matches_input(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             remove_small_contours_gpu,
@@ -28,7 +37,7 @@ class TestRemoveSmallContoursGpu:
         out = remove_small_contours_gpu(img)
         assert out.shape == img.shape
 
-    def test_tiny_isolated_pixel_is_removed(self, cupy_module):
+    def test_tiny_isolated_pixel_is_removed(self, cupy_module: ModuleType) -> None:
         """A single white pixel on a large blank canvas should be removed."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -40,7 +49,7 @@ class TestRemoveSmallContoursGpu:
         out = remove_small_contours_gpu(img)
         assert int(out[50, 50]) == 0
 
-    def test_large_blob_is_preserved(self, cupy_module):
+    def test_large_blob_is_preserved(self, cupy_module: ModuleType) -> None:
         """A blob larger than the size thresholds should not be removed."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -52,7 +61,7 @@ class TestRemoveSmallContoursGpu:
         out = remove_small_contours_gpu(img)
         assert int(out[100, 100]) == 255
 
-    def test_small_blob_near_large_blob_is_kept(self, cupy_module):
+    def test_small_blob_near_large_blob_is_kept(self, cupy_module: ModuleType) -> None:
         """A small component whose search area overlaps a large blob should survive."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -70,7 +79,7 @@ class TestRemoveSmallContoursGpu:
         out = remove_small_contours_gpu(img)
         assert int(out[153, 100]) == 255
 
-    def test_small_isolated_blob_is_removed(self, cupy_module):
+    def test_small_isolated_blob_is_removed(self, cupy_module: ModuleType) -> None:
         """A small component with no neighbours should be removed."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -82,7 +91,7 @@ class TestRemoveSmallContoursGpu:
         out = remove_small_contours_gpu(img)
         assert int(out[102, 102]) == 0
 
-    def test_input_is_not_mutated(self, cupy_module):
+    def test_input_is_not_mutated(self, cupy_module: ModuleType) -> None:
         """remove_small_contours_gpu should return a copy, not modify in-place."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -95,7 +104,7 @@ class TestRemoveSmallContoursGpu:
         remove_small_contours_gpu(img)
         assert cp.array_equal(img, original)
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: ModuleType) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             np_uint8_remove_small_contours,
         )
@@ -111,7 +120,7 @@ class TestRemoveSmallContoursGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestContourSizeStatsGpu:
-    def test_blank_image_returns_zero_count(self, cupy_module):
+    def test_blank_image_returns_zero_count(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             contour_size_stats_gpu,
@@ -121,7 +130,7 @@ class TestContourSizeStatsGpu:
         stats = contour_size_stats_gpu(img)
         assert stats["count"] == 0
 
-    def test_single_blob_stats(self, cupy_module):
+    def test_single_blob_stats(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             contour_size_stats_gpu,
@@ -134,7 +143,7 @@ class TestContourSizeStatsGpu:
         assert stats["median_w"] == 15.0
         assert stats["median_h"] == 10.0
 
-    def test_median_dominated_by_majority_size(self, cupy_module):
+    def test_median_dominated_by_majority_size(self, cupy_module: ModuleType) -> None:
         """Median should reflect the common component size, not outliers."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -163,7 +172,7 @@ class TestContourSizeStatsGpu:
         assert stats["median_w"] == pytest.approx(10.0, abs=1)
         assert stats["median_h"] == pytest.approx(8.0, abs=1)
 
-    def test_returns_all_expected_keys(self, cupy_module):
+    def test_returns_all_expected_keys(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             contour_size_stats_gpu,
@@ -187,7 +196,7 @@ class TestContourSizeStatsGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestRemoveSmallContoursAdaptiveGpu:
-    def _make_text_page(self, cp):
+    def _make_text_page(self, cp: ModuleType) -> cupy.ndarray[np.uint8]:
         """20 character-sized (8\u00d76) blobs + 5 noise dots (1\u00d71)."""  # MULTIPLICATION SIGN
         img = cp.zeros((200, 200), dtype=cp.uint8)
         positions = [
@@ -219,7 +228,7 @@ class TestRemoveSmallContoursAdaptiveGpu:
             img[r, c] = 255
         return img
 
-    def test_noise_dots_are_removed(self, cupy_module):
+    def test_noise_dots_are_removed(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             remove_small_contours_adaptive_gpu,
@@ -231,7 +240,7 @@ class TestRemoveSmallContoursAdaptiveGpu:
         for r, c in [(150, 150), (155, 160), (160, 170), (165, 140), (170, 155)]:
             assert int(out[r, c]) == 0
 
-    def test_character_blobs_are_preserved(self, cupy_module):
+    def test_character_blobs_are_preserved(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             remove_small_contours_adaptive_gpu,
@@ -243,7 +252,9 @@ class TestRemoveSmallContoursAdaptiveGpu:
         for r, c in [(13, 14), (33, 34), (53, 54)]:
             assert int(out[r, c]) == 255
 
-    def test_page_number_same_size_as_body_text_is_kept(self, cupy_module):
+    def test_page_number_same_size_as_body_text_is_kept(
+        self, cupy_module: ModuleType
+    ) -> None:
         """Components matching body-text character size must never be removed."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
@@ -261,7 +272,7 @@ class TestRemoveSmallContoursAdaptiveGpu:
         out = remove_small_contours_adaptive_gpu(img)
         assert int(out[183, 94]) == 255
 
-    def test_toc_leader_dots_are_preserved(self, cupy_module):
+    def test_toc_leader_dots_are_preserved(self, cupy_module: ModuleType) -> None:
         """
         Leader dots in a table of contents (". . . . . 50") must not be removed.
         Each dot is isolated from its immediate neighbours but they form a row;
@@ -289,7 +300,7 @@ class TestRemoveSmallContoursAdaptiveGpu:
                 f"Leader dot at col {c} was incorrectly removed"
             )
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: ModuleType) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.contours import (
             np_uint8_remove_small_contours_adaptive,
         )

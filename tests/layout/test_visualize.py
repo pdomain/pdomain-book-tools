@@ -1,6 +1,9 @@
 """Tests for ``pdomain_book_tools.layout.visualize.draw_layout_overlay``."""
 
+from __future__ import annotations
+
 import inspect
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -9,8 +12,13 @@ from pdomain_book_tools.layout import visualize as visualize_module
 from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
 from pdomain_book_tools.layout.visualize import draw_layout_overlay
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def test_text_color_comment_does_not_claim_cyan():
+    import cv2.typing
+
+
+def test_text_color_comment_does_not_claim_cyan() -> None:
     """L-10: BGR (200, 200, 60) is yellow-green, not cyan-ish (cyan in BGR is
     (255, 255, 0)). The original comment was misleading; this test prevents
     a future edit from re-introducing the wrong claim."""
@@ -28,7 +36,7 @@ def test_text_color_comment_does_not_claim_cyan():
         )
 
 
-def _write_dummy_png(path):
+def _write_dummy_png(path: Path) -> None:
     """Write a small valid PNG so cv2.imread succeeds."""
     import cv2
 
@@ -36,12 +44,12 @@ def _write_dummy_png(path):
     assert cv2.imwrite(str(path), img)
 
 
-def _layout_one_text_region():
+def _layout_one_text_region() -> PageLayout:
     region = LayoutRegion(type=RegionType.text, L=10, T=10, R=200, B=80, confidence=0.9)
     return PageLayout(image_width=600, image_height=400, regions=[region])
 
 
-def test_draw_layout_overlay_happy_path(tmp_path):
+def test_draw_layout_overlay_happy_path(tmp_path: Path) -> None:
     src = tmp_path / "src.png"
     dest = tmp_path / "out.png"
     _write_dummy_png(src)
@@ -51,13 +59,15 @@ def test_draw_layout_overlay_happy_path(tmp_path):
     assert dest.stat().st_size > 0
 
 
-def test_draw_layout_overlay_missing_source_returns_none(tmp_path):
+def test_draw_layout_overlay_missing_source_returns_none(tmp_path: Path) -> None:
     src = tmp_path / "missing.png"
     dest = tmp_path / "out.png"
     assert draw_layout_overlay(src, _layout_one_text_region(), dest) is None
 
 
-def test_label_x_clamped_to_image_width(tmp_path, monkeypatch):
+def test_label_x_clamped_to_image_width(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """L-09: a region near the right edge previously had its label rectangle
     and text painted off-image. Now the label x-start is clamped so the
     label fits inside the image."""
@@ -76,7 +86,15 @@ def test_label_x_clamped_to_image_width(tmp_path, monkeypatch):
     captured: list[tuple[int, int]] = []
     real_rectangle = cv2.rectangle
 
-    def spy_rectangle(img, pt1, pt2, color, thickness=1, *args, **kwargs):
+    def spy_rectangle(
+        img: cv2.typing.MatLike,
+        pt1: cv2.typing.Point,
+        pt2: cv2.typing.Point,
+        color: cv2.typing.Scalar,
+        thickness: int = 1,
+        *args: int,
+        **kwargs: int,
+    ) -> cv2.typing.MatLike:
         # We only care about the filled label rectangle (thickness=-1).
         if thickness == -1:
             captured.append((pt1[0], pt2[0]))
@@ -94,7 +112,9 @@ def test_label_x_clamped_to_image_width(tmp_path, monkeypatch):
         )
 
 
-def test_draw_layout_overlay_raises_oserror_on_write_failure(tmp_path, monkeypatch):
+def test_draw_layout_overlay_raises_oserror_on_write_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """L-08: cv2.imwrite returning False used to be silently ignored — the
     function returned `dest_path` so callers' `is not None` check claimed
     success even when nothing was written. Now raises OSError so the
@@ -105,6 +125,9 @@ def test_draw_layout_overlay_raises_oserror_on_write_failure(tmp_path, monkeypat
     dest = tmp_path / "out.png"
     _write_dummy_png(src)
 
-    monkeypatch.setattr(cv2, "imwrite", lambda _path, _img: False)
+    def fake_imwrite(_path: str, _img: cv2.typing.MatLike) -> bool:
+        return False
+
+    monkeypatch.setattr(cv2, "imwrite", fake_imwrite)
     with pytest.raises(OSError, match=r"cv2.imwrite failed"):
         draw_layout_overlay(src, _layout_one_text_region(), dest)

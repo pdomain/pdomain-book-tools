@@ -1,5 +1,8 @@
 """Targeted tests for Word coverage gaps (refine, expand, ground_truth helpers)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, NoReturn, TypedDict
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -8,9 +11,26 @@ import pytest
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+
+class _PaddingAndExpandSeen(TypedDict):
+    padding_px: int
+    expand_beyond_original: bool
+
+
+class _PaddingOnlySeen(TypedDict):
+    padding_px: int
+
+
+class _RefineBboxCalled(TypedDict):
+    refine_bbox: int
+    padding_px: int | None
+
 
 @pytest.fixture
-def pixel_word():
+def pixel_word() -> Word:
     return Word(
         text="abc",
         bounding_box=BoundingBox.from_ltrb(10, 10, 30, 20, is_normalized=False),
@@ -19,7 +39,7 @@ def pixel_word():
 
 
 @pytest.fixture
-def normalized_word():
+def normalized_word() -> Word:
     return Word(
         text="abc",
         bounding_box=BoundingBox.from_ltrb(0.1, 0.1, 0.3, 0.2, is_normalized=True),
@@ -28,97 +48,99 @@ def normalized_word():
 
 
 class TestGroundTruthHelpers:
-    def test_copy_ocr_to_ground_truth_empty_text(self, pixel_word):
+    def test_copy_ocr_to_ground_truth_empty_text(self, pixel_word: Word) -> None:
         pixel_word.text = ""
         assert pixel_word.copy_ocr_to_ground_truth() is False
 
-    def test_copy_ocr_to_ground_truth(self, pixel_word):
+    def test_copy_ocr_to_ground_truth(self, pixel_word: Word) -> None:
         pixel_word.ground_truth_text = ""
         assert pixel_word.copy_ocr_to_ground_truth() is True
         assert pixel_word.ground_truth_text == pixel_word.text
 
-    def test_copy_ground_truth_to_ocr_empty(self, pixel_word):
+    def test_copy_ground_truth_to_ocr_empty(self, pixel_word: Word) -> None:
         pixel_word.ground_truth_text = ""
         assert pixel_word.copy_ground_truth_to_ocr() is False
 
-    def test_copy_ground_truth_to_ocr(self, pixel_word):
+    def test_copy_ground_truth_to_ocr(self, pixel_word: Word) -> None:
         pixel_word.ground_truth_text = "GT"
         assert pixel_word.copy_ground_truth_to_ocr() is True
         assert pixel_word.text == "GT"
 
-    def test_clear_ground_truth_empty(self, pixel_word):
+    def test_clear_ground_truth_empty(self, pixel_word: Word) -> None:
         pixel_word.ground_truth_text = ""
         assert pixel_word.clear_ground_truth() is False
 
-    def test_clear_ground_truth(self, pixel_word):
+    def test_clear_ground_truth(self, pixel_word: Word) -> None:
         pixel_word.ground_truth_text = "GT"
         assert pixel_word.clear_ground_truth() is True
         assert pixel_word.ground_truth_text == ""
 
-    def test_is_empty(self, pixel_word):
+    def test_is_empty(self, pixel_word: Word) -> None:
         assert pixel_word.is_empty is False
         pixel_word.text = ""
         assert pixel_word.is_empty is True
 
-    def test_ground_truth_text_only_ocr_empty_text(self, pixel_word):
+    def test_ground_truth_text_only_ocr_empty_text(self, pixel_word: Word) -> None:
         pixel_word.text = ""
         pixel_word.ground_truth_text = "something"
         assert pixel_word.ground_truth_text_only_ocr == ""
 
-    def test_ground_truth_text_only_ocr_with_gt(self, pixel_word):
+    def test_ground_truth_text_only_ocr_with_gt(self, pixel_word: Word) -> None:
         pixel_word.ground_truth_text = "GT"
         assert pixel_word.ground_truth_text_only_ocr == "GT"
 
 
 class TestApplyStyleScope:
-    def test_apply_style_scope_adds_new_label(self, pixel_word):
+    def test_apply_style_scope_adds_new_label(self, pixel_word: Word) -> None:
         # No existing italics label, but apply scope to italics
         pixel_word.apply_style_scope("italics", "whole")
         assert "italics" in pixel_word.text_style_labels
         assert pixel_word.text_style_label_scopes.get("italics") == "whole"
 
-    def test_apply_style_scope_with_existing_label(self, pixel_word):
+    def test_apply_style_scope_with_existing_label(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics"]
         pixel_word.apply_style_scope("italics", "part")
         assert pixel_word.text_style_label_scopes.get("italics") == "part"
 
 
 class TestApplyComponent:
-    def test_apply_component_enable(self, pixel_word):
+    def test_apply_component_enable(self, pixel_word: Word) -> None:
         pixel_word.apply_component("footnote marker", enabled=True)
         assert "footnote marker" in pixel_word.word_components
 
-    def test_apply_component_disable(self, pixel_word):
+    def test_apply_component_disable(self, pixel_word: Word) -> None:
         pixel_word.word_components = ["footnote marker"]
         pixel_word.apply_component("footnote marker", enabled=False)
         assert "footnote marker" not in pixel_word.word_components
 
 
 class TestClearAllScopes:
-    def test_clear_all_scopes_no_styles(self, pixel_word):
+    def test_clear_all_scopes_no_styles(self, pixel_word: Word) -> None:
         # Default text style labels are ["regular"]; should return False
         assert pixel_word.clear_all_scopes() is False
 
-    def test_clear_all_scopes_with_scoped_styles(self, pixel_word):
+    def test_clear_all_scopes_with_scoped_styles(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics"]
         pixel_word.text_style_label_scopes = {"italics": "part"}
         assert pixel_word.clear_all_scopes() is True
         assert pixel_word.text_style_label_scopes == {}
 
-    def test_clear_all_scopes_no_scope_to_clear(self, pixel_word):
+    def test_clear_all_scopes_no_scope_to_clear(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics"]
         pixel_word.text_style_label_scopes = {}
         assert pixel_word.clear_all_scopes() is False
 
 
 class TestRemoveStyleLabel:
-    def test_remove_style_label(self, pixel_word):
+    def test_remove_style_label(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics", "small caps"]
         pixel_word.text_style_label_scopes = {"italics": "whole", "small caps": "part"}
         assert pixel_word.remove_style_label("italics") is True
         assert "italics" not in pixel_word.text_style_labels
 
-    def test_remove_only_style_label_falls_back_to_regular(self, pixel_word):
+    def test_remove_only_style_label_falls_back_to_regular(
+        self, pixel_word: Word
+    ) -> None:
         pixel_word.text_style_labels = ["italics"]
         pixel_word.text_style_label_scopes = {"italics": "whole"}
         pixel_word.remove_style_label("italics")
@@ -126,7 +148,7 @@ class TestRemoveStyleLabel:
 
 
 class TestUpdateStyleAttributes:
-    def test_no_change_returns_true(self, pixel_word):
+    def test_no_change_returns_true(self, pixel_word: Word) -> None:
         # Already in default state. Setting all to False should keep it stable.
         result = pixel_word.update_style_attributes(
             italic=False,
@@ -137,7 +159,7 @@ class TestUpdateStyleAttributes:
         )
         assert result is True
 
-    def test_set_italic_true(self, pixel_word):
+    def test_set_italic_true(self, pixel_word: Word) -> None:
         pixel_word.update_style_attributes(
             italic=True,
             small_caps=False,
@@ -148,7 +170,7 @@ class TestUpdateStyleAttributes:
         assert "italics" in pixel_word.text_style_labels
         assert pixel_word.read_style_attribute("italic") is True
 
-    def test_set_footnote_true(self, pixel_word):
+    def test_set_footnote_true(self, pixel_word: Word) -> None:
         pixel_word.update_style_attributes(
             italic=False,
             small_caps=False,
@@ -158,7 +180,7 @@ class TestUpdateStyleAttributes:
         )
         assert "footnote marker" in pixel_word.word_components
 
-    def test_set_all_styles(self, pixel_word):
+    def test_set_all_styles(self, pixel_word: Word) -> None:
         pixel_word.update_style_attributes(
             italic=True,
             small_caps=True,
@@ -171,7 +193,7 @@ class TestUpdateStyleAttributes:
         assert "blackletter" in pixel_word.text_style_labels
         assert "footnote marker" in pixel_word.word_components
 
-    def test_unset_all_styles(self, pixel_word):
+    def test_unset_all_styles(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics"]
         pixel_word.update_style_attributes(
             italic=False,
@@ -185,43 +207,50 @@ class TestUpdateStyleAttributes:
 
 
 class TestReadStyleAttribute:
-    def test_unknown_attribute(self, pixel_word):
+    def test_unknown_attribute(self, pixel_word: Word) -> None:
         # Returns False for unknown attributes
         assert pixel_word.read_style_attribute("unknown_attr") is False
 
-    def test_style_attribute_alias(self, pixel_word):
+    def test_style_attribute_alias(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics"]
         # is_italic is an alias
         assert pixel_word.read_style_attribute("is_italic") is True
 
-    def test_component_attribute(self, pixel_word):
+    def test_component_attribute(self, pixel_word: Word) -> None:
         pixel_word.word_components = ["footnote marker"]
         assert pixel_word.read_style_attribute("footnote") is True
 
 
 class TestBboxSignature:
-    def test_bbox_signature(self, pixel_word):
+    def test_bbox_signature(self, pixel_word: Word) -> None:
         sig = pixel_word.bbox_signature
         assert sig is not None
         assert sig[4] is False  # is_normalized
 
-    def test_bbox_signature_none_when_no_bbox(self, pixel_word):
-        pixel_word.bounding_box = None
+    def test_bbox_signature_none_when_no_bbox(self, pixel_word: Word) -> None:
+        pixel_word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]  # intentionally invalid state; exercises the defensive None-handling that bbox_signature/expand_bbox already cast for internally
         assert pixel_word.bbox_signature is None
 
 
 class TestRefineBbox:
-    def test_refine_bbox_no_image(self, pixel_word):
+    def test_refine_bbox_no_image(self, pixel_word: Word) -> None:
         assert pixel_word.refine_bbox(None) is False
 
-    def test_refine_bbox_no_bbox(self, pixel_word):
-        pixel_word.bounding_box = None
+    def test_refine_bbox_no_bbox(self, pixel_word: Word) -> None:
+        pixel_word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]  # see test_bbox_signature_none_when_no_bbox
         assert pixel_word.refine_bbox(np.zeros((20, 20), dtype=np.uint8)) is False
 
-    def test_refine_bbox_uses_refine_when_succeeds(self, pixel_word, monkeypatch):
+    def test_refine_bbox_uses_refine_when_succeeds(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         new_bbox = BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
 
-        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+        def fake_refine(
+            self: BoundingBox,
+            page_image: NDArray[np.uint8],
+            padding_px: int = 1,
+            expand_beyond_original: bool = False,
+        ) -> BoundingBox:
             return new_bbox
 
         monkeypatch.setattr(BoundingBox, "refine", fake_refine)
@@ -229,40 +258,44 @@ class TestRefineBbox:
         assert pixel_word.refine_bbox(img) is True
         assert pixel_word.bounding_box is new_bbox
 
-    def test_refine_bbox_falls_back_to_crop_bottom(self, pixel_word, monkeypatch):
+    def test_refine_bbox_falls_back_to_crop_bottom(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # refine raises -> falls back to crop_bottom
-        def raising_refine(self, *a, **kw):
+        def raising_refine(self: BoundingBox, *a: object, **kw: object) -> NoReturn:
             raise RuntimeError("nope")
 
         monkeypatch.setattr(BoundingBox, "refine", raising_refine)
 
         called = {"count": 0}
 
-        def fake_crop_bottom(img):
+        def fake_crop_bottom(img: NDArray[np.uint8]) -> None:
             called["count"] += 1
 
         # Replace crop_bottom on the word instance
-        pixel_word.crop_bottom = fake_crop_bottom
+        pixel_word.crop_bottom = fake_crop_bottom  # pyright: ignore[reportAttributeAccessIssue]  # monkeypatching an instance method with a plain callable is the established pattern in this test suite
         img = np.zeros((50, 50), dtype=np.uint8)
         assert pixel_word.refine_bbox(img) is True
         assert called["count"] == 1
 
-    def test_refine_bbox_returns_false_when_all_fail(self, pixel_word, monkeypatch):
-        def raising_refine(self, *a, **kw):
+    def test_refine_bbox_returns_false_when_all_fail(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def raising_refine(self: BoundingBox, *a: object, **kw: object) -> NoReturn:
             raise RuntimeError("nope")
 
-        def raising_crop_bottom(img):
+        def raising_crop_bottom(img: NDArray[np.uint8]) -> NoReturn:
             raise RuntimeError("nope2")
 
         monkeypatch.setattr(BoundingBox, "refine", raising_refine)
-        pixel_word.crop_bottom = raising_crop_bottom
+        pixel_word.crop_bottom = raising_crop_bottom  # pyright: ignore[reportAttributeAccessIssue]  # see test_refine_bbox_falls_back_to_crop_bottom
         img = np.zeros((50, 50), dtype=np.uint8)
         assert pixel_word.refine_bbox(img) is False
 
     def test_refine_bbox_returns_false_when_refine_returns_none(
-        self, pixel_word, monkeypatch
-    ):
-        def fake_refine(self, *a, **kw):
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fake_refine(self: BoundingBox, *a: object, **kw: object) -> None:
             return None
 
         monkeypatch.setattr(BoundingBox, "refine", fake_refine)
@@ -284,10 +317,17 @@ class TestR04ConsolidatedRefine:
       to its callers too.
     """
 
-    def test_refine_bbox_forwards_padding_px(self, pixel_word, monkeypatch):
-        seen = {}
+    def test_refine_bbox_forwards_padding_px(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        seen: _PaddingAndExpandSeen = {"padding_px": 0, "expand_beyond_original": False}
 
-        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+        def fake_refine(
+            self: BoundingBox,
+            page_image: NDArray[np.uint8],
+            padding_px: int = 1,
+            expand_beyond_original: bool = False,
+        ) -> BoundingBox:
             seen["padding_px"] = padding_px
             seen["expand_beyond_original"] = expand_beyond_original
             return BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
@@ -298,11 +338,18 @@ class TestR04ConsolidatedRefine:
         assert seen["padding_px"] == 4
         assert seen["expand_beyond_original"] is False
 
-    def test_refine_bbox_default_padding_is_one(self, pixel_word, monkeypatch):
+    def test_refine_bbox_default_padding_is_one(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Default preserves pre-R-04 ``refine_bbox`` hardcoded padding_px=1
-        seen = {}
+        seen: _PaddingOnlySeen = {"padding_px": 0}
 
-        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+        def fake_refine(
+            self: BoundingBox,
+            page_image: NDArray[np.uint8],
+            padding_px: int = 1,
+            expand_beyond_original: bool = False,
+        ) -> BoundingBox:
             seen["padding_px"] = padding_px
             return BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
 
@@ -312,13 +359,15 @@ class TestR04ConsolidatedRefine:
         assert seen["padding_px"] == 1
 
     def test_refine_bounding_box_shim_delegates_to_refine_bbox(
-        self, pixel_word, monkeypatch
-    ):
-        called = {"refine_bbox": 0, "padding_px": None}
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: _RefineBboxCalled = {"refine_bbox": 0, "padding_px": None}
 
         original_refine_bbox = Word.refine_bbox
 
-        def spy_refine_bbox(self, image, padding_px=1):
+        def spy_refine_bbox(
+            self: Word, image: NDArray[np.uint8] | None, padding_px: int = 1
+        ) -> bool:
             called["refine_bbox"] += 1
             called["padding_px"] = padding_px
             return original_refine_bbox(self, image, padding_px=padding_px)
@@ -327,7 +376,12 @@ class TestR04ConsolidatedRefine:
         # Make BoundingBox.refine succeed so we exercise the happy path
         new_bbox = BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
 
-        def fake_refine(self, page_image, padding_px=1, expand_beyond_original=False):
+        def fake_refine(
+            self: BoundingBox,
+            page_image: NDArray[np.uint8],
+            padding_px: int = 1,
+            expand_beyond_original: bool = False,
+        ) -> BoundingBox:
             return new_bbox
 
         monkeypatch.setattr(BoundingBox, "refine", fake_refine)
@@ -340,29 +394,29 @@ class TestR04ConsolidatedRefine:
         assert pixel_word.bounding_box is new_bbox
 
     def test_refine_bounding_box_shim_inherits_crop_bottom_fallback(
-        self, pixel_word, monkeypatch
-    ):
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         # Pre-R-04, refine_bounding_box had NO crop_bottom fallback. The
         # consolidation routes it through refine_bbox so the shim now
         # benefits from the fallback. Lock that.
-        def raising_refine(self, *a, **kw):
+        def raising_refine(self: BoundingBox, *a: object, **kw: object) -> NoReturn:
             raise RuntimeError("primary refine failed")
 
         monkeypatch.setattr(BoundingBox, "refine", raising_refine)
         called = {"crop_bottom": 0}
 
-        def fake_crop_bottom(img):
+        def fake_crop_bottom(img: NDArray[np.uint8]) -> None:
             called["crop_bottom"] += 1
 
-        pixel_word.crop_bottom = fake_crop_bottom
+        pixel_word.crop_bottom = fake_crop_bottom  # pyright: ignore[reportAttributeAccessIssue]  # see TestRefineBbox.test_refine_bbox_falls_back_to_crop_bottom
         img = np.zeros((50, 50), dtype=np.uint8)
         result = pixel_word.refine_bounding_box(img)
         assert result is None
         assert called["crop_bottom"] == 1
 
     def test_refine_bounding_box_shim_none_image_warns_and_returns_none(
-        self, pixel_word
-    ):
+        self, pixel_word: Word
+    ) -> None:
         # The original warn-and-skip-on-None contract is preserved.
         before = pixel_word.bounding_box.to_ltrb()
         result = pixel_word.refine_bounding_box(None)
@@ -371,11 +425,11 @@ class TestR04ConsolidatedRefine:
 
 
 class TestExpandBbox:
-    def test_expand_bbox_no_bbox(self, pixel_word):
-        pixel_word.bounding_box = None
+    def test_expand_bbox_no_bbox(self, pixel_word: Word) -> None:
+        pixel_word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]  # see TestBboxSignature.test_bbox_signature_none_when_no_bbox
         assert pixel_word.expand_bbox(5.0, 100, 100) is False
 
-    def test_expand_bbox_pixel_space(self, pixel_word):
+    def test_expand_bbox_pixel_space(self, pixel_word: Word) -> None:
         # pixel_word: 10,10 -> 30,20 in 100x100 page
         result = pixel_word.expand_bbox(2.0, 100, 100)
         assert result is True
@@ -383,19 +437,19 @@ class TestExpandBbox:
         assert pixel_word.bounding_box.minX < 10
         assert pixel_word.bounding_box.maxX > 30
 
-    def test_expand_bbox_normalized_space(self, normalized_word):
+    def test_expand_bbox_normalized_space(self, normalized_word: Word) -> None:
         result = normalized_word.expand_bbox(5.0, 100, 100)
         assert result is True
         # Result should remain normalized
         assert normalized_word.bounding_box.is_normalized is True
 
     def test_expand_bbox_normalized_zero_dimensions_returns_false(
-        self, normalized_word
-    ):
+        self, normalized_word: Word
+    ) -> None:
         assert normalized_word.expand_bbox(5.0, 0, 100) is False
         assert normalized_word.expand_bbox(5.0, 100, 0) is False
 
-    def test_expand_bbox_invalid_returns_false(self, pixel_word):
+    def test_expand_bbox_invalid_returns_false(self, pixel_word: Word) -> None:
         # Negative padding so large that maxX <= minX
         # Hard to construct with negative padding directly since it's added.
         # Use a tiny image to clamp away the new bbox.
@@ -405,30 +459,29 @@ class TestExpandBbox:
         result = pixel_word.expand_bbox(-2.0, 100, 100)
         assert result is False
 
-    def test_expand_bbox_pixel_zero_page_width(self, pixel_word):
+    def test_expand_bbox_pixel_zero_page_width(self, pixel_word: Word) -> None:
         """Covers 519->521 False branch: pixel word, page_width=0 → no min-clamp on nx2."""
         # pixel_word: 10,10 -> 30,20; page_width=0, page_height=50
         result = pixel_word.expand_bbox(2.0, 0, 50)
         assert result is True  # nx2 = 32 (no clamping), ny2 = min(22, 50)
 
-    def test_expand_bbox_pixel_zero_page_height(self, pixel_word):
+    def test_expand_bbox_pixel_zero_page_height(self, pixel_word: Word) -> None:
         """Covers 521->524 False branch: pixel word, page_height=0 → no min-clamp on ny2."""
         result = pixel_word.expand_bbox(2.0, 100, 0)
         assert result is True  # nx2 = min(32, 100), ny2 = 22 (no clamping)
 
 
 class TestExpandThenRefineBbox:
-    def test_expand_then_refine_no_image(self, pixel_word):
+    def test_expand_then_refine_no_image(self, pixel_word: Word) -> None:
         result = pixel_word.expand_then_refine_bbox(None)
         assert result is False
 
-    def test_expand_then_refine_succeeds_with_refine(self, pixel_word, monkeypatch):
+    def test_expand_then_refine_succeeds_with_refine(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         new_bbox = BoundingBox.from_ltrb(0, 0, 50, 30, is_normalized=False)
 
-        call_count = {"n": 0}
-
-        def fake_refine(self, *a, **kw):
-            call_count["n"] += 1
+        def fake_refine(self: BoundingBox, *a: object, **kw: object) -> BoundingBox:
             return new_bbox
 
         monkeypatch.setattr(BoundingBox, "refine", fake_refine)
@@ -436,18 +489,20 @@ class TestExpandThenRefineBbox:
         result = pixel_word.expand_then_refine_bbox(img)
         assert result is True
 
-    def test_expand_then_refine_refine_fails_falls_back(self, pixel_word, monkeypatch):
-        def raising_refine(self, *a, **kw):
+    def test_expand_then_refine_refine_fails_falls_back(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def raising_refine(self: BoundingBox, *a: object, **kw: object) -> NoReturn:
             raise RuntimeError("nope")
 
         monkeypatch.setattr(BoundingBox, "refine", raising_refine)
 
         crop_calls = {"n": 0}
 
-        def fake_crop_bottom(img):
+        def fake_crop_bottom(img: NDArray[np.uint8]) -> None:
             crop_calls["n"] += 1
 
-        pixel_word.crop_bottom = fake_crop_bottom
+        pixel_word.crop_bottom = fake_crop_bottom  # pyright: ignore[reportAttributeAccessIssue]  # see TestRefineBbox.test_refine_bbox_falls_back_to_crop_bottom
         img = np.zeros((50, 50), dtype=np.uint8)
         result = pixel_word.expand_then_refine_bbox(img)
         assert result is True
@@ -455,20 +510,27 @@ class TestExpandThenRefineBbox:
 
 
 class TestCropTop:
-    def test_crop_top_no_bbox(self):
+    def test_crop_top_no_bbox(self) -> None:
         word = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
-        word.bounding_box = None
+        word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]  # see TestBboxSignature.test_bbox_signature_none_when_no_bbox
         with pytest.raises(ValueError, match="Bounding box is None"):
             word.crop_top(np.zeros((20, 20), dtype=np.uint8))
 
-    def test_crop_top_no_image(self, pixel_word):
+    def test_crop_top_no_image(self, pixel_word: Word) -> None:
+        # NOTE: Word.crop_top's own signature types `img_ndarray` as a
+        # non-optional `ndarray`, but its implementation (image_utilities.
+        # crop_word_top) explicitly accepts `ndarray | None` and raises
+        # ValueError for None. That signature mismatch is package code
+        # (out of scope for this test file); left un-suppressed.
         with pytest.raises(ValueError, match="Image ndarray is None"):
             pixel_word.crop_top(None)
 
-    def test_crop_top_invokes_bbox_method(self, pixel_word, monkeypatch):
+    def test_crop_top_invokes_bbox_method(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         result_bbox = BoundingBox.from_ltrb(10, 12, 30, 20, is_normalized=False)
 
-        def fake_crop_top(self, img):
+        def fake_crop_top(self: BoundingBox, img: NDArray[np.uint8]) -> BoundingBox:
             return result_bbox
 
         monkeypatch.setattr(BoundingBox, "crop_top", fake_crop_top)
@@ -477,28 +539,37 @@ class TestCropTop:
 
 
 class TestCropBottom:
-    def test_crop_bottom_no_bbox(self):
+    def test_crop_bottom_no_bbox(self) -> None:
         word = Word(text="x", bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10))
-        word.bounding_box = None
+        word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]  # see TestBboxSignature.test_bbox_signature_none_when_no_bbox
         with pytest.raises(ValueError, match="Bounding box is None"):
             word.crop_bottom(np.zeros((20, 20), dtype=np.uint8))
 
-    def test_crop_bottom_no_image(self, pixel_word):
+    def test_crop_bottom_no_image(self, pixel_word: Word) -> None:
+        # NOTE: see TestCropTop.test_crop_top_no_image — same out-of-scope
+        # package-code signature mismatch on Word.crop_bottom.
         with pytest.raises(ValueError, match="Image ndarray is None"):
             pixel_word.crop_bottom(None)
 
 
 class TestRefineBoundingBox:
-    def test_refine_bounding_box_no_image(self, pixel_word):
+    def test_refine_bounding_box_no_image(self, pixel_word: Word) -> None:
         # refine_bounding_box returns None when image is None
         assert pixel_word.refine_bounding_box(None) is None
 
-    def test_refine_bounding_box_with_image(self, pixel_word, monkeypatch):
+    def test_refine_bounding_box_with_image(
+        self, pixel_word: Word, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         new_bbox = BoundingBox.from_ltrb(0, 0, 5, 5, is_normalized=False)
 
         # R-04: refine_bounding_box now delegates through refine_bbox,
         # which forwards expand_beyond_original to BoundingBox.refine.
-        def fake_refine(self, image, padding_px=0, expand_beyond_original=False):
+        def fake_refine(
+            self: BoundingBox,
+            image: NDArray[np.uint8],
+            padding_px: int = 0,
+            expand_beyond_original: bool = False,
+        ) -> BoundingBox:
             return new_bbox
 
         monkeypatch.setattr(BoundingBox, "refine", fake_refine)
@@ -507,21 +578,21 @@ class TestRefineBoundingBox:
 
 
 class TestNormalizationHelpers:
-    def test_normalize_text_style_label_classmethod(self):
+    def test_normalize_text_style_label_classmethod(self) -> None:
         # _normalize_text_style_label is a classmethod that delegates
         normalized = Word._normalize_text_style_label("italics")
         assert isinstance(normalized, str)
 
-    def test_normalize_word_component_classmethod(self):
+    def test_normalize_word_component_classmethod(self) -> None:
         normalized = Word._normalize_word_component("footnote marker")
         assert isinstance(normalized, str)
 
-    def test_normalized_style_labels_filters_invalid(self, pixel_word):
+    def test_normalized_style_labels_filters_invalid(self, pixel_word: Word) -> None:
         pixel_word.text_style_labels = ["italics", "definitely-bogus-label"]
         labels = pixel_word._normalized_style_labels()
         assert "italics" in labels
 
-    def test_normalized_style_scopes_filters_invalid(self, pixel_word):
+    def test_normalized_style_scopes_filters_invalid(self, pixel_word: Word) -> None:
         pixel_word.text_style_label_scopes = {
             "italics": "whole",
             "definitely-bogus-label": "part",
@@ -529,7 +600,7 @@ class TestNormalizationHelpers:
         scopes = pixel_word._normalized_style_scopes()
         assert "italics" in scopes
 
-    def test_normalized_components_filters_invalid(self, pixel_word):
+    def test_normalized_components_filters_invalid(self, pixel_word: Word) -> None:
         pixel_word.word_components = [
             "footnote marker",
             "definitely-bogus-component",
@@ -539,11 +610,11 @@ class TestNormalizationHelpers:
 
 
 class TestSplitIntoCharactersFromWhitespace:
-    def test_no_image_raises(self, pixel_word):
+    def test_no_image_raises(self, pixel_word: Word) -> None:
         with pytest.raises(ValueError, match="Image is None"):
             pixel_word.split_into_characters_from_whitespace(None)
 
-    def test_no_text_returns_empty(self, pixel_word):
+    def test_no_text_returns_empty(self, pixel_word: Word) -> None:
         pixel_word.text = ""
         img = np.zeros((50, 50, 3), dtype=np.uint8)
         result = pixel_word.split_into_characters_from_whitespace(img)
@@ -551,12 +622,12 @@ class TestSplitIntoCharactersFromWhitespace:
 
 
 class TestEstimateBaselineFromImage:
-    def test_no_image_returns_none(self, pixel_word):
+    def test_no_image_returns_none(self, pixel_word: Word) -> None:
         result = pixel_word.estimate_baseline_from_image(None)
         assert result is None
         assert pixel_word.baseline is None
 
-    def test_no_text_returns_none(self, pixel_word):
+    def test_no_text_returns_none(self, pixel_word: Word) -> None:
         pixel_word.text = ""
         img = np.zeros((50, 50, 3), dtype=np.uint8)
         result = pixel_word.estimate_baseline_from_image(img)

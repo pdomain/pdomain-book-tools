@@ -54,9 +54,9 @@ def test_is_valid_spdx_id_is_case_sensitive():
 def test_is_valid_spdx_id_handles_non_str_input():
     # Signature says str, but defensive callers may pass anything;
     # must return False rather than raise.
-    assert not is_valid_spdx_id(None)  # type: ignore[arg-type]
-    assert not is_valid_spdx_id(123)  # type: ignore[arg-type]
-    assert not is_valid_spdx_id(["MIT"])  # type: ignore[arg-type]
+    assert not is_valid_spdx_id(None)
+    assert not is_valid_spdx_id(123)
+    assert not is_valid_spdx_id(["MIT"])
 
 
 def test_vendored_json_data_file_loadable():

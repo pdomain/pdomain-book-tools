@@ -8,7 +8,11 @@ detector seam above them) can import them without a layering cycle.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 
 @dataclass(frozen=True)
@@ -16,11 +20,12 @@ class LineSamples:
     """Per-column vertical centroids of one detected text line.
 
     ``xs`` are sorted, unique column positions; ``ys`` are the weighted-centroid
-    row at each column. Arrays may be numpy or cupy.
+    row at each column. Arrays may be numpy or cupy (cupy's stub subclasses
+    ``numpy.ndarray`` for typing purposes, see ``typings/cupy/__init__.pyi``).
     """
 
-    xs: Any
-    ys: Any
+    xs: npt.NDArray[np.float64]
+    ys: npt.NDArray[np.float64]
 
     @property
     def left(self) -> float:

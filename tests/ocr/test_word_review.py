@@ -7,35 +7,38 @@ from pdomain_book_tools.ocr.review import ReviewMetadata
 from pdomain_book_tools.ocr.word import Word
 
 
-def _bbox():
+def _bbox() -> BoundingBox:
     # Use whatever shape BoundingBox accepts in this codebase — keep tests
-    # consistent with existing Word fixtures.
+    # consistent with existing Word fixtures. ``is_normalized`` is included
+    # (as ``None``) purely to satisfy the wire-shape TypedDict; ``from_dict``
+    # treats a present-but-``None`` value identically to an absent key.
     return BoundingBox.from_dict(
         {
             "top_left": {"x": 0, "y": 0},
             "bottom_right": {"x": 10, "y": 10},
+            "is_normalized": None,
         }
     )
 
 
-def test_word_review_defaults_to_none():
+def test_word_review_defaults_to_none() -> None:
     w = Word(text="hello", bounding_box=_bbox())
     assert w.review is None
 
 
-def test_word_review_accepts_metadata():
+def test_word_review_accepts_metadata() -> None:
     rm = ReviewMetadata(validated=True, reviewer_note="ok")
     w = Word(text="hello", bounding_box=_bbox(), review=rm)
     assert w.review is rm
 
 
-def test_word_to_dict_omits_review_key_when_none():
+def test_word_to_dict_omits_review_key_when_none() -> None:
     w = Word(text="hello", bounding_box=_bbox())
     d = w.to_dict()
     assert "review" not in d
 
 
-def test_word_to_dict_includes_review_when_set():
+def test_word_to_dict_includes_review_when_set() -> None:
     rm = ReviewMetadata(validated=True, reviewer_note="ok", flagged_for_attention=True)
     w = Word(text="hello", bounding_box=_bbox(), review=rm)
     d = w.to_dict()
@@ -46,8 +49,8 @@ def test_word_to_dict_includes_review_when_set():
     }
 
 
-def test_word_from_dict_without_review_key():
-    base = {
+def test_word_from_dict_without_review_key() -> None:
+    base: dict[str, object] = {
         "type": "Word",
         "text": "hello",
         "bounding_box": _bbox().to_dict(),
@@ -56,8 +59,8 @@ def test_word_from_dict_without_review_key():
     assert w.review is None
 
 
-def test_word_from_dict_with_review_key():
-    base = {
+def test_word_from_dict_with_review_key() -> None:
+    base: dict[str, object] = {
         "type": "Word",
         "text": "hello",
         "bounding_box": _bbox().to_dict(),
@@ -75,7 +78,7 @@ def test_word_from_dict_with_review_key():
     )
 
 
-def test_word_review_roundtrip():
+def test_word_review_roundtrip() -> None:
     rm = ReviewMetadata(validated=True, reviewer_note="hi")
     w = Word(text="hello", bounding_box=_bbox(), review=rm)
     w2 = Word.from_dict(w.to_dict())

@@ -16,6 +16,10 @@ Both are diagnostic-only outputs intended for CLI consumption, not used
 by any production logic.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
@@ -23,11 +27,14 @@ from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 PAGE_W = 1000
 PAGE_H = 1500
 
 
-def _word(text, L, T, R, B):
+def _word(text: str, L: float, T: float, R: float, B: float) -> Word:
     bbox = BoundingBox(
         top_left=Point(L, T, is_normalized=False),
         bottom_right=Point(R, B, is_normalized=False),
@@ -36,7 +43,7 @@ def _word(text, L, T, R, B):
     return Word(text=text, bounding_box=bbox, ocr_confidence=0.9)
 
 
-def _line_block(words):
+def _line_block(words: Sequence[Word]) -> Block:
     return Block(
         items=words,
         child_type=BlockChildType.WORDS,
@@ -44,7 +51,7 @@ def _line_block(words):
     )
 
 
-def _paragraph_block(line_blocks):
+def _paragraph_block(line_blocks: Sequence[Block]) -> Block:
     return Block(
         items=line_blocks,
         child_type=BlockChildType.BLOCKS,
@@ -52,7 +59,7 @@ def _paragraph_block(line_blocks):
     )
 
 
-def _make_page(blocks):
+def _make_page(blocks: Sequence[Block]) -> Page:
     return Page(width=PAGE_W, height=PAGE_H, page_index=0, blocks=blocks)
 
 
@@ -61,7 +68,7 @@ def _make_page(blocks):
 # ---------------------------------------------------------------------------
 
 
-def test_diagnostic_attributes_default_to_none():
+def test_diagnostic_attributes_default_to_none() -> None:
     """A freshly-built page has no diagnostic snapshots until reorganize runs."""
     page = _make_page(
         [_paragraph_block([_line_block([_word("hello", 100, 100, 200, 130)])])]
@@ -70,7 +77,7 @@ def test_diagnostic_attributes_default_to_none():
     assert page.diagnostic_post_noise_removal is None
 
 
-def test_capture_diagnostics_false_keeps_attributes_none():
+def test_capture_diagnostics_false_keeps_attributes_none() -> None:
     """The opt-out kwarg disables snapshot capture without affecting reorg."""
     page = _make_page(
         [_paragraph_block([_line_block([_word("hello", 100, 100, 200, 130)])])]
@@ -85,7 +92,7 @@ def test_capture_diagnostics_false_keeps_attributes_none():
 # ---------------------------------------------------------------------------
 
 
-def test_pure_ocr_snapshot_has_no_layout_tags():
+def test_pure_ocr_snapshot_has_no_layout_tags() -> None:
     """The pure-OCR snapshot is captured *before* ``tag_words_with_layout``,
     so its words must carry no ``layout:*`` entries even when the live
     page has them stamped after reorganize."""
@@ -129,7 +136,7 @@ def test_pure_ocr_snapshot_has_no_layout_tags():
             )
 
 
-def test_pure_ocr_snapshot_word_count_matches_input():
+def test_pure_ocr_snapshot_word_count_matches_input() -> None:
     """The pure-OCR snapshot preserves *every* OCR word, regardless of
     what the rest of the pipeline subsequently drops."""
     # Body line + a footnote-band line. With ``drop_layout_words=True`` the
@@ -158,7 +165,7 @@ def test_pure_ocr_snapshot_word_count_matches_input():
     assert {w.text for w in snap.words} == {"body", "text", "FN", "note"}
 
 
-def test_pure_ocr_snapshot_is_independent_of_live_page():
+def test_pure_ocr_snapshot_is_independent_of_live_page() -> None:
     """Mutating the live page's words after reorganize must not affect the
     snapshot, since the snapshot is a deep clone."""
     page = _make_page(
@@ -191,7 +198,7 @@ def test_pure_ocr_snapshot_is_independent_of_live_page():
 # ---------------------------------------------------------------------------
 
 
-def test_post_noise_snapshot_equals_pure_ocr_when_no_drops():
+def test_post_noise_snapshot_equals_pure_ocr_when_no_drops() -> None:
     """When neither noise-removal step is triggered, the post-noise
     snapshot should hold the same words as the pure-OCR snapshot.
 
@@ -221,7 +228,7 @@ def test_post_noise_snapshot_equals_pure_ocr_when_no_drops():
     assert {w.text for w in pure.words} == {w.text for w in post.words}
 
 
-def test_post_noise_snapshot_drops_figure_internal_words():
+def test_post_noise_snapshot_drops_figure_internal_words() -> None:
     """When the layout-aware figure-internal drop fires (Step Layout-2b),
     the post-noise snapshot should reflect the post-drop state, while
     the pure-OCR snapshot still holds every input word."""
@@ -283,7 +290,7 @@ def test_post_noise_snapshot_drops_figure_internal_words():
     assert post_texts == {"body", "text"}
 
 
-def test_post_noise_snapshot_is_independent_of_live_page():
+def test_post_noise_snapshot_is_independent_of_live_page() -> None:
     """Reorganize-proper continues to mutate self.words after the
     post-noise capture point. The snapshot must hold an independent
     deep copy so its words still reflect the captured state."""
@@ -319,7 +326,7 @@ def test_post_noise_snapshot_is_independent_of_live_page():
 # ---------------------------------------------------------------------------
 
 
-def test_snapshot_text_renders_words():
+def test_snapshot_text_renders_words() -> None:
     """The snapshot is a real Page so ``snapshot.text`` works the same
     way as on the live page."""
     page = _make_page(
@@ -352,7 +359,7 @@ def test_snapshot_text_renders_words():
     assert "world" in post_text
 
 
-def test_snapshot_to_dict_round_trips():
+def test_snapshot_to_dict_round_trips() -> None:
     """The snapshot serializes via ``to_dict`` to the same shape the live
     page does, and ``from_dict`` rebuilds it without loss."""
     page = _make_page(
@@ -385,7 +392,7 @@ def test_snapshot_to_dict_round_trips():
     assert rebuilt_texts == {"Hello", "world"}
 
 
-def test_snapshots_not_persisted_by_to_dict():
+def test_snapshots_not_persisted_by_to_dict() -> None:
     """Diagnostic snapshots are runtime-only and must NOT bleed into the
     serialized Page payload — otherwise round-tripping a reorganized
     page would re-emit the snapshots and double the on-disk footprint."""
@@ -398,7 +405,7 @@ def test_snapshots_not_persisted_by_to_dict():
     assert "diagnostic_post_noise_removal" not in payload
 
 
-def test_snapshots_not_persisted_by_copy():
+def test_snapshots_not_persisted_by_copy() -> None:
     """``Page.copy()`` round-trips through ``to_dict`` / ``from_dict``,
     so the diagnostic snapshots must not survive a copy. Ensures the
     snapshots stay scoped to the originating reorganize call."""
@@ -416,7 +423,7 @@ def test_snapshots_not_persisted_by_copy():
 # ---------------------------------------------------------------------------
 
 
-def test_noise_drop_diagnostics_default_empty():
+def test_noise_drop_diagnostics_default_empty() -> None:
     """A freshly-built page has no noise-drop diagnostics until reorganize
     runs."""
     page = _make_page(
@@ -426,7 +433,7 @@ def test_noise_drop_diagnostics_default_empty():
     assert page.diagnostic_noise_dropped_count == 0
 
 
-def test_noise_drop_diagnostics_zero_when_no_noise_step_fires():
+def test_noise_drop_diagnostics_zero_when_no_noise_step_fires() -> None:
     """Default reorganize without a layout has nothing to drop:
     Step Layout-2b is skipped (no layout) and Step B2 is gated behind
     the experimental ``drop_layout_words`` opt-in. The drop count
@@ -450,7 +457,7 @@ def test_noise_drop_diagnostics_zero_when_no_noise_step_fires():
     assert page.diagnostic_noise_dropped_words == []
 
 
-def test_noise_drop_diagnostics_populated_when_layout_2b_fires():
+def test_noise_drop_diagnostics_populated_when_layout_2b_fires() -> None:
     """When Step Layout-2b drops figure-internal words (only fires under
     the experimental ``drop_layout_words=True`` opt-in), the noise-drop
     diagnostics should list every dropped word with original text +
@@ -511,7 +518,7 @@ def test_noise_drop_diagnostics_populated_when_layout_2b_fires():
         assert word.bounding_box is not None
 
 
-def test_noise_drop_zero_with_drop_layout_words_false_on_figure_page():
+def test_noise_drop_zero_with_drop_layout_words_false_on_figure_page() -> None:
     """Default reorganize (``drop_layout_words=False``) must not drop
     any words even on a figure-bearing page where Step Layout-2b *would*
     fire under the opt-in. The hard rule is: the default pipeline never
@@ -568,7 +575,7 @@ def test_noise_drop_zero_with_drop_layout_words_false_on_figure_page():
     assert live_texts == {"BALI", "KANE", "WU", "body", "text"}
 
 
-def test_noise_drop_diagnostics_count_matches_pure_minus_post():
+def test_noise_drop_diagnostics_count_matches_pure_minus_post() -> None:
     """Sanity check: the dropped-count must equal the difference between
     pure-OCR snapshot word count and post-noise snapshot word count.
     Layout-2b is gated on ``drop_layout_words=True`` so we opt in here."""
@@ -615,12 +622,16 @@ def test_noise_drop_diagnostics_count_matches_pure_minus_post():
         drop_layout_words=True,
     )
 
-    pure_n = len(page.diagnostic_pure_ocr.words)
-    post_n = len(page.diagnostic_post_noise_removal.words)
+    pure_snap = page.diagnostic_pure_ocr
+    post_snap = page.diagnostic_post_noise_removal
+    assert pure_snap is not None
+    assert post_snap is not None
+    pure_n = len(pure_snap.words)
+    post_n = len(post_snap.words)
     assert page.diagnostic_noise_dropped_count == pure_n - post_n
 
 
-def test_noise_drop_diagnostics_independent_of_live_page():
+def test_noise_drop_diagnostics_independent_of_live_page() -> None:
     """The captured dropped-words list must be independent of the live
     page — mutating the live page must not change the captured words."""
     fig_words = [
@@ -674,7 +685,7 @@ def test_noise_drop_diagnostics_independent_of_live_page():
     assert "post-mutation" not in captured.word_labels
 
 
-def test_noise_drop_diagnostics_reset_on_subsequent_reorganize():
+def test_noise_drop_diagnostics_reset_on_subsequent_reorganize() -> None:
     """A second reorganize_page call must not accumulate dropped words
     from the previous pass — the attributes should reset cleanly."""
     fig_words = [
@@ -725,7 +736,7 @@ def test_noise_drop_diagnostics_reset_on_subsequent_reorganize():
     assert page.diagnostic_noise_dropped_words == []
 
 
-def test_noise_drop_diagnostics_populated_with_capture_diagnostics_false():
+def test_noise_drop_diagnostics_populated_with_capture_diagnostics_false() -> None:
     """The noise-drop accumulators are scalar-cheap and always populated,
     independent of ``capture_diagnostics``. The CLI uses them as the
     trigger for its "likely noise" warning, so they must be available

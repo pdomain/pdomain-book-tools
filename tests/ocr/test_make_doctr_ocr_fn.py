@@ -28,6 +28,7 @@ from tests.ocr.test_document_batch_ocr import _fake_doctr_result_with_words
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from unittest.mock import MagicMock
 
 _DOCTR_SHAPE_ERROR = (
     "incorrect input shape: all pages are expected to be multi-channel 2D images."
@@ -47,8 +48,8 @@ class StrictFakePredictor:
         self.received: list[np.ndarray] = []
         self._confidences = confidences if confidences is not None else [0.9, 0.95]
 
-    def __call__(self, pages: Iterable[np.ndarray]):
-        pages_list = list(pages)
+    def __call__(self, images: Iterable[np.ndarray]) -> MagicMock:
+        pages_list = list(images)
         if any(getattr(page, "ndim", 0) != 3 for page in pages_list):
             raise ValueError(_DOCTR_SHAPE_ERROR)
         self.received.extend(pages_list)

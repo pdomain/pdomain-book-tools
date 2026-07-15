@@ -32,12 +32,12 @@ GPU_EXTRA_INSTALL_HINT = (
 # lets the module load on CPU-only installs; require_cupy() in every GPU
 # function raises the actionable ImportError before cp is ever dereferenced.
 try:
-    import cupy as cp  # pyright: ignore[reportMissingImports]  # CuPy is an optional GPU dep (not in lockfile).
+    import cupy as cp  # CuPy is an optional GPU dep (not in lockfile).
 
     _CUPY_AVAILABLE = True
     _CUPY_IMPORT_ERROR: ImportError | None = None
 except ImportError as _exc:  # pragma: no cover - exercised only on CPU-only installs
-    cp = None  # type: ignore[assignment]
+    cp = None
     _CUPY_AVAILABLE = False  # pyright: ignore[reportConstantRedefinition]  # reassigned in except; not a true constant
     _CUPY_IMPORT_ERROR = _exc  # pyright: ignore[reportConstantRedefinition]  # reassigned in except; not a true constant
 

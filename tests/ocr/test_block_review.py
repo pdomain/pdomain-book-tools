@@ -5,21 +5,29 @@ Block covers both block-scope and line-scope review semantics, since
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.review import ReviewMetadata
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def _bbox():
+    from pdomain_book_tools.ocr.word import Word
+
+
+def _bbox() -> BoundingBox:
     return BoundingBox.from_dict(
         {
-            "top_left": {"x": 0, "y": 0},
-            "bottom_right": {"x": 100, "y": 50},
+            "top_left": {"x": 0, "y": 0, "is_normalized": False},
+            "bottom_right": {"x": 100, "y": 50, "is_normalized": False},
+            "is_normalized": False,
         }
     )
 
 
-def _line_block(words=None) -> Block:
+def _line_block(words: Sequence[Word] | None = None) -> Block:
     return Block(
         items=list(words or []),
         child_type=BlockChildType.WORDS,
@@ -28,25 +36,25 @@ def _line_block(words=None) -> Block:
     )
 
 
-def test_block_review_defaults_to_none():
+def test_block_review_defaults_to_none() -> None:
     b = _line_block()
     assert b.review is None
 
 
-def test_block_review_accepts_metadata():
+def test_block_review_accepts_metadata() -> None:
     rm = ReviewMetadata(validated=True)
     b = _line_block()
     b.review = rm
     assert b.review is rm
 
 
-def test_block_to_dict_omits_review_key_when_none():
+def test_block_to_dict_omits_review_key_when_none() -> None:
     b = _line_block()
     d = b.to_dict()
     assert "review" not in d
 
 
-def test_block_to_dict_includes_review_when_set():
+def test_block_to_dict_includes_review_when_set() -> None:
     rm = ReviewMetadata(validated=True, reviewer_note="line ok")
     b = _line_block()
     b.review = rm
@@ -58,7 +66,7 @@ def test_block_to_dict_includes_review_when_set():
     }
 
 
-def test_block_from_dict_without_review_key():
+def test_block_from_dict_without_review_key() -> None:
     b = _line_block()
     base = b.to_dict()
     assert "review" not in base
@@ -66,7 +74,7 @@ def test_block_from_dict_without_review_key():
     assert b2.review is None
 
 
-def test_block_review_roundtrip():
+def test_block_review_roundtrip() -> None:
     rm = ReviewMetadata(validated=True, reviewer_note="n")
     b = _line_block()
     b.review = rm

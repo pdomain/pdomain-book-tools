@@ -28,10 +28,24 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+
+class PipListEntry(TypedDict, total=False):
+    """One element of ``uv pip list --format=json`` output.
+
+    All fields are optional at the type level: real ``uv`` output always
+    includes ``name``, but the parser is defensive about malformed or
+    unexpected entries rather than assuming the schema.
+    """
+
+    name: str
+    version: str
+    editable_project_location: str
+
 
 # Packages whose presence in the venv signals an active extra/override
 # that ``uv sync --group dev`` (no extras) would remove. Names are
@@ -69,7 +83,7 @@ def _is_truthy(value: str | None) -> bool:
 
 
 def detect_mode(
-    pip_list: Iterable[dict],
+    pip_list: Iterable[PipListEntry],
     *,
     project_root: Path,
     marker_path: Path | None,
@@ -130,17 +144,51 @@ def detect_mode(
 # ---------------------------------------------------------------------------
 
 
-def _load_pip_list() -> list[dict]:
+def _coerce_pip_list_entry(item: object) -> PipListEntry | None:
+    """Narrow one ``uv pip list --format=json`` array element.
+
+    Non-mapping entries are dropped; string-typed known fields are kept,
+    anything else (wrong type, unknown key) is dropped from that field.
+    """
+    if not isinstance(item, dict):
+        return None
+    # isinstance narrows to dict[Unknown, Unknown] -- it cannot express key/value
+    # types (Python generics aren't reified). Each field pulled from `raw` below
+    # is still validated with an explicit isinstance check before being trusted.
+    raw = cast("dict[str, object]", item)
+    entry: PipListEntry = {}
+    name = raw.get("name")
+    if isinstance(name, str):
+        entry["name"] = name
+    version = raw.get("version")
+    if isinstance(version, str):
+        entry["version"] = version
+    editable = raw.get("editable_project_location")
+    if isinstance(editable, str):
+        entry["editable_project_location"] = editable
+    return entry
+
+
+def _load_pip_list() -> list[PipListEntry]:
     """Run ``uv pip list --format=json`` and return parsed entries.
 
     Tests monkey-patch this so we never spawn a real subprocess in
     pytest. In production this is the only system-touching call.
     """
     out = subprocess.check_output(["uv", "pip", "list", "--format=json"], text=True)
-    data = json.loads(out)
+    data: object = json.loads(out)
     if not isinstance(data, list):
         return []
-    return data
+    # isinstance narrows to list[Unknown] -- it cannot express the element type
+    # (Python generics aren't reified). Each element is validated by
+    # `_coerce_pip_list_entry` before being trusted.
+    items = cast("list[object]", data)
+    entries: list[PipListEntry] = []
+    for item in items:
+        entry = _coerce_pip_list_entry(item)
+        if entry is not None:
+            entries.append(entry)
+    return entries
 
 
 def _project_root() -> Path:

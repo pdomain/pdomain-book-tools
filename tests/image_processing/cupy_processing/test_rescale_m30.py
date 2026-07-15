@@ -12,13 +12,42 @@ This approximates `INTER_AREA`'s anti-aliasing without requiring a
 cv2-equivalent on the GPU side.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+    import numpy as np
+    import numpy.typing as npt
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def full(
+        self, shape: tuple[int, ...], fill_value: object, dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def asnumpy(self, a: object) -> npt.NDArray[np.generic]: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestRescaleImageGpuAntialias:
-    def test_4x_downscale_alternating_columns_no_aliasing(self, cupy_module):
+    def test_4x_downscale_alternating_columns_no_aliasing(
+        self, cupy_module: _CupyModule
+    ) -> None:
         """Bare-bilinear baseline produced std~74 on this fixture
         (mean 127, full 0/255 alternation). The fix must collapse
         the alternating signal to ~mid-gray (the area average), so std
@@ -40,7 +69,9 @@ class TestRescaleImageGpuAntialias:
         # well below half of that.
         assert out.std() < 30.0
 
-    def test_uniform_field_preserved_under_downscale(self, cupy_module):
+    def test_uniform_field_preserved_under_downscale(
+        self, cupy_module: _CupyModule
+    ) -> None:
         """A constant-valued source must remain (essentially) constant
         after rescaling — the anti-alias pre-filter must not introduce
         bias. Tolerance covers float32 round-trip + uint8 quantization."""
@@ -56,7 +87,7 @@ class TestRescaleImageGpuAntialias:
         assert abs(out.mean() - 100.0) < 1.0
         assert out.std() < 1.0
 
-    def test_upscale_path_unchanged(self, cupy_module):
+    def test_upscale_path_unchanged(self, cupy_module: _CupyModule) -> None:
         """When zoom > 1 on both axes the pre-filter must not engage —
         upscaling synthesizes; box-filtering an upscaled image would just
         blur it. Verify a constant-valued input survives unchanged
@@ -72,7 +103,7 @@ class TestRescaleImageGpuAntialias:
         assert out.shape == (400, 400)
         assert abs(out.mean() - 200.0) < 1.0
 
-    def test_horizontal_lines_survive_downscale(self, cupy_module):
+    def test_horizontal_lines_survive_downscale(self, cupy_module: _CupyModule) -> None:
         """A small set of widely-spaced horizontal lines (typical
         book-page rule lines) must remain detectable post-downscale.
         This guards against the pre-filter being so aggressive that it
@@ -94,7 +125,7 @@ class TestRescaleImageGpuAntialias:
         row_means = out.mean(axis=1)
         assert row_means.max() - row_means.min() > 30.0
 
-    def test_color_image_anti_alias_per_channel(self, cupy_module):
+    def test_color_image_anti_alias_per_channel(self, cupy_module: _CupyModule) -> None:
         """3-channel input still gets per-spatial-axis anti-aliasing
         without cross-channel mixing."""
         cp = cupy_module

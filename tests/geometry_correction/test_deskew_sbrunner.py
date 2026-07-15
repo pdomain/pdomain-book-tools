@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
 
@@ -5,8 +9,11 @@ from pdomain_book_tools.geometry_correction.backends.deskew.sbrunner import (
     SbrunnerDeskew,
 )
 
+if TYPE_CHECKING:
+    from cv2.typing import MatLike
 
-def _text_page(angle_deg, h=300, w=400):
+
+def _text_page(angle_deg: float, h: int = 300, w: int = 400) -> MatLike:
     img = np.full((h, w), 255, np.uint8)
     for y in range(40, h - 40, 18):
         cv2.rectangle(img, (40, y), (w - 40, y + 6), 0, -1)

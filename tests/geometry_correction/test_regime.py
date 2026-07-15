@@ -1,10 +1,18 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
 
 from pdomain_book_tools.geometry_correction.regime import RegimeDetector, RegimeReport
 
+if TYPE_CHECKING:
+    from cv2.typing import MatLike
+    from numpy.typing import NDArray
 
-def _flat_page(h=900, w=700):
+
+def _flat_page(h: int = 900, w: int = 700) -> NDArray[np.uint8]:
     img = np.full((h, w), 255, np.uint8)
     for y in range(90, h - 90, 55):
         for x0 in range(60, w - 60, 70):
@@ -12,7 +20,7 @@ def _flat_page(h=900, w=700):
     return img
 
 
-def _curled_page(h=900, w=700, amp=26):
+def _curled_page(h: int = 900, w: int = 700, amp: int = 26) -> NDArray[np.uint8]:
     img = np.full((h, w), 255, np.uint8)
     xs = np.arange(w)
     for y0 in range(110, h - 110, 60):
@@ -22,24 +30,26 @@ def _curled_page(h=900, w=700, amp=26):
     return img
 
 
-def _oblique_page(h=900, w=700):
+def _oblique_page(h: int = 900, w: int = 700) -> MatLike:
     """Flat baselines but strongly converging left/right page borders (keystone)."""
     flat = _flat_page(h, w)
-    src = np.float32([[0, 0], [w, 0], [w, h], [0, h]])
-    dst = np.float32([[120, 0], [w - 120, 0], [w, h], [0, h]])  # top edge pinched in
+    src = np.array([[0, 0], [w, 0], [w, h], [0, h]], dtype=np.float32)
+    dst = np.array(
+        [[120, 0], [w - 120, 0], [w, h], [0, h]], dtype=np.float32
+    )  # top edge pinched in
     mat = cv2.getPerspectiveTransform(src, dst)
     return cv2.warpPerspective(flat, mat, (w, h), borderValue=255)
 
 
-def test_flat_page_is_flat():
+def test_flat_page_is_flat() -> None:
     assert RegimeDetector().classify(_flat_page()).regime == "flat"
 
 
-def test_curled_page_is_flat_curl():
+def test_curled_page_is_flat_curl() -> None:
     rep = RegimeDetector().classify(_curled_page())
     assert isinstance(rep, RegimeReport)
     assert rep.regime == "flat_curl"
 
 
-def test_oblique_page_is_oblique():
+def test_oblique_page_is_oblique() -> None:
     assert RegimeDetector().classify(_oblique_page()).regime == "oblique"

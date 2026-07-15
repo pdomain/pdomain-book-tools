@@ -1,11 +1,20 @@
 """Coverage tests for block.py edge cases and error paths."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def _make_word(text, x=0, y=0, w=60, h=20):
+
+def _make_word(
+    text: str, x: float = 0, y: float = 0, w: float = 60, h: float = 20
+) -> Word:
     return Word(
         text=text,
         bounding_box=BoundingBox.from_ltrb(x, y, x + w, y + h, is_normalized=False),
@@ -13,7 +22,7 @@ def _make_word(text, x=0, y=0, w=60, h=20):
     )
 
 
-def _make_line(words_texts):
+def _make_line(words_texts: Sequence[str]) -> Block:
     words = [_make_word(t, x=i * 65, y=0) for i, t in enumerate(words_texts)]
     return Block(
         items=words,
@@ -28,7 +37,7 @@ def _make_line(words_texts):
 
 
 class TestNormalizeLabelCompactMatch:
-    def test_compact_match_hits_allowed_label_with_spaces(self):
+    def test_compact_match_hits_allowed_label_with_spaces(self) -> None:
         """'marginleft' compact-matches 'margin left' in allowed set (lines 221-222)."""
         block = Block(
             items=[_make_word("text")],
@@ -38,7 +47,7 @@ class TestNormalizeLabelCompactMatch:
         )
         assert "margin left" in block.block_position_labels
 
-    def test_compact_alias_match_resolves_to_canonical(self):
+    def test_compact_alias_match_resolves_to_canonical(self) -> None:
         """'P-O-E-M' compact-matches alias key 'poem' → canonical 'poetry' (lines 224-228)."""
         block = Block(
             items=[_make_word("text")],
@@ -48,7 +57,7 @@ class TestNormalizeLabelCompactMatch:
         )
         assert "poetry" in block.block_role_labels
 
-    def test_column_left_compact_match_via_position(self):
+    def test_column_left_compact_match_via_position(self) -> None:
         """'columnleft' compact-matches 'column left' in line position labels."""
         block = Block(
             items=[_make_line(["word"])],
@@ -65,7 +74,7 @@ class TestNormalizeLabelCompactMatch:
 
 
 class TestValidateGtLineAccuracy:
-    def test_returns_valid_when_no_words(self):
+    def test_returns_valid_when_no_words(self) -> None:
         """validate_line_consistency with no words returns early dict (line 511)."""
         line = Block(
             items=[],
@@ -77,7 +86,7 @@ class TestValidateGtLineAccuracy:
         assert result["valid"] is True
         assert result["words"] == 0
 
-    def test_counts_words_with_gt(self):
+    def test_counts_words_with_gt(self) -> None:
         """validate_line_consistency counts words that have gt_text (line 528)."""
         line = _make_line(["hello", "world"])
         line.words[0].ground_truth_text = "hello"
@@ -87,7 +96,7 @@ class TestValidateGtLineAccuracy:
         assert result["matches"] == 2
         assert result["mismatches"] == 0
 
-    def test_counts_mismatches(self):
+    def test_counts_mismatches(self) -> None:
         """Mismatched word text is counted in mismatches."""
         line = _make_line(["hello", "world"])
         line.words[0].ground_truth_text = "hello"
@@ -97,7 +106,7 @@ class TestValidateGtLineAccuracy:
         assert result["matches"] == 1
         assert result["mismatches"] == 1
 
-    def test_skips_words_without_gt_text(self):
+    def test_skips_words_without_gt_text(self) -> None:
         """Words with empty gt_text are skipped (covers branch 528->524).
 
         Default ground_truth_text is '' (falsy). A word without gt set
@@ -119,7 +128,7 @@ class TestValidateGtLineAccuracy:
 
 
 class TestBlockGtCopyMethods:
-    def test_copy_ocr_to_ground_truth(self):
+    def test_copy_ocr_to_ground_truth(self) -> None:
         """copy_ocr_to_ground_truth copies word text to gt (line 553)."""
         line = _make_line(["hello", "world"])
         result = line.copy_ocr_to_ground_truth()
@@ -127,7 +136,7 @@ class TestBlockGtCopyMethods:
         assert line.words[0].ground_truth_text == "hello"
         assert line.words[1].ground_truth_text == "world"
 
-    def test_copy_ground_truth_to_ocr(self):
+    def test_copy_ground_truth_to_ocr(self) -> None:
         """copy_ground_truth_to_ocr copies gt text to ocr (line 557)."""
         line = _make_line(["hello", "world"])
         line.words[0].ground_truth_text = "gt_hello"
@@ -136,7 +145,7 @@ class TestBlockGtCopyMethods:
         assert result is True
         assert line.words[0].text == "gt_hello"
 
-    def test_clear_ground_truth(self):
+    def test_clear_ground_truth(self) -> None:
         """clear_ground_truth clears gt text from all words (line 561)."""
         line = _make_line(["hello", "world"])
         line.words[0].ground_truth_text = "hello"
@@ -152,37 +161,37 @@ class TestBlockGtCopyMethods:
 
 
 class TestMergeWordsErrors:
-    def test_requires_at_least_two_words(self):
+    def test_requires_at_least_two_words(self) -> None:
         """merge_adjacent_words on single-word line returns False (lines 650-651)."""
         line = _make_line(["only"])
         result = line.merge_adjacent_words(word_index=0, direction="right")
         assert result is False
 
-    def test_rejects_out_of_range_index(self):
+    def test_rejects_out_of_range_index(self) -> None:
         """merge_adjacent_words with index out of range returns False (lines 654-659)."""
         line = _make_line(["hello", "world"])
         result = line.merge_adjacent_words(word_index=99, direction="right")
         assert result is False
 
-    def test_rejects_merge_first_word_left(self):
+    def test_rejects_merge_first_word_left(self) -> None:
         """merge_adjacent_words direction=left on first word returns False (lines 669-670)."""
         line = _make_line(["hello", "world"])
         result = line.merge_adjacent_words(word_index=0, direction="left")
         assert result is False
 
-    def test_rejects_merge_last_word_right(self):
+    def test_rejects_merge_last_word_right(self) -> None:
         """merge_adjacent_words direction=right on last word returns False."""
         line = _make_line(["hello", "world"])
         result = line.merge_adjacent_words(word_index=1, direction="right")
         assert result is False
 
-    def test_rejects_invalid_direction(self):
+    def test_rejects_invalid_direction(self) -> None:
         """merge_adjacent_words with invalid direction returns False (lines 674-675)."""
         line = _make_line(["hello", "world"])
         result = line.merge_adjacent_words(word_index=0, direction="diagonal")
         assert result is False
 
-    def test_merge_words_right_success(self):
+    def test_merge_words_right_success(self) -> None:
         """merge_adjacent_words merges correctly when valid parameters given."""
         line = _make_line(["hello", "world"])
         result = line.merge_adjacent_words(word_index=0, direction="right")
@@ -197,7 +206,7 @@ class TestMergeWordsErrors:
 
 
 class TestSplitWordAtFractionZeroBbox:
-    def test_rejects_word_with_zero_width_bbox(self):
+    def test_rejects_word_with_zero_width_bbox(self) -> None:
         """split_word_at_fraction returns False when bbox width is 0 (lines 735-739)."""
         line = _make_line(["hello"])
         # Give the word a zero-width bbox
@@ -219,14 +228,14 @@ class TestSplitWordAtFractionZeroBbox:
 
 
 class TestRefineWordBboxes:
-    def test_refine_word_bboxes_with_none_image(self):
+    def test_refine_word_bboxes_with_none_image(self) -> None:
         """refine_word_bboxes with None image recomputes bbox (lines 804-808)."""
         line = _make_line(["hello", "world"])
         result = line.refine_word_bboxes(page_image=None)
         # Should return False since no image → no refinement
         assert result is False
 
-    def test_refine_word_bboxes_returns_bool(self):
+    def test_refine_word_bboxes_returns_bool(self) -> None:
         """refine_word_bboxes returns a boolean."""
         line = _make_line(["hello"])
         result = line.refine_word_bboxes(page_image=None)
@@ -239,14 +248,14 @@ class TestRefineWordBboxes:
 
 
 class TestEstimateBaselineFromImage:
-    def test_returns_none_when_image_is_none(self):
+    def test_returns_none_when_image_is_none(self) -> None:
         """estimate_baseline_from_image(None) sets baseline=None and returns None (962-963)."""
         line = _make_line(["hello"])
         result = line.estimate_baseline_from_image(None)
         assert result is None
         assert line.baseline is None
 
-    def test_returns_none_for_paragraph_block(self):
+    def test_returns_none_for_paragraph_block(self) -> None:
         """estimate_baseline_from_image on non-LINE block returns None (968-969)."""
         # child_type=BLOCKS means it's not a WORDS container -> early return
         para = Block(

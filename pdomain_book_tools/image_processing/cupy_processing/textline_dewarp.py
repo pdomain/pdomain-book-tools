@@ -6,9 +6,12 @@ LineSamples whose arrays are cupy ndarrays; fit/build accept either backend.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 # Same Leptonica constants as the NumPy module (single source of truth: see plan table).
 from pdomain_book_tools.image_processing.cv2_processing.textline_dewarp import (
@@ -156,12 +159,12 @@ def detect_textlines(
             continue
         ux = cp.unique(xs)
         idx = cp.searchsorted(ux, xs)
-        ux_size: int = ux.size  # pyright: ignore[reportAttributeAccessIssue]
+        ux_size: int = ux.size
         sums = cp.zeros(ux_size, cp.float64)
         counts = cp.zeros(ux_size, cp.float64)
-        cp.add.at(sums, idx, ys.astype(cp.float64))  # pyright: ignore[reportAttributeAccessIssue]
+        cp.add.at(sums, idx, ys.astype(cp.float64))
         cp.add.at(counts, idx, 1.0)
-        lines.append(LineSamples(xs=ux.astype(cp.float64), ys=sums / counts))  # pyright: ignore[reportAttributeAccessIssue]
+        lines.append(LineSamples(xs=ux.astype(cp.float64), ys=sums / counts))
     lines.sort(key=lambda ln: float(ln.ys.mean()))
     return lines
 
@@ -170,16 +173,17 @@ def fit_baselines(lines: list[LineSamples]) -> list[QuadCoeffs]:
     """Order-2 least-squares fit per line (GPU: delegates to NumPy polyfit)."""
     coeffs: list[QuadCoeffs] = []
     for ln in lines:
-        xs = (
-            cp.asnumpy(ln.xs)
-            if cp is not None and isinstance(ln.xs, cp.ndarray)
-            else np.asarray(ln.xs)
-        )  # type: ignore[union-attr]
-        ys = (
-            cp.asnumpy(ln.ys)
-            if cp is not None and isinstance(ln.ys, cp.ndarray)
-            else np.asarray(ln.ys)
-        )  # type: ignore[union-attr]
+        if cp is not None and isinstance(ln.xs, cp.ndarray):
+            # isinstance against the unparameterized cupy.ndarray erases the
+            # dtype to Unknown; the cast restores the dtype already declared
+            # on LineSamples.xs.
+            xs = cp.asnumpy(cast("npt.NDArray[np.float64]", ln.xs))
+        else:
+            xs = np.asarray(ln.xs)
+        if cp is not None and isinstance(ln.ys, cp.ndarray):
+            ys = cp.asnumpy(cast("npt.NDArray[np.float64]", ln.ys))
+        else:
+            ys = np.asarray(ln.ys)
         order = min(2, xs.size - 1)
         c = np.polyfit(xs.astype(np.float64), ys.astype(np.float64), order)
         c2, c1, c0 = (0.0, c[0], c[1]) if order == 1 else (c[0], c[1], c[2])
@@ -226,7 +230,10 @@ def build_vertical_disparity(
             # Fall back to NumPy polyfit if BLAS libs unavailable
             y_np = cp.asnumpy(y_pts[order])
             d_np = cp.asnumpy(d_pts[order])
-            cc_np = np.polyfit(y_np, d_np, deg)
+            cc_np = cast(
+                "npt.NDArray[np.float64]",
+                np.polyfit(y_np, d_np, deg),  # pyright: ignore[reportCallIssue, reportArgumentType]  # generic-dtype fallback array, see CuPy stub module docstring
+            )
             samp[:, j] = cp.asarray(np.polyval(cc_np, cp.asnumpy(rows_full)))
     disparity = cp.empty((h, w), cp.float32)
     sx = sample_x.astype(cp.float64)
@@ -255,7 +262,10 @@ def build_horizontal_disparity(
         ends = cp.asarray([ln.left for ln in lines])
         target = float(ends.min())
         anchor = "left"
-    shift = target - ends
+    shift = cast(
+        "npt.NDArray[np.float64]",
+        target - ends,  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on generic-dtype array, see CuPy stub module docstring
+    )
     ref_rows = cp.asarray(
         [
             float(c.eval((ln.left + ln.right) / 2.0))
@@ -287,10 +297,10 @@ def build_disparity_maps(
     hdisp = build_horizontal_disparity(
         lines, coeffs, size, gutter_edge=gutter_edge, sampling=sampling
     )
-    mesh = cp.meshgrid(  # pyright: ignore[reportGeneralTypeIssues]
+    mesh = cp.meshgrid(
         cp.arange(h, dtype=cp.float32), cp.arange(w, dtype=cp.float32), indexing="ij"
     )
-    ys, xs = mesh[0], mesh[1]  # pyright: ignore[reportGeneralTypeIssues]
+    ys, xs = mesh[0], mesh[1]
     return (xs + hdisp).astype(cp.float32), (ys + vdisp).astype(cp.float32)
 
 

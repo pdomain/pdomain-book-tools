@@ -82,7 +82,7 @@ class TestCropEdges:
             crop_edges(img, left=6, right=5)
 
     @pytest.mark.parametrize("edge", ["top", "bottom", "left", "right"])
-    def test_raises_on_negative_edge(self, edge):
+    def test_raises_on_negative_edge(self, edge: str):
         img = np.zeros((10, 10), dtype=np.uint8)
         with pytest.raises(ValueError, match="non-negative"):
             crop_edges(img, **{edge: -1})

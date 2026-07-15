@@ -162,7 +162,12 @@ def test_to_dict_with_name_roundtrip():
 
 def test_legacy_items_kwarg_still_works_but_warns():
     with pytest.warns(DeprecationWarning, match=r"Page\(items=\.\.\.\) is deprecated"):
-        p = Page(width=10, height=20, page_index=0, items=[])
+        p = Page(
+            width=10,
+            height=20,
+            page_index=0,
+            items=[],  # pyright: ignore[reportCallIssue]  # legacy alias, added at runtime by Page's deprecation shim (Page.__init__ reassignment); not visible to static analysis
+        )
     assert p.items == []
 
 
@@ -179,11 +184,17 @@ def test_legacy_cv2_numpy_page_image_kwarg_still_works_but_warns():
             height=5,
             page_index=0,
             blocks=[],
-            cv2_numpy_page_image=arr,
+            cv2_numpy_page_image=arr,  # pyright: ignore[reportCallIssue]  # legacy alias, added at runtime by Page's deprecation shim (Page.__init__ reassignment); not visible to static analysis
         )
     assert p.cv2_numpy_page_image is arr
 
 
 def test_passing_both_old_and_new_kwarg_raises():
     with pytest.raises(TypeError, match="both 'blocks' and the deprecated alias"):
-        Page(width=10, height=20, page_index=0, blocks=[], items=[])
+        Page(
+            width=10,
+            height=20,
+            page_index=0,
+            blocks=[],
+            items=[],  # pyright: ignore[reportCallIssue]  # legacy alias, added at runtime by Page's deprecation shim (Page.__init__ reassignment); not visible to static analysis
+        )

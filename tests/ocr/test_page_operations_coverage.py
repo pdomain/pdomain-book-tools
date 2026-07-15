@@ -1,5 +1,9 @@
 """Coverage tests for Page paragraph/line/word operations."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
@@ -7,6 +11,10 @@ from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
 
 
 def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
@@ -17,7 +25,7 @@ def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
     )
 
 
-def _make_line(words):
+def _make_line(words: Sequence[Word]) -> Block:
     return Block(
         items=list(words),
         block_category=BlockCategory.LINE,
@@ -25,7 +33,7 @@ def _make_line(words):
     )
 
 
-def _make_paragraph(lines):
+def _make_paragraph(lines: Sequence[Block]) -> Block:
     return Block(
         items=list(lines),
         block_category=BlockCategory.PARAGRAPH,
@@ -34,7 +42,7 @@ def _make_paragraph(lines):
 
 
 @pytest.fixture
-def multi_paragraph_page():
+def multi_paragraph_page() -> Page:
     """Page with two paragraphs, two lines each, two words each."""
     p1l1 = _make_line(
         [_make_word("p1l1w1", 0, 0, 30, 10), _make_word("p1l1w2", 35, 0, 60, 10)]
@@ -63,18 +71,21 @@ def multi_paragraph_page():
 
 
 class TestMergeParagraphs:
-    def test_merge_two_paragraphs(self, multi_paragraph_page):
+    def test_merge_two_paragraphs(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.merge_paragraphs([0, 1])
         assert result is True
         # After merge, only one paragraph should remain
         assert len(multi_paragraph_page.paragraphs) == 1
 
-    def test_too_few_indices_returns_false(self, multi_paragraph_page):
+    def test_too_few_indices_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.merge_paragraphs([0]) is False
         assert multi_paragraph_page.merge_paragraphs([]) is False
-        assert multi_paragraph_page.merge_paragraphs(None) is False
+        assert (
+            multi_paragraph_page.merge_paragraphs(None)  # type: ignore[arg-type]
+            is False
+        )
 
-    def test_index_out_of_range_returns_false(self, multi_paragraph_page):
+    def test_index_out_of_range_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.merge_paragraphs([0, 99]) is False
         assert multi_paragraph_page.merge_paragraphs([-1, 0]) is False
 
@@ -83,20 +94,20 @@ class TestMergeParagraphs:
 
 
 class TestDeleteParagraphs:
-    def test_delete_one(self, multi_paragraph_page):
+    def test_delete_one(self, multi_paragraph_page: Page) -> None:
         before = len(multi_paragraph_page.paragraphs)
         result = multi_paragraph_page.delete_paragraphs([0])
         assert result is True
         assert len(multi_paragraph_page.paragraphs) == before - 1
 
-    def test_delete_all(self, multi_paragraph_page):
+    def test_delete_all(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.delete_paragraphs([0, 1])
         assert result is True
 
-    def test_empty_indices_returns_false(self, multi_paragraph_page):
+    def test_empty_indices_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.delete_paragraphs([]) is False
 
-    def test_invalid_index_returns_false(self, multi_paragraph_page):
+    def test_invalid_index_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.delete_paragraphs([99]) is False
 
 
@@ -104,22 +115,22 @@ class TestDeleteParagraphs:
 
 
 class TestSplitParagraphs:
-    def test_split_paragraph_with_two_lines(self, multi_paragraph_page):
+    def test_split_paragraph_with_two_lines(self, multi_paragraph_page: Page) -> None:
         before = len(multi_paragraph_page.paragraphs)
         result = multi_paragraph_page.split_paragraphs([0])
         assert result is True
         assert len(multi_paragraph_page.paragraphs) == before + 1
 
-    def test_split_paragraph_single_line_skipped(self):
+    def test_split_paragraph_single_line_skipped(self) -> None:
         para = _make_paragraph([_make_line([_make_word("w", 0, 0, 10, 10)])])
         page = Page(width=50, height=50, page_index=0, blocks=[para])
         # Single line in paragraph, can't split
         assert page.split_paragraphs([0]) is False
 
-    def test_empty_indices_returns_false(self, multi_paragraph_page):
+    def test_empty_indices_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_paragraphs([]) is False
 
-    def test_invalid_index_returns_false(self, multi_paragraph_page):
+    def test_invalid_index_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_paragraphs([99]) is False
 
 
@@ -127,18 +138,18 @@ class TestSplitParagraphs:
 
 
 class TestSplitParagraphAfterLine:
-    def test_split_after_first_line(self, multi_paragraph_page):
+    def test_split_after_first_line(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.split_paragraph_after_line(0)
         assert result is True
 
     def test_split_after_last_line_in_paragraph_returns_false(
-        self, multi_paragraph_page
-    ):
+        self, multi_paragraph_page: Page
+    ) -> None:
         # Paragraph 0 has lines at indices 0,1; line index 1 is last in para -> can't split
         result = multi_paragraph_page.split_paragraph_after_line(1)
         assert result is False
 
-    def test_invalid_line_index_returns_false(self, multi_paragraph_page):
+    def test_invalid_line_index_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_paragraph_after_line(-1) is False
         assert multi_paragraph_page.split_paragraph_after_line(99) is False
 
@@ -147,16 +158,16 @@ class TestSplitParagraphAfterLine:
 
 
 class TestSplitParagraphWithSelectedLines:
-    def test_split_selected_lines(self, multi_paragraph_page):
+    def test_split_selected_lines(self, multi_paragraph_page: Page) -> None:
         # Select line 0 (in paragraph 0) -> split
         result = multi_paragraph_page.split_paragraph_with_selected_lines([0])
         # Result depends on internal logic
         assert result in (True, False)
 
-    def test_empty_indices(self, multi_paragraph_page):
+    def test_empty_indices(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_paragraph_with_selected_lines([]) is False
 
-    def test_invalid_line_index(self, multi_paragraph_page):
+    def test_invalid_line_index(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_paragraph_with_selected_lines([99]) is False
 
 
@@ -164,7 +175,7 @@ class TestSplitParagraphWithSelectedLines:
 
 
 class TestMergeLines:
-    def test_merge_two_lines(self, multi_paragraph_page):
+    def test_merge_two_lines(self, multi_paragraph_page: Page) -> None:
         before = len(multi_paragraph_page.lines)
         # Lines 0 and 1 are both in paragraph 0
         result = multi_paragraph_page.merge_lines([0, 1])
@@ -173,10 +184,10 @@ class TestMergeLines:
         if result:
             assert len(multi_paragraph_page.lines) == before - 1
 
-    def test_too_few_indices(self, multi_paragraph_page):
+    def test_too_few_indices(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.merge_lines([0]) is False
 
-    def test_invalid_index(self, multi_paragraph_page):
+    def test_invalid_index(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.merge_lines([0, 99]) is False
 
 
@@ -184,16 +195,16 @@ class TestMergeLines:
 
 
 class TestDeleteLines:
-    def test_delete_one_line(self, multi_paragraph_page):
+    def test_delete_one_line(self, multi_paragraph_page: Page) -> None:
         before = len(multi_paragraph_page.lines)
         result = multi_paragraph_page.delete_lines([0])
         assert result is True
         assert len(multi_paragraph_page.lines) == before - 1
 
-    def test_empty_returns_false(self, multi_paragraph_page):
+    def test_empty_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.delete_lines([]) is False
 
-    def test_invalid_returns_false(self, multi_paragraph_page):
+    def test_invalid_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.delete_lines([99]) is False
 
 
@@ -201,17 +212,17 @@ class TestDeleteLines:
 
 
 class TestDeleteWords:
-    def test_delete_one_word(self, multi_paragraph_page):
+    def test_delete_one_word(self, multi_paragraph_page: Page) -> None:
         # Remove first word in first line
         before = len(multi_paragraph_page.words)
         result = multi_paragraph_page.delete_words([(0, 0)])
         assert result is True
         assert len(multi_paragraph_page.words) == before - 1
 
-    def test_empty_returns_false(self, multi_paragraph_page):
+    def test_empty_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.delete_words([]) is False
 
-    def test_invalid_line_index_returns_false(self, multi_paragraph_page):
+    def test_invalid_line_index_returns_false(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.delete_words([(99, 0)]) is False
 
 
@@ -219,15 +230,15 @@ class TestDeleteWords:
 
 
 class TestSplitWord:
-    def test_split_word_at_middle(self, multi_paragraph_page):
+    def test_split_word_at_middle(self, multi_paragraph_page: Page) -> None:
         # Split first word at split_fraction=0.5
         result = multi_paragraph_page.split_word(0, 0, 0.5)
         assert result in (True, False)
 
-    def test_invalid_line_index(self, multi_paragraph_page):
+    def test_invalid_line_index(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_word(99, 0, 0.5) is False
 
-    def test_invalid_split_fraction(self, multi_paragraph_page):
+    def test_invalid_split_fraction(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_word(0, 0, 0.0) is False
         assert multi_paragraph_page.split_word(0, 0, 1.0) is False
         assert multi_paragraph_page.split_word(0, 0, 1.5) is False
@@ -237,14 +248,14 @@ class TestSplitWord:
 
 
 class TestSplitLineAfterWord:
-    def test_split_after_first_word(self, multi_paragraph_page):
+    def test_split_after_first_word(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.split_line_after_word(0, 0)
         assert result in (True, False)
 
-    def test_invalid_line_index(self, multi_paragraph_page):
+    def test_invalid_line_index(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_line_after_word(99, 0) is False
 
-    def test_invalid_word_index(self, multi_paragraph_page):
+    def test_invalid_word_index(self, multi_paragraph_page: Page) -> None:
         assert multi_paragraph_page.split_line_after_word(0, 99) is False
 
 
@@ -252,12 +263,12 @@ class TestSplitLineAfterWord:
 
 
 class TestReorganizePage:
-    def test_reorganize_does_not_crash(self, multi_paragraph_page):
+    def test_reorganize_does_not_crash(self, multi_paragraph_page: Page) -> None:
         multi_paragraph_page.reorganize_page()
         # Either changes or stays the same; should not crash
         assert multi_paragraph_page is not None
 
-    def test_reorganize_empty_page(self):
+    def test_reorganize_empty_page(self) -> None:
         page = Page(width=10, height=10, page_index=0, blocks=[])
         page.reorganize_page()
         assert page is not None
@@ -267,12 +278,12 @@ class TestReorganizePage:
 
 
 class TestComputeTextRowBlocks:
-    def test_compute_with_lines(self, multi_paragraph_page):
+    def test_compute_with_lines(self, multi_paragraph_page: Page) -> None:
         lines = list(multi_paragraph_page.lines)
         result = reorganize_page_utils.compute_text_row_blocks(lines)
         assert result is not None
 
-    def test_compute_with_no_lines(self):
+    def test_compute_with_no_lines(self) -> None:
         result = reorganize_page_utils.compute_text_row_blocks([])
         # Either None or empty result; should not crash
         assert result is None or hasattr(result, "items")
@@ -282,7 +293,9 @@ class TestComputeTextRowBlocks:
 
 
 class TestComputeTextParagraphBlocks:
-    def test_compute_paragraph_blocks_with_lines(self, multi_paragraph_page):
+    def test_compute_paragraph_blocks_with_lines(
+        self, multi_paragraph_page: Page
+    ) -> None:
         lines = list(multi_paragraph_page.lines)
         result = reorganize_page_utils.compute_text_paragraph_blocks(lines)
         # Should not crash
@@ -293,12 +306,12 @@ class TestComputeTextParagraphBlocks:
 
 
 class TestReorganizeLines:
-    def test_reorganize_lines_block(self, multi_paragraph_page):
+    def test_reorganize_lines_block(self, multi_paragraph_page: Page) -> None:
         para = multi_paragraph_page.items[0]
         reorganize_page_utils.reorganize_lines(para)
         # Should not crash
 
-    def test_reorganize_empty_block(self):
+    def test_reorganize_empty_block(self) -> None:
         block = Block(
             items=[],
             block_category=BlockCategory.PARAGRAPH,
@@ -311,7 +324,7 @@ class TestReorganizeLines:
 
 
 class TestAddGroundTruth:
-    def test_add_ground_truth(self, multi_paragraph_page):
+    def test_add_ground_truth(self, multi_paragraph_page: Page) -> None:
         # Just exercise the function
         multi_paragraph_page.add_ground_truth(
             "p1l1w1 p1l1w2\np1l2w1 p1l2w2\n\np2l1w1 p2l1w2\np2l2w1 p2l2w2\n"
@@ -322,20 +335,20 @@ class TestAddGroundTruth:
 
 
 class TestReboxWord:
-    def test_rebox_with_valid_indices(self, multi_paragraph_page):
+    def test_rebox_with_valid_indices(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.rebox_word(0, 0, 1, 1, 25, 9, refine_after=False)
         assert result in (True, False)
 
-    def test_rebox_invalid_line(self, multi_paragraph_page):
+    def test_rebox_invalid_line(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.rebox_word(99, 0, 1, 1, 25, 9, refine_after=False)
         assert result is False
 
-    def test_rebox_invalid_rectangle(self, multi_paragraph_page):
+    def test_rebox_invalid_rectangle(self, multi_paragraph_page: Page) -> None:
         # x2 < x1 -> after normalization rx2 == rx1; rejected
         result = multi_paragraph_page.rebox_word(0, 0, 5, 5, 5, 5, refine_after=False)
         assert result is False
 
-    def test_rebox_invalid_word_index(self, multi_paragraph_page):
+    def test_rebox_invalid_word_index(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.rebox_word(0, 99, 1, 1, 25, 9, refine_after=False)
         assert result is False
 
@@ -344,7 +357,7 @@ class TestReboxWord:
 
 
 class TestNudgeWordBbox:
-    def test_nudge_word(self, multi_paragraph_page):
+    def test_nudge_word(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.nudge_word_bbox(
             0,
             0,
@@ -356,7 +369,7 @@ class TestNudgeWordBbox:
         )
         assert result in (True, False)
 
-    def test_nudge_invalid_line(self, multi_paragraph_page):
+    def test_nudge_invalid_line(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.nudge_word_bbox(
             99,
             0,
@@ -368,7 +381,7 @@ class TestNudgeWordBbox:
         )
         assert result is False
 
-    def test_nudge_invalid_word(self, multi_paragraph_page):
+    def test_nudge_invalid_word(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.nudge_word_bbox(
             0,
             99,
@@ -385,11 +398,11 @@ class TestNudgeWordBbox:
 
 
 class TestAddWordToPage:
-    def test_add_word_to_existing_line(self, multi_paragraph_page):
+    def test_add_word_to_existing_line(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.add_word_to_page(65, 0, 80, 10, text="new")
         assert result in (True, False)
 
-    def test_add_word_invalid_rectangle(self, multi_paragraph_page):
+    def test_add_word_invalid_rectangle(self, multi_paragraph_page: Page) -> None:
         result = multi_paragraph_page.add_word_to_page(5, 5, 5, 5, text="bad")
         assert result is False
 
@@ -398,7 +411,9 @@ class TestAddWordToPage:
 
 
 class TestImageGenerators:
-    def test_generate_doctr_checks_no_op_no_image(self, multi_paragraph_page, tmp_path):
+    def test_generate_doctr_checks_no_op_no_image(
+        self, multi_paragraph_page: Page, tmp_path: Path
+    ) -> None:
         # Without an image, should not crash. If it requires image, we just
         # invoke and accept the failure as expected.
         import contextlib

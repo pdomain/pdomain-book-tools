@@ -77,4 +77,4 @@ def test_review_metadata_from_dict_missing_keys_use_defaults():
 
 def test_review_metadata_roundtrip():
     rm = ReviewMetadata(validated=True, reviewer_note="hi", flagged_for_attention=True)
-    assert ReviewMetadata.from_dict(rm.to_dict()) == rm
+    assert ReviewMetadata.from_dict(dict(rm.to_dict())) == rm

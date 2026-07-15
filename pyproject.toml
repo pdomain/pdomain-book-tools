@@ -70,6 +70,7 @@ dev = [
     "ruff>=0.15.13",
     "pytest-xdist>=3.8.0",
     "gitlint>=0.19.1",
+    "pandas-stubs>=3.0.3.260530",
 ]
 
 
@@ -223,6 +224,11 @@ convention = "google"
 known-first-party = ["pdomain_book_tools"]
 
 [tool.ruff.lint.per-file-ignores]
+# Local third-party type stubs (basedpyright's default `stubPath`): names
+# must mirror the real library's public API exactly (e.g. `cupy.ndarray`,
+# matching `numpy.ndarray`'s own lowercase naming) — pep8-naming's N801
+# doesn't apply to a stub reproducing an external contract.
+"typings/**/*.pyi" = ["N801"]
 # Tests: assert is the idiom (S101); magic numbers common (PLR2004); no
 # annotations required (ANN); no docstrings required (D); security rules
 # relaxed (S105/S106/S311 — hardcoded passwords/random are test fixtures);
@@ -314,13 +320,15 @@ known-first-party = ["pdomain_book_tools"]
 include = ["pdomain_book_tools", "tests", "scripts"]
 exclude = ["**/__pycache__", "**/.venv", "**/node_modules"]
 
-# "recommended" is the workspace-canonical strict mode per 2026-05-17 decisions.
-# Catches unannotated functions, inferred-Any propagation, untyped decorators,
-# and missing return types that "standard" mode skips.
-typeCheckingMode = "recommended"
-# Warnings are tracked separately; CI/release gates enforce errors only via
-# `basedpyright ... --level error`.
-failOnWarnings = false
+# "strict" per the workspace strict-config target (raised from "recommended"
+# 2026-07-15): all reportXxx rules that "recommended" leaves as warnings or
+# off become errors.
+typeCheckingMode = "strict"
+reportUnnecessaryTypeIgnoreComment = true
+reportImplicitOverride = true
+# The whole include is at zero diagnostics (2026-07-15 strict migration);
+# fail on warnings so it stays there.
+failOnWarnings = true
 
 # Import cycles are structural (geometry↔OCR protocol types, etc.) and
 # resolved via TYPE_CHECKING guards. Suppress the per-file error here;
@@ -331,13 +339,32 @@ reportImportCycles = "none"
 venvPath = "."
 venv = ".venv"
 
-# Per-execution-environment overrides: tests get more leniency for now.
-# Note: typeCheckingMode is not valid per-environment; use the root-level setting.
+# Per-execution-environment overrides. typeCheckingMode is not valid
+# per-environment; tests run strict like everything else, with one scoped
+# deviation catalogued in docs/process/lint-deviations.md:
+# reportPrivateUsage is off for tests because unit tests legitimately
+# exercise private helpers.
+#
+# extraPaths = ["."] on both environments: pinning `root` to "tests" (or
+# "scripts") narrows that environment's *own* module search path to the
+# subtree itself, which breaks resolution of absolute imports that reach
+# outside it — `from tests.conftest import ...` from a sibling test module,
+# `from tests.ocr.test_document_batch_ocr import ...` across test files, and
+# `from scripts import update_github_actions` from a test. Without the repo
+# root on the search path, basedpyright can't find the source and falls
+# back to third-party stub resolution, reporting the misleading
+# "Stub file not found" (reportMissingTypeStubs) instead of resolving the
+# first-party module. Adding "." (the repo root, matching how pytest's
+# rootdir insertion resolves these same imports at runtime) fixes
+# resolution without any suppression.
 [[tool.basedpyright.executionEnvironments]]
 root = "tests"
+reportPrivateUsage = "none"
+extraPaths = ["."]
 
 [[tool.basedpyright.executionEnvironments]]
 root = "scripts"
+extraPaths = ["."]
 
 # Pytest configuration
 [tool.pytest.ini_options]

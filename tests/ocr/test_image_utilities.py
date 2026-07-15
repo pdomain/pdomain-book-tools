@@ -1,6 +1,9 @@
 """Tests for ocr.image_utilities module."""
 
+from __future__ import annotations
+
 import base64
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import numpy as np
@@ -18,15 +21,20 @@ from pdomain_book_tools.ocr.image_utilities import (
 )
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from unittest.mock import Mock
+
+    from numpy.typing import NDArray
+
 
 class TestCropImageToBbox:
     """Test the crop_image_to_bbox helper."""
 
-    def test_returns_none_when_element_is_none(self):
+    def test_returns_none_when_element_is_none(self) -> None:
         img = np.zeros((10, 10, 3), dtype=np.uint8)
         assert crop_image_to_bbox(None, img) is None
 
-    def test_returns_none_when_image_is_none(self):
+    def test_returns_none_when_image_is_none(self) -> None:
         word = Word(
             text="x",
             bounding_box=BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=True),
@@ -34,7 +42,7 @@ class TestCropImageToBbox:
         )
         assert crop_image_to_bbox(word, None) is None
 
-    def test_returns_none_when_no_bounding_box_attr(self):
+    def test_returns_none_when_no_bounding_box_attr(self) -> None:
         img = np.zeros((10, 10, 3), dtype=np.uint8)
 
         class NoBbox:
@@ -42,7 +50,7 @@ class TestCropImageToBbox:
 
         assert crop_image_to_bbox(NoBbox(), img, label="custom") is None
 
-    def test_returns_none_when_bounding_box_is_none(self):
+    def test_returns_none_when_bounding_box_is_none(self) -> None:
         img = np.zeros((10, 10, 3), dtype=np.uint8)
 
         class HasNone:
@@ -50,7 +58,7 @@ class TestCropImageToBbox:
 
         assert crop_image_to_bbox(HasNone(), img) is None
 
-    def test_returns_cropped_array(self):
+    def test_returns_cropped_array(self) -> None:
         img = np.arange(100, dtype=np.uint8).reshape(10, 10)
 
         word = Word(
@@ -65,7 +73,7 @@ class TestCropImageToBbox:
         # Half of 10x10 -> 5x5
         assert cropped.shape == (5, 5)
 
-    def test_unexpected_exception_propagates(self):
+    def test_unexpected_exception_propagates(self) -> None:
         """L-25: an unexpected exception (e.g. RuntimeError) from
         bbox.crop_image must propagate so genuine bugs surface, rather
         than being silently swallowed and returned as None."""
@@ -74,7 +82,7 @@ class TestCropImageToBbox:
         img = np.zeros((5, 5, 3), dtype=np.uint8)
 
         class FakeBbox:
-            def crop_image(self, image):
+            def crop_image(self, image: np.ndarray) -> None:
                 raise RuntimeError("boom")
 
         class Holder:
@@ -83,7 +91,7 @@ class TestCropImageToBbox:
         with pytest.raises(RuntimeError, match="boom"):
             crop_image_to_bbox(Holder(), img)
 
-    def test_expected_exception_swallowed_returns_none(self):
+    def test_expected_exception_swallowed_returns_none(self) -> None:
         """L-25: expected coordinate / image-shape failures
         (ValueError / AttributeError / TypeError / IndexError) keep the
         legacy 'return None' contract so callers iterating many bboxes
@@ -91,7 +99,7 @@ class TestCropImageToBbox:
         img = np.zeros((5, 5, 3), dtype=np.uint8)
 
         class FakeBbox:
-            def crop_image(self, image):
+            def crop_image(self, image: np.ndarray) -> None:
                 raise ValueError("bad coords")
 
         class Holder:
@@ -99,12 +107,12 @@ class TestCropImageToBbox:
 
         assert crop_image_to_bbox(Holder(), img) is None
 
-    def test_handles_empty_crop(self):
+    def test_handles_empty_crop(self) -> None:
         """When crop returns None, helper returns that None as well."""
         img = np.zeros((5, 5, 3), dtype=np.uint8)
 
         class FakeBbox:
-            def crop_image(self, image):
+            def crop_image(self, image: np.ndarray) -> None:
                 return None
 
         class Holder:
@@ -117,7 +125,7 @@ class TestGetEncodedImage:
     """Test the get_encoded_image function."""
 
     @pytest.fixture
-    def sample_image(self):
+    def sample_image(self) -> NDArray[np.uint8]:
         """Create a sample BGR image for testing."""
         # Create a 10x10 BGR image with distinct RGB values
         img = np.zeros((10, 10, 3), dtype=np.uint8)
@@ -125,14 +133,17 @@ class TestGetEncodedImage:
         return img
 
     @pytest.fixture
-    def mock_encoded_png(self):
+    def mock_encoded_png(self) -> bytes:
         """Mock PNG encoded data."""
         return b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\n"
 
     @patch("pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
     def test_get_encoded_image_success(
-        self, mock_encode, sample_image, mock_encoded_png
-    ):
+        self,
+        mock_encode: Mock,
+        sample_image: NDArray[np.uint8],
+        mock_encoded_png: bytes,
+    ) -> None:
         """Test successful image encoding."""
         # Setup mock
         mock_encode.return_value = mock_encoded_png
@@ -155,7 +166,9 @@ class TestGetEncodedImage:
         mock_encode.assert_called_once_with(sample_image)
 
     @patch("pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
-    def test_get_encoded_image_grayscale(self, mock_encode, mock_encoded_png):
+    def test_get_encoded_image_grayscale(
+        self, mock_encode: Mock, mock_encoded_png: bytes
+    ) -> None:
         """Test encoding with grayscale image."""
         # Create grayscale image
         gray_img = np.random.randint(0, 255, (20, 20), dtype=np.uint8)
@@ -171,7 +184,9 @@ class TestGetEncodedImage:
         mock_encode.assert_called_once_with(gray_img)
 
     @patch("pdomain_book_tools.ocr.image_utilities.encode_bgr_image_as_png")
-    def test_get_encoded_image_empty_encoding(self, mock_encode, sample_image):
+    def test_get_encoded_image_empty_encoding(
+        self, mock_encode: Mock, sample_image: NDArray[np.uint8]
+    ) -> None:
         """Test handling of empty encoded data."""
         # Setup mock to return empty bytes
         mock_encode.return_value = b""
@@ -184,7 +199,7 @@ class TestGetEncodedImage:
         assert b64_string == ""
         assert data_src == "data:image/png;base64,"
 
-    def test_base64_encoding_correctness(self):
+    def test_base64_encoding_correctness(self) -> None:
         """Test that base64 encoding is correct."""
         # Use actual encoding function to ensure correctness
         test_bytes = b"test_data_12345"
@@ -206,7 +221,7 @@ class TestGetCroppedEncodedImageScaledBbox:
     """Test the get_cropped_encoded_image_scaled_bbox function."""
 
     @pytest.fixture
-    def sample_image(self):
+    def sample_image(self) -> NDArray[np.uint8]:
         """Create a sample image for cropping tests."""
         # Create a 20x20 image with gradient values for easy verification
         img = np.zeros((20, 20, 3), dtype=np.uint8)
@@ -216,14 +231,17 @@ class TestGetCroppedEncodedImageScaledBbox:
         return img
 
     @pytest.fixture
-    def scaled_bbox(self):
+    def scaled_bbox(self) -> BoundingBox:
         """Create a scaled (pixel) bounding box."""
         return BoundingBox.from_ltrb(5, 5, 15, 15, is_normalized=False)
 
     @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
     def test_cropping_with_scaled_bbox(
-        self, mock_get_encoded, sample_image, scaled_bbox
-    ):
+        self,
+        mock_get_encoded: Mock,
+        sample_image: NDArray[np.uint8],
+        scaled_bbox: BoundingBox,
+    ) -> None:
         """Test cropping with scaled (pixel) bounding box."""
         # Setup mock
         mock_encoded = (b"mock_png", "mock_b64", "mock_data_src")
@@ -253,7 +271,9 @@ class TestGetCroppedEncodedImageScaledBbox:
         assert data_src == "mock_data_src"
 
     @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
-    def test_cropping_edge_bbox(self, mock_get_encoded, sample_image):
+    def test_cropping_edge_bbox(
+        self, mock_get_encoded: Mock, sample_image: NDArray[np.uint8]
+    ) -> None:
         """Test cropping with bounding box at image edges."""
         # Bbox that covers the entire image
         edge_bbox = BoundingBox.from_ltrb(0, 0, 20, 20, is_normalized=False)
@@ -270,7 +290,7 @@ class TestGetCroppedEncodedImageScaledBbox:
         np.testing.assert_array_equal(cropped_img, sample_image)
 
     @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
-    def test_cropping_single_pixel_bbox(self, mock_get_encoded):
+    def test_cropping_single_pixel_bbox(self, mock_get_encoded: Mock) -> None:
         """Test cropping with single pixel bounding box."""
         img = np.random.randint(0, 255, (10, 10, 3), dtype=np.uint8)
         single_pixel_bbox = BoundingBox.from_ltrb(5, 5, 6, 6, is_normalized=False)
@@ -292,21 +312,21 @@ class TestGetCroppedEncodedImage:
     """Test the get_cropped_encoded_image function."""
 
     @pytest.fixture
-    def sample_image(self):
+    def sample_image(self) -> NDArray[np.uint8]:
         """Create a sample image for testing."""
         return np.random.randint(0, 255, (100, 200, 3), dtype=np.uint8)
 
     @pytest.fixture
-    def normalized_bbox(self):
+    def normalized_bbox(self) -> BoundingBox:
         """Create a normalized bounding box."""
         return BoundingBox.from_ltrb(0.1, 0.2, 0.9, 0.8, is_normalized=True)
 
     @pytest.fixture
-    def pixel_bbox(self):
+    def pixel_bbox(self) -> BoundingBox:
         """Create a pixel bounding box."""
         return BoundingBox.from_ltrb(20, 40, 180, 160, is_normalized=False)
 
-    def test_pixel_coordinates_with_scaled_bbox_function(self):
+    def test_pixel_coordinates_with_scaled_bbox_function(self) -> None:
         """Test that pixel coordinates work correctly with get_cropped_encoded_image_scaled_bbox."""
         img = np.random.randint(0, 255, (100, 200, 3), dtype=np.uint8)
         pixel_bbox = BoundingBox.from_ltrb(20, 40, 180, 160, is_normalized=False)
@@ -339,8 +359,11 @@ class TestGetCroppedEncodedImage:
 
     @patch("pdomain_book_tools.ocr.image_utilities.get_encoded_image")
     def test_cropping_with_normalized_bbox(
-        self, mock_get_encoded, sample_image, normalized_bbox
-    ):
+        self,
+        mock_get_encoded: Mock,
+        sample_image: NDArray[np.uint8],
+        normalized_bbox: BoundingBox,
+    ) -> None:
         """Test cropping with normalized bounding box."""
         _h, _w = sample_image.shape[:2]  # _h=100, _w=200
 
@@ -370,7 +393,9 @@ class TestGetCroppedEncodedImage:
         assert b64_string == "norm_b64"
         assert data_src == "norm_data_src"
 
-    def test_cropping_with_pixel_bbox_error(self, sample_image, pixel_bbox):
+    def test_cropping_with_pixel_bbox_error(
+        self, sample_image: NDArray[np.uint8], pixel_bbox: BoundingBox
+    ) -> None:
         """Test that pixel bounding box raises error in get_cropped_encoded_image."""
         # get_cropped_encoded_image expects normalized coordinates and calls scale()
         # Using pixel coordinates should raise ValueError
@@ -379,7 +404,7 @@ class TestGetCroppedEncodedImage:
         ):
             get_cropped_encoded_image(sample_image, pixel_bbox)
 
-    def test_coordinate_system_inference(self):
+    def test_coordinate_system_inference(self) -> None:
         """Test that coordinate systems are inferred correctly."""
         # Test with values that should be inferred as normalized
         norm_inferred_bbox = BoundingBox.from_ltrb(0.0, 0.0, 1.0, 1.0)
@@ -394,13 +419,15 @@ class TestGetCroppedWordImage:
     """Test the get_cropped_word_image function."""
 
     @pytest.fixture
-    def sample_word(self):
+    def sample_word(self) -> Word:
         """Create a sample Word with bounding box."""
         bbox = BoundingBox.from_ltrb(0.2, 0.3, 0.8, 0.7, is_normalized=True)
         return Word(text="test_word", bounding_box=bbox, ocr_confidence=0.95)
 
     @patch("pdomain_book_tools.ocr.image_utilities.get_cropped_encoded_image")
-    def test_get_cropped_word_image(self, mock_get_cropped, sample_word):
+    def test_get_cropped_word_image(
+        self, mock_get_cropped: Mock, sample_word: Word
+    ) -> None:
         """Test cropping image for a Word."""
         img = np.random.randint(0, 255, (100, 200, 3), dtype=np.uint8)
 
@@ -421,7 +448,7 @@ class TestGetCroppedWordImage:
         # Verify result is passed through correctly
         assert result == mock_result
 
-    def test_word_with_pixel_bbox_error(self):
+    def test_word_with_pixel_bbox_error(self) -> None:
         """Test with Word that has pixel coordinates - should error."""
         pixel_bbox = BoundingBox.from_ltrb(10, 20, 50, 60, is_normalized=False)
         word = Word(text="pixel_word", bounding_box=pixel_bbox, ocr_confidence=0.8)
@@ -439,7 +466,7 @@ class TestGetCroppedBlockImage:
     """Test the get_cropped_block_image function."""
 
     @pytest.fixture
-    def sample_block_with_bbox(self):
+    def sample_block_with_bbox(self) -> Block:
         """Create a sample Block with bounding box."""
         bbox = BoundingBox.from_ltrb(0.1, 0.1, 0.9, 0.5, is_normalized=True)
         words = [
@@ -462,7 +489,7 @@ class TestGetCroppedBlockImage:
         )
 
     @pytest.fixture
-    def block_without_bbox(self):
+    def block_without_bbox(self) -> Block:
         """Create a Block without items (so no computed bounding box)."""
         # Create empty block - no items means no computed bounding box
         return Block(
@@ -474,8 +501,8 @@ class TestGetCroppedBlockImage:
 
     @patch("pdomain_book_tools.ocr.image_utilities.get_cropped_encoded_image")
     def test_get_cropped_block_image_success(
-        self, mock_get_cropped, sample_block_with_bbox
-    ):
+        self, mock_get_cropped: Mock, sample_block_with_bbox: Block
+    ) -> None:
         """Test successful cropping of block image."""
         img = np.random.randint(0, 255, (200, 300, 3), dtype=np.uint8)
 
@@ -498,7 +525,9 @@ class TestGetCroppedBlockImage:
         # Verify result is passed through correctly
         assert result == mock_result
 
-    def test_get_cropped_block_image_no_bbox_error(self, block_without_bbox):
+    def test_get_cropped_block_image_no_bbox_error(
+        self, block_without_bbox: Block
+    ) -> None:
         """Test error when block has no bounding box."""
         img = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
 
@@ -506,7 +535,7 @@ class TestGetCroppedBlockImage:
         with pytest.raises(ValueError, match="Line bounding box is not defined"):
             get_cropped_block_image(img, block_without_bbox)
 
-    def test_block_with_pixel_bbox_error(self):
+    def test_block_with_pixel_bbox_error(self) -> None:
         """Test with Block that has pixel coordinates - should error."""
         pixel_bbox = BoundingBox.from_ltrb(20, 30, 100, 80, is_normalized=False)
         words = [
@@ -531,7 +560,7 @@ class TestGetCroppedBlockImage:
         ):
             get_cropped_block_image(img, block)
 
-    def test_block_with_none_bounding_box(self):
+    def test_block_with_none_bounding_box(self) -> None:
         """Test Block where bounding_box is forced to None after construction."""
         words = [
             Word(
@@ -557,7 +586,7 @@ class TestGetCroppedBlockImage:
 class TestImageUtilitiesIntegration:
     """Integration tests for image utilities."""
 
-    def test_full_pipeline_normalized_coordinates(self):
+    def test_full_pipeline_normalized_coordinates(self) -> None:
         """Test the full pipeline with normalized coordinates."""
         # Create test image
         img = np.random.randint(0, 255, (100, 200, 3), dtype=np.uint8)
@@ -593,7 +622,7 @@ class TestImageUtilitiesIntegration:
             assert isinstance(b64_string, str)
             assert data_src.startswith("data:image/png;base64,")
 
-    def test_full_pipeline_pixel_coordinates_error(self):
+    def test_full_pipeline_pixel_coordinates_error(self) -> None:
         """Test that pixel coordinates cause appropriate error."""
         # Create test image
         img = np.random.randint(0, 255, (100, 200, 3), dtype=np.uint8)
@@ -620,7 +649,7 @@ class TestImageUtilitiesIntegration:
         ):
             get_cropped_block_image(img, block)
 
-    def test_error_handling_empty_image(self):
+    def test_error_handling_empty_image(self) -> None:
         """Test handling of edge case with tiny image and normalized coordinates."""
         # Test with minimum valid image and normalized coordinates
         tiny_img = np.zeros((1, 1, 3), dtype=np.uint8)
@@ -641,7 +670,7 @@ class TestImageUtilitiesIntegration:
             assert cropped_img.shape == (1, 1, 3)
             np.testing.assert_array_equal(cropped_img, tiny_img)
 
-    def test_coordinate_system_consistency(self):
+    def test_coordinate_system_consistency(self) -> None:
         """Test that normalized coordinates work and pixel coordinates error appropriately."""
         img = np.random.randint(0, 255, (50, 100, 3), dtype=np.uint8)
 

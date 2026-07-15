@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
 import numpy as np
 import pytest
 
@@ -5,8 +9,32 @@ from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.word import Word
 
+if TYPE_CHECKING:
+    from numpy import ndarray
 
-def test_block_initialization(sample_block1):
+
+def _as_list(value: object) -> list[object]:
+    """Narrow a ``to_dict()`` value known (by contract) to be a list.
+
+    ``isinstance(value, list)`` narrows ``object`` to the bare-generic
+    ``list[Unknown]`` — basedpyright cannot recover the element type from
+    a runtime ``isinstance`` check against an unparameterized builtin, so
+    a single documented cast closes the gap at this one boundary.
+    """
+    assert isinstance(value, list)
+    return cast("list[object]", value)
+
+
+def _as_dict(value: object) -> dict[str, object]:
+    """Narrow a ``to_dict()`` value known (by contract) to be a dict.
+
+    See ``_as_list`` — same basedpyright limitation for bare ``dict``.
+    """
+    assert isinstance(value, dict)
+    return cast("dict[str, object]", value)
+
+
+def test_block_initialization(sample_block1: Block) -> None:
     assert sample_block1.bounding_box == BoundingBox.from_ltrb(0, 0, 20, 10)
     assert sample_block1.child_type == BlockChildType.WORDS
     assert sample_block1.block_category == BlockCategory.LINE
@@ -16,19 +44,22 @@ def test_block_initialization(sample_block1):
     assert sample_block1.items[1].text == "word2"
 
 
-def test_block_methods(sample_block1):
+def test_block_methods(sample_block1: Block) -> None:
     assert sample_block1.text == "word1 word2"
     assert sample_block1.words == sample_block1.items
     assert sample_block1.lines == [sample_block1]
 
 
-def test_block_scores(sample_block1):
+def test_block_scores(sample_block1: Block) -> None:
     assert sample_block1.ocr_confidence_scores() == pytest.approx([0.9, 0.8])
     assert sample_block1.mean_ocr_confidence() == pytest.approx(0.85)
 
 
-def test_block_to_dict(sample_block1, sample_line1, sample_two_paragraph_block1):
+def test_block_to_dict(
+    sample_block1: Block, sample_line1: list[Word], sample_two_paragraph_block1: Block
+) -> None:
     block_dict = sample_block1.to_dict()
+    assert sample_block1.bounding_box is not None
     assert block_dict["bounding_box"] == sample_block1.bounding_box.to_dict()
     assert block_dict["child_type"] == BlockChildType.WORDS.value
     assert block_dict["block_category"] == BlockCategory.LINE.value
@@ -38,18 +69,24 @@ def test_block_to_dict(sample_block1, sample_line1, sample_two_paragraph_block1)
     assert block_dict["line_role_labels"] == []
     assert block_dict["line_position_labels"] == []
     assert block_dict["baseline"] is None
-    assert len(block_dict["items"]) == 2
-    assert block_dict["items"][0] == sample_line1[0].to_dict()
-    assert block_dict["items"][1] == sample_line1[1].to_dict()
+    items = _as_list(block_dict["items"])
+    assert len(items) == 2
+    assert items[0] == sample_line1[0].to_dict()
+    assert items[1] == sample_line1[1].to_dict()
     twoP = sample_two_paragraph_block1.to_dict()
     assert twoP["child_type"] == BlockChildType.BLOCKS.value
     assert twoP["block_category"] == BlockCategory.BLOCK.value
-    assert len(twoP["items"]) == 2
-    assert len(twoP["items"][0]["items"]) == 2
-    assert len(twoP["items"][1]["items"]) == 1
+    two_p_items = _as_list(twoP["items"])
+    assert len(two_p_items) == 2
+    first_item = _as_dict(two_p_items[0])
+    second_item = _as_dict(two_p_items[1])
+    first_item_items = _as_list(first_item["items"])
+    second_item_items = _as_list(second_item["items"])
+    assert len(first_item_items) == 2
+    assert len(second_item_items) == 1
 
 
-def test_block_to_from_dict_with_baseline(sample_block1):
+def test_block_to_from_dict_with_baseline(sample_block1: Block) -> None:
     sample_block1.baseline = {
         "type": "linear",
         "slope": 0.1,
@@ -63,7 +100,7 @@ def test_block_to_from_dict_with_baseline(sample_block1):
     assert round_trip.baseline["slope"] == pytest.approx(0.1)
 
 
-def test_line_block_estimate_baseline_from_image_sets_attribute():
+def test_line_block_estimate_baseline_from_image_sets_attribute() -> None:
     image = np.full((40, 60), 255, dtype=np.uint8)
     # first word ("ab")
     image[14:24, 4:8] = 0
@@ -91,14 +128,14 @@ def test_line_block_estimate_baseline_from_image_sets_attribute():
 
 
 def test_paragraph(
-    sample_paragraph_block1,
-    sample_line1,
-    sample_line2,
-    sample_line3,
-    sample_block1,
-    sample_block2,
-    sample_block3,
-):
+    sample_paragraph_block1: Block,
+    sample_line1: list[Word],
+    sample_line2: list[Word],
+    sample_line3: list[Word],
+    sample_block1: Block,
+    sample_block2: Block,
+    sample_block3: Block,
+) -> None:
     assert sample_paragraph_block1.text == "word1 word2\nword3 word4\nword5 word6"
     assert sample_paragraph_block1.words == [
         *sample_line1,
@@ -130,14 +167,14 @@ def test_paragraph(
 
 
 def test_two_paragraph_block(
-    sample_two_paragraph_block1,
-    sample_line1,
-    sample_line2,
-    sample_line3,
-    sample_block1,
-    sample_block2,
-    sample_block3,
-):
+    sample_two_paragraph_block1: Block,
+    sample_line1: list[Word],
+    sample_line2: list[Word],
+    sample_line3: list[Word],
+    sample_block1: Block,
+    sample_block2: Block,
+    sample_block3: Block,
+) -> None:
     assert sample_two_paragraph_block1.text == "word1 word2\nword3 word4\n\nword5 word6"
     assert sample_two_paragraph_block1.words == [
         *sample_line1,
@@ -149,14 +186,18 @@ def test_two_paragraph_block(
         sample_block2,
         sample_block3,
     ]
-    assert len(sample_two_paragraph_block1.items) == 2
-    assert len(sample_two_paragraph_block1.items[0].items) == 2
-    assert len(sample_two_paragraph_block1.items[1].items) == 1
-    assert sample_two_paragraph_block1.items[0].items == [
+    top_items = sample_two_paragraph_block1.items
+    assert len(top_items) == 2
+    first_para, second_para = top_items
+    assert isinstance(first_para, Block)
+    assert isinstance(second_para, Block)
+    assert len(first_para.items) == 2
+    assert len(second_para.items) == 1
+    assert first_para.items == [
         sample_block1,
         sample_block2,
     ]
-    assert sample_two_paragraph_block1.items[1].items == [sample_block3]
+    assert second_para.items == [sample_block3]
     assert sample_two_paragraph_block1.mean_ocr_confidence() == pytest.approx(0.85)
     assert sample_two_paragraph_block1.ocr_confidence_scores() == pytest.approx(
         [0.9, 0.8, 0.9, 0.8, 0.9, 0.8]
@@ -168,14 +209,14 @@ def test_two_paragraph_block(
     assert sample_two_paragraph_block1.block_category == BlockCategory.BLOCK
     assert sample_two_paragraph_block1.block_labels == ["labelparagraph2"]
     assert len(sample_two_paragraph_block1.items) == 2
-    assert sample_two_paragraph_block1.items[0].items == [sample_block1, sample_block2]
-    assert sample_two_paragraph_block1.items[1].items == [sample_block3]
+    assert first_para.items == [sample_block1, sample_block2]
+    assert second_para.items == [sample_block3]
 
 
-def test_remove_ground_truth_words_block(sample_block1):
+def test_remove_ground_truth_words_block(sample_block1: Block) -> None:
     """Test remove_ground_truth method for a block containing words"""
     # Setup: Add ground truth data to words
-    word1, word2 = sample_block1.items
+    word1, word2 = sample_block1.words
     word1.ground_truth_text = "truth1"
     word1.ground_truth_bounding_box = BoundingBox.from_ltrb(0, 0, 10, 10)
     word2.ground_truth_text = "truth2"
@@ -202,20 +243,20 @@ def test_remove_ground_truth_words_block(sample_block1):
     assert len(sample_block1.unmatched_ground_truth_words) == 0
 
 
-def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1):
+def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1: Block) -> None:
     """Test remove_ground_truth method for a block containing nested blocks"""
     # Setup: Add ground truth data to nested words
-    for paragraph in sample_two_paragraph_block1.items:
-        for line in paragraph.items:
-            for word in line.items:
-                word.ground_truth_text = f"gt_{word.text}"
-                word.ground_truth_bounding_box = word.bounding_box
+    for word in sample_two_paragraph_block1.words:
+        word.ground_truth_text = f"gt_{word.text}"
+        word.ground_truth_bounding_box = word.bounding_box
 
     # Add unmatched ground truth words to various levels
     sample_two_paragraph_block1.unmatched_ground_truth_words = [(0, "top_unmatched")]
     for paragraph in sample_two_paragraph_block1.items:
+        assert isinstance(paragraph, Block)
         paragraph.unmatched_ground_truth_words = [(1, "para_unmatched")]
         for line in paragraph.items:
+            assert isinstance(line, Block)
             line.unmatched_ground_truth_words = [(0, "line_unmatched")]
 
     # Verify ground truth data is present before removal
@@ -243,12 +284,14 @@ def test_remove_ground_truth_nested_blocks(sample_two_paragraph_block1):
 
     # Verify nested blocks also have their unmatched ground truth words cleared
     for paragraph in sample_two_paragraph_block1.items:
+        assert isinstance(paragraph, Block)
         assert len(paragraph.unmatched_ground_truth_words) == 0
         for line in paragraph.items:
+            assert isinstance(line, Block)
             assert len(line.unmatched_ground_truth_words) == 0
 
 
-def test_remove_ground_truth_empty_block():
+def test_remove_ground_truth_empty_block() -> None:
     """Test remove_ground_truth method on an empty block"""
     from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 
@@ -267,7 +310,9 @@ def test_remove_ground_truth_empty_block():
 # ---------------- Additional tests for uncovered branches ------------------
 
 
-def test_block_items_sorted_and_copy(sample_block1, sample_block2):
+def test_block_items_sorted_and_copy(
+    sample_block1: Block, sample_block2: Block
+) -> None:
     # Construct unsorted WORDS block (x order reversed)
     w1 = Word("a", BoundingBox.from_ltrb(10, 0, 20, 10), 0.5)
     w2 = Word("b", BoundingBox.from_ltrb(0, 0, 5, 10), 0.6)
@@ -295,7 +340,7 @@ def test_block_items_sorted_and_copy(sample_block1, sample_block2):
     assert outer.items[1] is b1
 
 
-def test_block_items_uniform_coordinate_system_setter():
+def test_block_items_uniform_coordinate_system_setter() -> None:
     # Mixed normalized / pixel should raise
     w_norm = Word(
         "n", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True), 0.5
@@ -309,7 +354,7 @@ def test_block_items_uniform_coordinate_system_setter():
         )
 
 
-def test_block_items_uniform_coordinate_system_add_item():
+def test_block_items_uniform_coordinate_system_add_item() -> None:
     # Start with normalized then attempt to add pixel word
     w_norm1 = Word(
         "a", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2, is_normalized=True), 0.5
@@ -327,7 +372,7 @@ def test_block_items_uniform_coordinate_system_add_item():
         blk.add_item(w_px)
 
 
-def test_block_remove_item_success_and_failure(sample_block1):
+def test_block_remove_item_success_and_failure(sample_block1: Block) -> None:
     w = sample_block1.items[0]
     original_bbox = sample_block1.bounding_box
     sample_block1.remove_item(w)
@@ -339,8 +384,8 @@ def test_block_remove_item_success_and_failure(sample_block1):
 
 
 def test_remove_line_if_exists_direct_and_nested(
-    sample_paragraph_block1, sample_block1
-):
+    sample_paragraph_block1: Block, sample_block1: Block
+) -> None:
     # Direct removal
     paragraph = sample_paragraph_block1
     assert sample_block1 in paragraph.items
@@ -363,7 +408,7 @@ def test_remove_line_if_exists_direct_and_nested(
     assert nested_line_block not in paragraph.items
 
 
-def test_remove_line_if_exists_not_found_logs(sample_block1):
+def test_remove_line_if_exists_not_found_logs(sample_block1: Block) -> None:
     other_line = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
     )
@@ -374,8 +419,10 @@ def test_remove_line_if_exists_not_found_logs(sample_block1):
 
 
 def test_block_text_variants(
-    sample_block1, sample_paragraph_block1, sample_two_paragraph_block1
-):
+    sample_block1: Block,
+    sample_paragraph_block1: Block,
+    sample_two_paragraph_block1: Block,
+) -> None:
     assert sample_block1.text == "word1 word2"  # WORDS case
     assert sample_paragraph_block1.text.count("\n") == 2  # PARAGRAPH single newlines
     assert (
@@ -387,8 +434,8 @@ def test_block_text_variants(
     assert empty_line.text == ""
 
 
-def test_ground_truth_text_only_ocr(sample_block1):
-    w1, w2 = sample_block1.items
+def test_ground_truth_text_only_ocr(sample_block1: Block) -> None:
+    w1, w2 = sample_block1.words
     w1.ground_truth_text = "gt1"
     w2.ground_truth_text = "gt2"
     assert sample_block1.ground_truth_text_only_ocr == "gt1 gt2"
@@ -397,8 +444,8 @@ def test_ground_truth_text_only_ocr(sample_block1):
     assert sample_block1.ground_truth_text_only_ocr == "gt1"
 
 
-def test_ground_truth_exact_match(sample_block1):
-    w1, w2 = sample_block1.items
+def test_ground_truth_exact_match(sample_block1: Block) -> None:
+    w1, w2 = sample_block1.words
     w1.ground_truth_text = w1.text
     w2.ground_truth_text = w2.text
     assert sample_block1.ground_truth_exact_match is True
@@ -406,7 +453,7 @@ def test_ground_truth_exact_match(sample_block1):
     assert sample_block1.ground_truth_exact_match is False
 
 
-def test_split_word_happy_path(sample_block1):
+def test_split_word_happy_path(sample_block1: Block) -> None:
     # word1 -> split into 'wo' + 'rd1'
     sample_block1.split_word(0, bbox_split_offset=2, character_split_index=2)
     texts = [w.text for w in sample_block1.items]
@@ -415,7 +462,7 @@ def test_split_word_happy_path(sample_block1):
     assert any(t == "word2" for t in texts)
 
 
-def test_split_word_at_fraction_success(sample_block1):
+def test_split_word_at_fraction_success(sample_block1: Block) -> None:
     # word1 (5 chars, width=10) split at 0.5 → "wo" + "rd1"
     result = sample_block1.split_word_at_fraction(0, 0.5)
     assert result is True
@@ -426,24 +473,27 @@ def test_split_word_at_fraction_success(sample_block1):
     assert all(w.ground_truth_text == "" for w in sample_block1.words)
 
 
-def test_split_word_at_fraction_rejects_edge_fractions(sample_block1):
+def test_split_word_at_fraction_rejects_edge_fractions(sample_block1: Block) -> None:
     assert sample_block1.split_word_at_fraction(0, 0.0) is False
     assert sample_block1.split_word_at_fraction(0, 1.0) is False
 
 
-def test_split_word_at_fraction_rejects_out_of_range_index(sample_block1):
+def test_split_word_at_fraction_rejects_out_of_range_index(
+    sample_block1: Block,
+) -> None:
     assert sample_block1.split_word_at_fraction(99, 0.5) is False
 
 
-def test_split_word_at_fraction_rejects_single_char_word(sample_block1):
+def test_split_word_at_fraction_rejects_single_char_word(sample_block1: Block) -> None:
     sample_block1.words[0].text = "x"
     assert sample_block1.split_word_at_fraction(0, 0.5) is False
 
 
-def test_split_word_errors(sample_paragraph_block1):
+def test_split_word_errors(sample_paragraph_block1: Block) -> None:
     with pytest.raises(ValueError):
         sample_paragraph_block1.split_word(0, 1, 1)  # not a WORDS block
     line_block = sample_paragraph_block1.items[0]
+    assert isinstance(line_block, Block)
     with pytest.raises(IndexError):
         line_block.split_word(99, 1, 1)
     # Inject non-Word into WORDS block to trigger TypeError
@@ -455,18 +505,21 @@ def test_split_word_errors(sample_paragraph_block1):
         line_block.split_word(0, 1, 1)
 
 
-def test_merge_blocks(sample_block1, sample_block2):
+def test_merge_blocks(sample_block1: Block, sample_block2: Block) -> None:
     b1 = Block.from_dict(sample_block1.to_dict())
     b2 = Block.from_dict(sample_block2.to_dict())
     b1.unmatched_ground_truth_words = [(0, "x")]
     b2.unmatched_ground_truth_words = [(1, "y")]
     b1.merge(b2)
     assert len(b1.items) == 4
+    assert b1.block_labels is not None
     assert sorted(b1.block_labels) == sorted(["labelline1", "labelline2"])
     assert len(b1.unmatched_ground_truth_words) == 2
 
 
-def test_merge_preserves_unmatched_when_self_empty(sample_block1, sample_block2):
+def test_merge_preserves_unmatched_when_self_empty(
+    sample_block1: Block, sample_block2: Block
+) -> None:
     """Regression for M-28: when ``self`` has no unmatched ground-truth words
     but ``block_to_merge`` does, the incoming unmatched words must be
     preserved (not silently dropped). Previously the extend was guarded by
@@ -480,7 +533,9 @@ def test_merge_preserves_unmatched_when_self_empty(sample_block1, sample_block2)
     assert b1.unmatched_ground_truth_words == [(0, "alpha"), (1, "beta")]
 
 
-def test_merge_preserves_unmatched_when_other_empty(sample_block1, sample_block2):
+def test_merge_preserves_unmatched_when_other_empty(
+    sample_block1: Block, sample_block2: Block
+) -> None:
     """Symmetric case: self has unmatched, other has none — self's must remain."""
     b1 = Block.from_dict(sample_block1.to_dict())
     b2 = Block.from_dict(sample_block2.to_dict())
@@ -490,7 +545,9 @@ def test_merge_preserves_unmatched_when_other_empty(sample_block1, sample_block2
     assert b1.unmatched_ground_truth_words == [(0, "alpha")]
 
 
-def test_merge_blocks_mismatches(sample_block1, sample_paragraph_block1):
+def test_merge_blocks_mismatches(
+    sample_block1: Block, sample_paragraph_block1: Block
+) -> None:
     with pytest.raises(ValueError):
         sample_paragraph_block1.merge(sample_block1)  # child_type mismatch
     # Category mismatch
@@ -500,22 +557,25 @@ def test_merge_blocks_mismatches(sample_block1, sample_paragraph_block1):
         sample_paragraph_block1.merge(paragraph_copy)
 
 
-def test_merge_block_labels_none(sample_block1, sample_block2):
+def test_merge_block_labels_none(sample_block1: Block, sample_block2: Block) -> None:
     b1 = Block.from_dict(sample_block1.to_dict())
     b1.block_labels = None
     b1.merge(sample_block2)
     assert b1.block_labels == ["labelline2"]
 
 
-def test_merge_other_labels_none(sample_block1, sample_block2):
+def test_merge_other_labels_none(sample_block1: Block, sample_block2: Block) -> None:
     b2 = Block.from_dict(sample_block2.to_dict())
     b2.block_labels = None
+    assert sample_block1.block_labels is not None
     original_labels = list(sample_block1.block_labels)
     sample_block1.merge(b2)
     assert sample_block1.block_labels == original_labels  # unchanged
 
 
-def test_block_classification_label_alias_normalization(sample_line1):
+def test_block_classification_label_alias_normalization(
+    sample_line1: list[Word],
+) -> None:
     b = Block(
         sample_line1,
         child_type=BlockChildType.WORDS,
@@ -531,7 +591,7 @@ def test_block_classification_label_alias_normalization(sample_line1):
     assert b.line_position_labels == ["column right", "bottom"]
 
 
-def test_block_classification_invalid_label_raises(sample_line1):
+def test_block_classification_invalid_label_raises(sample_line1: list[Word]) -> None:
     with pytest.raises(ValueError):
         Block(
             sample_line1,
@@ -541,7 +601,7 @@ def test_block_classification_invalid_label_raises(sample_line1):
         )
 
 
-def test_block_classification_round_trip(sample_line1):
+def test_block_classification_round_trip(sample_line1: list[Word]) -> None:
     b = Block(
         sample_line1,
         child_type=BlockChildType.WORDS,
@@ -558,7 +618,9 @@ def test_block_classification_round_trip(sample_line1):
     assert rt.line_position_labels == ["center"]
 
 
-def test_block_merge_combines_classification_labels(sample_line1, sample_line2):
+def test_block_merge_combines_classification_labels(
+    sample_line1: list[Word], sample_line2: list[Word]
+) -> None:
     left = Block(
         sample_line1,
         child_type=BlockChildType.WORDS,
@@ -584,11 +646,13 @@ def test_block_merge_combines_classification_labels(sample_line1, sample_line2):
     assert left.line_position_labels == ["top"]
 
 
-def test_ocr_confidence_scores_and_mean_nested(sample_two_paragraph_block1):
+def test_ocr_confidence_scores_and_mean_nested(
+    sample_two_paragraph_block1: Block,
+) -> None:
     scores = sample_two_paragraph_block1.ocr_confidence_scores()
     assert len(scores) == 6
     assert sample_two_paragraph_block1.mean_ocr_confidence() == pytest.approx(
-        sum(scores) / len(scores)
+        sum(s for s in scores if s is not None) / len(scores)
     )
     empty = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
@@ -597,7 +661,7 @@ def test_ocr_confidence_scores_and_mean_nested(sample_two_paragraph_block1):
     assert empty.mean_ocr_confidence() == 0.0
 
 
-def test_mean_ocr_confidence_after_word_split():
+def test_mean_ocr_confidence_after_word_split() -> None:
     """Regression for H-07: Word.split() sets ocr_confidence=None on both halves,
     so ocr_confidence_scores() can return a list containing None. mean_ocr_confidence
     must skip None entries instead of raising TypeError from sum()."""
@@ -627,7 +691,7 @@ def test_mean_ocr_confidence_after_word_split():
     assert block_all_none.mean_ocr_confidence() == 0.0
 
 
-def test_block_scale_normalized():
+def test_block_scale_normalized() -> None:
     # Build a normalized block
     w1 = Word("a", BoundingBox.from_ltrb(0.1, 0.1, 0.2, 0.2), 0.5)
     w2 = Word("b", BoundingBox.from_ltrb(0.2, 0.1, 0.3, 0.2), 0.6)
@@ -635,6 +699,7 @@ def test_block_scale_normalized():
         [w1, w2], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
     )
     scaled = line.scale(100, 200)
+    assert scaled.bounding_box is not None
     assert scaled.bounding_box.minX == 10
     assert not scaled.bounding_box.is_normalized
     # Original unchanged
@@ -642,7 +707,7 @@ def test_block_scale_normalized():
     assert w2.bounding_box.is_normalized
 
 
-def test_block_scale_pixels_deepcopy(sample_block1):
+def test_block_scale_pixels_deepcopy(sample_block1: Block) -> None:
     # sample_block1 already pixel space; scaling should raise for bbox.scale call if attempted.
     # The Block.scale method assumes bounding_box.scale is valid; ensure we pass a normalized bbox to avoid exception.
     # Create a normalized wrapper instead.
@@ -651,24 +716,26 @@ def test_block_scale_pixels_deepcopy(sample_block1):
         [w_norm], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
     )
     scaled = block_norm.scale(50, 100)
-    assert scaled.items[0].bounding_box.width == 5
-    assert scaled.items[0] is not w_norm  # deep copy
+    first_item = scaled.items[0]
+    assert isinstance(first_item, Word)
+    assert first_item.bounding_box.width == 5
+    assert first_item is not w_norm  # deep copy
 
 
-def test_fuzz_score_against(sample_block1):
+def test_fuzz_score_against(sample_block1: Block) -> None:
     score_same = sample_block1.fuzz_score_against(sample_block1.text)
     assert score_same >= 99
     score_diff = sample_block1.fuzz_score_against("completely different")
     assert score_diff < score_same
 
 
-def test_block_serialization_round_trip(sample_paragraph_block1):
+def test_block_serialization_round_trip(sample_paragraph_block1: Block) -> None:
     d = sample_paragraph_block1.to_dict()
     rt = Block.from_dict(d)
     assert rt.to_dict() == d
 
 
-def test_block_to_dict_empty_additional_attrs():
+def test_block_to_dict_empty_additional_attrs() -> None:
     empty = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
     )
@@ -678,7 +745,7 @@ def test_block_to_dict_empty_additional_attrs():
     assert data["additional_block_attributes"] == {}
 
 
-def test_block_from_dict_defaults(sample_block1):
+def test_block_from_dict_defaults(sample_block1: Block) -> None:
     d = sample_block1.to_dict()
     # Remove child_type to test default WORDS
     d.pop("child_type")
@@ -686,7 +753,7 @@ def test_block_from_dict_defaults(sample_block1):
     assert rt.child_type == BlockChildType.WORDS
 
 
-def test_block_from_dict_roundtrip_with_null_bounding_box():
+def test_block_from_dict_roundtrip_with_null_bounding_box() -> None:
     """Regression test for H-08.
 
     ``Block.to_dict`` serializes a ``None`` bounding box as JSON ``null``.
@@ -707,7 +774,7 @@ def test_block_from_dict_roundtrip_with_null_bounding_box():
     assert rt.items == []
 
 
-def test_refine_bounding_boxes_empty():
+def test_refine_bounding_boxes_empty() -> None:
     empty = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
     )
@@ -715,7 +782,9 @@ def test_refine_bounding_boxes_empty():
     assert empty.bounding_box is None
 
 
-def test_refine_bounding_boxes_words_none_image(monkeypatch):
+def test_refine_bounding_boxes_words_none_image(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     w = Word("a", BoundingBox.from_ltrb(0, 0, 5, 5), 0.5)
     b = Block([w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE)
     before = w.bounding_box.to_dict()
@@ -723,9 +792,14 @@ def test_refine_bounding_boxes_words_none_image(monkeypatch):
     assert w.bounding_box.to_dict() == before
 
 
-def test_refine_bounding_boxes_nested(monkeypatch):
+def test_refine_bounding_boxes_nested(monkeypatch: pytest.MonkeyPatch) -> None:
     # Monkeypatch BoundingBox.refine to shrink box deterministically
-    def fake_refine(self, image, padding_px=0, expand_beyond_original=False):
+    def fake_refine(
+        self: BoundingBox,
+        image: ndarray,
+        padding_px: int = 0,
+        expand_beyond_original: bool = False,
+    ) -> BoundingBox:
         return BoundingBox.from_ltrb(self.minX, self.minY, self.maxX - 1, self.maxY - 1)
 
     monkeypatch.setattr(BoundingBox, "refine", fake_refine, raising=True)
@@ -740,19 +814,21 @@ def test_refine_bounding_boxes_nested(monkeypatch):
         child_type=BlockChildType.BLOCKS,
         block_category=BlockCategory.PARAGRAPH,
     )
+    assert para.bounding_box is not None
     before_union_right = para.bounding_box.maxX
     para.refine_bounding_boxes(img)
     # Each word reduced by 1 pixel on right & bottom; parent union should shrink
+    assert para.bounding_box is not None
     assert para.bounding_box.maxX == before_union_right - 1
 
 
-def test_refine_bounding_boxes_skips_non_word_items():
+def test_refine_bounding_boxes_skips_non_word_items() -> None:
     # Insert a stub object lacking refine_bbox into a WORDS block post-construction.
     # Since the items setter/add_item enforce Word types, this can only happen via
     # direct _items manipulation. The isinstance(item, Word) guard inside
     # refine_bounding_boxes silently skips non-Word items (no AttributeError).
     class Stub:
-        def __init__(self, bbox):
+        def __init__(self, bbox: BoundingBox) -> None:
             self.bounding_box = bbox
             # no refine_bbox method
 
@@ -761,7 +837,7 @@ def test_refine_bounding_boxes_skips_non_word_items():
         [w], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
     )
     stub = Stub(BoundingBox.from_ltrb(10, 0, 15, 5))
-    line._items.append(stub)  # bypass validation intentionally
+    line._items.append(stub)  # pyright: ignore[reportArgumentType]  # deliberately bypasses Word|Block typing to exercise the isinstance guard on non-Word items
     # Should not raise; Stub is skipped by the isinstance(item, Word) guard
     line.refine_bounding_boxes(image=np.ones((10, 10), dtype=np.uint8))
 
@@ -769,79 +845,80 @@ def test_refine_bounding_boxes_skips_non_word_items():
 # ---------------- Additional targeted coverage tests -----------------------
 
 
-def test_items_setter_non_collection(sample_word1):
+def test_items_setter_non_collection(sample_word1: Word) -> None:
     with pytest.raises(TypeError):
         Block(
-            sample_word1,
+            sample_word1,  # pyright: ignore[reportArgumentType]  # deliberately not a Collection, to exercise the runtime TypeError
             child_type=BlockChildType.WORDS,
             block_category=BlockCategory.LINE,
-        )  # type: ignore[arg-type]
+        )
 
 
-def test_items_setter_missing_bbox_attribute():
+def test_items_setter_missing_bbox_attribute() -> None:
     class NoBBox:
-        def __init__(self):
+        def __init__(self) -> None:
             self.text = "x"
 
     with pytest.raises(TypeError):
         Block(
-            [NoBBox()],
+            [NoBBox()],  # pyright: ignore[reportArgumentType]  # deliberately lacks bounding_box, to exercise the runtime TypeError
             child_type=BlockChildType.WORDS,
             block_category=BlockCategory.LINE,
         )
 
 
-def test_items_setter_bbox_wrong_type():
+def test_items_setter_bbox_wrong_type() -> None:
     class BadBBox:
-        def __init__(self):
+        def __init__(self) -> None:
             self.bounding_box = 123  # not a BoundingBox
 
     with pytest.raises(TypeError):
         Block(
-            [BadBBox()],
+            [BadBBox()],  # pyright: ignore[reportArgumentType]  # deliberately wrong bounding_box type, to exercise the runtime TypeError
             child_type=BlockChildType.WORDS,
             block_category=BlockCategory.LINE,
         )
 
 
-def test_items_setter_invalid_item_type():
+def test_items_setter_invalid_item_type() -> None:
     class HasBBox:
-        def __init__(self):
+        def __init__(self) -> None:
             self.bounding_box = BoundingBox.from_ltrb(0, 0, 1, 1)
 
     with pytest.raises(TypeError):
         Block(
-            [HasBBox()],
+            [HasBBox()],  # pyright: ignore[reportArgumentType]  # deliberately not a Word/Block, to exercise the runtime TypeError
             child_type=BlockChildType.WORDS,
             block_category=BlockCategory.LINE,
         )
 
 
-def test_paragraph_ground_truth_text_only_ocr(sample_paragraph_block1):
+def test_paragraph_ground_truth_text_only_ocr(sample_paragraph_block1: Block) -> None:
     # Assign ground truth to all words
-    for line in sample_paragraph_block1.items:
-        for w in line.items:
-            w.ground_truth_text = w.text.upper()
+    for w in sample_paragraph_block1.words:
+        w.ground_truth_text = w.text.upper()
     # Blank out OCR text of one word to test filtering
-    sample_paragraph_block1.items[1].items[0].text = ""
+    second_line = sample_paragraph_block1.items[1]
+    assert isinstance(second_line, Block)
+    first_word = second_line.items[0]
+    assert isinstance(first_word, Word)
+    first_word.text = ""
     gt = sample_paragraph_block1.ground_truth_text_only_ocr
     # Ensure newline separation and exclusion of blank OCR word
     assert "\n" in gt
     assert "WORD3" not in gt  # filtered due to OCR text removed
 
 
-def test_block_ground_truth_text_only_ocr(sample_two_paragraph_block1):
+def test_block_ground_truth_text_only_ocr(sample_two_paragraph_block1: Block) -> None:
     # Provide ground truth everywhere
-    for paragraph in sample_two_paragraph_block1.items:
-        for line in paragraph.items:
-            for w in line.items:
-                w.ground_truth_text = w.text
+    for w in sample_two_paragraph_block1.words:
+        w.ground_truth_text = w.text
     gt_block = sample_two_paragraph_block1.ground_truth_text_only_ocr
     # Double newline between paragraphs
     assert "\n\n" in gt_block
 
 
-def test_nested_ground_truth_exact_match(sample_two_paragraph_block1):
+def test_nested_ground_truth_exact_match(sample_two_paragraph_block1: Block) -> None:
     # Exact matches
     for word in sample_two_paragraph_block1.words:
         word.ground_truth_text = word.text
@@ -851,14 +928,16 @@ def test_nested_ground_truth_exact_match(sample_two_paragraph_block1):
     assert sample_two_paragraph_block1.ground_truth_exact_match is False
 
 
-def test_word_list_flatten(sample_two_paragraph_block1):
+def test_word_list_flatten(sample_two_paragraph_block1: Block) -> None:
     wl = sample_two_paragraph_block1.word_list
     assert len(wl) == len(sample_two_paragraph_block1.words)
     # Order matches words order
     assert wl[0] == sample_two_paragraph_block1.words[0].text
 
 
-def test_paragraphs_property(sample_two_paragraph_block1, sample_paragraph_block1):
+def test_paragraphs_property(
+    sample_two_paragraph_block1: Block, sample_paragraph_block1: Block
+) -> None:
     # Paragraph returns itself
     assert sample_paragraph_block1.paragraphs == [sample_paragraph_block1]
     # Higher level block flattens
@@ -868,8 +947,8 @@ def test_paragraphs_property(sample_two_paragraph_block1, sample_paragraph_block
 # ---------------- Remaining uncovered line targets -----------------------
 
 
-def test_block_ctor_unmatched_and_additional_attrs(sample_line1):
-    attrs = {"foo": 1}
+def test_block_ctor_unmatched_and_additional_attrs(sample_line1: list[Word]) -> None:
+    attrs: dict[str, object] = {"foo": 1}
     unmatched = [(0, "INS"), (1, "ADD")]
     blk = Block(
         items=sample_line1,
@@ -882,7 +961,7 @@ def test_block_ctor_unmatched_and_additional_attrs(sample_line1):
     assert blk.additional_block_attributes == attrs  # line 99
 
 
-def test_add_item_type_errors():
+def test_add_item_type_errors() -> None:
     # WORDS block adding non-Word
     wblock = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
@@ -901,7 +980,7 @@ def test_add_item_type_errors():
         bblock.add_item(Word("w", BoundingBox.from_ltrb(0, 0, 1, 1), 0.5))  # line 164
 
 
-def test_remove_line_if_exists_not_found_blocks(sample_paragraph_block1):
+def test_remove_line_if_exists_not_found_blocks(sample_paragraph_block1: Block) -> None:
     # Create a new line block not present
     new_line = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
@@ -909,7 +988,7 @@ def test_remove_line_if_exists_not_found_blocks(sample_paragraph_block1):
     sample_paragraph_block1.remove_line_if_exists(new_line)  # should hit line 207 path
 
 
-def test_remove_empty_items_empty_return():
+def test_remove_empty_items_empty_return() -> None:
     empty_blocks_parent = Block(
         [], child_type=BlockChildType.BLOCKS, block_category=BlockCategory.BLOCK
     )
@@ -917,7 +996,7 @@ def test_remove_empty_items_empty_return():
     assert empty_blocks_parent.items == []
 
 
-def test_remove_empty_items_nested_removal(sample_block1):
+def test_remove_empty_items_nested_removal(sample_block1: Block) -> None:
     # Build an initially non-empty line so validation passes, then clear items manually
     # Use pixel coordinates (not normalized) to match sample_block1 pixel space
     temp_word = Word("tmp", BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=False), 0.1)
@@ -935,11 +1014,11 @@ def test_remove_empty_items_nested_removal(sample_block1):
     assert sample_block1 in parent.items
 
 
-def test_ground_truth_text_unmatched_insertion(sample_block1):
+def test_ground_truth_text_unmatched_insertion(sample_block1: Block) -> None:
     # words: word1 word2; insert unmatched after index positions
     sample_block1.unmatched_ground_truth_words = [(0, "X"), (1, "Y")]
     # Provide ground truth text for each existing word
-    for w in sample_block1.items:
+    for w in sample_block1.words:
         w.ground_truth_text = w.text
     gt = sample_block1.ground_truth_text  # lines 260-278
     # expected order: word1 X word2 Y (due to reversed insertion logic placing at index+1)
@@ -947,8 +1026,8 @@ def test_ground_truth_text_unmatched_insertion(sample_block1):
 
 
 def test_ground_truth_text_paragraph_and_block(
-    sample_paragraph_block1, sample_two_paragraph_block1
-):
+    sample_paragraph_block1: Block, sample_two_paragraph_block1: Block
+) -> None:
     # Set ground truth text for nested words
     for blk in [sample_paragraph_block1, sample_two_paragraph_block1]:
         for w in blk.words:
@@ -961,7 +1040,7 @@ def test_ground_truth_text_paragraph_and_block(
     assert "\n\n" in top_gt
 
 
-def test_merge_sets_bbox_when_missing(sample_block1):
+def test_merge_sets_bbox_when_missing(sample_block1: Block) -> None:
     # empty block no bbox merges with populated line -> line 411
     empty = Block(
         [], child_type=BlockChildType.WORDS, block_category=BlockCategory.LINE
@@ -996,7 +1075,7 @@ class TestR05PurgeWordsFromBlocks:
     """
 
     @staticmethod
-    def _build_tree() -> Block:
+    def _build_tree() -> tuple[Block, list[Word]]:
         # Two paragraphs, each with one line, each with two words.
         w1 = Word("a", BoundingBox.from_ltrb(0, 0, 5, 5), 0.5)
         w2 = Word("b", BoundingBox.from_ltrb(5, 0, 10, 5), 0.5)
@@ -1022,26 +1101,35 @@ class TestR05PurgeWordsFromBlocks:
             child_type=BlockChildType.BLOCKS,
             block_category=BlockCategory.PARAGRAPH,
         )
-        return Block(
-            [para1, para2],
-            child_type=BlockChildType.BLOCKS,
-            block_category=BlockCategory.BLOCK,
-        ), [w1, w2, w3, w4]
+        return (
+            Block(
+                [para1, para2],
+                child_type=BlockChildType.BLOCKS,
+                block_category=BlockCategory.BLOCK,
+            ),
+            [w1, w2, w3, w4],
+        )
 
-    def test_shared_helper_drops_targeted_words(self):
+    def test_shared_helper_drops_targeted_words(self) -> None:
         from pdomain_book_tools.ocr.block import purge_words_from_blocks
 
         outer, words = self._build_tree()
         targets = {id(words[1]), id(words[2])}
-        purge_words_from_blocks(list(outer._items), targets)
+        top_blocks = [item for item in outer._items if isinstance(item, Block)]
+        purge_words_from_blocks(top_blocks, targets)
 
         # Each paragraph now has exactly one word total via its single line.
-        line1_words = outer._items[0]._items[0]._items
-        line2_words = outer._items[1]._items[0]._items
+        para1, para2 = top_blocks
+        line1 = para1._items[0]
+        line2 = para2._items[0]
+        assert isinstance(line1, Block)
+        assert isinstance(line2, Block)
+        line1_words = [w for w in line1._items if isinstance(w, Word)]
+        line2_words = [w for w in line2._items if isinstance(w, Word)]
         assert [w.text for w in line1_words] == ["a"]
         assert [w.text for w in line2_words] == ["d"]
 
-    def test_legacy_wrappers_match_shared_helper(self):
+    def test_legacy_wrappers_match_shared_helper(self) -> None:
         from pdomain_book_tools.ocr.block import purge_words_from_blocks
         from pdomain_book_tools.ocr.layout_aware_reorg import _purge_word_from_blocks
         from pdomain_book_tools.ocr.reorganize_page_utils import (
@@ -1055,34 +1143,41 @@ class TestR05PurgeWordsFromBlocks:
         outer1, _ = trees[1]
         outer2, _ = trees[2]
 
-        purge_words_from_blocks(list(outer0._items), {target_indices[0][1]})
-        _purge_word_from_blocks(list(outer1._items), {target_indices[1][1]})
-        _purge_words_from_blocks(list(outer2._items), {target_indices[2][1]})
+        blocks0 = [item for item in outer0._items if isinstance(item, Block)]
+        blocks1 = [item for item in outer1._items if isinstance(item, Block)]
+        blocks2 = [item for item in outer2._items if isinstance(item, Block)]
 
-        for outer in (outer0, outer1, outer2):
-            line_words = outer._items[0]._items[0]._items
+        purge_words_from_blocks(blocks0, {target_indices[0][1]})
+        _purge_word_from_blocks(blocks1, {target_indices[1][1]})
+        _purge_words_from_blocks(blocks2, {target_indices[2][1]})
+
+        for blocks in (blocks0, blocks1, blocks2):
+            line = blocks[0]._items[0]
+            assert isinstance(line, Block)
+            line_words = [w for w in line._items if isinstance(w, Word)]
             assert [w.text for w in line_words] == ["a"]
 
-    def test_empty_descendants_clear_parent_bbox(self):
+    def test_empty_descendants_clear_parent_bbox(self) -> None:
         from pdomain_book_tools.ocr.block import purge_words_from_blocks
 
         outer, words = self._build_tree()
         # Drop ALL words in para1 — line should empty, para1 should be
         # pruned, leaving outer with just para2.
         targets = {id(words[0]), id(words[1])}
-        purge_words_from_blocks(list(outer._items), targets)
+        top_blocks = [item for item in outer._items if isinstance(item, Block)]
+        purge_words_from_blocks(top_blocks, targets)
         # Para2 is a single child of outer's items (line2 still has c, d
         # but para1's empty line was pruned -> para1 is itself empty ->
         # the recursive purge is over BUT the OUTER blocks list isn't
         # itself filtered by the helper. The helper only filters items
         # *inside* each block. So outer still has 2 children but
         # children[0] is now empty.
-        empty_para = outer._items[0]
+        empty_para = top_blocks[0]
         assert empty_para.bounding_box is None
         assert empty_para.is_empty
 
 
-def test_line_must_have_child_type_words():
+def test_line_must_have_child_type_words() -> None:
     """R-14: ``Block(block_category=LINE, child_type=BLOCKS)`` is an
     invalid shape — a line always contains words directly, never child
     blocks. Construction must fail loudly so the bug surfaces at the
@@ -1102,7 +1197,7 @@ def test_line_must_have_child_type_words():
         )
 
 
-def test_line_with_child_type_words_ok():
+def test_line_with_child_type_words_ok() -> None:
     """R-14: the canonical LINE+WORDS shape still constructs cleanly."""
     Block(
         items=[],
@@ -1111,7 +1206,7 @@ def test_line_with_child_type_words_ok():
     )
 
 
-def test_paragraph_allows_either_child_type():
+def test_paragraph_allows_either_child_type() -> None:
     """R-14 narrowing: PARAGRAPH+WORDS (flat paragraph of words) AND
     PARAGRAPH+BLOCKS (paragraph of lines) are BOTH valid shapes — the
     consistency check is intentionally narrow to LINE."""
@@ -1158,7 +1253,7 @@ def _make_word(
     )
 
 
-def test_block_text_drop_cap_joins_following_word_with_empty_string():
+def test_block_text_drop_cap_joins_following_word_with_empty_string() -> None:
     """Drop-cap-tagged Word + body Word render as fused text (no separator)."""
     cap = _make_word("S", minX=0.05, maxX=0.10, word_components=["drop cap"])
     body = _make_word("tudies", minX=0.11, maxX=0.20)
@@ -1172,7 +1267,7 @@ def test_block_text_drop_cap_joins_following_word_with_empty_string():
     assert line.text == "Studies"
 
 
-def test_block_text_drop_cap_only_fuses_immediately_following_word():
+def test_block_text_drop_cap_only_fuses_immediately_following_word() -> None:
     """The empty-string join applies only to the word right after the cap;
     subsequent words still get the default space separator."""
     cap = _make_word("S", minX=0.05, maxX=0.10, word_components=["drop cap"])
@@ -1186,7 +1281,7 @@ def test_block_text_drop_cap_only_fuses_immediately_following_word():
     assert line.text == "Studies in"
 
 
-def test_block_text_drop_cap_unrecovered_does_not_fuse():
+def test_block_text_drop_cap_unrecovered_does_not_fuse() -> None:
     """``drop cap unrecovered`` is a *failure* tag on the closest body word
     (the OCR text was kept as-is). It must NOT trigger empty-string join."""
     body = _make_word(
@@ -1205,7 +1300,7 @@ def test_block_text_drop_cap_unrecovered_does_not_fuse():
     assert line.text == "BELIEF in"
 
 
-def test_block_text_two_drop_caps_in_one_line_each_fuse_their_neighbour():
+def test_block_text_two_drop_caps_in_one_line_each_fuse_their_neighbour() -> None:
     """Two distinct drop caps adjacent to their own body words still each
     fuse only to their immediate next word. Defensive — Block.text walks
     word-by-word and the contract is per-pair, not whole-line."""
@@ -1222,11 +1317,11 @@ def test_block_text_two_drop_caps_in_one_line_each_fuse_their_neighbour():
     assert line.text == "Studies and Musings"
 
 
-def test_block_does_not_alias_additional_block_attributes():
+def test_block_does_not_alias_additional_block_attributes() -> None:
     """Block.__init__ must copy additional_block_attributes, not store by reference."""
     from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 
-    caller_dict = {"key": "value"}
+    caller_dict: dict[str, object] = {"key": "value"}
     block = Block(
         items=[],
         child_type=BlockChildType.WORDS,

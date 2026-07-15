@@ -1,13 +1,57 @@
 """Tests for cupy_processing.colors module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+    import numpy.typing as npt
+
+
+class _CupyGenerator(Protocol):
+    def integers(
+        self,
+        low: int,
+        high: int | None = None,
+        size: tuple[int, ...] | None = None,
+        *,
+        dtype: type[np.generic] | None = None,
+    ) -> cupy.ndarray[np.generic]: ...
+
+
+class _CupyRandomModule(Protocol):
+    def default_rng(self, seed: int | None = None) -> _CupyGenerator: ...
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+    random: _CupyRandomModule
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def full(
+        self, shape: tuple[int, ...], fill_value: object, dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def asarray(self, a: object) -> cupy.ndarray[np.generic]: ...
+    def asnumpy(self, a: object) -> npt.NDArray[np.generic]: ...
+    def array_equal(self, a1: object, a2: object, equal_nan: bool = False) -> bool: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestBgrToGrayGpu:
-    def test_output_shape_and_dtype(self, cupy_module):
+    def test_output_shape_and_dtype(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
@@ -18,7 +62,7 @@ class TestBgrToGrayGpu:
         assert out.shape == (10, 10)
         assert out.dtype == cp.uint8
 
-    def test_white_stays_white(self, cupy_module):
+    def test_white_stays_white(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
@@ -28,7 +72,7 @@ class TestBgrToGrayGpu:
         out = bgr_to_gray_gpu(img)
         assert int(out[0, 0]) == 255
 
-    def test_black_stays_black(self, cupy_module):
+    def test_black_stays_black(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_gray_gpu,
@@ -38,7 +82,7 @@ class TestBgrToGrayGpu:
         out = bgr_to_gray_gpu(img)
         assert int(out[0, 0]) == 0
 
-    def test_matches_cv2_reference(self, cupy_module):
+    def test_matches_cv2_reference(self, cupy_module: _CupyModule) -> None:
         """GPU output must match cv2.COLOR_BGR2GRAY within ±1 LSB rounding."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -54,7 +98,7 @@ class TestBgrToGrayGpu:
         gpu = cp.asnumpy(bgr_to_gray_gpu(cp.asarray(img_np))).astype(np.int16)
         assert np.max(np.abs(cpu - gpu)) <= 1
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             np_uint8_bgr_to_gray,
         )
@@ -69,7 +113,7 @@ class TestBgrToGrayGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestGrayToBgrGpu:
-    def test_output_shape_and_dtype(self, cupy_module):
+    def test_output_shape_and_dtype(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             gray_to_bgr_gpu,
@@ -80,7 +124,7 @@ class TestGrayToBgrGpu:
         assert out.shape == (10, 10, 3)
         assert out.dtype == cp.uint8
 
-    def test_channels_are_equal(self, cupy_module):
+    def test_channels_are_equal(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             gray_to_bgr_gpu,
@@ -93,7 +137,7 @@ class TestGrayToBgrGpu:
         assert cp.array_equal(out[:, :, 1], img)
         assert cp.array_equal(out[:, :, 2], img)
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             np_uint8_gray_to_bgr,
         )
@@ -107,7 +151,7 @@ class TestGrayToBgrGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestBgrToRgbGpu:
-    def test_channel_order_reversed(self, cupy_module):
+    def test_channel_order_reversed(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_rgb_gpu,
@@ -122,7 +166,7 @@ class TestBgrToRgbGpu:
         assert int(out[0, 0, 1]) == 20  # G unchanged
         assert int(out[0, 0, 2]) == 10  # was B, now last channel
 
-    def test_round_trip_is_identity(self, cupy_module):
+    def test_round_trip_is_identity(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             bgr_to_rgb_gpu,
@@ -133,7 +177,7 @@ class TestBgrToRgbGpu:
         img = rng.integers(0, 256, (20, 20, 3), dtype=cp.uint8)
         assert cp.array_equal(rgb_to_bgr_gpu(bgr_to_rgb_gpu(img)), img)
 
-    def test_matches_cv2_reference(self, cupy_module):
+    def test_matches_cv2_reference(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         pytest.importorskip("cv2")
         import cv2
@@ -148,7 +192,7 @@ class TestBgrToRgbGpu:
         gpu = cp.asnumpy(bgr_to_rgb_gpu(cp.asarray(img_np)))
         np.testing.assert_array_equal(cpu, gpu)
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.colors import (
             np_uint8_bgr_to_rgb,
         )

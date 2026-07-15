@@ -53,7 +53,7 @@ class GeometryTransform:
     ) -> GeometryTransform:
         """Return a dense backward-map (grid) transform for cv2.remap or cupy map_coordinates."""
         if _is_cupy(map_x):
-            import cupy as cp  # pyright: ignore[reportMissingImports]
+            import cupy as cp
 
             return cls(
                 kind="grid",
@@ -108,13 +108,13 @@ class GeometryTransform:
             if _is_cupy(self.map_x):
                 import importlib
 
-                import cupy as cp  # pyright: ignore[reportMissingImports]
+                import cupy as cp
 
                 _cupyx_ndimage = importlib.import_module("cupyx.scipy.ndimage")
                 map_coordinates = _cupyx_ndimage.map_coordinates
                 coords = cp.stack([self.map_y, self.map_x])  # (row, col) order
                 src = image if _is_cupy(image) else cp.asarray(image)
-                return map_coordinates(src, coords, order=3, mode="nearest")  # type: ignore[return-value]
+                return map_coordinates(src, coords, order=3, mode="nearest")
             return cv2.remap(
                 image,
                 self.map_x,

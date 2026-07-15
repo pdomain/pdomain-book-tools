@@ -54,7 +54,9 @@ class RegimeDetector:
         """Compute angle between left and right content-edge directions."""
         gray = page if page.ndim == 2 else cv2.cvtColor(page, cv2.COLOR_BGR2GRAY)
         _, fg = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
-        rows, lefts, rights = [], [], []
+        rows: list[int] = []
+        lefts: list[np.intp] = []
+        rights: list[np.intp] = []
         for r in range(0, h, max(1, h // 60)):
             cols = np.nonzero(fg[r])[0]
             if cols.size < 2:

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
 
 from pdomain_book_tools.ocr.document import Document
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def _make_rgb_image(h: int = 8, w: int = 8) -> np.ndarray:
@@ -27,7 +31,9 @@ def _fake_doctr_result(n_pages: int) -> MagicMock:
     for p in result.pages:
         p.render = MagicMock(return_value="")
 
-    export_pages = [{"dimensions": (8, 8), "blocks": []} for _ in range(n_pages)]
+    export_pages: list[dict[str, object]] = [
+        {"dimensions": (8, 8), "blocks": []} for _ in range(n_pages)
+    ]
     result.export = MagicMock(return_value={"pages": export_pages})
     return result
 
@@ -44,7 +50,7 @@ def _fake_doctr_result_with_words(
     for p in result.pages:
         p.render = MagicMock(return_value="")
 
-    export_pages = []
+    export_pages: list[dict[str, object]] = []
     for i in range(n_pages):
         page_confs = confidences_per_page[i] if i < len(confidences_per_page) else []
         words = [
@@ -60,14 +66,14 @@ def _fake_doctr_result_with_words(
 
 
 class TestFromImagesOcrViaDoctr:
-    def test_predictor_called_once_with_list(self):
+    def test_predictor_called_once_with_list(self) -> None:
         img_a = _make_rgb_image()
         img_b = _make_rgb_image()
 
         fake_result = _fake_doctr_result(2)
         call_args: list[object] = []
 
-        def stub_predictor(images):
+        def stub_predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_args.append(images)
             assert len(images) == 2, "predictor must receive both images in one call"
             return fake_result
@@ -82,13 +88,13 @@ class TestFromImagesOcrViaDoctr:
         assert len(call_args) == 1, "predictor must be called exactly once"
         assert doc is not None
 
-    def test_returns_document_with_correct_page_count(self):
+    def test_returns_document_with_correct_page_count(self) -> None:
         img_a = _make_rgb_image()
         img_b = _make_rgb_image()
 
         fake_result = _fake_doctr_result(2)
 
-        def stub_predictor(images):
+        def stub_predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return fake_result
 
         doc = Document.from_images_ocr_via_doctr(
@@ -100,13 +106,13 @@ class TestFromImagesOcrViaDoctr:
 
         assert len(doc.pages) == 2
 
-    def test_source_identifiers_preserved_in_order(self):
+    def test_source_identifiers_preserved_in_order(self) -> None:
         img_a = _make_rgb_image()
         img_b = _make_rgb_image()
 
         fake_result = _fake_doctr_result(2)
 
-        def stub_predictor(images):
+        def stub_predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return fake_result
 
         doc = Document.from_images_ocr_via_doctr(
@@ -120,11 +126,11 @@ class TestFromImagesOcrViaDoctr:
         assert pages[0].page_index == 0
         assert pages[1].page_index == 1
 
-    def test_single_image_list_works(self):
+    def test_single_image_list_works(self) -> None:
         img = _make_rgb_image()
         fake_result = _fake_doctr_result(1)
 
-        def stub_predictor(images):
+        def stub_predictor(images: Sequence[np.ndarray]) -> MagicMock:
             assert len(images) == 1
             return fake_result
 
@@ -137,7 +143,7 @@ class TestFromImagesOcrViaDoctr:
 
         assert len(doc.pages) == 1
 
-    def test_empty_list_raises(self):
+    def test_empty_list_raises(self) -> None:
         with pytest.raises((ValueError, IndexError)):
             Document.from_images_ocr_via_doctr(
                 [],
@@ -145,7 +151,7 @@ class TestFromImagesOcrViaDoctr:
                 predictor=MagicMock(),
             )
 
-    def test_mismatched_identifiers_raises(self):
+    def test_mismatched_identifiers_raises(self) -> None:
         img = _make_rgb_image()
         with pytest.raises((ValueError, TypeError)):
             Document.from_images_ocr_via_doctr(
@@ -158,7 +164,7 @@ class TestFromImagesOcrViaDoctr:
 class TestFromImagesOcrViaDoctrAutoRotate:
     """Tests for auto_rotate parameter on the batch OCR method."""
 
-    def test_auto_rotate_false_skips_rotation(self):
+    def test_auto_rotate_false_skips_rotation(self) -> None:
         """With auto_rotate=False the predictor is called exactly once."""
         img_a = _make_rgb_image(8, 8)
         img_b = _make_rgb_image(8, 8)
@@ -166,7 +172,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         call_count = {"n": 0}
         fake_result = _fake_doctr_result(2)
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_count["n"] += 1
             return fake_result
 
@@ -182,7 +188,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         )
         assert len(doc.pages) == 2
 
-    def test_auto_rotate_true_is_default(self):
+    def test_auto_rotate_true_is_default(self) -> None:
         """Calling without auto_rotate keyword should behave like auto_rotate=True."""
         img = _make_rgb_image(8, 8)
         # High-confidence result so no rotation probes needed
@@ -190,7 +196,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
 
         call_count = {"n": 0}
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_count["n"] += 1
             return fake_result
 
@@ -202,7 +208,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         assert call_count["n"] == 1
         assert len(doc.pages) == 1
 
-    def test_high_confidence_upright_no_extra_calls(self):
+    def test_high_confidence_upright_no_extra_calls(self) -> None:
         """High-confidence pages should NOT trigger additional predictor calls."""
         img_a = _make_rgb_image(8, 8)
         img_b = _make_rgb_image(8, 8)
@@ -210,7 +216,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         call_count = {"n": 0}
         fake_result = _fake_doctr_result_with_words(2, [[0.95, 0.9], [0.88, 0.91]])
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_count["n"] += 1
             return fake_result
 
@@ -224,7 +230,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         assert call_count["n"] == 1, "no re-OCR needed when confidence is high"
         assert len(doc.pages) == 2
 
-    def test_low_confidence_page_triggers_rotation_recovery(self):
+    def test_low_confidence_page_triggers_rotation_recovery(self) -> None:
         """A page with mean confidence below threshold should be re-OCR'd after rotation."""
         # Image A: 8x8 upright - high confidence (no re-OCR needed)
         # Image B: 8x12 upright - low confidence (needs rotation recovery)
@@ -233,7 +239,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
 
         call_record: list[int] = []
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_record.append(len(images))
             if len(images) == 2:
                 # Initial batch: img_a high confidence, img_b low confidence
@@ -256,13 +262,13 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         assert doc.pages[0].page_index == 0
         assert doc.pages[1].page_index == 1
 
-    def test_rotated_page_image_stashed_on_page(self):
+    def test_rotated_page_image_stashed_on_page(self) -> None:
         """After rotation recovery the page's cv2_numpy_page_image must be set."""
         img = _make_rgb_image(4, 8)  # non-square so rotation changes dims
 
         call_count = {"n": 0}
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_count["n"] += 1
             if call_count["n"] == 1:
                 # Batch: low confidence -> trigger rotation recovery
@@ -281,11 +287,11 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         # cv2_numpy_page_image should be set (not None) after rotation stash
         assert page.cv2_numpy_page_image is not None
 
-    def test_upright_page_image_stashed_when_confident(self):
+    def test_upright_page_image_stashed_when_confident(self) -> None:
         """When upright confidence is already high, page image must still be stashed."""
         img = _make_rgb_image(8, 8)
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return _fake_doctr_result_with_words(1, [[0.95, 0.9]])
 
         doc = Document.from_images_ocr_via_doctr(
@@ -298,11 +304,11 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         page = doc.pages[0]
         assert page.cv2_numpy_page_image is not None
 
-    def test_auto_rotate_false_page_image_still_stashed(self):
+    def test_auto_rotate_false_page_image_still_stashed(self) -> None:
         """With auto_rotate=False the page image should also be stashed."""
         img = _make_rgb_image(8, 8)
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return _fake_doctr_result_with_words(1, [[0.5]])
 
         doc = Document.from_images_ocr_via_doctr(
@@ -315,7 +321,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         page = doc.pages[0]
         assert page.cv2_numpy_page_image is not None
 
-    def test_page_order_preserved_after_rotation(self):
+    def test_page_order_preserved_after_rotation(self) -> None:
         """Document pages must maintain correct order after partial rotation recovery."""
         img_a = _make_rgb_image(8, 8)
         img_b = _make_rgb_image(8, 8)
@@ -323,7 +329,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
 
         call_count = {"n": 0}
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_count["n"] += 1
             if call_count["n"] == 1:
                 # Batch: page 1 (index 1) low confidence; others high
@@ -346,12 +352,12 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         assert pages[1].page_index == 1
         assert pages[2].page_index == 2
 
-    def test_custom_threshold_respected(self):
+    def test_custom_threshold_respected(self) -> None:
         """Setting auto_rotate_threshold=0.0 means any confidence passes upright."""
         img = _make_rgb_image(8, 8)
         call_count = {"n": 0}
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             call_count["n"] += 1
             # Even very low confidence result
             return _fake_doctr_result_with_words(1, [[0.05, 0.1]])
@@ -367,18 +373,18 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         assert call_count["n"] == 1
         assert len(doc.pages) == 1
 
-    def test_return_type_is_document_not_tuple(self):
+    def test_return_type_is_document_not_tuple(self) -> None:
         """from_images_ocr_via_doctr must return Document, not tuple[Document, int]."""
         img = _make_rgb_image()
         fake_result = _fake_doctr_result(1)
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return fake_result
 
         result = Document.from_images_ocr_via_doctr([img], predictor=predictor)
         assert isinstance(result, Document)
 
-    def test_all_pages_low_confidence_all_recover(self):
+    def test_all_pages_low_confidence_all_recover(self) -> None:
         """Regression: a fully rotated batch must not produce empty output.
 
         This tests the canonical failure mode from the bug report:
@@ -391,7 +397,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
 
         probe_count = {"n": 0}
 
-        def predictor(images):
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             probe_count["n"] += 1
             n = len(images)
             if probe_count["n"] == 1:

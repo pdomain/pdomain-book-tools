@@ -24,9 +24,7 @@ from numpy import array, ndarray, uint8
 if TYPE_CHECKING:
     from os import PathLike
 
-    from pandas import (  # pyright: ignore[reportMissingTypeStubs]  # optional third-party stubs
-        DataFrame,
-    )
+    from pandas import DataFrame
     from PIL.Image import Image as PILImage
 
 import contextlib
@@ -112,11 +110,14 @@ class Document:
         return self._pages.copy()
 
     @pages.setter
-    def pages(self, value: object) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts any collection; getter returns sorted copy
+    def pages(self, value: object) -> None:
         if not isinstance(value, Collection):
             raise TypeError("pages must be a collection")
+        # isinstance against the unparameterized ABC erases the element type to
+        # Unknown; the cast restores it to the widest honest type (object).
+        collection_value = cast("Collection[object]", value)
         typed_pages: list[Page] = []
-        for page in value:
+        for page in collection_value:
             if not isinstance(getattr(page, "page_index", None), int):
                 raise TypeError(
                     "Each item in pages must have a page_index attribute of type int"
@@ -309,7 +310,7 @@ class Document:
             has_PIL = True
         except ImportError:
             has_PIL = False
-            _PILImage = None  # type: ignore[assignment,misc]
+            _PILImage = None
 
         source_path: Path | None = None
         image_ndarray: ndarray
@@ -810,7 +811,7 @@ class Document:
     @classmethod
     def _detect_tesseract_engine_version(cls) -> str:
         try:
-            import pytesseract  # pyright: ignore[reportMissingTypeStubs]  # optional third-party stubs
+            import pytesseract
 
             detected = pytesseract.get_tesseract_version()
             if detected:
@@ -907,10 +908,10 @@ class Document:
         gymnastics and mirrors the ``where(...).dropna(how="all")``
         pattern used previously.
         """
-        mask = df["level"] == level  # pyright: ignore[reportUnknownVariableType]  # pandas without stubs
+        mask = df["level"] == level
         for col, value in eq.items():
-            mask = mask & (df[col] == value)  # pyright: ignore[reportUnknownVariableType]  # pandas without stubs
-        return df.where(mask).dropna(how="all")  # pyright: ignore[reportUnknownMemberType]  # pandas without stubs
+            mask = mask & (df[col] == value)
+        return df.where(mask).dropna(how="all")
 
     @classmethod
     def _tesseract_bbox(cls, row: _TesseractRow) -> BoundingBox:
@@ -1079,14 +1080,11 @@ class Document:
         tesseract_config: str | None = None,
     ) -> Document:
         try:
-            from pandas import (  # pyright: ignore[reportMissingTypeStubs]  # optional third-party stubs
-                to_numeric as _pd_to_numeric,  # pyright: ignore[reportUnknownVariableType]  # optional third-party stubs
-            )
+            from pandas import to_numeric as pd_to_numeric
         except ImportError as err:
             raise ImportError(
                 "pandas library is required for from_tesseract function. Please install pandas."
             ) from err
-        pd_to_numeric = cast("Callable[..., object]", _pd_to_numeric)
 
         """Create Document from PyTesseract output (pandas dataframe)"""
         if isinstance(source_path, str):

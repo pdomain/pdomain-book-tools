@@ -1,10 +1,17 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import cv2
 import numpy as np
 
 from pdomain_book_tools.geometry_correction.transforms import GeometryTransform
 
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
-def _checker(h=40, w=60):
+
+def _checker(h: int = 40, w: int = 60) -> NDArray[np.uint8]:
     img = np.zeros((h, w), np.uint8)
     img[::4, :] = 255
     img[:, ::4] = 255
@@ -25,6 +32,7 @@ def test_affine_rotation_then_invert_roundtrips():
     m = cv2.getRotationMatrix2D((w / 2, h / 2), 5.0, 1.0)  # 2x3
     t = GeometryTransform.affine(m, (h, w))
     inv = t.invert()
+    assert inv is not None
     restored = inv.apply(t.apply(img))
     # interior pixels should match closely after round trip
     inner = (slice(6, h - 6), slice(6, w - 6))

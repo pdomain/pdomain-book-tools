@@ -35,8 +35,8 @@ def _compute_envelopes(
         cp.random.uniform(0, 2 * cp.pi, (iterations, samples, 1, 1)),
     )
     radii = cast("CuPyArray", cp.random.uniform(0, radius, (iterations, samples, 1, 1)))
-    dx = cast("CuPyArray", cp.round(radii * cp.cos(angles)).astype(cp.int32))
-    dy = cast("CuPyArray", cp.round(radii * cp.sin(angles)).astype(cp.int32))
+    dx = cast("CuPyArray", cp.round(radii * cp.cos(angles)).astype(cp.int32))  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on NDArray-like alias
+    dy = cast("CuPyArray", cp.round(radii * cp.sin(angles)).astype(cp.int32))  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on NDArray-like alias
 
     # Create meshgrid for batch processing
     X, Y = cast("tuple[CuPyArray, CuPyArray]", cp.meshgrid(cp.arange(width), y_range))

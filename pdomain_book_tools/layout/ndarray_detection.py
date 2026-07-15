@@ -76,7 +76,12 @@ def auto_detect_illustrations_from_array(
             detector="none",
         )
 
-    full_layout: PageLayout = layout_detector.detect(img)
+    # ``layout_detector`` is externally supplied (``Any``) and only required
+    # to satisfy the ``LayoutDetector`` protocol structurally, so its
+    # ``detect()`` return value is not statically trusted here; the
+    # isinstance check below is a genuine runtime guard against a
+    # detector that returns malformed region objects.
+    full_layout = layout_detector.detect(img)
 
     filtered: list[LayoutRegion] = [
         r

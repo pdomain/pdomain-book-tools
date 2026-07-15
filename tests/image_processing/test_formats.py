@@ -6,10 +6,15 @@ extension-based gating (cheap) and magic-byte sniffing (correct), with a
 warning when the two disagree.
 """
 
+from __future__ import annotations
+
 import logging
-import pathlib
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    import pathlib
 
 from pdomain_book_tools.image_processing.formats import (
     SUPPORTED_IMAGE_SUFFIXES,
@@ -55,24 +60,24 @@ def _write(tmp_path: pathlib.Path, name: str, data: bytes) -> pathlib.Path:
 
 
 class TestSupportedSuffixes:
-    def test_set_is_lowercase_dot_prefixed(self):
+    def test_set_is_lowercase_dot_prefixed(self) -> None:
         for s in SUPPORTED_IMAGE_SUFFIXES:
             assert s.startswith(".")
             assert s == s.lower()
 
-    def test_includes_legacy_suffixes(self):
+    def test_includes_legacy_suffixes(self) -> None:
         for s in (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"):
             assert s in SUPPORTED_IMAGE_SUFFIXES
 
-    def test_includes_jpeg2000_family(self):
+    def test_includes_jpeg2000_family(self) -> None:
         for s in (".jp2", ".j2k", ".jpf", ".jpx"):
             assert s in SUPPORTED_IMAGE_SUFFIXES
 
-    def test_includes_gif_and_netpbm(self):
+    def test_includes_gif_and_netpbm(self) -> None:
         for s in (".gif", ".ppm", ".pgm", ".pbm", ".pnm"):
             assert s in SUPPORTED_IMAGE_SUFFIXES
 
-    def test_includes_heif_and_avif(self):
+    def test_includes_heif_and_avif(self) -> None:
         for s in (".heic", ".heif", ".avif"):
             assert s in SUPPORTED_IMAGE_SUFFIXES
 
@@ -102,16 +107,22 @@ class TestMagicByteSniff:
             ("a.avif", AVIF_SIG),
         ],
     )
-    def test_extension_and_magic_agree(self, tmp_path, name, data):
+    def test_extension_and_magic_agree(
+        self, tmp_path: pathlib.Path, name: str, data: bytes
+    ) -> None:
         path = _write(tmp_path, name, data)
         assert is_image_file(path) is True
 
-    def test_unknown_extension_but_valid_png_magic_is_accepted(self, tmp_path):
+    def test_unknown_extension_but_valid_png_magic_is_accepted(
+        self, tmp_path: pathlib.Path
+    ) -> None:
         """Magic-byte sniff must accept files even without a known extension."""
         path = _write(tmp_path, "scanA", PNG_SIG)
         assert is_image_file(path) is True
 
-    def test_unknown_extension_unknown_magic_is_rejected(self, tmp_path):
+    def test_unknown_extension_unknown_magic_is_rejected(
+        self, tmp_path: pathlib.Path
+    ) -> None:
         path = _write(tmp_path, "notes.txt", b"hello world, plain text")
         assert is_image_file(path) is False
 
@@ -120,7 +131,9 @@ class TestMagicByteSniff:
 
 
 class TestExtensionMagicMismatch:
-    def test_png_extension_jpeg2000_bytes_warns_and_accepts(self, tmp_path, caplog):
+    def test_png_extension_jpeg2000_bytes_warns_and_accepts(
+        self, tmp_path: pathlib.Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """A .png file containing JPEG 2000 bytes should warn but still be
         accepted — the file is a real image, just misnamed.
         """
@@ -133,7 +146,9 @@ class TestExtensionMagicMismatch:
         assert "scan.png" in joined
         assert "jpeg2000" in joined.lower() or "jp2" in joined.lower()
 
-    def test_matching_extension_and_magic_does_not_warn(self, tmp_path, caplog):
+    def test_matching_extension_and_magic_does_not_warn(
+        self, tmp_path: pathlib.Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         path = _write(tmp_path, "ok.png", PNG_SIG)
         with caplog.at_level(logging.WARNING, logger="pdomain_book_tools"):
             assert is_image_file(path) is True
@@ -145,29 +160,33 @@ class TestExtensionMagicMismatch:
 
 
 class TestEdgeCases:
-    def test_file_shorter_than_16_bytes_is_not_image(self, tmp_path):
+    def test_file_shorter_than_16_bytes_is_not_image(
+        self, tmp_path: pathlib.Path
+    ) -> None:
         path = _write(tmp_path, "tiny.png", b"\x89PNG")  # only 4 bytes
         assert is_image_file(path) is False
 
-    def test_empty_file_is_not_image(self, tmp_path):
+    def test_empty_file_is_not_image(self, tmp_path: pathlib.Path) -> None:
         path = _write(tmp_path, "empty.png", b"")
         assert is_image_file(path) is False
 
-    def test_nonexistent_path_is_not_image(self, tmp_path):
+    def test_nonexistent_path_is_not_image(self, tmp_path: pathlib.Path) -> None:
         path = tmp_path / "does_not_exist.png"
         assert is_image_file(path) is False
 
-    def test_directory_is_not_image(self, tmp_path):
+    def test_directory_is_not_image(self, tmp_path: pathlib.Path) -> None:
         d = tmp_path / "subdir"
         d.mkdir()
         assert is_image_file(d) is False
 
-    def test_uppercase_extension_accepted(self, tmp_path):
+    def test_uppercase_extension_accepted(self, tmp_path: pathlib.Path) -> None:
         """Extension comparison must be case-insensitive."""
         path = _write(tmp_path, "A.PNG", PNG_SIG)
         assert is_image_file(path) is True
 
-    def test_known_extension_but_bogus_bytes_is_rejected(self, tmp_path):
+    def test_known_extension_but_bogus_bytes_is_rejected(
+        self, tmp_path: pathlib.Path
+    ) -> None:
         """Extension allowlist alone must NOT pass — magic must also fail
         gracefully. The function rejects when bytes are unrecognised AND
         no magic family matches."""
@@ -180,7 +199,9 @@ class TestEdgeCases:
         # We capture that intent in a separate test below.
         assert is_image_file(path) is True  # extension allowlist hits
 
-    def test_known_extension_but_bogus_bytes_warns(self, tmp_path, caplog):
+    def test_known_extension_but_bogus_bytes_warns(
+        self, tmp_path: pathlib.Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         path = _write(tmp_path, "pretend.png", b"\x00" * 16)
         with caplog.at_level(logging.WARNING, logger="pdomain_book_tools"):
             is_image_file(path)
@@ -199,13 +220,15 @@ class TestEdgeCases:
 
 
 class TestBundledPluginRoundTrip:
-    def _ensure_formats_imported(self):
+    def _ensure_formats_imported(self) -> None:
         # Importing the formats module is what registers the plugins with
         # Pillow. The test module already imports it at the top, but be
         # explicit so this test documents its dependency.
-        import pdomain_book_tools.image_processing.formats  # imported for side-effect (plugin registration)
+        import pdomain_book_tools.image_processing.formats
 
-    def test_avif_round_trip_via_pillow(self, tmp_path):
+        _ = pdomain_book_tools.image_processing.formats
+
+    def test_avif_round_trip_via_pillow(self, tmp_path: pathlib.Path) -> None:
         self._ensure_formats_imported()
         from PIL import Image
 
@@ -222,7 +245,7 @@ class TestBundledPluginRoundTrip:
         out.load()
         assert out.size == (4, 4)
 
-    def test_heif_round_trip_via_pillow(self, tmp_path):
+    def test_heif_round_trip_via_pillow(self, tmp_path: pathlib.Path) -> None:
         self._ensure_formats_imported()
         from PIL import Image
 
@@ -237,7 +260,7 @@ class TestBundledPluginRoundTrip:
         out.load()
         assert out.size == (4, 4)
 
-    def test_pillow_recognizes_heif_extensions(self):
+    def test_pillow_recognizes_heif_extensions(self) -> None:
         """pillow-heif's register_heif_opener wires .heic/.heif/.hif into
         Pillow's EXTENSION map. If this regresses, downstream Image.open
         on a HEIC file silently falls back to format-detection-by-magic
@@ -253,7 +276,7 @@ class TestBundledPluginRoundTrip:
                 "register_heif_opener() did not run"
             )
 
-    def test_pillow_recognizes_avif_extension(self):
+    def test_pillow_recognizes_avif_extension(self) -> None:
         self._ensure_formats_imported()
         from PIL import Image
 

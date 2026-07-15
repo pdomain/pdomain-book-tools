@@ -6,15 +6,29 @@ import io
 import json
 import subprocess
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from pdomain_book_tools.schemas.emit import PUBLIC_MODELS, emit_schemas, main
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     import pytest
 
 
-def _run_emit() -> dict:
+def _as_json_object(value: object) -> dict[str, object]:
+    """Narrow a decoded JSON value to a JSON object (``dict[str, object]``).
+
+    JSON-Schema output shape varies across Pydantic versions, so schema
+    dicts are handled as plain JSON here rather than a fixed TypedDict.
+    """
+    assert isinstance(value, dict), (
+        f"expected a JSON object, got {type(value).__name__}"
+    )
+    return cast("dict[str, object]", value)
+
+
+def _run_emit() -> dict[str, object]:
     """Invoke the CLI in the current uv environment, parse JSON stdout."""
     proc = subprocess.run(
         [sys.executable, "-m", "pdomain_book_tools.schemas.emit"],
@@ -25,7 +39,8 @@ def _run_emit() -> dict:
     assert proc.stderr == "" or proc.stderr.startswith("WARNING"), (
         f"unexpected stderr: {proc.stderr!r}"
     )
-    return json.loads(proc.stdout)
+    result: dict[str, object] = json.loads(proc.stdout)
+    return result
 
 
 def test_emit_returns_top_level_dict():
@@ -36,12 +51,13 @@ def test_emit_returns_top_level_dict():
 def test_emit_includes_review_metadata_schema():
     out = _run_emit()
     assert "ReviewMetadata" in out
-    sch = out["ReviewMetadata"]
+    sch = _as_json_object(out["ReviewMetadata"])
     # Pydantic TypeAdapter returns a JSON-Schema-shaped dict with at least
     # these standard keys for an object type.
     assert sch["type"] == "object"
     assert "properties" in sch
-    assert set(sch["properties"].keys()) == {
+    props = _as_json_object(sch["properties"])
+    assert set(props.keys()) == {
         "validated",
         "reviewer_note",
         "flagged_for_attention",
@@ -50,13 +66,13 @@ def test_emit_includes_review_metadata_schema():
 
 def test_emit_review_metadata_field_types():
     out = _run_emit()
-    props = out["ReviewMetadata"]["properties"]
-    assert props["validated"]["type"] == "boolean"
+    props = _as_json_object(_as_json_object(out["ReviewMetadata"])["properties"])
+    assert _as_json_object(props["validated"])["type"] == "boolean"
     # reviewer_note is `str | None` — JSON Schema represents this as
     # anyOf [string, null] (or oneOf depending on Pydantic version).
-    note_schema = props["reviewer_note"]
+    note_schema = _as_json_object(props["reviewer_note"])
     assert "anyOf" in note_schema or note_schema.get("type") == "string"
-    assert props["flagged_for_attention"]["type"] == "boolean"
+    assert _as_json_object(props["flagged_for_attention"])["type"] == "boolean"
 
 
 def test_public_models_includes_full_set():
@@ -86,7 +102,7 @@ def test_emit_schemas_returns_dict_keyed_by_class_name():
 def test_emit_word_schema_has_review_field():
     schemas = emit_schemas()
     word_schema = schemas["Word"]
-    props = word_schema.get("properties", {})
+    props = _as_json_object(word_schema.get("properties", {}))
     assert "review" in props, (
         "Word's wire schema must expose the optional ``review`` field "
         "(added in plan #1)."
@@ -98,20 +114,22 @@ def test_emit_block_schema_has_review_field():
     block_schema = schemas["Block"]
     # Block uses definitions_schema so root may be $ref into $defs
     if "$defs" in block_schema and "$ref" in block_schema:
-        ref_name = block_schema["$ref"].split("/")[-1]
-        inner = block_schema["$defs"][ref_name]
-    elif "$defs" in block_schema and "Block" in block_schema["$defs"]:
-        inner = block_schema["$defs"]["Block"]
+        ref = block_schema["$ref"]
+        assert isinstance(ref, str)
+        ref_name = ref.split("/")[-1]
+        inner = _as_json_object(_as_json_object(block_schema["$defs"])[ref_name])
+    elif "$defs" in block_schema and "Block" in _as_json_object(block_schema["$defs"]):
+        inner = _as_json_object(_as_json_object(block_schema["$defs"])["Block"])
     else:
         inner = block_schema
-    props = inner.get("properties", {})
+    props = _as_json_object(inner.get("properties", {}))
     assert "review" in props
 
 
 def test_emit_page_schema_has_review_field():
     schemas = emit_schemas()
     page_schema = schemas["Page"]
-    props = page_schema.get("properties", {})
+    props = _as_json_object(page_schema.get("properties", {}))
     assert "review" in props
 
 
@@ -135,7 +153,7 @@ def test_main_writes_json_to_stdout(capsys: pytest.CaptureFixture[str]):
     assert "Page" in parsed
 
 
-def test_main_runs_via_python_dash_m(tmp_path: object):
+def test_main_runs_via_python_dash_m(tmp_path: Path):
     # Sanity check: ``python -m pdomain_book_tools.schemas.emit`` produces
     # parseable JSON. We don't shell out here — main([]) is already
     # tested above — but we verify json.dump's output is deterministic

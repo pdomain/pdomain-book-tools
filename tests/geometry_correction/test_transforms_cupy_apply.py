@@ -1,11 +1,21 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    import cupy
+    from numpy.typing import NDArray
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestGeometryTransformCuPyApply:
-    def test_cupy_grid_apply_matches_cv2_remap(self, cupy_module):
+    def test_cupy_grid_apply_matches_cv2_remap(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.geometry_correction.transforms import GeometryTransform
 
@@ -21,8 +31,11 @@ class TestGeometryTransformCuPyApply:
 
         cpu = GeometryTransform.grid(map_x, map_y, (h, w)).apply(img)
 
-        gpu_t = GeometryTransform.grid(cp.asarray(map_x), cp.asarray(map_y), (h, w))
-        gpu = cp.asnumpy(gpu_t.apply(cp.asarray(img)))
+        map_x_gpu: cupy.ndarray[np.float32] = cp.asarray(map_x)
+        map_y_gpu: cupy.ndarray[np.float32] = cp.asarray(map_y)
+        img_gpu: cupy.ndarray[np.uint8] = cp.asarray(img)
+        gpu_t = GeometryTransform.grid(map_x_gpu, map_y_gpu, (h, w))
+        gpu: NDArray[np.generic] = cp.asnumpy(gpu_t.apply(img_gpu))
 
         # cv2.remap (cubic) vs map_coordinates (cubic) agree within a few levels
         # Tolerance relaxed to 8.0 since cv2 uses different cubic kernel than scipy

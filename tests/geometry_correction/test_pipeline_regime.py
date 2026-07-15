@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from pdomain_book_tools.geometry_correction import (
@@ -17,8 +21,14 @@ from pdomain_book_tools.geometry_correction.regime import (
     dewarp_for_regime,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def test_dewarp_for_regime_routing_table():
+    from pdomain_book_tools.geometry_correction.protocols import BBox
+    from pdomain_book_tools.geometry_correction.regime import Regime
+
+
+def test_dewarp_for_regime_routing_table() -> None:
     assert dewarp_for_regime("flat") is None
     assert dewarp_for_regime("flat_curl") == "textline_disparity"
     assert dewarp_for_regime("oblique") == "uvdoc"
@@ -29,31 +39,41 @@ def test_dewarp_for_regime_routing_table():
 class _Side:
     name = "supplied"
 
-    def detect(self, image, *, hint=None):
+    def detect(
+        self, image: np.ndarray, *, hint: PageSide | None = None
+    ) -> PageSideResult:
         return PageSideResult(hint or PageSide.UNKNOWN, "right", 1.0, self.name)
 
 
 class _Curv:
     name = "fake"
 
-    def score(self, image, *, text_lines=None):
+    def score(
+        self, image: np.ndarray, *, text_lines: Sequence[BBox] | None = None
+    ) -> CurvatureReport:
         return CurvatureReport(0.9, "dewarp", None, self.name)
 
 
 class _Regime:
-    def __init__(self, regime):
-        self._r = regime
+    def __init__(self, regime: Regime) -> None:
+        self._r: Regime = regime
 
-    def classify(self, image):
+    def classify(self, image: np.ndarray) -> RegimeReport:
         return RegimeReport(self._r, 0.0, 0.0, "fake")
 
 
 class _NamedDewarp:
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
         self.called = False
 
-    def estimate(self, image, *, gutter_edge=None, text_lines=None):
+    def estimate(
+        self,
+        image: np.ndarray,
+        *,
+        gutter_edge: str | None = None,
+        text_lines: Sequence[BBox] | None = None,
+    ) -> DewarpResult:
         self.called = True
         return DewarpResult(GeometryTransform.identity(image.shape[:2]), 1.0, self.name)
 
@@ -61,13 +81,19 @@ class _NamedDewarp:
 class _Deskew:
     name = "fake"
 
-    def estimate(self, image, *, page_side=None, text_lines=None):
+    def estimate(
+        self,
+        image: np.ndarray,
+        *,
+        page_side: PageSide | None = None,
+        text_lines: Sequence[BBox] | None = None,
+    ) -> DeskewResult:
         return DeskewResult(
             0.0, 1.0, GeometryTransform.identity(image.shape[:2]), self.name
         )
 
 
-def test_pipeline_routes_flat_curl_to_textline_backend():
+def test_pipeline_routes_flat_curl_to_textline_backend() -> None:
     textline = _NamedDewarp("textline_disparity")
     uvdoc = _NamedDewarp("uvdoc")
     pipe = GeometryPipeline(
@@ -84,7 +110,7 @@ def test_pipeline_routes_flat_curl_to_textline_backend():
     assert res.regime == "flat_curl"
 
 
-def test_pipeline_routes_oblique_to_uvdoc():
+def test_pipeline_routes_oblique_to_uvdoc() -> None:
     textline = _NamedDewarp("textline_disparity")
     uvdoc = _NamedDewarp("uvdoc")
     pipe = GeometryPipeline(

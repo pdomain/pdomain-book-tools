@@ -13,6 +13,8 @@ those four labels, AND grep-asserts the comment text is no longer the
 incorrect form.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
@@ -30,7 +32,9 @@ from pdomain_book_tools.layout.types import RegionType
         ("footnote", RegionType.footnote),
     ],
 )
-def test_page_chrome_labels_are_preserved_not_dropped(raw_label, expected):
+def test_page_chrome_labels_are_preserved_not_dropped(
+    raw_label: str, expected: RegionType
+) -> None:
     """Page chrome regions are role-labeled, never silently dropped here."""
     mapped = PP_DOCLAYOUT_TO_PGDP[raw_label]
     assert mapped is not None, (
@@ -41,7 +45,7 @@ def test_page_chrome_labels_are_preserved_not_dropped(raw_label, expected):
     assert RegionType(mapped) is expected
 
 
-def test_reference_label_is_not_mapped_to_list():
+def test_reference_label_is_not_mapped_to_list() -> None:
     """L-12: PP-DocLayout's ``reference`` is a bibliography citation item.
 
     Mapping it to ``RegionType.list`` causes PGDP-aware tools to apply
@@ -57,7 +61,7 @@ def test_reference_label_is_not_mapped_to_list():
     assert RegionType(mapped) is RegionType.text
 
 
-def test_mappings_module_comment_does_not_claim_dropped():
+def test_mappings_module_comment_does_not_claim_dropped() -> None:
     """L-11: the page-chrome comment must not claim the regions are dropped here."""
     src = Path("pdomain_book_tools/layout/_mappings.py").read_text(encoding="utf-8")
     assert "dropped before reorg" not in src, (

@@ -37,15 +37,15 @@ else:
 # load on CPU-only installs; require_cupy() in each function gives the
 # actionable error before these names are ever dereferenced.
 try:
-    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]  # optional GPU import is guarded
+    from cupyx.scipy.ndimage import (
         label as _cupyx_label,
     )
     from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]  # optional GPU import is guarded
         median_filter as _cupyx_median_filter,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs
-    _cupyx_label = None  # type: ignore[assignment]
-    _cupyx_median_filter = None  # type: ignore[assignment]
+    _cupyx_label = None
+    _cupyx_median_filter = None
 
 logger = logging.getLogger(__name__)
 

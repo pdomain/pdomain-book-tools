@@ -10,15 +10,22 @@ deterministic, so exact equality is the correct bar.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    import numpy.typing as npt
 
 # ---------------------------------------------------------------------------
 # Shared fixture helpers (same synthetic images as cv2 test_denoise.py)
 # ---------------------------------------------------------------------------
 
 
-def _synthetic_page_with_speckle() -> np.ndarray:
+def _synthetic_page_with_speckle() -> npt.NDArray[np.uint8]:
     """Binary page image (text=0, background=255) with text strokes + speckle."""
     img = np.full((300, 200), 255, dtype=np.uint8)
     img[50:65, 20:180] = 0  # horizontal text line
@@ -47,7 +54,7 @@ def _synthetic_page_with_speckle() -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 
-def test_denoise_module_imports_without_cupy():
+def test_denoise_module_imports_without_cupy() -> None:
     """The denoise module must be importable without cupy at module-load time."""
     import importlib
 
@@ -64,7 +71,7 @@ def test_denoise_module_imports_without_cupy():
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestDenoiseBinaryGpuBasic:
-    def test_returns_cupy_array(self, cupy_module):
+    def test_returns_cupy_array(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -74,7 +81,7 @@ class TestDenoiseBinaryGpuBasic:
         out = denoise_binary_gpu(img)
         assert isinstance(out, cp.ndarray)
 
-    def test_shape_preserved(self, cupy_module):
+    def test_shape_preserved(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -84,7 +91,7 @@ class TestDenoiseBinaryGpuBasic:
         out = denoise_binary_gpu(img)
         assert out.shape == img.shape
 
-    def test_dtype_preserved(self, cupy_module):
+    def test_dtype_preserved(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -94,7 +101,7 @@ class TestDenoiseBinaryGpuBasic:
         out = denoise_binary_gpu(img)
         assert out.dtype == cp.uint8
 
-    def test_output_is_binary_values_only(self, cupy_module):
+    def test_output_is_binary_values_only(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -105,7 +112,7 @@ class TestDenoiseBinaryGpuBasic:
         unique = set(cp.asnumpy(cp.unique(out)).tolist())
         assert unique.issubset({0, 255})
 
-    def test_all_white_returns_all_white(self, cupy_module):
+    def test_all_white_returns_all_white(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -115,7 +122,7 @@ class TestDenoiseBinaryGpuBasic:
         out = denoise_binary_gpu(img)
         assert bool(cp.all(out == 255))
 
-    def test_all_black_returns_all_black(self, cupy_module):
+    def test_all_black_returns_all_black(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -125,7 +132,7 @@ class TestDenoiseBinaryGpuBasic:
         out = denoise_binary_gpu(img)
         assert bool(cp.all(out == 0))
 
-    def test_single_pixel_speckle_removed(self, cupy_module):
+    def test_single_pixel_speckle_removed(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -138,7 +145,7 @@ class TestDenoiseBinaryGpuBasic:
             "single-pixel speckle must be removed"
         )
 
-    def test_text_stroke_preserved(self, cupy_module):
+    def test_text_stroke_preserved(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -149,7 +156,7 @@ class TestDenoiseBinaryGpuBasic:
         out = denoise_binary_gpu(img)
         assert int(cp.asnumpy(out)[57, 100]) == 0, "text stroke must be preserved"
 
-    def test_period_dot_preserved(self, cupy_module):
+    def test_period_dot_preserved(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -168,7 +175,7 @@ class TestDenoiseBinaryGpuBasic:
 class TestDenoiseBinaryGpuEquivalence:
     """Exact CPU↔GPU equivalence — component filtering is deterministic."""
 
-    def test_array_equal_to_cpu_no_median(self, cupy_module):
+    def test_array_equal_to_cpu_no_median(self, cupy_module: ModuleType) -> None:
         """GPU output must be array-equal to cv2 CPU output on binary images."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -184,7 +191,7 @@ class TestDenoiseBinaryGpuEquivalence:
         gpu_out = cp.asnumpy(denoise_binary_gpu(cp.asarray(img_np)))
         np.testing.assert_array_equal(cpu_out, gpu_out)
 
-    def test_array_equal_to_cpu_with_median(self, cupy_module):
+    def test_array_equal_to_cpu_with_median(self, cupy_module: ModuleType) -> None:
         """GPU + median pre-pass must match cv2 + median pre-pass exactly."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -202,7 +209,9 @@ class TestDenoiseBinaryGpuEquivalence:
         )
         np.testing.assert_array_equal(cpu_out, gpu_out)
 
-    def test_array_equal_custom_min_component_area(self, cupy_module):
+    def test_array_equal_custom_min_component_area(
+        self, cupy_module: ModuleType
+    ) -> None:
         """Custom min_component_area matches CPU exactly."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -220,7 +229,7 @@ class TestDenoiseBinaryGpuEquivalence:
         )
         np.testing.assert_array_equal(cpu_out, gpu_out)
 
-    def test_all_white_array_equal(self, cupy_module):
+    def test_all_white_array_equal(self, cupy_module: ModuleType) -> None:
         """All-white images: GPU matches CPU."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -245,7 +254,7 @@ class TestDenoiseBinaryGpuEquivalence:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestNpUint8DenoiseBinaryWrapper:
-    def test_returns_numpy_ndarray(self, cupy_module):
+    def test_returns_numpy_ndarray(self, cupy_module: ModuleType) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             np_uint8_denoise_binary,
         )
@@ -255,7 +264,7 @@ class TestNpUint8DenoiseBinaryWrapper:
         assert isinstance(result, np.ndarray)
         assert result.ndim == 2
 
-    def test_array_equal_to_direct_gpu(self, cupy_module):
+    def test_array_equal_to_direct_gpu(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -276,7 +285,7 @@ class TestNpUint8DenoiseBinaryWrapper:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestDenoiseBinaryGpuValidation:
-    def test_invalid_ndim_raises(self, cupy_module):
+    def test_invalid_ndim_raises(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -286,7 +295,7 @@ class TestDenoiseBinaryGpuValidation:
         with pytest.raises(ValueError, match="2-D"):
             denoise_binary_gpu(img_3d)
 
-    def test_invalid_dtype_raises(self, cupy_module):
+    def test_invalid_dtype_raises(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -296,7 +305,7 @@ class TestDenoiseBinaryGpuValidation:
         with pytest.raises(ValueError, match="uint8"):
             denoise_binary_gpu(img_float)
 
-    def test_invalid_even_median_kernel_raises(self, cupy_module):
+    def test_invalid_even_median_kernel_raises(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,
@@ -306,7 +315,9 @@ class TestDenoiseBinaryGpuValidation:
         with pytest.raises(ValueError, match="odd"):
             denoise_binary_gpu(img, median_kernel_size=4)
 
-    def test_invalid_negative_median_kernel_raises(self, cupy_module):
+    def test_invalid_negative_median_kernel_raises(
+        self, cupy_module: ModuleType
+    ) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.denoise import (
             denoise_binary_gpu,

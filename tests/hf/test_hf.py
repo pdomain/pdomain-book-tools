@@ -24,7 +24,7 @@ from pdomain_book_tools.hf import (
 from pdomain_book_tools.hf import models as hf_models_module
 
 
-def test_constants_match_canonical_repo_layout():
+def test_constants_match_canonical_repo_layout() -> None:
     assert DEFAULT_HF_REPO == "pdomain/pdomain-ocr-models"
     assert DEFAULT_DET_FILENAME == "detection/pdomain-all-detection-model-finetuned.pt"
     assert (
@@ -39,14 +39,19 @@ def test_constants_match_canonical_repo_layout():
     )
 
 
-def test_short_revision_handles_none_short_long():
+def test_short_revision_handles_none_short_long() -> None:
     assert short_revision(None) == "latest"
     assert short_revision("") == "latest"
     assert short_revision("abc") == "abc"
     assert short_revision("0123456789abcdef") == "01234567"
 
 
-def test_suppress_hf_unauth_warning_filters_only_unauth_advisory():
+def _passes_filters(logger: logging.Logger, record: logging.LogRecord) -> bool:
+    """Whether *record* survives *logger*'s attached filters."""
+    return bool(logger.filter(record))
+
+
+def test_suppress_hf_unauth_warning_filters_only_unauth_advisory() -> None:
     target_logger = logging.getLogger("huggingface_hub.utils._http")
 
     with suppress_hf_unauth_warning():
@@ -71,8 +76,8 @@ def test_suppress_hf_unauth_warning_filters_only_unauth_advisory():
             exc_info=None,
         )
         # Walk through filters attached
-        passed_filtered = all(f.filter(record_filtered) for f in target_logger.filters)
-        passed_kept = all(f.filter(record_kept) for f in target_logger.filters)
+        passed_filtered = _passes_filters(target_logger, record_filtered)
+        passed_kept = _passes_filters(target_logger, record_kept)
         assert passed_filtered is False
         assert passed_kept is True
 
@@ -80,7 +85,7 @@ def test_suppress_hf_unauth_warning_filters_only_unauth_advisory():
     assert target_logger.filters == []
 
 
-def test_hf_download_calls_hf_hub_download_and_returns_path(tmp_path):
+def test_hf_download_calls_hf_hub_download_and_returns_path(tmp_path: Path) -> None:
     fake_local = tmp_path / "weights.pt"
     fake_local.write_bytes(b"x")
 
@@ -101,7 +106,9 @@ def test_hf_download_calls_hf_hub_download_and_returns_path(tmp_path):
     assert result == fake_local
 
 
-def test_hf_download_silent_on_warm_cache(caplog, tmp_path):
+def test_hf_download_silent_on_warm_cache(
+    caplog: pytest.LogCaptureFixture, tmp_path: Path
+) -> None:
     fake_local = tmp_path / "weights.pt"
     fake_local.write_bytes(b"x")
 
@@ -127,7 +134,9 @@ def test_hf_download_silent_on_warm_cache(caplog, tmp_path):
     assert cold_lines == []
 
 
-def test_hf_download_logs_on_cold_cache(caplog, tmp_path):
+def test_hf_download_logs_on_cold_cache(
+    caplog: pytest.LogCaptureFixture, tmp_path: Path
+) -> None:
     fake_local = tmp_path / "weights.pt"
     fake_local.write_bytes(b"x")
 
@@ -154,7 +163,7 @@ def test_hf_download_logs_on_cold_cache(caplog, tmp_path):
     assert "repo/x" in cold_lines[0].getMessage()
 
 
-def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
+def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path: Path) -> None:
     fake_main = tmp_path / "weights.pt"
     fake_main.write_bytes(b"x")
 
@@ -163,7 +172,7 @@ def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
 
     calls: list[str] = []
 
-    def _hub_download(*, repo_id, filename, revision):
+    def _hub_download(*, repo_id: str, filename: str, revision: str | None) -> str:
         calls.append(filename)
         if filename.endswith(".vocab"):
             raise _NotFound("missing")
@@ -196,7 +205,7 @@ def test_hf_download_attempts_sidecars_and_swallows_missing(tmp_path):
     assert calls == ["weights.pt", "weights.arch", "weights.vocab"]
 
 
-def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path):
+def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path: Path) -> None:
     # L-35: ``filename.rsplit(".", 1)[0] + ext`` incorrectly splits on a
     # dot in the directory portion when the filename itself has no
     # extension. For "my.dir/weights" rsplit yields ["my", "dir/weights"]
@@ -211,7 +220,7 @@ def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path):
 
     calls: list[str] = []
 
-    def _hub_download(*, repo_id, filename, revision):
+    def _hub_download(*, repo_id: str, filename: str, revision: str | None) -> str:
         calls.append(filename)
         if filename.endswith(".arch"):
             raise _NotFound("missing")
@@ -242,7 +251,7 @@ def test_hf_download_sidecar_filename_with_dot_in_directory(tmp_path):
     assert calls == ["my.dir/weights", "my.dir/weights.arch"]
 
 
-def test_resolve_ocr_models_returns_local_paths_when_provided(tmp_path):
+def test_resolve_ocr_models_returns_local_paths_when_provided(tmp_path: Path) -> None:
     det = tmp_path / "det.pt"
     reco = tmp_path / "reco.pt"
     det.write_bytes(b"x")
@@ -253,12 +262,14 @@ def test_resolve_ocr_models_returns_local_paths_when_provided(tmp_path):
     assert out_reco == reco
 
 
-def test_resolve_ocr_models_rejects_partial_local():
+def test_resolve_ocr_models_rejects_partial_local() -> None:
     with pytest.raises(ValueError):
         resolve_ocr_models(detection_path=Path("/x"), recognition_path=None)
 
 
-def test_resolve_ocr_models_falls_back_to_hf(monkeypatch, tmp_path):
+def test_resolve_ocr_models_falls_back_to_hf(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     det = tmp_path / "det.pt"
     reco = tmp_path / "reco.pt"
     det.write_bytes(b"x")
@@ -266,7 +277,12 @@ def test_resolve_ocr_models_falls_back_to_hf(monkeypatch, tmp_path):
 
     seen: list[tuple[str, str]] = []
 
-    def fake_hf_download(repo, filename, revision=None, sidecars=()):
+    def fake_hf_download(
+        repo: str,
+        filename: str,
+        revision: str | None = None,
+        sidecars: tuple[str, ...] = (),
+    ) -> Path:
         seen.append((repo, filename))
         return det if "detection" in filename else reco
 
@@ -283,11 +299,13 @@ def test_resolve_ocr_models_falls_back_to_hf(monkeypatch, tmp_path):
     ]
 
 
-def test_resolve_layout_source_none_returns_empty():
+def test_resolve_layout_source_none_returns_empty() -> None:
     assert resolve_layout_source("none") == (None, None, "")
 
 
-def test_resolve_layout_source_none_takes_precedence_over_checkpoint(tmp_path):
+def test_resolve_layout_source_none_takes_precedence_over_checkpoint(
+    tmp_path: Path,
+) -> None:
     """``layout_model="none"`` must disable layout even when a checkpoint
     path is also supplied. Regression lock for review item H-20: the
     checkpoint branch must never be reached if the caller asked to disable
@@ -308,7 +326,9 @@ def test_resolve_layout_source_none_takes_precedence_over_checkpoint(tmp_path):
     )
 
 
-def test_resolve_layout_source_contour_takes_precedence_over_checkpoint(tmp_path):
+def test_resolve_layout_source_contour_takes_precedence_over_checkpoint(
+    tmp_path: Path,
+) -> None:
     """Same precedence guarantee for ``layout_model="contour"``."""
     ckpt = tmp_path / "model.safetensors"
     ckpt.write_bytes(b"x")
@@ -318,14 +338,14 @@ def test_resolve_layout_source_contour_takes_precedence_over_checkpoint(tmp_path
     assert "contour" in desc
 
 
-def test_resolve_layout_source_contour():
+def test_resolve_layout_source_contour() -> None:
     repo, rev, desc = resolve_layout_source("contour")
     assert repo is None
     assert rev is None
     assert "contour" in desc
 
 
-def test_resolve_layout_source_local_checkpoint(tmp_path):
+def test_resolve_layout_source_local_checkpoint(tmp_path: Path) -> None:
     ckpt = tmp_path / "model.safetensors"
     ckpt.write_bytes(b"x")
     repo, rev, desc = resolve_layout_source("pp-doclayout", layout_checkpoint=str(ckpt))
@@ -334,7 +354,7 @@ def test_resolve_layout_source_local_checkpoint(tmp_path):
     assert desc == str(ckpt)
 
 
-def test_resolve_layout_source_string_checkpoint_treated_as_repo():
+def test_resolve_layout_source_string_checkpoint_treated_as_repo() -> None:
     repo, rev, desc = resolve_layout_source(
         "pp-doclayout", layout_checkpoint="org/repo-name"
     )
@@ -343,10 +363,17 @@ def test_resolve_layout_source_string_checkpoint_treated_as_repo():
     assert "@latest" in desc
 
 
-def test_prefetch_layout_files_calls_hf_download_per_file(monkeypatch):
+def test_prefetch_layout_files_calls_hf_download_per_file(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     seen: list[tuple[str, str]] = []
 
-    def fake(repo, filename, revision=None, sidecars=()):
+    def fake(
+        repo: str,
+        filename: str,
+        revision: str | None = None,
+        sidecars: tuple[str, ...] = (),
+    ) -> Path:
         seen.append((repo, filename))
         return Path("/dev/null")
 

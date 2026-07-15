@@ -1,13 +1,40 @@
 """Tests for cupy_processing.canvas module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+    import numpy.typing as npt
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def full(
+        self, shape: tuple[int, ...], fill_value: object, dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def asarray(self, a: object) -> cupy.ndarray[np.generic]: ...
+    def asnumpy(self, a: object) -> npt.NDArray[np.generic]: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestMapContentOntoScaledCanvasGpu:
-    def test_canvas_larger_than_input(self, cupy_module):
+    def test_canvas_larger_than_input(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
@@ -17,7 +44,7 @@ class TestMapContentOntoScaledCanvasGpu:
         out = map_content_onto_scaled_canvas_gpu(img)
         assert out.shape[0] > img.shape[0] or out.shape[1] > img.shape[1]
 
-    def test_output_is_uint8(self, cupy_module):
+    def test_output_is_uint8(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
@@ -27,7 +54,7 @@ class TestMapContentOntoScaledCanvasGpu:
         out = map_content_onto_scaled_canvas_gpu(img)
         assert out.dtype == cp.uint8
 
-    def test_canvas_background_is_white(self, cupy_module):
+    def test_canvas_background_is_white(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
@@ -38,7 +65,7 @@ class TestMapContentOntoScaledCanvasGpu:
         # Top-left corner should be white border
         assert int(out[0, 0]) == 255
 
-    def test_content_preserved_at_offset(self, cupy_module):
+    def test_content_preserved_at_offset(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         import math
 
@@ -55,7 +82,7 @@ class TestMapContentOntoScaledCanvasGpu:
         # Spot check a pixel inside the placed content
         assert int(out[top_offset + 5, left_offset + 5]) == 42
 
-    def test_alignment_bottom_places_lower(self, cupy_module):
+    def test_alignment_bottom_places_lower(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             map_content_onto_scaled_canvas_gpu,
@@ -68,7 +95,7 @@ class TestMapContentOntoScaledCanvasGpu:
         # Both should have same canvas size
         assert top.shape == bottom.shape
 
-    def test_matches_cpu_output(self, cupy_module):
+    def test_matches_cpu_output(self, cupy_module: _CupyModule) -> None:
         """GPU and CPU outputs should be pixel-identical."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
@@ -85,7 +112,7 @@ class TestMapContentOntoScaledCanvasGpu:
         gpu = cp.asnumpy(map_content_onto_scaled_canvas_gpu(cp.asarray(img_np)))
         np.testing.assert_array_equal(cpu, gpu)
 
-    def test_np_uint8_wrapper_returns_ndarray(self, cupy_module):
+    def test_np_uint8_wrapper_returns_ndarray(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
             np_uint8_map_content_onto_scaled_canvas,
         )
@@ -95,7 +122,7 @@ class TestMapContentOntoScaledCanvasGpu:
         assert isinstance(out, np.ndarray)
         assert out.dtype == np.uint8
 
-    def test_color_input_preserves_channels(self, cupy_module):
+    def test_color_input_preserves_channels(self, cupy_module: _CupyModule) -> None:
         """3-channel GPU input must produce a 3-channel canvas (parity with CPU).
 
         Before the fix the GPU canvas was always 2-D, so placing a 3-channel
@@ -113,7 +140,7 @@ class TestMapContentOntoScaledCanvasGpu:
         )
         assert out.shape[2] == 3
 
-    def test_color_matches_cpu_parity(self, cupy_module):
+    def test_color_matches_cpu_parity(self, cupy_module: _CupyModule) -> None:
         """GPU and CPU canvas results must be pixel-identical for 3-channel input."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (
@@ -130,7 +157,7 @@ class TestMapContentOntoScaledCanvasGpu:
         gpu = cp.asnumpy(map_content_onto_scaled_canvas_gpu(cp.asarray(img_np)))
         np.testing.assert_array_equal(cpu, gpu)
 
-    def test_color_canvas_background_is_white(self, cupy_module):
+    def test_color_canvas_background_is_white(self, cupy_module: _CupyModule) -> None:
         """3-channel canvas border pixels must be white (255, 255, 255)."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.canvas import (

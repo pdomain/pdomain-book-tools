@@ -4,14 +4,27 @@ The smoke test downloads ~132 MB of weights on first run; mark the slow
 test with ``pytest.mark.slow`` so ``-m 'not slow'`` skips it.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
 from pdomain_book_tools.layout._mappings import PP_DOCLAYOUT_TO_PGDP
 from pdomain_book_tools.layout.types import LayoutRegion, RegionType
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
+    from unittest.mock import MagicMock
 
-def test_mapping_targets_are_known_region_types():
+    from pdomain_book_tools.layout.adapters.pp_doclayout import (
+        PPDocLayoutPlusLDetector,
+    )
+
+
+def test_mapping_targets_are_known_region_types() -> None:
     """Every non-None PP-DocLayout mapping resolves to a known RegionType."""
     valid_values = {rt.value for rt in RegionType}
     for native, mapped in PP_DOCLAYOUT_TO_PGDP.items():
@@ -35,18 +48,18 @@ class TestClipBoxToImageBounds:
     so we can verify clipping without needing the model weights.
     """
 
-    def _import_helper(self):
+    def _import_helper(self) -> Callable[..., tuple[float, float, float, float]]:
         from pdomain_book_tools.layout.adapters.pp_doclayout import _clip_box_to_bounds
 
         return _clip_box_to_bounds
 
-    def test_in_bounds_box_unchanged(self):
+    def test_in_bounds_box_unchanged(self) -> None:
         """A box that fits within (800, 1200) is returned unchanged."""
         clip = self._import_helper()
         x1, y1, x2, y2 = clip(10.0, 20.0, 100.0, 200.0, img_width=800, img_height=1200)
         assert (x1, y1, x2, y2) == (10.0, 20.0, 100.0, 200.0)
 
-    def test_right_edge_clipped(self):
+    def test_right_edge_clipped(self) -> None:
         """x2 beyond image width is clamped to image width."""
         clip = self._import_helper()
         x1, _y1, x2, _y2 = clip(
@@ -55,7 +68,7 @@ class TestClipBoxToImageBounds:
         assert x2 == 800.0
         assert x1 == 10.0
 
-    def test_bottom_edge_clipped(self):
+    def test_bottom_edge_clipped(self) -> None:
         """y2 beyond image height is clamped to image height."""
         clip = self._import_helper()
         _x1, y1, _x2, y2 = clip(
@@ -64,7 +77,7 @@ class TestClipBoxToImageBounds:
         assert y2 == 1200.0
         assert y1 == 20.0
 
-    def test_negative_left_edge_clamped(self):
+    def test_negative_left_edge_clamped(self) -> None:
         """x1 < 0 is clamped to 0."""
         clip = self._import_helper()
         x1, _y1, _x2, _y2 = clip(
@@ -72,7 +85,7 @@ class TestClipBoxToImageBounds:
         )
         assert x1 == 0.0
 
-    def test_negative_top_edge_clamped(self):
+    def test_negative_top_edge_clamped(self) -> None:
         """y1 < 0 is clamped to 0."""
         clip = self._import_helper()
         _x1, y1, _x2, _y2 = clip(
@@ -80,7 +93,7 @@ class TestClipBoxToImageBounds:
         )
         assert y1 == 0.0
 
-    def test_fully_out_of_bounds_produces_degenerate(self):
+    def test_fully_out_of_bounds_produces_degenerate(self) -> None:
         """A box entirely outside the image clips to a degenerate (zero-area) box."""
         clip = self._import_helper()
         x1, y1, x2, y2 = clip(
@@ -93,7 +106,7 @@ class TestClipBoxToImageBounds:
 class TestAdapterClipsOutOfBoundsBoxes:
     """Integration test: the detect() method must clip boxes before constructing LayoutRegion."""
 
-    def test_build_region_clips_right_and_bottom(self):
+    def test_build_region_clips_right_and_bottom(self) -> None:
         """LayoutRegion constructed from clipped coords stays within image bounds."""
         # Simulate what the adapter produces after clipping: x2 > image_width
         # should become image_width after clip.
@@ -118,7 +131,7 @@ class TestAdapterClipsOutOfBoundsBoxes:
 
 
 @pytest.mark.slow
-def test_smoke_load_and_infer_blank_page():
+def test_smoke_load_and_infer_blank_page() -> None:
     """End-to-end: load model, run on a blank synthetic page.
 
     Marked slow because the first call downloads ~132 MB; skip with
@@ -157,14 +170,14 @@ class TestCheckpointTrustBoundary:
     These tests mock from_pretrained so they never actually download weights.
     """
 
-    def _get_cls(self):
+    def _get_cls(self) -> type[PPDocLayoutPlusLDetector]:
         from pdomain_book_tools.layout.adapters.pp_doclayout import (
             PPDocLayoutPlusLDetector,
         )
 
         return PPDocLayoutPlusLDetector
 
-    def test_local_path_with_local_files_only_accepted(self, tmp_path):
+    def test_local_path_with_local_files_only_accepted(self, tmp_path: Path) -> None:
         """A local directory checkpoint with local_files_only=True is accepted
         without raising and passes local_files_only to from_pretrained."""
         from unittest import mock
@@ -173,18 +186,21 @@ class TestCheckpointTrustBoundary:
             PPDocLayoutPlusLDetector,
         )
 
-        sentinel = object()
+        class _FakeFromPretrained:
+            """Records the kwargs it was last called with, for assertion."""
 
-        def fake_from_pretrained(repo_id, **kwargs):
-            # Capture the call args for assertion — just return a minimal mock
-            fake_from_pretrained.last_kwargs = dict(kwargs)
-            m = mock.MagicMock()
-            m.to.return_value = m
-            m.eval.return_value = sentinel
-            m.config.id2label = {}
-            return m
+            def __init__(self) -> None:
+                self.last_kwargs: dict[str, object] = {}
 
-        fake_from_pretrained.last_kwargs = {}
+            def __call__(self, repo_id: str, **kwargs: object) -> MagicMock:
+                self.last_kwargs = dict(kwargs)
+                m = mock.MagicMock()
+                m.to.return_value = m
+                m.eval.return_value = m
+                m.config.id2label = {}
+                return m
+
+        fake_from_pretrained = _FakeFromPretrained()
 
         with (
             mock.patch(
@@ -205,7 +221,7 @@ class TestCheckpointTrustBoundary:
         # from_pretrained must have received local_files_only=True
         assert fake_from_pretrained.last_kwargs.get("local_files_only") is True
 
-    def test_remote_custom_repo_without_opt_in_raises(self):
+    def test_remote_custom_repo_without_opt_in_raises(self) -> None:
         """Passing a remote HF repo ID as checkpoint_path (non-local path)
         without ``trust_remote_checkpoint=True`` must raise ValueError."""
         from pdomain_book_tools.layout.adapters.pp_doclayout import (
@@ -216,7 +232,7 @@ class TestCheckpointTrustBoundary:
         with pytest.raises(ValueError, match="trust_remote_checkpoint"):
             PPDocLayoutPlusLDetector(checkpoint_path="some-org/custom-model")
 
-    def test_remote_custom_repo_with_opt_in_accepted(self, tmp_path):
+    def test_remote_custom_repo_with_opt_in_accepted(self, tmp_path: Path) -> None:
         """With trust_remote_checkpoint=True, a remote HF repo ID is allowed."""
         from unittest import mock
 
@@ -224,7 +240,7 @@ class TestCheckpointTrustBoundary:
             PPDocLayoutPlusLDetector,
         )
 
-        def fake_from_pretrained(repo_id, **kwargs):
+        def fake_from_pretrained(repo_id: str, **kwargs: object) -> MagicMock:
             m = mock.MagicMock()
             m.to.return_value = m
             m.eval.return_value = m
@@ -247,7 +263,7 @@ class TestCheckpointTrustBoundary:
                 trust_remote_checkpoint=True,
             )
 
-    def test_default_repo_does_not_require_opt_in(self, tmp_path):
+    def test_default_repo_does_not_require_opt_in(self, tmp_path: Path) -> None:
         """The built-in pinned fork (HF_REPO) never requires trust_remote_checkpoint.
         The default constructor must not raise even without any special flags."""
         from unittest import mock
@@ -256,7 +272,7 @@ class TestCheckpointTrustBoundary:
             PPDocLayoutPlusLDetector,
         )
 
-        def fake_from_pretrained(repo_id, **kwargs):
+        def fake_from_pretrained(repo_id: str, **kwargs: object) -> MagicMock:
             m = mock.MagicMock()
             m.to.return_value = m
             m.eval.return_value = m

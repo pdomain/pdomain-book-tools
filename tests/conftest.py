@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import logging
 import os
 import shutil
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -11,6 +14,34 @@ from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from types import ModuleType
+    from typing import Protocol
+
+    import cupy
+    import numpy as np
+
+    class _GpuArrayFactory(Protocol):
+        """Callable signature returned by the ``gpu_array_factory`` fixture."""
+
+        def __call__(
+            self,
+            shape: tuple[int, ...],
+            dtype: type[np.generic] | None = None,
+            fill_value: float | None = None,
+        ) -> cupy.ndarray[np.generic]: ...
+
+    class _PointFactory(Protocol):
+        """Callable signature returned by the ``point_factory`` fixture."""
+
+        def __call__(
+            self,
+            x: float | int,
+            y: float | int,
+            is_normalized: bool | None = None,
+        ) -> Point: ...
+
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +74,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 # GPU/CUDA Testing Configuration =============================================
 
 
-def _is_cuda_available():
+def _is_cuda_available() -> bool:
     """Check if CUDA is available for testing."""
     try:
         import cupy
@@ -55,7 +86,7 @@ def _is_cuda_available():
         return False
 
 
-def _is_torch_cuda_available():
+def _is_torch_cuda_available() -> bool:
     """Check if PyTorch CUDA is available."""
     try:
         import torch
@@ -65,7 +96,7 @@ def _is_torch_cuda_available():
         return False
 
 
-def _is_ci_environment():
+def _is_ci_environment() -> bool:
     """Check if running in CI environment (GitHub Actions, GitLab CI, etc.)."""
     ci_indicators = [
         "CI",
@@ -80,7 +111,7 @@ def _is_ci_environment():
 
 
 # Pytest markers for GPU tests
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Configure custom pytest markers."""
     config.addinivalue_line(
         "markers", "gpu: mark test as requiring GPU/CUDA functionality"
@@ -103,25 +134,25 @@ def pytest_configure(config):
 
 
 @pytest.fixture(scope="session")
-def cuda_available():
+def cuda_available() -> bool:
     """Session-scoped fixture that checks CUDA availability."""
     return _is_cuda_available()
 
 
 @pytest.fixture(scope="session")
-def torch_cuda_available():
+def torch_cuda_available() -> bool:
     """Session-scoped fixture that checks PyTorch CUDA availability."""
     return _is_torch_cuda_available()
 
 
 @pytest.fixture(scope="session")
-def ci_environment():
+def ci_environment() -> bool:
     """Session-scoped fixture that detects CI environment."""
     return _is_ci_environment()
 
 
 @pytest.fixture
-def cupy_module():
+def cupy_module() -> ModuleType:
     """Fixture that imports and returns cupy module, or skips if unavailable."""
     cupy = pytest.importorskip("cupy", reason="CuPy not available")
     try:
@@ -133,7 +164,7 @@ def cupy_module():
 
 
 @pytest.fixture
-def torch_cuda():
+def torch_cuda() -> ModuleType:
     """Fixture that imports torch and checks CUDA, or skips if unavailable."""
     torch = pytest.importorskip("torch", reason="PyTorch not available")
     if not torch.cuda.is_available():
@@ -142,10 +173,14 @@ def torch_cuda():
 
 
 @pytest.fixture
-def gpu_array_factory(cupy_module):
+def gpu_array_factory(cupy_module: ModuleType) -> _GpuArrayFactory:
     """Factory fixture for creating GPU arrays with CuPy."""
 
-    def _create_array(shape, dtype=None, fill_value=None):
+    def _create_array(
+        shape: tuple[int, ...],
+        dtype: type[np.generic] | None = None,
+        fill_value: float | None = None,
+    ) -> cupy.ndarray[np.generic]:
         if fill_value is not None:
             return cupy_module.full(shape, fill_value, dtype=dtype)
         return cupy_module.random.randint(
@@ -156,13 +191,13 @@ def gpu_array_factory(cupy_module):
 
 
 @pytest.fixture
-def sample_gpu_image(cupy_module):
+def sample_gpu_image(cupy_module: ModuleType) -> cupy.ndarray[np.uint8]:
     """Create a sample grayscale image on GPU."""
     return cupy_module.random.randint(0, 255, (100, 100), dtype=cupy_module.uint8)
 
 
 @pytest.fixture
-def sample_gpu_color_image(cupy_module):
+def sample_gpu_color_image(cupy_module: ModuleType) -> cupy.ndarray[np.uint8]:
     """Create a sample color image on GPU."""
     return cupy_module.random.randint(0, 255, (100, 100, 3), dtype=cupy_module.uint8)
 
@@ -188,7 +223,7 @@ skipif_ci = pytest.mark.skipif(
 
 
 @pytest.fixture
-def sample_word1():
+def sample_word1() -> Word:
     return Word(
         text="word1",
         bounding_box=BoundingBox.from_ltrb(0, 0, 10, 10),
@@ -197,7 +232,7 @@ def sample_word1():
 
 
 @pytest.fixture
-def sample_word2():
+def sample_word2() -> Word:
     return Word(
         text="word2",
         bounding_box=BoundingBox.from_ltrb(10, 0, 20, 10),
@@ -207,7 +242,7 @@ def sample_word2():
 
 
 @pytest.fixture
-def sample_line1(sample_word1, sample_word2):
+def sample_line1(sample_word1: Word, sample_word2: Word) -> list[Word]:
     return [
         sample_word1,
         sample_word2,
@@ -215,7 +250,7 @@ def sample_line1(sample_word1, sample_word2):
 
 
 @pytest.fixture
-def sample_line2():
+def sample_line2() -> list[Word]:
     return [
         Word(
             text="word3",
@@ -231,7 +266,7 @@ def sample_line2():
 
 
 @pytest.fixture
-def sample_line3():
+def sample_line3() -> list[Word]:
     return [
         Word(
             text="word5",
@@ -247,7 +282,7 @@ def sample_line3():
 
 
 @pytest.fixture
-def sample_line4():
+def sample_line4() -> list[Word]:
     return [
         Word(
             text="word7",
@@ -263,7 +298,7 @@ def sample_line4():
 
 
 @pytest.fixture
-def sample_block1(sample_line1):
+def sample_block1(sample_line1: list[Word]) -> Block:
     return Block(
         items=sample_line1,
         child_type=BlockChildType.WORDS,
@@ -273,7 +308,7 @@ def sample_block1(sample_line1):
 
 
 @pytest.fixture
-def sample_block2(sample_line2):
+def sample_block2(sample_line2: list[Word]) -> Block:
     return Block(
         items=sample_line2,
         child_type=BlockChildType.WORDS,
@@ -283,7 +318,7 @@ def sample_block2(sample_line2):
 
 
 @pytest.fixture
-def sample_block3(sample_line3):
+def sample_block3(sample_line3: list[Word]) -> Block:
     return Block(
         items=sample_line3,
         child_type=BlockChildType.WORDS,
@@ -293,7 +328,7 @@ def sample_block3(sample_line3):
 
 
 @pytest.fixture
-def sample_block4(sample_line4):
+def sample_block4(sample_line4: list[Word]) -> Block:
     return Block(
         items=sample_line4,
         child_type=BlockChildType.WORDS,
@@ -303,7 +338,9 @@ def sample_block4(sample_line4):
 
 
 @pytest.fixture
-def sample_paragraph_block1(sample_block1, sample_block2, sample_block3):
+def sample_paragraph_block1(
+    sample_block1: Block, sample_block2: Block, sample_block3: Block
+) -> Block:
     # initialize with out-of-order list to test sorting
     return Block(
         items=[sample_block1, sample_block3, sample_block2],
@@ -314,7 +351,9 @@ def sample_paragraph_block1(sample_block1, sample_block2, sample_block3):
 
 
 @pytest.fixture
-def sample_two_paragraph_block1(sample_block1, sample_block2, sample_block3):
+def sample_two_paragraph_block1(
+    sample_block1: Block, sample_block2: Block, sample_block3: Block
+) -> Block:
     block1 = Block(
         items=[sample_block2, sample_block1],
         child_type=BlockChildType.BLOCKS,
@@ -336,7 +375,7 @@ def sample_two_paragraph_block1(sample_block1, sample_block2, sample_block3):
 
 
 @pytest.fixture
-def sample_page(sample_two_paragraph_block1, sample_block4):
+def sample_page(sample_two_paragraph_block1: Block, sample_block4: Block) -> Page:
     return Page(
         width=100,
         height=200,
@@ -350,18 +389,20 @@ def sample_page(sample_two_paragraph_block1, sample_block4):
 
 
 @pytest.fixture
-def norm_point():
+def norm_point() -> Point:
     return Point(0.5, 0.5)
 
 
 @pytest.fixture
-def pixel_point():
+def pixel_point() -> Point:
     return Point(10, 20)
 
 
 @pytest.fixture
-def point_factory():
-    def _make(x: float | int, y: float | int, is_normalized: bool | None = None):
+def point_factory() -> _PointFactory:
+    def _make(
+        x: float | int, y: float | int, is_normalized: bool | None = None
+    ) -> Point:
         return Point(x, y, is_normalized=is_normalized)
 
     return _make

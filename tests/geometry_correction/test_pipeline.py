@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from pdomain_book_tools.geometry_correction import (
@@ -13,20 +17,29 @@ from pdomain_book_tools.geometry_correction.pipeline import (
     PipelineResult,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from pdomain_book_tools.geometry_correction.protocols import BBox, Recommended
+
 
 class _Side:
     name = "supplied"
 
-    def detect(self, image, *, hint=None):
+    def detect(
+        self, image: np.ndarray, *, hint: PageSide | None = None
+    ) -> PageSideResult:
         return PageSideResult(hint or PageSide.UNKNOWN, "right", 1.0, self.name)
 
 
 class _Curv:
-    def __init__(self, rec):
-        self.rec = rec
+    def __init__(self, rec: Recommended) -> None:
+        self.rec: Recommended = rec
         self.name = "fake"
 
-    def score(self, image, *, text_lines=None):
+    def score(
+        self, image: np.ndarray, *, text_lines: Sequence[BBox] | None = None
+    ) -> CurvatureReport:
         return CurvatureReport(0.0, self.rec, None, self.name)
 
 
@@ -34,7 +47,13 @@ class _Dewarp:
     name = "fake"
     called = False
 
-    def estimate(self, image, *, gutter_edge=None, text_lines=None):
+    def estimate(
+        self,
+        image: np.ndarray,
+        *,
+        gutter_edge: str | None = None,
+        text_lines: Sequence[BBox] | None = None,
+    ) -> DewarpResult:
         _Dewarp.called = True
         return DewarpResult(GeometryTransform.identity(image.shape[:2]), 1.0, self.name)
 
@@ -42,13 +61,19 @@ class _Dewarp:
 class _Deskew:
     name = "fake"
 
-    def estimate(self, image, *, page_side=None, text_lines=None):
+    def estimate(
+        self,
+        image: np.ndarray,
+        *,
+        page_side: PageSide | None = None,
+        text_lines: Sequence[BBox] | None = None,
+    ) -> DeskewResult:
         return DeskewResult(
             0.0, 1.0, GeometryTransform.identity(image.shape[:2]), self.name
         )
 
 
-def test_pipeline_skips_dewarp_when_curvature_says_flat():
+def test_pipeline_skips_dewarp_when_curvature_says_flat() -> None:
     _Dewarp.called = False
     pipe = GeometryPipeline(
         page_side=_Side(),
@@ -65,7 +90,7 @@ def test_pipeline_skips_dewarp_when_curvature_says_flat():
     assert res.deskew is not None
 
 
-def test_pipeline_runs_dewarp_when_curved():
+def test_pipeline_runs_dewarp_when_curved() -> None:
     _Dewarp.called = False
     pipe = GeometryPipeline(
         page_side=_Side(),

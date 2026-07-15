@@ -95,7 +95,7 @@ def otsu_binary_thresh(img_cp_float: CuPyArray) -> CuPyArray:
     # without dtype/range surprises (review issue H-16).
     return cast(
         "CuPyArray",
-        cp.where(img_cp_float > otsu_threshold, 255, 0).astype(cp.uint8),
+        cp.where(img_cp_float > otsu_threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]  # CuPy comparison on NDArray-like alias
     )
 
 
@@ -191,7 +191,7 @@ def adaptive_binary_thresh(
         cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
     """
     require_cupy()
-    import cupyx.scipy.ndimage as cpnd  # pyright: ignore[reportMissingImports]  # cupyx is part of the cupy GPU extra
+    import cupyx.scipy.ndimage as cpnd  # cupyx is part of the cupy GPU extra
 
     img_f = cast("CuPyArray", img.astype(cp.float32))
 
@@ -215,7 +215,7 @@ def adaptive_binary_thresh(
     threshold = local_mean - c  # pyright: ignore[reportOperatorIssue]
     return cast(
         "CuPyArray",
-        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]
+        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),
     )
 
 
@@ -251,7 +251,7 @@ def sauvola_binary_thresh(
         cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
     """
     require_cupy()
-    import cupyx.scipy.ndimage as cpnd  # pyright: ignore[reportMissingImports]  # cupyx is part of the cupy GPU extra
+    import cupyx.scipy.ndimage as cpnd  # cupyx is part of the cupy GPU extra
 
     img_f = cast("CuPyArray", img.astype(cp.float64))
 
@@ -266,7 +266,7 @@ def sauvola_binary_thresh(
     threshold = local_mean * (1.0 + k * (local_std / r - 1.0))  # pyright: ignore[reportOperatorIssue]
     return cast(
         "CuPyArray",
-        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]
+        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),
     )
 
 
@@ -299,7 +299,7 @@ def niblack_binary_thresh(
         cp.ndarray: uint8 CuPy array with values in {0, 255}, same shape as *img*.
     """
     require_cupy()
-    import cupyx.scipy.ndimage as cpnd  # pyright: ignore[reportMissingImports]  # cupyx is part of the cupy GPU extra
+    import cupyx.scipy.ndimage as cpnd  # cupyx is part of the cupy GPU extra
 
     img_f = cast("CuPyArray", img.astype(cp.float64))
 
@@ -311,7 +311,7 @@ def niblack_binary_thresh(
     threshold = local_mean + k * local_std  # pyright: ignore[reportOperatorIssue]
     return cast(
         "CuPyArray",
-        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),  # pyright: ignore[reportOperatorIssue]
+        cp.where(img_f > threshold, 255, 0).astype(cp.uint8),
     )
 
 

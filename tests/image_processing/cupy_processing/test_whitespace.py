@@ -1,13 +1,41 @@
 """Tests for cupy_processing.whitespace module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+    import numpy.typing as npt
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def full(
+        self, shape: tuple[int, ...], fill_value: object, dtype: type[np.generic]
+    ) -> cupy.ndarray[np.generic]: ...
+    def asarray(self, a: object) -> cupy.ndarray[np.generic]: ...
+    def asnumpy(self, a: object) -> npt.NDArray[np.generic]: ...
+    def array_equal(self, a1: object, a2: object, equal_nan: bool = False) -> bool: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestAddWhitespacePixelsGpu:
-    def test_output_shape_increases_correctly(self, cupy_module):
+    def test_output_shape_increases_correctly(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
@@ -19,7 +47,7 @@ class TestAddWhitespacePixelsGpu:
         )
         assert out.shape == (100 + 3 + 7, 80 + 5 + 10)
 
-    def test_border_is_white(self, cupy_module):
+    def test_border_is_white(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
@@ -32,7 +60,7 @@ class TestAddWhitespacePixelsGpu:
         assert int(out[0, 0]) == 255  # top-left border pixel
         assert int(out[-1, -1]) == 255  # bottom-right border pixel
 
-    def test_original_content_preserved(self, cupy_module):
+    def test_original_content_preserved(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
@@ -46,7 +74,7 @@ class TestAddWhitespacePixelsGpu:
         assert int(out[2, 3]) == 128
         assert int(out[2, 0]) == 255  # border
 
-    def test_color_image_supported(self, cupy_module):
+    def test_color_image_supported(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
@@ -59,7 +87,7 @@ class TestAddWhitespacePixelsGpu:
         assert out.shape == (24, 24, 3)
         assert int(out[0, 0, 0]) == 255
 
-    def test_matches_cpu_reference(self, cupy_module):
+    def test_matches_cpu_reference(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
@@ -74,7 +102,7 @@ class TestAddWhitespacePixelsGpu:
         gpu = cp.asnumpy(add_whitespace_pixels_gpu(cp.asarray(img_np), 5, 10, 3, 7))
         np.testing.assert_array_equal(cpu, gpu)
 
-    def test_zero_padding_is_noop(self, cupy_module):
+    def test_zero_padding_is_noop(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_pixels_gpu,
@@ -88,7 +116,7 @@ class TestAddWhitespacePixelsGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestAddWhitespacePercentageGpu:
-    def test_percentage_converts_to_pixels(self, cupy_module):
+    def test_percentage_converts_to_pixels(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             add_whitespace_percentage_gpu,
@@ -104,7 +132,7 @@ class TestAddWhitespacePercentageGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestNpUint8AddWhitespacePixels:
-    def test_returns_numpy_array(self, cupy_module):
+    def test_returns_numpy_array(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.whitespace import (
             np_uint8_add_whitespace_pixels,
         )

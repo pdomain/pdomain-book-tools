@@ -1,13 +1,42 @@
 """Tests for cupy_processing.split module."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol, TypeVar
+
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    import cupy
+
+_ScalarT = TypeVar("_ScalarT", bound=np.generic)
+
+
+class _CupyModule(Protocol):
+    """Structural stand-in for the ``cupy`` module returned by the
+    ``cupy_module`` fixture (see ``tests/conftest.py``) — narrows the
+    otherwise-untyped fixture return to the subset of cupy's API this file
+    calls, mirroring the real signatures in ``typings/cupy/__init__.pyi``.
+    """
+
+    uint8: type[np.uint8]
+
+    def zeros(
+        self, shape: tuple[int, ...], dtype: type[_ScalarT]
+    ) -> cupy.ndarray[_ScalarT]: ...
+    def ones(
+        self, shape: tuple[int, ...], dtype: type[_ScalarT]
+    ) -> cupy.ndarray[_ScalarT]: ...
+    def all(
+        self, a: object, axis: int | tuple[int, ...] | None = None
+    ) -> cupy.ndarray[np.bool_]: ...
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestSplitXColumnsGpu:
-    def test_shapes_sum_to_original_width(self, cupy_module):
+    def test_shapes_sum_to_original_width(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_x_columns_gpu,
@@ -18,7 +47,7 @@ class TestSplitXColumnsGpu:
         assert left.shape == (20, 10)
         assert right.shape == (20, 20)
 
-    def test_values_are_correct_slice(self, cupy_module):
+    def test_values_are_correct_slice(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_x_columns_gpu,
@@ -30,7 +59,7 @@ class TestSplitXColumnsGpu:
         assert cp.all(left == 0)
         assert cp.all(right == 255)
 
-    def test_split_at_zero_gives_empty_left(self, cupy_module):
+    def test_split_at_zero_gives_empty_left(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_x_columns_gpu,
@@ -41,7 +70,7 @@ class TestSplitXColumnsGpu:
         assert left.shape[1] == 0
         assert right.shape[1] == 10
 
-    def test_split_at_width_gives_empty_right(self, cupy_module):
+    def test_split_at_width_gives_empty_right(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_x_columns_gpu,
@@ -52,7 +81,7 @@ class TestSplitXColumnsGpu:
         assert left.shape[1] == 10
         assert right.shape[1] == 0
 
-    def test_out_of_bounds_raises(self, cupy_module):
+    def test_out_of_bounds_raises(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_x_columns_gpu,
@@ -62,7 +91,7 @@ class TestSplitXColumnsGpu:
         with pytest.raises(ValueError):
             split_x_columns_gpu(img, 11)
 
-    def test_color_image(self, cupy_module):
+    def test_color_image(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_x_columns_gpu,
@@ -73,7 +102,7 @@ class TestSplitXColumnsGpu:
         assert left.shape == (10, 8, 3)
         assert right.shape == (10, 12, 3)
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             np_uint8_split_x_columns,
         )
@@ -88,7 +117,7 @@ class TestSplitXColumnsGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestSplitYRowsGpu:
-    def test_shapes_sum_to_original_height(self, cupy_module):
+    def test_shapes_sum_to_original_height(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_y_rows_gpu,
@@ -99,7 +128,7 @@ class TestSplitYRowsGpu:
         assert top.shape == (10, 20)
         assert bottom.shape == (20, 20)
 
-    def test_values_are_correct_slice(self, cupy_module):
+    def test_values_are_correct_slice(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_y_rows_gpu,
@@ -111,7 +140,7 @@ class TestSplitYRowsGpu:
         assert cp.all(top == 0)
         assert cp.all(bottom == 255)
 
-    def test_out_of_bounds_raises(self, cupy_module):
+    def test_out_of_bounds_raises(self, cupy_module: _CupyModule) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             split_y_rows_gpu,
@@ -121,7 +150,7 @@ class TestSplitYRowsGpu:
         with pytest.raises(ValueError):
             split_y_rows_gpu(img, 11)
 
-    def test_np_wrapper_returns_numpy(self, cupy_module):
+    def test_np_wrapper_returns_numpy(self, cupy_module: _CupyModule) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.split import (
             np_uint8_split_y_rows,
         )

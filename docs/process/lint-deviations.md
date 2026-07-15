@@ -16,10 +16,8 @@ justification. Update this document whenever you add a suppression.
 
 ## 1. `reportMissingImports` — basedpyright
 
-**Files:** `pdomain_book_tools/image_processing/cupy_processing/_cupy_compat.py`,
-`contours.py`, `edge_finding.py`, `filters.py`, `morph.py`, `rescale.py`,
-`rotate.py`, `denoise.py`, and
-`pdomain_book_tools/image_processing/grayscale_pipeline/ops_gpu.py`
+**Files:** `pdomain_book_tools/image_processing/cupy_processing/contours.py`,
+`edge_finding.py`, `filters.py`, `morph.py`, `rescale.py`, `rotate.py`
 
 **Suppression form:** Add `# pyright: ignore[reportMissingImports]` to each
 `import cupy` or `import cupyx.*` line inside the guarded `try` block. For a
@@ -37,6 +35,24 @@ not accept the mypy-specific `# type: ignore[import-not-found]` code for this
 diagnostic. The correct form is
 `# pyright: ignore[reportMissingImports]`. The suppression applies only to
 import lines inside the `try` block, so it weakens no other type checking.
+
+**2026-07-15 update — local `typings/cupy` / `typings/cupyx` stubs added.**
+Local stubs under `typings/` (basedpyright's default `stubPath`) now resolve
+`cupy` and `cupyx.scipy.ndimage` regardless of whether the `[gpu]` extra is
+actually installed, so most `reportMissingImports` suppressions on these
+imports became unnecessary and were removed from
+`_cupy_compat.py`, `denoise.py`, and
+`pdomain_book_tools/geometry_correction/transforms.py`. The six files still
+listed above keep the pragma only because each one also carries a file-level
+`# pyright: reportUnnecessaryTypeIgnoreComment=false` directive (added
+earlier to tolerate unrelated `reportUnknownMemberType`/
+`reportUnknownVariableType` noise from other untyped-library interop in the
+same file) — that directive suppresses basedpyright's own detection of
+whether the `reportMissingImports` pragma is still needed, so it cannot be
+verified as unnecessary from tool output and is left in place rather than
+removed on assumption. Re-evaluate these once the file-level directives are
+narrowed or removed (tracked as part of the broader `reportUnknown*`
+annotation backlog, not this stub-cleanup pass).
 
 ---
 
@@ -318,3 +334,38 @@ This is the canonical pattern for optional-dependency discovery flags.
 **Justification.** These are function name references and alternative
 implementations kept as documented examples, not dead code awaiting
 deletion. The comments are intentional and load-bearing as documentation.
+
+## 6. `reportPrivateUsage` — basedpyright (tests only)
+
+**Files:** all of `tests/` (execution-environment override in
+`pyproject.toml`, `[[tool.basedpyright.executionEnvironments]]`
+`root = "tests"`).
+
+**Suppression form:** `reportPrivateUsage = "none"` in the tests execution
+environment — no inline pragmas.
+
+**Justification.** Unit tests legitimately exercise private helpers
+(`_normalize_label`, `_detect_columns`, and similar) to pin behavior that
+has no public entry point. Requiring public re-exports for test access
+would widen the library's API surface for no consumer benefit. The
+override is scoped to `tests/`; library and script code keep
+`reportPrivateUsage` at strict's error level. Added 2026-07-15 as part of
+the recommended→strict migration.
+
+## 7. Deliberate-invalid-input pragmas in tests — basedpyright
+
+**Files:** individual test lines across `tests/` (single-line
+`# pyright: ignore[reportArgumentType]` / `[reportCallIssue]` /
+`[reportAttributeAccessIssue]` comments).
+
+**Suppression form:** one narrow inline pragma per call site, each with a
+nearby comment naming the runtime behavior the test pins.
+
+**Justification.** Some tests intentionally pass statically-invalid values
+to exercise a runtime guard or a back-compat coercion (for example a
+`TypeError` raise on a wrong-typed argument, `OCRProvenance.__post_init__`
+coercing a list to a tuple, or monkey-patching a non-optional attribute to
+`None`). The static error is real and correct; the test's purpose is the
+runtime path behind it. Pragmas are per-line, never file-level, and
+`reportUnnecessaryTypeIgnoreComment = true` deletes any that go stale.
+Added 2026-07-15 during the recommended→strict migration.

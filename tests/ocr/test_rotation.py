@@ -21,13 +21,15 @@ from pdomain_book_tools.ocr.rotation import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from pdomain_book_tools.ocr.document import Document
+
 
 def _make_image(width: int = 6, height: int = 4) -> np.ndarray:
     """Distinct values per pixel so rotations are visually verifiable."""
     return np.arange(height * width, dtype=np.uint8).reshape(height, width)
 
 
-def _stub_doc_with_confidences(*confidences: float):
+def _stub_doc_with_confidences(*confidences: float) -> Document:
     """Return a stand-in Document whose pages.words.ocr_confidence read back."""
     words = [MagicMock(ocr_confidence=c) for c in confidences]
     page = MagicMock()
@@ -64,7 +66,7 @@ class TestRotateImage:
 class TestDetectBestRotation:
     def test_fast_path_at_zero(self):
         # 0° passes the threshold: should NOT call OCR for any other rotation.
-        ocr_fn: Callable = MagicMock(
+        ocr_fn: Callable[[np.ndarray], Document] = MagicMock(
             return_value=_stub_doc_with_confidences(0.9, 0.8, 0.95)
         )
         chosen, doc, probes = detect_best_rotation(_make_image(), ocr_fn=ocr_fn)
@@ -87,7 +89,7 @@ class TestDetectBestRotation:
         docs_returned = [_stub_doc_with_confidences(*c) for c in confidences_per_call]
         call_count = {"n": 0}
 
-        def ocr_fn(_img):
+        def ocr_fn(_img: np.ndarray) -> Document:
             doc = docs_returned[call_count["n"]]
             call_count["n"] += 1
             return doc
@@ -198,7 +200,7 @@ class TestPageRotationAppliedField:
                 height=10,
                 page_index=0,
                 blocks=[],
-                rotation_applied=45,  # no longer a valid constructor arg
+                rotation_applied=45,  # pyright: ignore[reportCallIssue]  # intentionally invalid: asserts TypeError at runtime
             )
 
     def test_round_trip_through_dict(self):

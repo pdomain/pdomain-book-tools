@@ -109,7 +109,7 @@ def hf_download(
                     EntryNotFoundError as _HFNotFound,  # pyright: ignore[reportPrivateImportUsage]
                 )
             except ImportError:
-                _HFNotFound = Exception  # type: ignore[assignment,misc]
+                _HFNotFound = Exception
         for ext in sidecars:
             # Use PurePosixPath because HF Hub filenames are POSIX-style
             # repo paths regardless of host OS. The previous

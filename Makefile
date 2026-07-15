@@ -185,9 +185,9 @@ lint-check: ## Read-only ruff format+check on all files (no auto-fix; matches Gi
 
 format-check: lint-check ## Alias for lint-check (workspace canonical name for read-only format+lint check)
 
-typecheck: ## Run basedpyright at recommended mode (workspace canonical)
+typecheck: ## Run basedpyright at strict mode over the full include (zero tolerance)
 	@echo "🔬 Running basedpyright type check..."
-	uv run basedpyright pdomain_book_tools --level error
+	uv run basedpyright
 
 build: ## Build the project (hatchling/uv build)
 	@echo "🔨 Building project..."

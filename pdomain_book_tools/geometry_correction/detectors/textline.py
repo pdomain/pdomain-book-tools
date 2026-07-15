@@ -72,7 +72,7 @@ class MorphCentroidDetector:
 
     def detect(self, binary: Any, *, page_width: int) -> list[LineSamples]:
         """Detect text lines as per-column vertical centroids."""
-        return self._module().detect_textlines(  # type: ignore[no-any-return]
+        return self._module().detect_textlines(
             binary,
             page_width=page_width,
             binarization=self.binarization,

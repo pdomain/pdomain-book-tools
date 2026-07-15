@@ -1,5 +1,9 @@
 """Additional Page coverage tests for word/line group operations."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
@@ -8,6 +12,10 @@ from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
 
 
 def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
@@ -18,7 +26,7 @@ def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
     )
 
 
-def _make_line(words):
+def _make_line(words: Iterable[Word]) -> Block:
     return Block(
         items=list(words),
         block_category=BlockCategory.LINE,
@@ -26,7 +34,7 @@ def _make_line(words):
     )
 
 
-def _make_paragraph(lines):
+def _make_paragraph(lines: Iterable[Block]) -> Block:
     return Block(
         items=list(lines),
         block_category=BlockCategory.PARAGRAPH,
@@ -35,7 +43,7 @@ def _make_paragraph(lines):
 
 
 @pytest.fixture
-def four_word_page():
+def four_word_page() -> Page:
     """Page with one paragraph, two lines of two words each."""
     line1 = _make_line(
         [
@@ -58,7 +66,7 @@ def four_word_page():
 
 
 @pytest.fixture
-def six_word_page():
+def six_word_page() -> Page:
     """Page with one paragraph, two lines of three words each."""
     line1 = _make_line(
         [
@@ -86,30 +94,30 @@ def six_word_page():
 
 
 class TestSplitLinesIntoSelectedAndUnselected:
-    def test_split_with_valid_selection(self, six_word_page):
+    def test_split_with_valid_selection(self, six_word_page: Page) -> None:
         # Select first word in first line -> split into [a] and [b, c]
         result = six_word_page.split_lines_into_selected_and_unselected_words([(0, 0)])
         assert result is True
 
-    def test_empty_keys_returns_false(self, six_word_page):
+    def test_empty_keys_returns_false(self, six_word_page: Page) -> None:
         assert six_word_page.split_lines_into_selected_and_unselected_words([]) is False
         assert (
             six_word_page.split_lines_into_selected_and_unselected_words(None) is False
         )
 
-    def test_invalid_line_index_returns_false(self, six_word_page):
+    def test_invalid_line_index_returns_false(self, six_word_page: Page) -> None:
         assert (
             six_word_page.split_lines_into_selected_and_unselected_words([(99, 0)])
             is False
         )
 
-    def test_invalid_word_index_returns_false(self, six_word_page):
+    def test_invalid_word_index_returns_false(self, six_word_page: Page) -> None:
         assert (
             six_word_page.split_lines_into_selected_and_unselected_words([(0, 99)])
             is False
         )
 
-    def test_only_one_word_in_line_skipped(self):
+    def test_only_one_word_in_line_skipped(self) -> None:
         line = _make_line([_make_word("only", 0, 0, 10, 10)])
         para = _make_paragraph([line])
         page = Page(width=50, height=50, page_index=0, blocks=[para])
@@ -120,17 +128,17 @@ class TestSplitLinesIntoSelectedAndUnselected:
 
 
 class TestSplitLineWithSelectedWords:
-    def test_split_with_valid_selection(self, six_word_page):
+    def test_split_with_valid_selection(self, six_word_page: Page) -> None:
         result = six_word_page.split_line_with_selected_words([(0, 0)])
         assert result in (True, False)
 
-    def test_empty_returns_false(self, six_word_page):
+    def test_empty_returns_false(self, six_word_page: Page) -> None:
         assert six_word_page.split_line_with_selected_words([]) is False
 
-    def test_invalid_line_index_returns_false(self, six_word_page):
+    def test_invalid_line_index_returns_false(self, six_word_page: Page) -> None:
         assert six_word_page.split_line_with_selected_words([(99, 0)]) is False
 
-    def test_invalid_word_index_returns_false(self, six_word_page):
+    def test_invalid_word_index_returns_false(self, six_word_page: Page) -> None:
         assert six_word_page.split_line_with_selected_words([(0, 99)]) is False
 
 
@@ -138,15 +146,15 @@ class TestSplitLineWithSelectedWords:
 
 
 class TestGroupSelectedWordsIntoNewParagraph:
-    def test_group_words(self, six_word_page):
+    def test_group_words(self, six_word_page: Page) -> None:
         # Select words in line 0 -> create new paragraph
         result = six_word_page.group_selected_words_into_new_paragraph([(0, 0)])
         assert result in (True, False)
 
-    def test_empty_returns_false(self, six_word_page):
+    def test_empty_returns_false(self, six_word_page: Page) -> None:
         assert six_word_page.group_selected_words_into_new_paragraph([]) is False
 
-    def test_invalid_line_returns_false(self, six_word_page):
+    def test_invalid_line_returns_false(self, six_word_page: Page) -> None:
         assert six_word_page.group_selected_words_into_new_paragraph([(99, 0)]) is False
 
 
@@ -154,7 +162,7 @@ class TestGroupSelectedWordsIntoNewParagraph:
 
 
 class TestSplitParagraphSelectedLines:
-    def test_split_with_valid_lines(self):
+    def test_split_with_valid_lines(self) -> None:
         # Create a page with one paragraph containing 3 lines
         lines = [
             _make_line([_make_word(f"l{i}w", 0, i * 12, 10, i * 12 + 10)])
@@ -169,7 +177,7 @@ class TestSplitParagraphSelectedLines:
 
 
 class TestComputeTextRowBlocksDetailed:
-    def test_with_lines_at_same_row(self):
+    def test_with_lines_at_same_row(self) -> None:
         """Lines at the same y range should be grouped together."""
         # Two lines side by side at the same y range
         line1 = _make_line([_make_word("a", 0, 0, 10, 10)])
@@ -177,7 +185,7 @@ class TestComputeTextRowBlocksDetailed:
         result = reorganize_page_utils.compute_text_row_blocks([line1, line2])
         assert result is not None
 
-    def test_with_lines_at_different_rows(self):
+    def test_with_lines_at_different_rows(self) -> None:
         line1 = _make_line([_make_word("a", 0, 0, 10, 10)])
         line2 = _make_line([_make_word("b", 0, 30, 10, 40)])
         result = reorganize_page_utils.compute_text_row_blocks([line1, line2])
@@ -185,7 +193,7 @@ class TestComputeTextRowBlocksDetailed:
 
 
 class TestComputeTextParagraphBlocks:
-    def test_with_consecutive_lines(self):
+    def test_with_consecutive_lines(self) -> None:
         line1 = _make_line([_make_word("a", 0, 0, 10, 10)])
         line2 = _make_line([_make_word("b", 0, 12, 10, 22)])
         result = reorganize_page_utils.compute_text_paragraph_blocks([line1, line2])
@@ -196,13 +204,13 @@ class TestComputeTextParagraphBlocks:
 
 
 class TestCv2NumpyRenderingVariants:
-    def test_render_with_word_no_match_keys(self, four_word_page):
+    def test_render_with_word_no_match_keys(self, four_word_page: Page) -> None:
         """Word without ground_truth_match_keys should still render."""
         img = np.zeros((50, 50, 3), dtype=np.uint8)
         # Default page words have no match keys
         four_word_page.cv2_numpy_page_image = img
 
-    def test_render_with_normalized_bbox(self):
+    def test_render_with_normalized_bbox(self) -> None:
         # Page with a word that has tiny (subpixel) bbox -> _add_rect scales it
         word = Word(
             text="x",
@@ -221,7 +229,9 @@ class TestCv2NumpyRenderingVariants:
 
 
 class TestGenerateDoctrChecksEdgeCases:
-    def test_generate_doctr_checks_nonexistent_parent_raises(self, tmp_path):
+    def test_generate_doctr_checks_nonexistent_parent_raises(
+        self, tmp_path: Path
+    ) -> None:
         """Line 3006: raises when output_path.parent does not exist."""
         import numpy as np
 
@@ -259,13 +269,13 @@ class TestGenerateDoctrChecksEdgeCases:
 
 
 class TestComputeTextRowBlocksWithTolerance:
-    def test_with_explicit_tolerance_covers_false_branch(self):
+    def test_with_explicit_tolerance_covers_false_branch(self) -> None:
         """Line 2821->2826 False branch: tolerance is provided explicitly (not None)."""
         from pdomain_book_tools.geometry.bounding_box import BoundingBox
         from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
         from pdomain_book_tools.ocr.word import Word
 
-        def make_word(text, x1, y1, x2, y2):
+        def make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
             return Word(
                 text=text,
                 bounding_box=BoundingBox.from_ltrb(x1, y1, x2, y2, is_normalized=False),
@@ -290,13 +300,13 @@ class TestComputeTextRowBlocksWithTolerance:
 
 
 class TestReorganizeLinesSwapBranch:
-    def test_line_swap_when_second_has_lower_x(self):
+    def test_line_swap_when_second_has_lower_x(self) -> None:
         """Line 2772: swap line and next_line when line.minX > next_line.minX."""
         from pdomain_book_tools.geometry.bounding_box import BoundingBox
         from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
         from pdomain_book_tools.ocr.word import Word
 
-        def make_word(text, x1, y1, x2, y2):
+        def make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
             return Word(
                 text=text,
                 bounding_box=BoundingBox.from_ltrb(x1, y1, x2, y2, is_normalized=False),
@@ -329,7 +339,7 @@ class TestReorganizeLinesSwapBranch:
 class TestMoveWordToLineException:
     """Tests for _move_word_to_line exception path (lines 554-556)."""
 
-    def test_add_item_failure_restores_word_to_source(self):
+    def test_add_item_failure_restores_word_to_source(self) -> None:
         """Lines 554-556: When add_item raises, word is restored to source_line."""
         from unittest.mock import patch
 
@@ -359,7 +369,7 @@ class TestMoveWordToLineException:
 class TestClosestLineByYRangeThenX:
     """Tests for closest_line_by_y_range_then_x paths."""
 
-    def test_skips_line_with_null_bbox(self):
+    def test_skips_line_with_null_bbox(self) -> None:
         """Line 581: Line with None bbox is skipped."""
         from pdomain_book_tools.geometry.bounding_box import BoundingBox
         from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
@@ -392,7 +402,7 @@ class TestClosestLineByYRangeThenX:
         )
         assert result is fallback_line
 
-    def test_closest_line_by_vertical_midpoint_false_branch(self):
+    def test_closest_line_by_vertical_midpoint_false_branch(self) -> None:
         """Line 617->612 False branch: second line not closer than first."""
         from pdomain_book_tools.geometry.bounding_box import BoundingBox
         from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
@@ -429,7 +439,7 @@ class TestClosestLineByYRangeThenX:
 class TestFinalizePageStructureExceptions:
     """Tests for finalize_page_structure exception paths (lines 643, 652-655)."""
 
-    def test_non_geometry_error_in_recompute_is_reraised(self):
+    def test_non_geometry_error_in_recompute_is_reraised(self) -> None:
         """Line 643: Non-geometry exceptions from _recompute_nested_bounding_boxes are re-raised."""
         from unittest.mock import patch
 
@@ -449,7 +459,7 @@ class TestFinalizePageStructureExceptions:
         ):
             page.finalize_page_structure()
 
-    def test_non_geometry_error_in_recompute_bbox_is_reraised(self):
+    def test_non_geometry_error_in_recompute_bbox_is_reraised(self) -> None:
         """Lines 652-655: Non-geometry exceptions from recompute_bounding_box are re-raised."""
         from unittest.mock import patch
 
@@ -471,7 +481,7 @@ class TestFinalizePageStructureExceptions:
 class TestRecomputeParagraphBboxes:
     """Tests for _recompute_paragraph_bboxes exception path (lines 805-806)."""
 
-    def test_exception_in_paragraph_recompute_is_swallowed(self):
+    def test_exception_in_paragraph_recompute_is_swallowed(self) -> None:
         """Lines 805-806: Exception in paragraph.recompute_bounding_box is swallowed."""
         from unittest.mock import patch
 

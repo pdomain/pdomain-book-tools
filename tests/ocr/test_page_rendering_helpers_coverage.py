@@ -1,5 +1,8 @@
 """Coverage tests for page.py rendering/editing helpers (lines 2068-2415)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -8,6 +11,9 @@ from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 
 def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
@@ -18,7 +24,7 @@ def _make_word(text: str, x1: float, y1: float, x2: float, y2: float) -> Word:
     )
 
 
-def _make_line(words):
+def _make_line(words: Iterable[Word]) -> Block:
     return Block(
         items=list(words),
         block_category=BlockCategory.LINE,
@@ -26,7 +32,7 @@ def _make_line(words):
     )
 
 
-def _make_paragraph(lines):
+def _make_paragraph(lines: Iterable[Block]) -> Block:
     return Block(
         items=list(lines),
         block_category=BlockCategory.PARAGRAPH,
@@ -38,12 +44,12 @@ class TestReboxWordExceptionHandling:
     """Test exception handling and error logging in rebox_word."""
 
     @pytest.fixture
-    def simple_page(self):
+    def simple_page(self) -> Page:
         line = _make_line([_make_word("hello", 0, 0, 50, 20)])
         para = _make_paragraph([line])
         return Page(width=1000, height=1000, page_index=0, blocks=[para])
 
-    def test_rebox_word_catches_generic_exception(self, simple_page):
+    def test_rebox_word_catches_generic_exception(self, simple_page: Page) -> None:
         """rebox_word catches exceptions and returns False (lines 2123-2130)."""
         # Mock validated_line_words to raise an exception
         with patch.object(
@@ -59,12 +65,12 @@ class TestAddWordToPageExceptionHandling:
     """Test exception handling and error logging in add_word_to_page."""
 
     @pytest.fixture
-    def simple_page(self):
+    def simple_page(self) -> Page:
         line = _make_line([_make_word("hello", 0, 0, 50, 20)])
         para = _make_paragraph([line])
         return Page(width=1000, height=1000, page_index=0, blocks=[para])
 
-    def test_add_word_catches_generic_exception(self, simple_page):
+    def test_add_word_catches_generic_exception(self, simple_page: Page) -> None:
         """add_word_to_page catches exceptions and returns False (lines 2213-2215)."""
         # Mock lines property to raise an exception
         with patch.object(
@@ -81,7 +87,7 @@ class TestSplitLineWithSelectedWordsEdgeCases:
     """Test edge cases and error paths in split_line_with_selected_words."""
 
     @pytest.fixture
-    def multi_line_page(self):
+    def multi_line_page(self) -> Page:
         line1 = _make_line(
             [
                 _make_word("word1", 0, 0, 20, 10),
@@ -103,7 +109,7 @@ class TestSplitLineWithSelectedWordsEdgeCases:
         para = _make_paragraph([line1, line2, line3])
         return Page(width=100, height=100, page_index=0, blocks=[para])
 
-    def test_split_exception_in_main_try_block(self, multi_line_page):
+    def test_split_exception_in_main_try_block(self, multi_line_page: Page) -> None:
         """split_line_with_selected_words exception handling (2427-2433)."""
         # Cause an exception by mocking paragraphs to raise
         with patch.object(
@@ -115,7 +121,7 @@ class TestSplitLineWithSelectedWordsEdgeCases:
             result = multi_line_page.split_line_with_selected_words([(0, 0)])
             assert result is False
 
-    def test_split_unique_paragraphs_deduplication(self, multi_line_page):
+    def test_split_unique_paragraphs_deduplication(self, multi_line_page: Page) -> None:
         """split_line_with_selected_words deduplicates paragraphs (2381-2384)."""
         # If we select words across multiple lines in the same paragraph,
         # the unique_paragraphs list should have the paragraph just once.
@@ -124,14 +130,14 @@ class TestSplitLineWithSelectedWordsEdgeCases:
         assert result is True
         assert len(multi_line_page.paragraphs) >= 1
 
-    def test_split_single_paragraph_same_paragraph(self, multi_line_page):
+    def test_split_single_paragraph_same_paragraph(self, multi_line_page: Page) -> None:
         """split_line_with_selected_words path when selections from single para (2386-2408)."""
         # All selections are from the same paragraph -> len(unique_paragraphs) == 1
         # Words should be added to the existing paragraph (2404-2407)
         result = multi_line_page.split_line_with_selected_words([(0, 0), (1, 1)])
         assert result is True
 
-    def test_split_multiple_paragraphs_creates_new_para(self):
+    def test_split_multiple_paragraphs_creates_new_para(self) -> None:
         """split_line_with_selected_words creates new para for cross-para selections (2409-2419)."""
         # Create a page with two separate paragraphs
         line1 = _make_line(
@@ -161,7 +167,7 @@ class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
     """Test edge cases in split_lines_into_selected_and_unselected_words."""
 
     @pytest.fixture
-    def multi_line_page(self):
+    def multi_line_page(self) -> Page:
         line1 = _make_line(
             [
                 _make_word("word1", 0, 0, 20, 10),
@@ -183,7 +189,7 @@ class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
         para = _make_paragraph([line1, line2, line3])
         return Page(width=100, height=100, page_index=0, blocks=[para])
 
-    def test_split_with_valid_selection(self, multi_line_page):
+    def test_split_with_valid_selection(self, multi_line_page: Page) -> None:
         """split_lines_into_selected_and_unselected successfully splits lines."""
         result = multi_line_page.split_lines_into_selected_and_unselected_words(
             [(0, 0)]
@@ -195,7 +201,7 @@ class TestSplitLinesIntoSelectedAndUnselectedWordsEdgeCases:
 class TestRenderingHelpersIntegration:
     """Integration tests for rendering helpers working together."""
 
-    def test_rebox_then_split(self):
+    def test_rebox_then_split(self) -> None:
         """Test reboxing a word then splitting its line."""
         line = _make_line(
             [
@@ -212,7 +218,7 @@ class TestRenderingHelpersIntegration:
         result = page.split_line_with_selected_words([(0, 0)])
         assert result is True
 
-    def test_add_word_then_split(self):
+    def test_add_word_then_split(self) -> None:
         """Test adding a word then splitting its line."""
         line = _make_line(
             [

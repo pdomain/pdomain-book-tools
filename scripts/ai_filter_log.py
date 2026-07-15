@@ -36,7 +36,7 @@ def read_log(path: Path) -> str:
 
 
 def extract_pytest_sections(text: str) -> list[str]:
-    sections = []
+    sections: list[str] = []
     for header in ("FAILURES", "ERRORS", "short test summary info"):
         # Match lines like "===== FAILURES ====="
         pattern = r"(=+\s+" + re.escape(header) + r"\s+=+.*?)(?=\n=+|\Z)"

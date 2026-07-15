@@ -1,15 +1,21 @@
 """Tests for cupy_processing.deskew module."""
 
+from __future__ import annotations
+
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestRotateGpu:
-    def test_zero_angle_returns_original(self, cupy_module):
+    def test_zero_angle_returns_original(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             _rotate_gpu,
@@ -19,7 +25,7 @@ class TestRotateGpu:
         result = _rotate_gpu(img, 0.0)
         assert cp.array_equal(result, img)
 
-    def test_canvas_expands_for_45_degrees(self, cupy_module):
+    def test_canvas_expands_for_45_degrees(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             _rotate_gpu,
@@ -33,7 +39,7 @@ class TestRotateGpu:
         assert rotated.shape[0] >= expected_side - 1
         assert rotated.shape[1] >= expected_side - 1
 
-    def test_cw_and_ccw_produce_same_canvas_size(self, cupy_module):
+    def test_cw_and_ccw_produce_same_canvas_size(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             _rotate_gpu,
@@ -44,7 +50,7 @@ class TestRotateGpu:
         ccw = _rotate_gpu(img, -10.0)
         assert cw.shape == ccw.shape
 
-    def test_output_is_cupy_ndarray(self, cupy_module):
+    def test_output_is_cupy_ndarray(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             _rotate_gpu,
@@ -58,7 +64,7 @@ class TestRotateGpu:
 @pytest.mark.gpu
 @pytest.mark.cupy
 class TestAutoDeskewGpu:
-    def test_blank_image_returns_3tuple(self, cupy_module):
+    def test_blank_image_returns_3tuple(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             auto_deskew_gpu,
@@ -71,7 +77,7 @@ class TestAutoDeskewGpu:
         out, _top, _bottom = result
         assert isinstance(out, cp.ndarray)
 
-    def test_zero_pct_returns_unchanged_image(self, cupy_module):
+    def test_zero_pct_returns_unchanged_image(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             auto_deskew_gpu,
@@ -81,7 +87,7 @@ class TestAutoDeskewGpu:
         out, _top, _bottom = auto_deskew_gpu(img, pct=0.0)
         assert cp.array_equal(out, img)
 
-    def test_straight_block_output_is_ndarray(self, cupy_module):
+    def test_straight_block_output_is_ndarray(self, cupy_module: ModuleType) -> None:
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             auto_deskew_gpu,
@@ -94,7 +100,9 @@ class TestAutoDeskewGpu:
         assert isinstance(top, cp.ndarray)
         assert isinstance(bottom, cp.ndarray)
 
-    def test_skewed_block_clockwise_produces_output(self, cupy_module):
+    def test_skewed_block_clockwise_produces_output(
+        self, cupy_module: ModuleType
+    ) -> None:
         """Image with CW skew: bottom-left column > top-left column."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
@@ -108,7 +116,7 @@ class TestAutoDeskewGpu:
         out, _top, _bottom = auto_deskew_gpu(img)
         assert isinstance(out, cp.ndarray)
 
-    def test_skewed_block_ccw_produces_output(self, cupy_module):
+    def test_skewed_block_ccw_produces_output(self, cupy_module: ModuleType) -> None:
         """Image with CCW skew: bottom-left column < top-left column."""
         cp = cupy_module
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
@@ -123,7 +131,9 @@ class TestAutoDeskewGpu:
         out, _top, _bottom = auto_deskew_gpu(img)
         assert isinstance(out, cp.ndarray)
 
-    def test_skewed_image_actually_rotates_canvas(self, cupy_module):
+    def test_skewed_image_actually_rotates_canvas(
+        self, cupy_module: ModuleType
+    ) -> None:
         """Regression for L-36: with bottom_left_column != top_left_column,
         the function MUST proceed past the early-return guards and rotate.
         The previous `dist_b == dist_c` branch was unreachable dead code,
@@ -146,7 +156,7 @@ class TestAutoDeskewGpu:
             "deskew with non-zero skew must rotate; canvas should grow"
         )
 
-    def test_matches_cpu_output_shape(self, cupy_module):
+    def test_matches_cpu_output_shape(self, cupy_module: ModuleType) -> None:
         """GPU deskew output shape should be within 5 pixels of CPU result."""
         cp = cupy_module
         pytest.importorskip("cv2")
@@ -160,15 +170,16 @@ class TestAutoDeskewGpu:
         img_np = np.zeros((200, 200), dtype=np.uint8)
         img_np[40:160, 40:160] = 255
 
-        cpu_result = auto_deskew(img_np)
-        cpu_out = cpu_result[0] if isinstance(cpu_result, tuple) else cpu_result
+        cpu_out, _cpu_top, _cpu_bottom = auto_deskew(img_np)
 
         gpu_out = cp.asnumpy(auto_deskew_gpu(cp.asarray(img_np))[0])
 
         assert abs(cpu_out.shape[0] - gpu_out.shape[0]) <= 5
         assert abs(cpu_out.shape[1] - gpu_out.shape[1]) <= 5
 
-    def test_np_uint8_auto_deskew_wrapper_returns_ndarray(self, cupy_module):
+    def test_np_uint8_auto_deskew_wrapper_returns_ndarray(
+        self, cupy_module: ModuleType
+    ) -> None:
         from pdomain_book_tools.image_processing.cupy_processing.deskew import (
             np_uint8_auto_deskew,
         )

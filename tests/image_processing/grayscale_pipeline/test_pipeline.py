@@ -109,11 +109,12 @@ def test_use_gpu_false_with_luma() -> None:
 # GPU path test — requires CuPy
 # ---------------------------------------------------------------------------
 try:
-    import cupy  # noqa: F401
+    import cupy
 
+    _ = cupy
     _CUPY_AVAILABLE = True
 except ImportError:
-    _CUPY_AVAILABLE = False
+    _CUPY_AVAILABLE = False  # pyright: ignore[reportConstantRedefinition]  # reassigned in except; not a true constant
 
 
 @pytest.mark.skipif(not _CUPY_AVAILABLE, reason="CuPy not installed")

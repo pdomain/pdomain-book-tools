@@ -15,7 +15,7 @@ from pdomain_book_tools.image_processing.cv2_processing.io import (
 
 
 class TestReadWritePng:
-    def test_write_then_read_png(self, tmp_path):
+    def test_write_then_read_png(self, tmp_path: pathlib.Path) -> None:
         # Build a simple BGR image
         img = np.zeros((10, 12, 3), dtype=np.uint8)
         img[2:8, 2:10] = [40, 80, 120]
@@ -41,12 +41,12 @@ class TestReadImageFailures:
     path-naming exception.
     """
 
-    def test_missing_file_raises_file_not_found(self, tmp_path):
+    def test_missing_file_raises_file_not_found(self, tmp_path: pathlib.Path) -> None:
         missing = pathlib.Path(tmp_path / "does_not_exist.png")
         with pytest.raises(FileNotFoundError, match=str(missing.resolve())):
             read_image(missing)
 
-    def test_corrupt_file_raises_value_error(self, tmp_path):
+    def test_corrupt_file_raises_value_error(self, tmp_path: pathlib.Path) -> None:
         # An existing but undecodeable file: cv2.imread returns None, not raises.
         corrupt = pathlib.Path(tmp_path / "corrupt.png")
         corrupt.write_bytes(b"this is not a valid PNG payload")
@@ -55,7 +55,7 @@ class TestReadImageFailures:
 
 
 class TestWriteJpg:
-    def test_write_jpg_creates_file(self, tmp_path):
+    def test_write_jpg_creates_file(self, tmp_path: pathlib.Path) -> None:
         img = np.zeros((20, 20, 3), dtype=np.uint8)
         img[:, :] = [120, 80, 40]
         out_path = pathlib.Path(tmp_path / "test.jpg")

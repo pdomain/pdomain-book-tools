@@ -41,7 +41,7 @@ from numpy import uint8 as np_uint8
 from pydantic_core import CoreSchema, core_schema
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
-from pdomain_book_tools.geometry.image_ops import _pixel_roi_bounds
+from pdomain_book_tools.geometry.image_ops import pixel_roi_bounds
 from pdomain_book_tools.ocr import reorganize_page_utils
 from pdomain_book_tools.ocr.block import Block, BlockCategory
 from pdomain_book_tools.ocr.ground_truth_matching import (
@@ -305,11 +305,14 @@ class Page:
             logger.debug("Empty blocks removed from page")
 
     @items.setter
-    def items(self, values: object) -> None:  # pyright: ignore[reportPropertyTypeMismatch]  # setter accepts any collection; getter returns sorted copy
+    def items(self, values: object) -> None:
         if not isinstance(values, Collection):
             raise TypeError("items must be a collection")
+        # isinstance against the unparameterized ABC erases the element type to
+        # Unknown; the cast restores it to the widest honest type (object).
+        collection_values = cast("Collection[object]", values)
         typed_blocks: list[Block] = []
-        for block in values:
+        for block in collection_values:
             if not isinstance(block, Block):
                 raise TypeError("Each item in items must be of type Block")
             typed_blocks.append(block)
@@ -969,7 +972,7 @@ class Page:
         if not changed:
             return
 
-        container._items = kept_items  # type: ignore[assignment]  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]  # Block._items can hold Block|Word; mypy/pyright can't narrow here
+        container._items = kept_items  # pyright: ignore[reportAttributeAccessIssue, reportPrivateUsage]  # Block._items can hold Block|Word; mypy/pyright can't narrow here
 
     def replace_block_with_split_paragraphs(
         self,
@@ -2475,7 +2478,7 @@ class Page:
 
     def split_lines_into_selected_and_unselected_words(
         self,
-        word_keys: list[tuple[int, int]],
+        word_keys: list[tuple[int, int]] | None,
     ) -> bool:
         """Split each affected line into selected-word and unselected-word lines."""
         from pdomain_book_tools.ocr.block import BlockChildType
@@ -3286,14 +3289,21 @@ class Page:
         gt_raw = data.get("gt_orphans")
         gt_orphans: GtOrphans | None = None
         if gt_raw and isinstance(gt_raw, dict):
+            # isinstance against the unparameterized dict erases the key/value
+            # types to Unknown; the cast restores the serialized-dict shape.
+            gt_raw_dict = cast("dict[str, object]", gt_raw)
             gt_orphans = GtOrphans(
-                words=list(cast("list[object]", gt_raw.get("words", []))),
+                words=list(cast("list[object]", gt_raw_dict.get("words", []))),
                 lines=[
-                    tuple(entry) if isinstance(entry, list) else entry
-                    for entry in cast("list[object]", gt_raw.get("lines", []))
+                    tuple(cast("list[object]", entry))
+                    if isinstance(entry, list)
+                    else entry
+                    for entry in cast("list[object]", gt_raw_dict.get("lines", []))
                 ],
-                paragraphs=list(cast("list[object]", gt_raw.get("paragraphs", []))),
-                page=list(cast("list[str]", gt_raw.get("page", []))),
+                paragraphs=list(
+                    cast("list[object]", gt_raw_dict.get("paragraphs", []))
+                ),
+                page=list(cast("list[str]", gt_raw_dict.get("page", []))),
             )
 
         # page_labels: restore list when present.
@@ -3448,14 +3458,14 @@ class Page:
             For normalized boxes: multiply by image dimensions (existing DocTR
             contract).  For pixel-space boxes (e.g. from Tesseract): pass
             through after applying the same floor/ceil/clamp rounding policy
-            used by ``_pixel_roi_bounds`` — no multiplication.
+            used by ``pixel_roi_bounds`` — no multiplication.
 
             Both branches produce ``int`` values and use the same rounding
             policy (floor min, ceil max, clamped to image dims).
             """
             if bbox.is_normalized:
                 # Scale normalized coords to pixel space, then clamp.
-                x1, y1, x2, y2 = _pixel_roi_bounds(
+                x1, y1, x2, y2 = pixel_roi_bounds(
                     bbox.minX * img_width,
                     bbox.minY * img_height,
                     bbox.maxX * img_width,
@@ -3465,7 +3475,7 @@ class Page:
                 )
             else:
                 # Pixel-space: clamp and int-cast without scaling.
-                x1, y1, x2, y2 = _pixel_roi_bounds(
+                x1, y1, x2, y2 = pixel_roi_bounds(
                     bbox.minX, bbox.minY, bbox.maxX, bbox.maxY, img_width, img_height
                 )
             return [
@@ -3585,12 +3595,12 @@ class Page:
 
             if word.bounding_box.is_normalized:
                 bb = word.bounding_box.scale(width=img_width, height=img_height)
-                ix1, iy1, ix2, iy2 = _pixel_roi_bounds(
+                ix1, iy1, ix2, iy2 = pixel_roi_bounds(
                     bb.minX, bb.minY, bb.maxX, bb.maxY, img_width, img_height
                 )
             else:
                 # Pixel-space box: clamp and int-cast without scaling.
-                ix1, iy1, ix2, iy2 = _pixel_roi_bounds(
+                ix1, iy1, ix2, iy2 = pixel_roi_bounds(
                     word.bounding_box.minX,
                     word.bounding_box.minY,
                     word.bounding_box.maxX,
@@ -3858,7 +3868,7 @@ _legacy_params = [
         annotation="ndarray | None",
     ),
 ]
-_page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(  # type: ignore[attr-defined]  # pyright: ignore[reportFunctionMemberAccess]  # runtime __signature__ injection; FunctionType supports it
+_page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(  # type: ignore[attr-defined]  # runtime __signature__ injection; FunctionType supports it
     parameters=_dc_params + _legacy_params,
 )
 _page_init_with_deprecation_shim.__name__ = "__init__"

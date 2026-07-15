@@ -31,6 +31,10 @@ import json
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pdomain_book_tools.ocr.document import _DoctrPredictor
 
 ROOT = Path(__file__).resolve().parent
 INPUT_DIR = ROOT / "inputs"
@@ -42,7 +46,7 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 
-def _ocr_one(case: str, predictor) -> None:
+def _ocr_one(case: str, predictor: _DoctrPredictor) -> None:
     from pdomain_book_tools.ocr.document import Document
 
     png = INPUT_DIR / f"{case}.png"
