@@ -6,16 +6,17 @@ Last verified: 2026-07-13
 Kind: usage
 ---
 
-# Geometry Correction (Deskew / Dewarp)
+# Correct Page Geometry with Deskew and Dewarp
 
 > **Design history:** preserved in Git history.
 
-The `pdomain_book_tools.geometry_correction` package provides swappable
-`Deskew`, `Dewarp`, `PageSideDetector`, and `CurvatureDetector` protocol
-backends that return a composable `GeometryTransform`. Consumers orchestrate
-ordering through a thin `GeometryPipeline` helper or build their own sequence.
+The `pdomain_book_tools.geometry_correction` package corrects page geometry with
+swappable backends. Its `Deskew`, `Dewarp`, `PageSideDetector`, and
+`CurvatureDetector` protocols return a composable `GeometryTransform`. Use the
+thin `GeometryPipeline` helper to control their order, or build your own
+sequence.
 
-## Quick start
+## Run the default correction pipeline
 
 ```python
 import cv2
@@ -26,18 +27,18 @@ result = default_pipeline().run(img)
 corrected = result.image
 ```
 
-`default_pipeline()` runs:
+`default_pipeline()` runs these steps in order:
 
 1. `GutterShadowPageSide` — detect the binding edge from a dark shadow band.
 2. `ImageBasedCurvature` — gate: is the page flat enough for deskew-only?
 3. `ProjectionDeskew` — rotate to align text rows.
 
-Dewarp (UVDoc) is opt-in; see below.
+UVDoc dewarp is opt-in; see below.
 
-## Protocols
+## Type against backend protocols
 
-All backends satisfy one of the four protocols. Downstream code should type against
-the protocol, not the concrete class.
+Every backend implements one of four protocols. Downstream code should use the
+protocol as its type, not the concrete class.
 
 | Protocol | Key method | What it returns |
 |---|---|---|
@@ -46,7 +47,7 @@ the protocol, not the concrete class.
 | `PageSideDetector` | `detect(image, ...)` | `PageSideResult` (LEFT/RIGHT/SINGLE, gutter edge) |
 | `CurvatureDetector` | `score(image, ...)` | `CurvatureReport` (flatness, "none"/"deskew_only"/"dewarp") |
 
-## Built-in backends
+## Choose a built-in backend
 
 | Kind | Name | Notes |
 |---|---|---|
@@ -57,7 +58,7 @@ the protocol, not the concrete class.
 | page_side | `gutter_shadow` | Dark binding-shadow detection. Default. |
 | dewarp | `uvdoc` | UVDoc ONNX backward-map. Requires extra + model. |
 
-## UVDoc dewarp (`[dewarp-dl]` extra)
+## Use UVDoc dewarp (`[dewarp-dl]` extra)
 
 Install the extra:
 
@@ -65,8 +66,9 @@ Install the extra:
 pip install 'pdomain-book-tools[dewarp-dl]'
 ```
 
-Obtain the ONNX model via [FahNos/UVDoc_onnx](https://github.com/FahNos/UVDoc_onnx)
-(`make_onnx.py`) and set the path:
+Use `make_onnx.py` from
+[FahNos/UVDoc_onnx](https://github.com/FahNos/UVDoc_onnx) to obtain the ONNX
+model. Then set its path:
 
 ```sh
 export PD_UVDOC_ONNX=/path/to/uvdoc.onnx
@@ -81,9 +83,10 @@ result = default_pipeline(with_dewarp=True).run(img)
 > **License note:** Verify the UVDoc model weight license before hosting or
 > redistributing alongside our Unlicense code.
 
-## Page-side hint (split-upstream contract)
+## Pass a page-side hint from an upstream split
 
-When your upstream split stage knows which page of the spread this is, pass it:
+Pass a hint when your upstream split stage knows which page of the spread this
+is:
 
 ```python
 from pdomain_book_tools.geometry_correction import PageSide
@@ -91,11 +94,11 @@ from pdomain_book_tools.geometry_correction import PageSide
 result = default_pipeline().run(img, page_side_hint=PageSide.LEFT)
 ```
 
-The `SuppliedPageSide` backend in the pipeline will use the hint directly,
-giving `gutter_edge="right"` for a left page (binding is on the right of a
-left-hand page).
+The pipeline's `SuppliedPageSide` backend uses the hint directly. For a left
+page, it gives `gutter_edge="right"` because the binding is on the right of a
+left-hand page.
 
-## Custom backends
+## Register and use custom backends
 
 Register and retrieve backends by name:
 
@@ -119,9 +122,10 @@ pipe = GeometryPipeline(
 result = pipe.run(img)
 ```
 
-## `GeometryTransform`
+## Apply a `GeometryTransform`
 
-All backends return a `GeometryTransform` (identity / affine / grid / rectified).
+Every backend returns an identity, affine, grid, or rectified
+`GeometryTransform`.
 
 ```python
 transform = result.deskew.transform
@@ -130,27 +134,28 @@ pts_out = transform.map_points(pts)       # propagate keypoints
 inv = transform.invert()                  # invert (affine only)
 ```
 
-Grid transforms (`kind="grid"`) are non-invertible — they come from dense
-backward-map dewarpers. Affine transforms invert exactly.
+Grid transforms with `kind="grid"` are non-invertible because they come from
+dense backward-map dewarpers. Affine transforms invert exactly.
 
-## Textline-disparity dewarp (scanned-page workhorse)
+## Dewarp scanned pages with textline disparity
 
 > **Design history:** preserved in Git history.
 
 `TextlineDisparityDewarp` is a clean-room reimplementation of Leptonica's
-textline-disparity model: morph-consolidate text lines, fit order-2 baselines
-(vertical disparity), and optionally straighten the reference margin (horizontal
-disparity, even/odd-aware). No neural-network weights required.
+textline-disparity model. It consolidates text lines with morphology and fits
+order-2 baselines for vertical disparity. It can also straighten the reference
+margin for horizontal disparity while accounting for even and odd pages. It
+requires no neural-network weights.
 
-### Regime routing (flat / flat_curl / oblique)
+### Route flat, curled, and oblique pages
 
-`RegimeDetector` classifies a page by two signals:
+`RegimeDetector` uses two signals to classify a page:
 
-- **baseline_sag** — mean `|c2|` of detected baselines, scaled to a
-  dimensionless page-sag. Flat pages have sag near 0; curl pages have sag ≥ 0.04
-  (default).
-- **edge_convergence** — angle between the left/right content edges. Oblique
-  photos show convergence ≥ 0.10 rad (default).
+- **baseline_sag** — the mean `|c2|` of detected baselines, scaled to a
+  dimensionless page sag. Flat pages have sag near 0. Curl pages have sag ≥ 0.04
+  by default.
+- **edge_convergence** — the angle between the left and right content edges.
+  Oblique photos show convergence ≥ 0.10 rad by default.
 
 | Regime | Signal | Routed to |
 |---|---|---|
@@ -167,22 +172,23 @@ pipe = scanned_pipeline()
 result = pipe.run(img, page_side_hint=PageSide.LEFT)
 ```
 
-### Even/odd (gutter_edge) contract
+### Set `gutter_edge` for even and odd pages
 
 - **Verso (LEFT page, gutter on right):** reference the LEFT line-ends; target =
   minimum left end across lines.
 - **Recto (RIGHT page, gutter on left):** reference the RIGHT line-ends; target =
   maximum right end across lines.
 
-Pass `gutter_edge="right"` for verso, `"left"` for recto. The `GutterShadowPageSide`
-backend sets `gutter_edge` automatically from the detected binding side.
+Pass `gutter_edge="right"` for verso and `"left"` for recto. The
+`GutterShadowPageSide` backend sets `gutter_edge` automatically from the
+detected binding side.
 
-### Sparse-page fallback
+### Fall back when a page has too few text lines
 
-When fewer than `min_textlines=15` (Leptonica `DefaultMinLines`) text lines survive
-the short-line cull, `TextlineDisparityDewarp.estimate()` returns an identity
-transform with `confidence=0.0`. The regime gate / caller can then defer to UVDoc
-or skip dewarp entirely.
+When fewer than `min_textlines=15` text lines survive the short-line cull,
+`TextlineDisparityDewarp.estimate()` returns an identity transform with
+`confidence=0.0`. This threshold is Leptonica's `DefaultMinLines`. The regime
+gate or caller can then defer to UVDoc or skip dewarp entirely.
 
 ### GPU acceleration (`[gpu]` extra)
 
@@ -192,5 +198,5 @@ Pass `prefer_gpu=True` to use the CuPy mirror for morphology and the dense resam
 TextlineDisparityDewarp(prefer_gpu=True)
 ```
 
-CuPy is the `[gpu]` optional extra. On CPU-only installs the flag is silently
+CuPy is the `[gpu]` optional extra. On CPU-only installs, the flag is silently
 ignored and the NumPy path is used.
