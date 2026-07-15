@@ -14,6 +14,7 @@ This directory organizes the repo's documentation by purpose.
 | --- | --- | --- |
 | `architecture/` | Durable reference: how the system works today. | Capturing the current modules, data flow, contracts, or current-state diagrams. |
 | `decisions/` | Dated, append-only ADRs: "we chose X because Y." | Recording a specific design choice, including its context, alternatives, and consequences. |
+| [`issues/`](issues/README.md) | Governed issue records and migration ledgers. | Tracking active work, evidence, and issue provenance in the repository. |
 | `plans/` | Active execution: the order for making a spec real. | Sequencing work for an approved spec. |
 | `process/` | Cross-cutting workflow conventions, such as verification rules, merge strategy, and release process. | Capturing how the team works rather than how the system works. |
 | `research/` | An investigation in progress. Messy by design. | Exploring before committing to a design. |
