@@ -22,7 +22,7 @@ error-level diagnostics, while `pyproject.toml` keeps
 removed and `.basedpyright/baseline.json` contains no grandfathered files.
 
 The baseline is a generated integration artifact. Regenerate it only when the
-repository deliberately changes the accepted diagnostic set; do not edit it on
+repository deliberately changes the accepted diagnostic set. Do not edit it on
 parallel file-level branches.
 
 ## Evidence
@@ -35,5 +35,5 @@ parallel file-level branches.
 
 ## Residual intent
 
-Warning-level diagnostics are not a CI gate. Any future tightening must be an
-explicit policy change with a freshly measured warning inventory.
+Warning-level diagnostics are not a CI gate. Any future tightening requires an
+explicit policy change. It also requires a freshly measured warning inventory.
