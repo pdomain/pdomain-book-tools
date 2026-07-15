@@ -12,9 +12,10 @@ Kind: spec
 > **Last updated**: 2026-05-21
 > **Split from**: the original spec, preserved in Git history
 
-Audit of existing baseline-estimation code in `pdomain-book-tools` and gap
-analysis of the four reference lines (top, x-height, baseline, bottom).
-This is part 1 of a three-part split of the original
+`pdomain-book-tools` supports only the baseline, and that support is partial.
+It does not support the other three reference lines: top, x-height, and bottom.
+This audit covers the existing code and the remaining gaps. It is part 1 of a
+three-part split of the original
 `06-word-reference-lines.md` spec (914 lines, exceeded the 800-line cap).
 
 - Part 1 (this file): Audit + gap analysis
@@ -33,7 +34,7 @@ three places. This part documents exactly what exists and what gaps remain.
 
 ## Context
 
-Author intent: extend the existing baseline-estimation surface in
+The goal is to extend the existing baseline-estimation surface in
 `pdomain-book-tools` from a single per-word/per-line **baseline** estimate
 to a richer set of four reference lines per word and per line:
 
@@ -46,9 +47,8 @@ to a richer set of four reference lines per word and per line:
 4. **bottom** (descender bottom — the lowest ink row, including
    descenders)
 
-This spec exists because of work happening in pdomain-ocr-labeler-spa on the
-**Bottom-Crop Bbox Tool** (see
-`pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md`).
+Work on the pdomain-ocr-labeler-spa **Bottom-Crop Bbox Tool** motivates this
+spec. See `pdomain-ocr-labeler-spa/docs/planning/bottom-crop-tool-spec.md`.
 That tool needs `baseline_y + descender_allowance` per word; it
 currently reaches for `Word.estimate_baseline_from_image` and computes
 its own `descender_allowance` from `median_height`. Promoting the
@@ -85,7 +85,7 @@ def estimate_baseline_from_image(
 ) -> dict[str, float | str] | None
 ```
 
-What it actually does:
+What it does:
 
 - Calls `self.split_into_characters_from_whitespace(image)`
   (`pdomain_book_tools/ocr/word.py:768`) to get a list of `Character`
@@ -108,25 +108,25 @@ Return type / coordinate space:
   clamped to `[0, 1]`. It is the only confidence signal currently
   exposed.
 
-Robustness story:
+Reliability:
 
-- Strong: weighting descenders down means a single `g` does not drag
-  the baseline below the line.
-- Weak: the estimator only looks at character-bbox `maxY`. There is no
+- Weighting descenders down means a single `g` does not drag the baseline
+  below the line.
+- The estimator only looks at character-bbox `maxY`. There is no
   horizontal projection profile. If
   `split_into_characters_from_whitespace` segments incorrectly (which
   it can — see the morphology fallback at `word.py:831`), the baseline
   inherits that error.
-- Weak: a two-letter word with both letters at the same height
+- A two-letter word with both letters at the same height
   produces `weighted_std == 0` and therefore confidence `1.0` —
   see `tests/ocr/test_word.py:1332-1348`. So "high confidence" does
-  not mean "this is a real baseline", just "the per-character bottoms
+  not mean "this is a real baseline"; it means only "the per-character bottoms
   agree". A single-character word also produces a meaningless
   confidence (zero variance).
-- The `dict` return type is loose — there is no dataclass, no named
-  field, the `coordinate_space: "pixel"` is encoded as a string-typed
-  value inside a `dict[str, float | str]`. Awkward but consistent with
-  the older serialization-friendly shape used elsewhere in the repo.
+- The `dict` return type is loose. There is no dataclass or named field.
+  The `coordinate_space: "pixel"` value is encoded as a string inside a
+  `dict[str, float | str]`. This shape is awkward but consistent with the
+  older serialization-friendly shape used elsewhere in the repo.
 
 Per-word, not per-line.
 
@@ -156,7 +156,7 @@ What it does:
   `{"type": "linear", "slope": <float>, "intercept": <float>,
   "confidence": <float>, "coordinate_space": "pixel"}`.
 
-So the line-level baseline is **not horizontal** — it is a slanted line
+The line-level baseline is **not horizontal**. It is a slanted line,
 `y = slope*x + intercept`, which is correct for tilted scans.
 
 It also calls `item.estimate_baseline_from_image(image)` as a
@@ -168,8 +168,8 @@ a per-line baseline plus one horizontal per-word baseline per word.
 
 Location: `pdomain_book_tools/ocr/word.py:927-958`.
 
-When a word is split into 2+ characters, the function does _not_
-compute a baseline as such, but it does:
+When a word is split into 2+ characters, the function does not compute a
+baseline. Instead, it performs these calculations:
 
 - Take the weighted average of `tops`, `bottoms`, and `heights`
   (with the same descender down-weighting).
@@ -177,12 +177,11 @@ compute a baseline as such, but it does:
   `bottom_delta = 0.1 * median_height` to label per-character
   `superscript` / `subscript` text-style components.
 
-The variable `median_height` here is _the average character height_
-(misleadingly named; it is a weighted mean, not a median). It is **not
-x-height** — for a word like "Page" containing both an ascender and
-descenders, this average height is closer to full type height than to
-x-height. So while x-height is _implicit_ in this calculation, it is
-not directly exposed.
+The variable `median_height` is _the average character height_. Its name is
+misleading because it is a weighted mean, not a median. It is **not x-height**.
+For a word like "Page" that contains both an ascender and descenders, this
+average is closer to full type height than to x-height. The calculation
+therefore includes x-height only implicitly and does not expose it directly.
 
 ### 1.4 The descender character set
 
@@ -199,8 +198,8 @@ All three copies are the literal `{"p", "g", "j", "q", "Q"}`. The
 bottom-crop spec proposes broadening this set; this spec proposes the
 same broadening (see
 [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md)
-section 4.2) and, importantly, **dedup'ing the literal into a
-module-level constant** so all four reference-line helpers and the
+section 4.2). It also proposes **deduplicating the literal into a module-level
+constant** so all four reference-line helpers and the
 bottom-crop tool use the same source of truth.
 
 ### 1.5 No top-line, no x-height, no cap-height code anywhere
