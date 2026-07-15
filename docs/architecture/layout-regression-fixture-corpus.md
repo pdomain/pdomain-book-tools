@@ -15,7 +15,7 @@ Kind: architecture
 - **Read when:** adding a layout fixture, regenerating cached layout data, reviewing reorganize text changes, or changing baseline policy.
 - **Search terms:** layout regression, fixture corpus, PageLayout JSON, reorganize baseline, strict xfail, baseline promotion.
 
-The layout-regression corpus stores real scanned pages and cached OCR/layout outputs under `tests/fixtures/layout_regression/`. It exercises layout detection consumers and reading-order assembly without model downloads during the normal test suite. The corpus contains 31 page images, 31 cached `PageLayout` files, and 31 reorganize text baselines.
+The layout-regression corpus tests layout detection consumers and reading-order assembly without model downloads during the normal test suite. It stores real scanned pages and cached OCR/layout outputs under `tests/fixtures/layout_regression/`. The corpus contains 31 page images, 31 cached `PageLayout` files, and 31 reorganize text baselines.
 
 ## Artifact contract
 
@@ -27,25 +27,45 @@ Each case uses one slug across these committed files:
 - `inputs/<case>.layout.json`: cached PP-DocLayout `PageLayout`.
 - `expected_text/baseline/<case>.reorganize.txt`: committed reading-order and block-rendering expectation.
 
-Generated inspection files live under `expected_text/current/`, `expected_text/diff/`, and `debug/`; Git ignores those directories. `tests/fixtures/layout_regression/README.md` is the per-case source and coverage manifest.
+Generated inspection files live under `expected_text/current/`, `expected_text/diff/`, and `debug/`. Git ignores those directories. The per-case source and coverage manifest is `tests/fixtures/layout_regression/README.md`.
 
 ## Test contract
 
-`tests/layout/test_fixture_layouts.py` auto-discovers every `*.layout.json`. It checks `PageLayout` round trips, positive image dimensions, the registered detector name, known region types, region bounds, representative figure-caption association, required corpus region coverage, and mapping compatibility.
+`tests/layout/test_fixture_layouts.py` auto-discovers every `*.layout.json`. It checks the following properties:
 
-`tests/ocr/test_reorganize_page_utils_grouping.py` auto-discovers every baseline that has matching PNG and OCR JSON inputs. It runs reorganize in strict preservation mode, writes current output and unified diffs, and compares rendered text byte-for-byte with the committed baseline. It enables step debug output unless `PD_OCR_TEST_NO_DEBUG` disables image generation. Per-worker output paths isolate xdist runs.
+- `PageLayout` round trips.
+- Positive image dimensions.
+- The registered detector name.
+- Known region types.
+- Region bounds.
+- Representative figure-caption association.
+- Required corpus region coverage.
+- Mapping compatibility.
 
-The text harness passes `drop_layout_words=True`; its baselines therefore describe the legacy figure-noise-removal mode rather than the default word-preserving `Page.reorganize_page` mode. Five cases carry strict xfails because their committed baselines describe desired figure-noise removal that current output does not satisfy.
+`tests/ocr/test_reorganize_page_utils_grouping.py` auto-discovers every baseline with matching PNG and OCR JSON inputs. It runs reorganize in strict preservation mode. The test writes current output and unified diffs. It then compares rendered text byte-for-byte with the committed baseline. Step debug output is enabled unless `PD_OCR_TEST_NO_DEBUG` disables image generation. Per-worker output paths isolate xdist runs.
+
+The text harness passes `drop_layout_words=True`. Its baselines therefore describe the legacy figure-noise-removal mode. They do not describe the default word-preserving `Page.reorganize_page` mode. Five cases carry strict xfails. Their committed baselines describe desired figure-noise removal that current output does not satisfy.
 
 ## Baseline policy
 
-A baseline change is an explicit semantic review, not test-output regeneration. Reviewers inspect the unified diff and relevant debug overlays, decide whether the output improves, and promote individual cases with a stated reason. Bulk replacement hides regressions and is outside the corpus policy.
+A baseline change requires an explicit semantic review, not test-output regeneration. Reviewers inspect the unified diff and relevant debug overlays. They decide whether the output improves and promote individual cases with a stated reason. Bulk replacement hides regressions and is outside the corpus policy.
 
-Layout JSON regeneration uses `make layout-fixtures-regenerate`. OCR fixture generation and reorganize dumping use the scripts under `tests/fixtures/layout_regression/` through the repository's `uv run` environment. Model or OCR changes receive the same case-by-case baseline review because recognition drift can alter the rendered text even when reading order remains stable.
+Use `make layout-fixtures-regenerate` to regenerate layout JSON. OCR fixture generation and reorganize dumping use the scripts under `tests/fixtures/layout_regression/`. Run those scripts through the repository's `uv run` environment. Model or OCR changes receive the same case-by-case baseline review. Recognition drift can alter rendered text even when reading order remains stable.
 
 ## Scope
 
-The corpus covers body text, headers and page numbers, figures, captions, decorations, chapter openings, drop caps, lists, footnotes, sidenotes, dense catalog layouts, and rotated input. It does not contain representative tables, mathematical formulae, or cross-page foldouts. It does not measure word- or character-recognition accuracy.
+The corpus covers these layout features:
+
+- Body text.
+- Headers and page numbers.
+- Figures and captions.
+- Decorations.
+- Chapter openings and drop caps.
+- Lists, footnotes, and sidenotes.
+- Dense catalog layouts.
+- Rotated input.
+
+The corpus does not contain representative tables, mathematical formulae, or cross-page foldouts. It does not measure word- or character-recognition accuracy.
 
 ## Evidence
 
@@ -59,4 +79,4 @@ The corpus covers body text, headers and page numbers, figures, captions, decora
 
 ## Residual intent
 
-The five strict xfails and the choice between current-output and desired-output canonical baselines remain in `docs/context/intent-map.md`. Corpus gaps for tables, formulae, and foldouts remain explicit scope limits rather than evidence of support. Human review remains the semantic oracle for baseline promotion.
+`docs/context/intent-map.md` retains the five strict xfails and the choice between current-output and desired-output canonical baselines. Corpus gaps for tables, formulae, and foldouts remain explicit scope limits, not evidence of support. Human review remains the semantic oracle for baseline promotion.
