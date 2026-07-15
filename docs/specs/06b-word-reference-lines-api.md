@@ -12,11 +12,11 @@ Kind: spec
 > **Last updated**: 2026-05-21
 > **Split from**: the original spec, preserved in Git history
 
-Recommended API surface, per-line heuristics, tunable parameters,
-confidence model, and worked examples for the four reference lines
-(top, x-height, baseline, bottom).
-This is part 2 of a three-part split of the original
-`06-word-reference-lines.md` spec (914 lines, exceeded the 800-line cap).
+This spec recommends the API, per-line heuristics, tunable parameters,
+confidence model, and worked examples for four reference lines: top,
+x-height, baseline, and bottom. It is part 2 of a three-part split of the
+original `06-word-reference-lines.md` spec, whose 914 lines exceeded the
+800-line cap.
 
 - Part 1: [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md) — Audit + gap analysis
 - Part 2 (this file): API surface, heuristics, parameters, confidence
@@ -26,18 +26,18 @@ This is part 2 of a three-part split of the original
 
 ## TL;DR
 
-New `reference_lines.py` module exposes `WordReferenceLines` (frozen
-dataclass), `Word.estimate_reference_lines`, and
-`Block.estimate_word_reference_lines`. Block-level is primary
-(line-aggregate corrects short-word ambiguity and tilt). A shared
+The new `reference_lines.py` module exposes the frozen `WordReferenceLines`
+dataclass, `Word.estimate_reference_lines`, and
+`Block.estimate_word_reference_lines`. The block-level API is primary because
+line aggregation corrects short-word ambiguity and tilt. A shared
 `DEFAULT_DESCENDER_CHARS` constant replaces three inline copies.
 
 ## Context
 
 See [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md)
-for the full motivation. In short: only the baseline is partially
-implemented; top-line, x-height, and descender bottom are missing.
-This part specifies how to add them.
+for the full motivation. Only the baseline is partially implemented. The
+top-line, x-height, and descender bottom are missing. This part specifies how
+to add them.
 
 ## Constraints
 
@@ -51,13 +51,13 @@ This part specifies how to add them.
 
 ## Decision
 
-Two-tier API. Block (line) level is the primary, robust surface;
-Word level is the best-effort fallback. See section 3 below.
+Use a two-tier API. The block (line) level is the primary, robust surface. The
+word level is the best-effort fallback. See section 3 below.
 
 ## 3. Recommended primary surface
 
-Two-tier API. **Block (line) level is the primary, robust surface;
-Word level is the best-effort fallback.** Reasoning is in 3.3 below.
+Use a two-tier API. **The block (line) level is the primary, robust surface.
+The word level is the best-effort fallback.** Section 3.3 explains why.
 
 ### 3.1 Block-level: WordReferenceLines per word, computed line-aware
 
@@ -87,7 +87,8 @@ class WordReferenceLines:
     confidence: float         # [0, 1] — see section 6
 ```
 
-Page-image space (not ROI-local) is the recommendation. Justification:
+Use page-image space, not region-of-interest (ROI)-local space, for these
+reasons:
 
 - Every existing baseline return value is page-image pixel-space
   (`coordinate_space: "pixel"` in both `Word.estimate_baseline_from_image`
@@ -100,9 +101,8 @@ Page-image space (not ROI-local) is the recommendation. Justification:
   pixels (see the bottom-crop spec section 9 for
   `BoundingBox.crop_bottom_to_y`). Same space.
 
-If a caller really wants ROI-local, they subtract `bbox.minY`
-themselves. We do not expose two variants — one truth, plus a
-documented convention.
+Callers that need ROI-local values subtract `bbox.minY` themselves. We expose
+one variant and document its coordinate convention.
 
 ### 3.2 Block / Page entry points
 
@@ -138,9 +138,9 @@ def estimate_word_reference_lines(
     """Iterate LINE blocks; merge per-line results into a single dict."""
 ```
 
-Block returns a dict keyed on `Word` rather than a list, so that
-callers can ask `result.get(word)` without index-tracking. Same shape
-on the page entry point so call sites compose.
+The block returns a dict keyed on `Word`, not a list. Callers can therefore use
+`result.get(word)` without tracking indexes. The page entry point uses the same
+shape so call sites compose.
 
 ### 3.3 Word-level: best-effort, used by the line-level estimator and as fallback
 
@@ -165,7 +165,7 @@ def estimate_reference_lines(
     """
 ```
 
-Why line-level is primary:
+The line-level API is primary for three reasons:
 
 - **Short-word problem.** A word like "no", "is", or "to" gives the
   word-only estimator no descender ink and no ascender ink. Its own
@@ -189,7 +189,7 @@ Why line-level is primary:
   on the block estimator it is "do all line characters agree to the
   fitted line". The latter is meaningfully more useful.
 
-The word-level entry point still exists so that callers can:
+The word-level entry point remains available so callers can:
 
 - Estimate when only a word plus image is available (no line context).
 - Test the word-only path in isolation.
@@ -215,18 +215,17 @@ dict is also kept up to date for backward compatibility — populated
 from `WordReferenceLines.baseline` when the new helper runs. Existing
 callers that read `word.baseline["y"]` keep working.
 
-A small migration note: `to_dict` / `from_dict` in `Word` currently
-serialize the `baseline` dict (`word.py:648`, `word.py:671`). The new
-`reference_lines` attribute is a runtime-only cache (it is image-derived
-and cheap to recompute); we do **not** add it to the JSON schema in
-v1. Same posture as character splits.
+`to_dict` and `from_dict` in `Word` currently serialize the `baseline` dict
+(`word.py:648`, `word.py:671`). The new `reference_lines` attribute is an
+image-derived, cheap-to-recompute runtime cache. We do **not** add it to the
+v1 JSON schema. Character splits follow the same policy.
 
 ## 4. Heuristics per reference line
 
-All four lines are computed in the **block-level** helper, where the
-best ink-density evidence and the most words are available. The
-word-level helper inherits `baseline` and `x_height` from line context
-when given, and computes its own `top` / `bottom` from the word ROI.
+The **block-level** helper computes all four lines because it has the strongest
+ink-density evidence and the most words. When given line context, the
+word-level helper inherits `baseline` and `x_height`. It computes its own
+`top` and `bottom` from the word ROI.
 
 Common preprocessing: use `BoundingBox._threshold_inverted`
 (`bounding_box.py:835`) to get the binarized ROI of the **whole line
@@ -237,15 +236,14 @@ at the edges.
 
 ### 4.1 bottom (descender bottom — lowest ink)
 
-For each word: lowest non-zero row in its column slice of the
-binarized line ROI. To despeckle, require a horizontal run of at
-least `ink_run_min_length_px` (default 2; same default as the
-bottom-crop spec section 7) connected ink pixels in that row before
-accepting it.
+For each word, find the lowest non-zero row in its column slice of the
+binarized line ROI. To remove speckles, accept the row only if it contains a
+horizontal run of at least `ink_run_min_length_px` connected ink pixels. The
+default is 2, matching section 7 of the bottom-crop spec.
 
-For the line aggregate: not a single bottom — descender words and
-non-descender words have genuinely different bottoms. Instead the
-line-level helper does **two** computations:
+The line aggregate does not have a single bottom because descender and
+non-descender words have different bottoms. Instead, the line-level helper
+performs **two** computations:
 
 - `line_baseline_y` (slanted, from existing
   `Block.estimate_baseline_from_image`).
@@ -253,7 +251,7 @@ line-level helper does **two** computations:
   words whose text contains a descender character_, projected onto
   the baseline slope. This is the "where descenders actually go" line.
 
-The per-word `bottom` is the word-local lowest ink row. Easy.
+The per-word `bottom` is the word-local lowest ink row.
 
 ### 4.2 baseline
 
@@ -284,10 +282,9 @@ This is the dedup the bottom-crop spec also calls for.
 
 ### 4.3 x-height (centerline)
 
-The hardest of the four. The current code does not compute this
-correctly — `median_top` in
-`split_into_characters_from_whitespace` averages over _all_ character
-tops including ascenders.
+X-height is the hardest of the four lines to compute. The current code does not
+compute it correctly. `median_top` in `split_into_characters_from_whitespace`
+averages over _all_ character tops, including ascenders.
 
 Approach: horizontal projection profile of the binarized line ROI.
 
@@ -303,22 +300,19 @@ Approach: horizontal projection profile of the binarized line ROI.
    (sanity check; if it disagrees with the regression baseline by more
    than `0.3 * x_height`, downgrade confidence).
 
-Justification: the densest horizontal band of ink in any line of
-typeset text is the body of x-height-tall lowercase letters
-(`a c e m n o r s u v w x z`). Even on heading lines that are
-all-uppercase the densest band collapses to "from baseline to cap-line"
-which is what we want for the centerline = x-height = cap-line case.
+The densest horizontal ink band in typeset text is the body of x-height-tall
+lowercase letters (`a c e m n o r s u v w x z`). On all-uppercase heading
+lines, the densest band spans the baseline to the cap-line. That result is
+correct when the centerline, x-height, and cap-line coincide.
 
-Per word: the line-level x-height (the y-distance from the line's
-baseline up to the line's x-height row) is back-propagated. This is
-exactly the case that motivates "line is primary, word is fallback"
-— a single word's projection profile is too short to find a robust
-densest band.
+The helper back-propagates the line-level x-height to each word. This value is
+the y-distance from the line's baseline to its x-height row. A single word's
+projection profile is too short to find a robust densest band, which motivates
+the "line is primary, word is fallback" rule.
 
-When line-level confidence is low (e.g. `< 0.4`), fall back to
-`x_height = baseline - 0.6 * mean_word_height` as a typographic
-default. Mark the result with a low confidence so callers can
-choose to ignore.
+When line-level confidence is low, such as `< 0.4`, use
+`x_height = baseline - 0.6 * mean_word_height` as a typographic default. Mark
+the result with low confidence so callers can ignore it.
 
 ### 4.4 top-line (cap / ascender top)
 
@@ -344,10 +338,9 @@ target x. Words on lines with no ascenders at all (rare — most lines
 have at least one capital letter) get a `cap_line == x_height` from
 the line, with a low-confidence flag.
 
-This **separation** — `top` is per-word ink, `has_ascender` is a flag,
-the cap-line is a separate line-level value — is the cleanest way to
-handle the "cap-line and x-height collide for some words" problem
-without lying to callers about what the geometry is.
+This separation represents the geometry without hiding the collision between
+cap-line and x-height for some words. `top` records per-word ink,
+`has_ascender` is a flag, and the cap-line is a separate line-level value.
 
 If we end up wanting a per-word `cap_line` field on `WordReferenceLines`
 (as opposed to "ask the block for it"), an open question is whether
@@ -368,13 +361,13 @@ line-aggregate cap-line _when not_. See Q-RL-3 in
 | `confidence_low_cutoff` | `0.4` | Below this on line-level x-height, fall back to typographic default. |
 | `oldstyle_figures_descend` | `False` | Mirror the bottom-crop spec: when True, `3 4 5 7 9` are added to the descender set. Off by default. |
 
-Defaults are decision-oriented; the implementation should expose them
-as kwargs on the public functions.
+These defaults support caller decisions. The implementation should expose them
+as keyword arguments on the public functions.
 
 ## 6. Confidence and "I don't know"
 
-Match the existing convention: a `confidence` float in `[0, 1]` on
-the returned `WordReferenceLines`, computed as the minimum of:
+Follow the existing convention: return a `confidence` float in `[0, 1]` on
+`WordReferenceLines`. Compute it as the minimum of:
 
 - baseline confidence (from existing baseline estimator, or
   word-level fallback).
@@ -385,20 +378,20 @@ the returned `WordReferenceLines`, computed as the minimum of:
   range (typographically usually `0.4` to `0.7`)? If wildly off,
   cap confidence.
 
-When the helper genuinely cannot estimate (no characters split,
-ROI empty, image None), it returns `None`, not a low-confidence
-`WordReferenceLines`. This matches the existing
-`Word.estimate_baseline_from_image` convention of returning `None`
-rather than an "I don't know" sentinel dict.
+When the helper cannot estimate, it returns `None` instead of a low-confidence
+`WordReferenceLines`. Failure conditions include no split characters, an empty
+ROI, or `image` set to `None`. This behavior matches
+`Word.estimate_baseline_from_image`, which returns `None` rather than an
+"I don't know" sentinel dict.
 
-The block-level helper returns `dict[Word, WordReferenceLines | None]`,
-mapping `None` for any word it could not estimate. Callers iterate and
-check.
+The block-level helper returns `dict[Word, WordReferenceLines | None]`. It maps
+each word that it could not estimate to `None`, which callers must check while
+iterating.
 
-No exceptions are raised for inability to estimate. Exceptions are
-reserved for programmer errors (e.g. `image is None` while called
-through a code path that documents image-required, mirroring
-existing crop_bottom error semantics at `word.py:1083-1088`).
+An inability to estimate does not raise an exception. Exceptions are reserved
+for programmer errors. One example is `image is None` on a code path that
+documents image as required, matching the existing `crop_bottom` error
+semantics at `word.py:1083-1088`.
 
 ## 7. Per-word vs per-line robustness — worked examples
 
