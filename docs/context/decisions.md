@@ -217,7 +217,7 @@ Kind: context
 - **Outcome:** implemented
 - **Superseded by:** N/A; current routing lives in `AGENTS.md` and
   `CONVENTIONS.md`.
-- **Removal commit:** `e46087e`
+- **Removal commit:** `5067cde`
 - **Rationale kept:**
   `docs/specs/2026-07-15-writing-docs-plugin-routing-design.md` records the
   design and review; commit `140283e` records the implementation.
