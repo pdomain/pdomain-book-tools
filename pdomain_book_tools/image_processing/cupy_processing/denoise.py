@@ -40,7 +40,7 @@ try:
     from cupyx.scipy.ndimage import (
         label as _cupyx_label,
     )
-    from cupyx.scipy.ndimage import (  # pyright: ignore[reportMissingImports]  # optional GPU import is guarded
+    from cupyx.scipy.ndimage import (
         median_filter as _cupyx_median_filter,
     )
 except ImportError:  # pragma: no cover - exercised only on CPU-only installs

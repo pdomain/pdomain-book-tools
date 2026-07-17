@@ -238,6 +238,7 @@ Kind: context
   `docs/specs/2026-07-15-writing-docs-plugin-routing-design.md` records the
   design and review; commit `140283e` records the implementation.
 - **Remaining work:** none
+
 ### 2026-07-15 — Retire the dev-local upgrade-flow spec into architecture
 
 - **Context:** `docs/specs/07-dev-local-upgrade-flow.md` was implemented in
