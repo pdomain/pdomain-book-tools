@@ -41,6 +41,8 @@ This layout follows the workspace standard. See
 - [Page reorganization architecture](architecture/reorganize-page-pipeline.md)
 - [Layout-regression fixture architecture](architecture/layout-regression-fixture-corpus.md)
 - [Glyph-annotation architecture](architecture/glyph-annotations.md)
+- [Tesseract integration architecture](architecture/tesseract-integration.md)
+- [Completed GitHub issue migration ledger](context/github-issues-migration-ledger.md)
 - [Roadmap](plans/roadmap.md)
 - [Specifications](specs/_index.md)
 - [Geometry correction usage](usage/geometry-correction.md)
