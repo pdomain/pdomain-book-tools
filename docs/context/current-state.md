@@ -38,12 +38,16 @@ and remaining delivery order live in the [roadmap](../plans/roadmap.md), the
 
 ## In-flight work
 
-- The migration is authored on branch `docs/github-issues-migration`.
-- Remote cutover and deletion of the imported GitHub records remain pending.
+- The migration and immutable cutover SHA are merged on `master`.
+- All 171 deletion-ready completed issues were permanently deleted in 18
+  journaled batches. GitHub retains 33 open issues and 10 closed issues whose
+  governed records still block deletion.
+- GitHub Issues remains enabled because those 43 retained source issues are
+  still active or awaiting an owner decision.
 
 ## Risks
 
-- Delete source GitHub issues only after the migration branch is merged and the
-  imported records are verified on the target branch.
-- Do not delete any of the 38 active governed records or documents awaiting an
-  owner decision during cutover.
+- Do not delete the 10 held closed issues until their individual evidence gates
+  are resolved.
+- Do not delete any of the 38 active governed records or their 33 open and 10
+  held closed source issues merely to reach a zero tracker count.
