@@ -58,5 +58,5 @@ the package, tests, and scripts.
 
 - **Configuration:** `.pre-commit-config.yaml`, `pyproject.toml`, `.gitlint`, and `.editorconfig`
 - **Commands:** `Makefile` targets `pre-commit-check`, `lint-check`, `typecheck`, `test`, `build`, and `ci`
-- **Initial rollout:** commits `4ab7a93`, `bd0de40`, `4a59ff2`, `b742231`, `c500d91`, and `f809701`
+- **Initial rollout:** commits `cbaa74a`, `4ab7a93`, `bd0de40`, `4a59ff2`, `b742231`, `c500d91`, `2e11974`, and `f809701`
 - **Current type-checking contract:** [`type-checking.md`](../architecture/type-checking.md)
