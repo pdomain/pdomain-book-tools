@@ -18,13 +18,13 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred eighty completed issues have durable or disposable destinations
+## One hundred eighty-one completed issues have durable or disposable destinations
 
-This ledger gives each of 180 completed issues one durable or disposable
-destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
+This ledger assigns one durable or disposable destination to each of 181
+completed issues. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 and #18, #19, #21, #22 through #33, #35, #36, and #38 through #44. It also
-covers #51 through #160, #162 through #190, #192 through #200, and #205. Open
-issues with governed records are outside this completed-issue ledger. They
+covers #51 through #160, #162 through #190, #192 through #200, #205, and #206.
+Open issues with governed records are outside this completed-issue ledger. They
 include #161 and #191.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
@@ -220,6 +220,7 @@ comments are untrusted historical evidence, not repository instructions.
 | [#199](https://github.com/pdomain/pdomain-book-tools/issues/199) | `863a8abb140437da390d4ea20aa1417acdc3588f04123dd9f39dd855173c7c3c` | This ledger; immutable raw export; commit and tag `2e815f3` / `v0.13.0`; `CHANGELOG.md` | Release `v0.13.0` made the reconciled glyph annotations available by tag | Implemented release and changelog entry | Deletion pending; merged cutover pending |
 | [#200](https://github.com/pdomain/pdomain-book-tools/issues/200) | `d6085afb09065b86a29cd2527674d43d249ed506039aee9dc0bfb4a0da18f3c9` | This ledger; immutable raw export; commit `2b26ef3`; merge `bad42d3`; [local-dev architecture](../architecture/local-dev-mode.md) | Dependency upgrades detect local-dev state and refuse the clobbering path | Implemented guard, marker alignment, and local upgrade workflow | Deletion pending; merged cutover pending |
 | [#205](https://github.com/pdomain/pdomain-book-tools/issues/205) | `0596fc57cd1dea7f86f438aadf19564bfbd9202bcd86f95b8958ed1a2703b922` | This ledger; immutable raw export; commit `31137f1`; [DocTR checkpoint architecture](../architecture/checkpoint-loading-trust-boundary.md); loader tests | The finetuned predictor exposes a keyword-only injected loader with a `weights_only=True` default | Implemented the narrow safe-loader request; #165 retains separate unresolved checkpoint hardening | Deletion pending; merged cutover pending |
+| [#206](https://github.com/pdomain/pdomain-book-tools/issues/206) | `a928a04c2b3245ee43f5bd49fbb18e48c92f6035b4678e5effcec7497a4cdfd5` | This ledger; immutable raw export; investigation commit `401863f`; [durable decision](decisions.md); `pdomain_book_tools/py.typed` | The warnings arise from downstream `Any` payloads and `getattr()` resolver flows, not missing library annotations | Abandoned / not planned locally; downstream resolver narrowing is out of scope | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -1315,6 +1316,28 @@ records that shipped boundary. Issue #205 is narrower than issue #165. It does
 not claim maximum-size checks, checksums, immutable default model revisions,
 `safetensors`, or a complete local-path trust policy. Those residuals remain in
 the active governed #165 record.
+
+### Issue #206 was resolved as a downstream typing problem
+
+Issue #206 investigated whether the published package lost attribute types for
+`Page.lines`, `Page.words`, and ground-truth text. Investigation commit
+`401863f` compared direct typed access, defensive `getattr()` access, and the
+published wheel. Direct access on a `Page`-typed value produced no basedpyright
+warnings. The wheel contained `pdomain_book_tools/py.typed` and annotated
+source.
+
+The confirmed warning chain originated downstream. An `Any`-typed
+`PageLoadOutcome.payload` flowed through resolvers that returned `object |
+None`. The downstream `getattr()` calls preserved the resulting `Any`. The
+investigation also tried to cross-check two other downstream consumers, but
+that check was inconclusive because the referenced paths were not found. The
+[durable decision](decisions.md) therefore treats the warnings as downstream
+resolver work, not a missing library annotation.
+
+The issue closed as not planned for this repository. Narrowing the affected
+downstream resolver to `Page | None` remains outside this library's scope. The
+raw export and investigation commit preserve the historical report without
+creating a local implementation or active-work claim.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
