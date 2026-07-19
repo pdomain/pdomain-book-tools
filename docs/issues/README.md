@@ -88,6 +88,11 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 - [#46 — Specify the sidenote height-ratio default](2026-05-11-gh-046-spec-sidenote-height-ratio-default.md)
 - [#47 — Specify image-projection x-height refinement](2026-05-11-gh-047-spec-sidenote-projection-x-height.md)
 - [#48 — Specify the drop-cap heading cross-check](2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md)
+- [#49 — Specify sidenote-aware row-block expansion](2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md)
+- [#161 — Make heavy OCR dependencies optional](2026-05-21-gh-161-optional-ocr-dependencies.md)
+- [#191 — Require strict image validation for untrusted inputs](2026-05-22-gh-191-strict-image-validation.md)
+- [#201 — Add advisory static-testing scanners](2026-05-22-gh-201-advisory-static-scanners.md)
+- [#226 — Verify release of predictor batch-size keyword arguments](2026-05-29-gh-226-release-batch-predictor-kwargs.md)
 
 ## Resolved issues
 
