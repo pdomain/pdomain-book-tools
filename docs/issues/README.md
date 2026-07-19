@@ -25,7 +25,7 @@ Level: I1
 `docs/issues/` holds **governed, evidence-bearing issue reports** for bugs,
 silent failures, regressions, and investigations. These reports provide a
 durable, citable record instead of a throwaway chat summary. Each report is a
-docgraph node, so readers can retrieve it and link to it from specs, plans, or
+docgraph node. Readers can retrieve it and link to it from specs, plans, or
 context documents. The repository carries the record instead of per-machine
 harness memory.
 
@@ -40,10 +40,10 @@ harness memory.
   - `Level:` informational scope — `I1` repo-wide, `I2` narrow/local.
   - `Status:` governed lifecycle, **not** the issue's open/closed state (see below).
 - **Issue state vs governed status:** the docgraph lifecycle is
-  `draft → active → implemented → retired`. Express the *issue's* resolution state
-  as a separate **`Resolution:`** line in the Agent Index (`Open` / `Resolved` /
-  `Won't fix` / `Duplicate`) and a final `## Resolution` section. Map the governed
-  `Status:`:
+  `draft → active → implemented → retired`. Express the *issue's* resolution
+  state separately. Add a **`Resolution:`** line to the Agent Index (`Open` /
+  `Resolved` / `Won't fix` / `Duplicate`) and a final `## Resolution` section.
+  Map the governed `Status:`:
   - **Open** → `Status: active`.
   - **Resolved / Won't fix / Duplicate** → `Status: retired`, routed through
     `doc-retirer`, with the resolving commit/spec linked in `## Resolution`.
@@ -51,9 +51,9 @@ harness memory.
   default an **Open issues** bullet in `docs/context/intent-map.md`, or a Risk in
   `docs/context/current-state.md`. This `README` also links the live issues below,
   which satisfies the no-orphan rule.
-- **Stage + reindex:** under `mode = "git"` a new doc is invisible until
-  `git add`ed; stage it, then `docgraph reindex` and `docgraph check --strict` the
-  same turn (a new `dangling` blocks completion).
+- **Stage + reindex:** under `mode = "git"`, a new doc is invisible until it is
+  `git add`ed. In the same turn, stage it, run `docgraph reindex`, and run
+  `docgraph check --strict`. A new `dangling` blocks completion.
 - **Template:** copy `TEMPLATE.md` in this folder. It is index-excluded (a
   top-of-file `<!-- docgraph: ignore -->` marker), so **do not markdown-link to
   it** from a governed doc — the link would dangle. Refer to it by path / inline
@@ -78,8 +78,13 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
-- [#54 — Decide whether monthly grooming remains part of the workspace workflow](2026-05-17-gh-054-monthly-grooming.md)
+This index covers all 38 active governed issue records: 33 source-open records
+and five records retained for closed-source residual or owner-decision work.
+
 - [#43 — Verify the external disposition of the style-review subprocess failure](2026-05-11-gh-043-style-review-detect-subprocess-failure.md)
+- [#54 — Decide whether monthly grooming remains part of the workspace workflow](2026-05-17-gh-054-monthly-grooming.md)
+- [#65 — Verify the external decompose-spec flag implementation](2026-05-17-gh-065-decompose-spec-flags.md)
+- [#77 — Verify consolidated workspace-agent definitions for #77 and #94–98](2026-05-17-gh-077-workspace-agent-definitions.md)
 - [#2 — Decoration-vs-figure post-classification heuristic](2026-05-10-gh-002-decoration-figure-post-classification.md)
 - [#3 — Tune the sidenote height-ratio default](2026-05-10-gh-003-sidenote-height-ratio-default.md)
 - [#4 — Refine sidenote x-height with image projection](2026-05-10-gh-004-sidenote-projection-x-height.md)
