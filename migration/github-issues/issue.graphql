@@ -1,0 +1,41 @@
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      id
+      number
+      url
+      state
+      stateReason
+      title
+      body
+      author { login }
+      createdAt
+      updatedAt
+      closedAt
+      labels(first: 100) { nodes { name color description } }
+      milestone { title number dueOn state description }
+      assignees(first: 100) { nodes { login } }
+      issueType { name }
+      parent { number url }
+      subIssues(first: 100) { nodes { number url state title } }
+      projectItems(first: 100) {
+        nodes {
+          id
+          project { ... on ProjectV2 { number title url } }
+        }
+      }
+      comments(first: 100) {
+        nodes {
+          id
+          author { login }
+          createdAt
+          updatedAt
+          url
+          body
+          reactions(first: 100) { nodes { content user { login } } }
+        }
+      }
+      reactions(first: 100) { nodes { content user { login } } }
+    }
+  }
+}
