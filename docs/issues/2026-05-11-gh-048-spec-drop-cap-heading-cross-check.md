@@ -48,7 +48,7 @@ The export states no operating system, package version, command, or environment 
 - **State reason:** None
 - **Raw export:** `/tmp/github-issues-migration/pdomain-book-tools/raw/issue-48.json`
 - **Raw SHA-256:** `5287548fc16d7c680327f851f0525aeb6d1319cf131e0ac91a11d10b3e507ee5`
-- **Migration cutover:** Pending — the immutable content-batch commit is not available until this batch commits.
+- **Migration cutover:** `b0bb9eb` — governed content batch for GitHub issues #2–#7 and #45–#48.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-11T11:36:17Z`
 - **Updated:** `2026-05-11T11:37:08Z`
