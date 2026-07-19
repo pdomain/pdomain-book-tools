@@ -94,6 +94,7 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 - [#201 — Add advisory static-testing scanners](2026-05-22-gh-201-advisory-static-scanners.md)
 - [#208 — Specify page-order detection](2026-05-24-gh-208-spec-page-order-detection.md)
 - [#209 — Specify the scannos rule and candidate module](2026-05-24-gh-209-spec-scannos-module.md)
+- [#210 — Specify the hyphen n-grams SQLite migration](2026-05-24-gh-210-spec-hyphen-ngrams-sqlite.md)
 - [#211 — Add the page-order module skeleton and proposal types](2026-05-24-gh-211-page-order-module-skeleton.md)
 - [#212 — Add the filename-sequence page-order signal](2026-05-24-gh-212-page-order-filename-signal.md)
 - [#213 — Add the OCR page-number page-order signal](2026-05-24-gh-213-page-order-ocr-signal.md)
@@ -104,6 +105,11 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 - [#218 — Add the per-book JSON candidate store](2026-05-24-gh-218-json-candidate-store.md)
 - [#219 — Add scanno scanning and promotion APIs](2026-05-24-gh-219-scanno-scan-promote-api.md)
 - [#220 — Test the complete scanno promotion flow](2026-05-24-gh-220-scanno-promotion-tests.md)
+- [#221 — Define the hyphen n-grams protocol and result type](2026-05-24-gh-221-hyphen-ngrams-protocol.md)
+- [#222 — Add the SQLite hyphen n-grams client](2026-05-24-gh-222-hyphen-ngrams-sqlite-client.md)
+- [#223 — Add the JSON API fallback client](2026-05-24-gh-223-hyphen-ngrams-json-api-client.md)
+- [#224 — Download and cache the hyphen n-grams database](2026-05-24-gh-224-hyphen-ngrams-download.md)
+- [#225 — Build the hyphen n-grams extraction pipeline](2026-05-24-gh-225-hyphen-ngrams-extraction.md)
 - [#226 — Verify release of predictor batch-size keyword arguments](2026-05-29-gh-226-release-batch-predictor-kwargs.md)
 
 ## Resolved issues
