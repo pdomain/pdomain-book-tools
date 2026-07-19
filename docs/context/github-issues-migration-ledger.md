@@ -18,18 +18,16 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Forty-nine completed issues have durable or disposable destinations
+## Fifty-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 49 completed issues one durable or disposable
+This ledger gives each of 59 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #69.
+through #79.
 
-Closed issues #43, #54, and #65 remain active owner decisions. Issue #43 lacks
-verified evidence for its external disposition. Issue #54 lacks evidence that
-the recurring grooming chore still matches the current workspace workflow.
-Issue #65 reports external completion without a local artifact or independent
-verification. The details below map every durable body and comment fact to
+Closed issues #43, #54, #65, and #77 remain active owner decisions. The earlier
+records explain #43, #54, and #65. Issue #77 depends on workspace agent files
+absent here. The details below map every durable body and comment fact to
 current code, tests, documentation, an active governed record, or an explicit
 disposable category.
 
@@ -89,6 +87,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#67](https://github.com/pdomain/pdomain-book-tools/issues/67) | `76f5339307ccfa717bd324a3d5d1073b1d008e613e9a354594584fe0a5cc0283` | This ledger; immutable raw export; meta-repository cross-cut tracking | The eight-agent-prompt change belongs to cross-cut workflow tooling; no local implementation evidence was found | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#68](https://github.com/pdomain/pdomain-book-tools/issues/68) | `e3cc70843fce586157ac66f82e5bf7b450c191b7b97ab21fb1ecffd2fd9764c3` | This ledger; immutable raw export; meta-repository cross-cut tracking | The brainstorming-skill patch belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#69](https://github.com/pdomain/pdomain-book-tools/issues/69) | `fcbfb77f96229503747a7f7513e9697150081dec20201ab01cea3f1432485abd` | This ledger; immutable raw export; meta-repository cross-cut tracking | The groom-skill skeleton belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#70](https://github.com/pdomain/pdomain-book-tools/issues/70) | `e1669656401cee38d52686939e0ed6dcf8560dbb359d714e81bf2e94fa6c91c1` | This ledger; immutable raw export; meta-repository cross-cut tracking | The groom-auto test suite belongs to cross-cut workflow tooling and was explicitly migrated; no local implementation claim | Superseded by meta-repository tracking | Deletion pending; merged cutover pending |
+| [#71](https://github.com/pdomain/pdomain-book-tools/issues/71) | `36f2fe97c2540c5f37a5ea76f7f0575373853c69a6aca91b5a885f990a5d9487` | This ledger; immutable raw export; meta-repository cross-cut tracking | The groom-auto script belongs to cross-cut workflow tooling and was explicitly migrated; no local implementation claim | Superseded by meta-repository tracking | Deletion pending; merged cutover pending |
+| [#72](https://github.com/pdomain/pdomain-book-tools/issues/72) | `2e2399aaf03a39d21ca305b76629b4f0b0f1aad04cf23022099e40a2f0083508` | This ledger; immutable raw export; meta-repository cross-cut tracking | The coding-bot workflow and nightly schedule belong to cross-cut workflow tooling and were explicitly migrated; no local implementation claim | Superseded by meta-repository tracking | Deletion pending; merged cutover pending |
+| [#73](https://github.com/pdomain/pdomain-book-tools/issues/73) | `c4e4fcb59cd1a7ec42af525d0d214916f55c5a2051c2fa87e6bbcef3f073716a` | This ledger; immutable raw export; meta-repository cross-cut tracking | The groom skill belongs to cross-cut workflow tooling and was explicitly migrated; no local implementation claim | Superseded by meta-repository tracking | Deletion pending; merged cutover pending |
+| [#74](https://github.com/pdomain/pdomain-book-tools/issues/74) | `98786c5969aadf70c34c1a5dc406bb5a3e6ad857315eeef04f3191b268fe8ff0` | This ledger; immutable raw export; meta-repository cross-cut tracking | The recurring grooming chore belongs to cross-cut workflow tracking and was explicitly migrated; no local implementation claim | Superseded by meta-repository tracking | Deletion pending; merged cutover pending |
+| [#75](https://github.com/pdomain/pdomain-book-tools/issues/75) | `f68ba6d89febf4f08ba6e68e07c3c922d0f7229f20ac64dc37680cad6e4146d5` | This ledger; [repository quality gates](../process/repository-quality-gates.md); `docs/architecture/type-checking.md` | The canonical stack shipped across child issues #79 through #86; current process and strict type-checking architecture supersede the initial rollout contract | Implemented; reference commit `f809701` and child commits | Deletion pending; merged cutover pending |
+| [#76](https://github.com/pdomain/pdomain-book-tools/issues/76) | `d4423a93abcf698225164542fd5cb755d17a057cad24423f483bc1589bca7cef` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; model hooks, schema CLI, and tests | Pydantic core schemas cover Point, BoundingBox, Character, Word, Block, and Page; the public schema emitter remains implemented | Implemented; commits `d973b91` through `ca84058`, `6377cc4`, and `d6ad9d2` | Deletion pending; merged cutover pending |
+| [#77](https://github.com/pdomain/pdomain-book-tools/issues/77) | `2da2187bd0a3ad5b0cb015e19811f6e29d49a2eb76181636eb0c7e79a09baee1` | This ledger; [active governed issue](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The completion comment names two workspace agent files, but this repository cannot verify their current contents or routing | Needs owner decision; governed record remains active | Do not delete until both external definitions are verified |
+| [#78](https://github.com/pdomain/pdomain-book-tools/issues/78) | `0fa9aa67947d649c97ebbea57491674022af0a14b3ec54fdc5a1cee2c304c9c6` | This ledger; immutable raw export; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The shared React and TypeScript library belongs to the external `pd-ui` repository and is explicitly tracked in the meta repository | Superseded by external repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#79](https://github.com/pdomain/pdomain-book-tools/issues/79) | `a14c85034838fc509807ba925c143171bdf5e83e6d22bbb79d59025bf5449db5` | This ledger; [repository quality gates](../process/repository-quality-gates.md); `docs/architecture/type-checking.md`; configuration and Makefile | The Pyright-to-basedpyright migration shipped in standard and then recommended mode; current strict zero-diagnostic architecture supersedes both | Implemented; commits `4ab7a93` and `f809701`; later strengthened | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -470,6 +478,90 @@ locations, parent links, session and restoration notices, and migration notices
 are preserved here as provenance. They are disposable as current instructions
 once the raw exports are digest-bound and the cross-cut destination is
 recorded.
+
+### Issues #70 through #74 moved to cross-cut grooming tracking
+
+Issues #70 through #74 were Plan C children of #57. Their anchors were
+`#groom-auto-tests`, `#groom-auto-impl`, `#groom-auto-schedule`, `#groom-skill`,
+and `#monthly-groom-chore` under
+`docs/superpowers/plans/2026-05-17-gh-workflow-plan-c-grooming.md`. Each comment
+sequence reports completion in session `2026-05-17
+(superpowers-gh-integration)`, restoration from the same day's plan update, and
+migration to `ConcaveTrillion/ocr-container-meta`. The comments identify the
+cross-cut destination but cite no external commit or successor issue.
+
+Issue #70 specified TDD coverage for five deterministic grooming actions and a
+judgment queue. Its 15 named tests covered unblock decisions, milestone
+archival, spec and decision closure, referenced-research archival, and stale or
+orphan queue entries. The FakeGh API, historical directory tree, age thresholds,
+and required red-bar command are preserved in its immutable raw export.
+
+Issue #71 specified the corresponding `Groom` implementation. It also specified
+an injectable GitHub adapter, JSON result, executable and help behavior, blocker
+regex, PyYAML frontmatter parsing, and a two-directory research-reference scan.
+Issue #72 specified the coding-bot state graph, script invocation, Markdown
+report, issue update, and `groom-auto-nightly` schedule. Issue #73 specified
+every groom subcommand and keep, update, archive, delete, and skip action.
+Issue #74 specified the exact recurring title, repository, labels, body
+requirements, and listing command. Their immutable raw exports preserve those
+details without promoting them to current instructions.
+
+No named script, test module, skill, coding-bot workflow, schedule, or recurring
+issue is implemented in this repository. The explicit migration comments and
+current repository routing supersede these local trackers without making local
+implementation claims. Their detailed task behavior remains historical
+provenance rather than current repository policy.
+
+### Issues #75, #76, and #79 remain implemented
+
+Issue #75 was the parent spec for child issues #79 through #86. Its closing
+comment says every child closed and names `f809701` as the canonical reference
+implementation. The requested stack combined basedpyright, Ruff, gitlint,
+pre-commit, and CI. The historical spec and plan were
+`docs/specs/2026-05-17-superpowers-gh-workflow-integration-design.md` and
+`docs/plans/2026-05-17-pd-book-tools-strict-linting-rollout.md`.
+
+Commit `f809701` established basedpyright recommended mode and wired it into
+`make ci`. Neighboring child commits removed standalone isort and pylint,
+expanded the canonical Ruff selection, and added gitlint, gitleaks, file checks,
+debug-statement detection, uv-lock checking, and a basedpyright pre-commit hook.
+The current repository has since strengthened type checking to strict mode over
+the package, tests, and scripts with zero diagnostics. Current behavior belongs
+to `docs/architecture/type-checking.md`; the original recommended-mode contract
+is historical rather than current.
+
+Issue #79 was the basedpyright child. Commit `4ab7a93` migrated configuration and
+dependencies from Pyright to basedpyright in standard mode. Commit `f809701`
+then raised it to recommended mode. Its comment also attributes `.editorconfig`,
+`.gitlint`, gitleaks and uv-lock hooks, removal of standalone isort and pylint,
+the canonical Ruff selection including ANN, BLE, TRY, LOG, and G families,
+`filterwarnings=error`, and `--cov-branch` to the canonical rollout. Those
+details map to the parent rollout and its child commits, not all to `f809701`
+alone. Strict-mode architecture now supersedes the issue title's initial mode.
+
+Issue #76 requested Pydantic core schemas for geometry and OCR models for JSON
+code generation and validation. Commits `d973b91`, `6f7c620`, `9f9fabd`,
+`6eb07ad`, `4d7fa3a`, and `ca84058` added schema hooks and focused tests for
+Point, BoundingBox, Character, Word, Block, and Page. Commit `6377cc4` added the
+schema-emission CLI, and `d6ad9d2` restored all public models to
+`PUBLIC_MODELS`. Current code and tests remain covered by
+`docs/architecture/ocr-model-and-schema-boundaries.md`.
+
+### Issue #77 needs verification; issue #78 moved externally
+
+Issue #77 pointed to the shared integration design and
+`docs/plans/2026-05-16-workspace-agent-defs-pd-ui-pd-ocr-ops.md`. Its comment
+says `.claude/agents/pd-ocr-ops.md` and `.claude/agents/pd-ui.md` existed with
+full routing definitions. Those workspace files are absent here, and the source
+cites no commit or tests. The active record keeps the claim pending owner
+verification.
+
+Issue #78 pointed to the same design and
+`docs/plans/2026-05-16-pd-ui-new-repo.md`. It requested a shared React and
+TypeScript component library for `pd-*` single-page applications. Its comment
+says the task moved to the `pd-ui` repository and issue #12 in
+`ocr-container-meta`, not this library. That explicit destination supersedes the
+local tracker without claiming implementation in this repository.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
