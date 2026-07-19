@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-15
-Last verified: 2026-07-15
+Last verified: 2026-07-19
 Kind: process
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** process
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-15
+- **Last verified:** 2026-07-19
 - **Read when:** filing a bug / defect / investigation report, or looking up an
   open issue's status, evidence, or resolution.
 - **Search terms:** issues folder, bug report, defect report, issue template,
@@ -22,11 +22,12 @@ Level: I1
 
 ## Purpose
 
-`docs/issues/` holds **governed, evidence-bearing issue reports** — bugs, silent
-failures, regressions, and investigations that need a durable, citable record
-(not a throwaway chat summary). Each report is a docgraph node so it is
-retrievable, linkable from specs/plans/context, and carried in the repo rather
-than in per-machine harness memory.
+`docs/issues/` holds **governed, evidence-bearing issue reports** for bugs,
+silent failures, regressions, and investigations. These reports provide a
+durable, citable record instead of a throwaway chat summary. Each report is a
+docgraph node, so readers can retrieve it and link to it from specs, plans, or
+context documents. The repository carries the record instead of per-machine
+harness memory.
 
 ## Convention
 
@@ -60,16 +61,33 @@ than in per-machine harness memory.
 
 ## Recommended structure
 
-Summary · Impact · Environment/versions · Evidence (reproduction & diagnosis,
-with commands/output) · Root-cause hypotheses (ranked) · Defects to fix ·
-Recommended next steps · What is NOT broken (scopes the fix) · Resolution.
+Use this section order:
+
+1. Summary
+2. Impact
+3. Environment/versions
+4. Evidence, including reproduction and diagnosis with commands and output
+5. Ranked root-cause hypotheses
+6. Defects to fix
+7. Recommended next steps
+8. What is NOT broken, which scopes the fix
+9. Resolution
 
 Lead with the **smallest decisive evidence**, separate **observation** from
 **hypothesis**, and always include a **What is NOT broken** section.
 
 ## Open issues
 
-- *None yet.*
+- [#2 — Decoration-vs-figure post-classification heuristic](2026-05-10-gh-002-decoration-figure-post-classification.md)
+- [#3 — Tune the sidenote height-ratio default](2026-05-10-gh-003-sidenote-height-ratio-default.md)
+- [#4 — Refine sidenote x-height with image projection](2026-05-10-gh-004-sidenote-projection-x-height.md)
+- [#5 — Disambiguate drop caps with a heading cross-check](2026-05-10-gh-005-drop-cap-heading-cross-check.md)
+- [#6 — Make row-block expansion sidenote-aware](2026-05-10-gh-006-sidenote-aware-row-blocks.md)
+- [#7 — Detect a DocTR fork pin in dev-local mode](2026-05-10-gh-007-dev-local-doctr-fork-pin.md)
+- [#45 — Specify decoration-vs-figure post-classification](2026-05-11-gh-045-spec-decoration-figure-post-classification.md)
+- [#46 — Specify the sidenote height-ratio default](2026-05-11-gh-046-spec-sidenote-height-ratio-default.md)
+- [#47 — Specify image-projection x-height refinement](2026-05-11-gh-047-spec-sidenote-projection-x-height.md)
+- [#48 — Specify the drop-cap heading cross-check](2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md)
 
 ## Resolved issues
 
