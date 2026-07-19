@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Seventy-nine completed issues have durable or disposable destinations
+## Eighty-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 79 completed issues one durable or disposable
+This ledger gives each of 89 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #99.
+through #109.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
 decisions. The earlier records explain #43, #54, and #65. The consolidated #77
@@ -118,6 +118,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#97](https://github.com/pdomain/pdomain-book-tools/issues/97) | `6d025564bf304b5b674fc9800a0b2cdfead6bd0541e41326b771fad676aa5edb` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The read-only Haiku `pd-ocr-ops-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
 | [#98](https://github.com/pdomain/pdomain-book-tools/issues/98) | `237aab0f102df336a7198638c1922b70620c97a3c4c47e6788a82cb1f0fbaa52` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The workspace `CLAUDE.md` routing update is external state absent here | Needs owner decision; governed record remains active | Do not delete until the routing and migration destination are verified |
 | [#99](https://github.com/pdomain/pdomain-book-tools/issues/99) | `e8718ae16046cbda4f5e156b0cf5f6e9387ec6413323b215449e0896b7feaa82` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `pd-ui` repository bootstrap belongs to external tracking, not this library | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#100](https://github.com/pdomain/pdomain-book-tools/issues/100) | `41d8efb7748d74b94052262ddb7255a1d2ea37a04b962cc980c1a661268aded9` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `pd-ui` package metadata belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#101](https://github.com/pdomain/pdomain-book-tools/issues/101) | `dff0c86cd6c1f5609f7a0819e9f89e0dcd42c04498c30198998cc6ac44fcc75a` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The strict TypeScript configuration belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#102](https://github.com/pdomain/pdomain-book-tools/issues/102) | `1f1305e1d6eee51c27b485b54e5711410eb0044a032dbcc59d477e5b70c72da2` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The Vite library-mode build configuration belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#103](https://github.com/pdomain/pdomain-book-tools/issues/103) | `f62160576568e14e642a95ca7bae3ef4dfa48620eb0e16319a328330ab94caf3` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The Vitest configuration belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#104](https://github.com/pdomain/pdomain-book-tools/issues/104) | `b3ac2cdb358b1dcfd114f276f62ab524eb1063a4882c90b8c21d36834db81bcc` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The ESLint flat configuration belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#105](https://github.com/pdomain/pdomain-book-tools/issues/105) | `db1d03402eced2e9b7b1901912b7b127788a41ec285f78358cb7552bc2a1b1f0` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `pd-ui` Makefile and CI gate belong to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#106](https://github.com/pdomain/pdomain-book-tools/issues/106) | `087bd3de9ae169ab9132f67864e8b30fb6cbd24f5c380f9ea34f99ebb86e88a2` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The first external commit and agent definitions belong to the `pd-ui` repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#107](https://github.com/pdomain/pdomain-book-tools/issues/107) | `0f620e4b4d8452d7c44a8b8d1bbefc158f2b7c5cf98725ed63906eccc1efe344` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The copied theme tokens and primitives belong to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#108](https://github.com/pdomain/pdomain-book-tools/issues/108) | `a22d3a4924edab6ce327f9bcee561cce26a93be495d6f2862688766ecf3cf5b1` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The theme sync-back script belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#109](https://github.com/pdomain/pdomain-book-tools/issues/109) | `cf72bef9461ccd2f614e7d2b9fabead3a960dd75e5c3ec9f3e4ba5ffe837a706` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The theme sync-invariant CI gate belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -695,6 +705,35 @@ external `pd-ui` repository and points to
 That parent destination supersedes this local bootstrap tracker. It does not
 prove that the directory, `.gitignore`, license, or README stub shipped in this
 repository.
+
+### Issues #100 through #109 moved with the pd-ui repository plan
+
+Issues #100 through #109 were children of #78. Every body uses `Approach: (see
+plan)`, tracks #78, and points to the historical
+`docs/superpowers/plans/2026-05-16-pd-ui-new-repo.md`. Their exact anchors and
+scopes were:
+
+- #100 `#packagejson-with-concavetrillion-metadata` — `package.json` with
+  ConcaveTrillion metadata.
+- #101 `#tsconfigjson-strict` — strict `tsconfig.json`.
+- #102 `#vite-library-mode-build-config` — Vite library-mode build configuration.
+- #103 `#vitest-config` — Vitest configuration.
+- #104 `#eslint-flat-config` — ESLint flat configuration.
+- #105 `#makefile-ci-gate` — Makefile and CI gate.
+- #106 `#first-commit-agent-definitions` — first commit and agent definitions.
+- #107 `#copy-tokenscss-and-primitivescss-into-pd-uitheme` — copy
+  `tokens.css` and `primitives.css` into `pd-ui/theme/`.
+- #108 `#sync-back-script-pd-ui-docsdesign-system` — sync-back from `pd-ui` to
+  `docs/design-system`.
+- #109 `#sync-invariant-ci-gate` — sync-invariant CI gate.
+
+Each issue has one comment saying the cross-cut plans were migrating to
+`ConcaveTrillion/ocr-container-meta`. Parent #78 supplies the precise successor,
+[`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12),
+and says `pd-ui` work does not belong to this library. The rows therefore treat
+all ten children as superseded external trackers. Their raw exports preserve
+the exact tasks and comments without claiming any local implementation or
+creating active local records.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
