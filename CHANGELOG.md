@@ -1,3 +1,4 @@
+<!-- docgraph: ignore -->
 # Changelog
 
 All notable changes to `pdomain-book-tools` are documented here.
