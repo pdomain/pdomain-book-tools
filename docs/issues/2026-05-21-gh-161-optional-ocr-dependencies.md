@@ -50,7 +50,7 @@ version was stated.
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-161.json`
 - **Raw SHA-256:** `0a7c4c7c49f77dbc64f72b3022bc6645faaf42b0a575ac5d8ff65c6f771069ad`
-- **Migration cutover:** `a19c10b` — governed content and raw-export batch for GitHub issues #49, #161, #191, #201, and #226.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-21T15:19:01Z`
 - **Updated:** `2026-05-21T15:19:01Z`

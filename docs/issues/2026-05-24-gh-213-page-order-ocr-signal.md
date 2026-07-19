@@ -44,7 +44,7 @@ The task targets the draft 2026-05-24 page-order spec. No runtime, package versi
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-213.json`
 - **Raw SHA-256:** `26fd772c15d27c6148907335d1a8e39a928cb55de5523db206ad880ce2a59c25`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:52:32Z`
 - **Updated:** `2026-05-24T18:52:32Z`

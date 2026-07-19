@@ -44,7 +44,7 @@ The task targets the JSON fallback decision in section 6 of the draft 2026-05-24
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-223.json`
 - **Raw SHA-256:** `fc141b22706d4395c4c77d84198579b581d193ee408b88c6a4cdb0683c368be9`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:53:18Z`
 - **Updated:** `2026-05-24T18:53:18Z`

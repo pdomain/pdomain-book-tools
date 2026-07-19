@@ -45,7 +45,7 @@ The issue targets the draft 2026-05-24 scannos spec. No runtime, package version
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-209.json`
 - **Raw SHA-256:** `b02f1735b12241792a13b2ed800d64fb7dde2bdf5be9ef54371b6763d9fe1892`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:52:00Z`
 - **Updated:** `2026-05-24T18:52:00Z`
