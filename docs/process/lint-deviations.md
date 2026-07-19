@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-21
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: process
 ---
 
@@ -369,3 +369,29 @@ coercing a list to a tuple, or monkey-patching a non-optional attribute to
 runtime path behind it. Pragmas are per-line, never file-level, and
 `reportUnnecessaryTypeIgnoreComment = true` deletes any that go stale.
 Added 2026-07-15 during the recommended→strict migration.
+
+## 8. `reportMissingModuleSource` — basedpyright
+
+**Files:** these execution environments in `pyproject.toml`:
+
+- `pdomain_book_tools/geometry_correction`
+- `pdomain_book_tools/image_processing/cupy_processing`
+- `pdomain_book_tools/image_processing/grayscale_pipeline`
+- `tests`
+
+**Suppression form:** `reportMissingModuleSource = "none"` in only those
+execution environments; no inline pragmas.
+
+**Justification.** The `[gpu]` extra is optional, so CPU-only CI does not
+install the CuPy runtime. Local `typings/cupy` and `typings/cupyx` stubs still
+provide the checked API surface, but basedpyright reports a warning when it
+cannot also find runtime source. With `failOnWarnings = true`, that expected
+warning made the CPU-only gate fail even though type resolution succeeded.
+
+The three source roots contain the optional GPU integration points. Tests also
+import CuPy to select or skip GPU-only cases. Outside those roots, the
+missing-runtime-source diagnostic remains enabled for mandatory dependencies.
+Within them, missing imports, unknown or incompatible types, and every other
+strict diagnostic stay enabled. GPU runtime behavior remains covered by the
+opt-in GPU dependency and test paths. Added 2026-07-19 after reproducing the
+protected CI failure.
