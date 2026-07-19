@@ -93,11 +93,17 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 - [#191 — Require strict image validation for untrusted inputs](2026-05-22-gh-191-strict-image-validation.md)
 - [#201 — Add advisory static-testing scanners](2026-05-22-gh-201-advisory-static-scanners.md)
 - [#208 — Specify page-order detection](2026-05-24-gh-208-spec-page-order-detection.md)
+- [#209 — Specify the scannos rule and candidate module](2026-05-24-gh-209-spec-scannos-module.md)
 - [#211 — Add the page-order module skeleton and proposal types](2026-05-24-gh-211-page-order-module-skeleton.md)
 - [#212 — Add the filename-sequence page-order signal](2026-05-24-gh-212-page-order-filename-signal.md)
 - [#213 — Add the OCR page-number page-order signal](2026-05-24-gh-213-page-order-ocr-signal.md)
 - [#214 — Add the visual-similarity page-order signal](2026-05-24-gh-214-page-order-visual-signal.md)
 - [#215 — Aggregate page-order signals behind the public API](2026-05-24-gh-215-page-order-aggregation.md)
+- [#216 — Define the scanno rule and candidate dataclasses](2026-05-24-gh-216-scanno-dataclasses.md)
+- [#217 — Add the SQLite scanno rule library](2026-05-24-gh-217-sqlite-rule-library.md)
+- [#218 — Add the per-book JSON candidate store](2026-05-24-gh-218-json-candidate-store.md)
+- [#219 — Add scanno scanning and promotion APIs](2026-05-24-gh-219-scanno-scan-promote-api.md)
+- [#220 — Test the complete scanno promotion flow](2026-05-24-gh-220-scanno-promotion-tests.md)
 - [#226 — Verify release of predictor batch-size keyword arguments](2026-05-29-gh-226-release-batch-predictor-kwargs.md)
 
 ## Resolved issues
