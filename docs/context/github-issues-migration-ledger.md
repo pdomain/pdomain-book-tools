@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Eighty-nine completed issues have durable or disposable destinations
+## Ninety-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 89 completed issues one durable or disposable
+This ledger gives each of 99 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #109.
+through #119.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
 decisions. The earlier records explain #43, #54, and #65. The consolidated #77
@@ -128,6 +128,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#107](https://github.com/pdomain/pdomain-book-tools/issues/107) | `0f620e4b4d8452d7c44a8b8d1bbefc158f2b7c5cf98725ed63906eccc1efe344` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The copied theme tokens and primitives belong to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#108](https://github.com/pdomain/pdomain-book-tools/issues/108) | `a22d3a4924edab6ce327f9bcee561cce26a93be495d6f2862688766ecf3cf5b1` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The theme sync-back script belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#109](https://github.com/pdomain/pdomain-book-tools/issues/109) | `cf72bef9461ccd2f614e7d2b9fabead3a960dd75e5c3ec9f3e4ba5ffe837a706` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The theme sync-invariant CI gate belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#110](https://github.com/pdomain/pdomain-book-tools/issues/110) | `3365df35af916e52245de7dd640e29bb23f9ec10280a274d6fc0bf50c8d1dbe0` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Theme CSS package-subpath exports belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#111](https://github.com/pdomain/pdomain-book-tools/issues/111) | `f748bad9706fd515713b1b8d75fdfe14cea7b36823eae2b1f54fae9db11b9dc8` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The primitives layout and class-name helper belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#112](https://github.com/pdomain/pdomain-book-tools/issues/112) | `71510fa66cde92031696930db894ff6f8ff7561da60dd86fc3a17301bf290845` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The non-Radix primitive set belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#113](https://github.com/pdomain/pdomain-book-tools/issues/113) | `6c2c002a705992689d11216d34b9833eba3eb7702609c1fbe4b952eb6174aad8` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The Radix-layered primitive set belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#114](https://github.com/pdomain/pdomain-book-tools/issues/114) | `d3fa5c36eca2e5404c6bf6088da422b6065b7110aa93d0514f6f14b591a5e270` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The primitives barrel and subpath export belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#115](https://github.com/pdomain/pdomain-book-tools/issues/115) | `6d90c192479956e4910d554d120f3a7e3ecc87562cf8d8a100bfa22a5774f0e2` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Field and Form helper primitives belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#116](https://github.com/pdomain/pdomain-book-tools/issues/116) | `8670157e068204a516f64b57adb43837c842065b685410b4b3c37997ffebfcfb` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The curated Lucide re-export belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#117](https://github.com/pdomain/pdomain-book-tools/issues/117) | `b34f769a7b61d501c0224636748e63653dcbd4b8680c21d6c46c6fde4346f6a2` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The bespoke OCR-domain SVG stubs belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#118](https://github.com/pdomain/pdomain-book-tools/issues/118) | `0d565141d998dfa06e72b0f8c5368fda1b5f2741811c550b1a767b76403fad29` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The icons barrel and subpath export belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#119](https://github.com/pdomain/pdomain-book-tools/issues/119) | `b61fbf9726477000f6a6960027608465ea353e1645677d28529fb12d81afa666` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The pinned-wheel codegen fetch step belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -734,6 +744,42 @@ and says `pd-ui` work does not belong to this library. The rows therefore treat
 all ten children as superseded external trackers. Their raw exports preserve
 the exact tasks and comments without claiming any local implementation or
 creating active local records.
+
+### Issues #110 through #119 continued the external pd-ui plan
+
+Issues #110 through #119 were children of #78. Every body uses `Approach: (see
+plan)`, tracks #78, and points to the historical
+`docs/superpowers/plans/2026-05-16-pd-ui-new-repo.md`. Their exact anchors and
+scopes were:
+
+- #110 `#export-theme-css-via-package-subpaths` — export theme CSS through
+  package subpaths.
+- #111 `#primitives-folder-layout-classname-helper` — primitives folder layout
+  and a `className` helper.
+- #112 `#non-radix-primitives-button-input-textarea-badge-c` — Button, Input,
+  Textarea, Badge, Chip, StatusPip, KeyCap, Card, Separator, and Progress.
+- #113 `#radix-layered-primitives-dialog-alertdialog-popove` — Dialog,
+  AlertDialog, Popover, Tooltip, DropdownMenu, Select, Tabs, ToggleGroup, and
+  Accordion.
+- #114 `#primitives-barrel-subpath-export` — primitives barrel and subpath export.
+- #115 `#field-form-helper-primitives` — Field and Form helper primitives.
+- #116 `#curated-lucide-subset-re-export` — curated Lucide subset re-export.
+- #117 `#bespoke-ocr-domain-svg-stubs` — bespoke OCR-domain SVG stubs.
+- #118 `#icons-barrel-subpath-export` — icons barrel and subpath export.
+- #119 `#codegenfetch-install-pinned-wheels` — `codegen:fetch` pinned-wheel installation.
+
+Issues #110 through #114 and #116 through #119 each have one comment saying the
+cross-cut plans were migrating to `ConcaveTrillion/ocr-container-meta`. The
+shorter comment on issue #115 reads,
+`Migrating to ConcaveTrillion/ocr-container-meta.` The difference adds no local
+implementation evidence.
+
+Parent #78 points to
+[`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12)
+and says `pd-ui` work does not belong to this library. These ten child trackers
+are therefore superseded. Their immutable raw exports preserve the precise
+tasks, anchors, and comments without creating local product contracts or active
+records.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
