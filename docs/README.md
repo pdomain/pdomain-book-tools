@@ -42,6 +42,7 @@ This layout follows the workspace standard. See
 - [Layout-regression fixture architecture](architecture/layout-regression-fixture-corpus.md)
 - [Glyph-annotation architecture](architecture/glyph-annotations.md)
 - [Tesseract integration architecture](architecture/tesseract-integration.md)
+- [DocTR checkpoint-loading trust boundary](architecture/checkpoint-loading-trust-boundary.md)
 - [Completed GitHub issue migration ledger](context/github-issues-migration-ledger.md)
 - [Roadmap](plans/roadmap.md)
 - [Specifications](specs/_index.md)
