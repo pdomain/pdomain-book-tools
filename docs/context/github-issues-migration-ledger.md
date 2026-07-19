@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred nine completed issues have durable or disposable destinations
+## One hundred nineteen completed issues have durable or disposable destinations
 
-This ledger gives each of 109 completed issues one durable or disposable
+This ledger gives each of 119 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #129.
+through #139.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
 decisions. The earlier records explain #43, #54, and #65. The consolidated #77
@@ -148,6 +148,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#127](https://github.com/pdomain/pdomain-book-tools/issues/127) | `3c0918a77128e1dc62c2032d8b5ea1a1baffe65d53adc057f96fb73144158824` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The stage shell, image layer, and fixed layer order belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#128](https://github.com/pdomain/pdomain-book-tools/issues/128) | `f940769ce12125aa2b5b0672ceaff27b8c534f68069752bf9bc03ab48d0a313b` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The six canvas slot helpers belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#129](https://github.com/pdomain/pdomain-book-tools/issues/129) | `8de191ba21a287de045b65ada10514acbb50b2cdf788c894f59cd2f21064f4f9` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The canvas subpath export belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#130](https://github.com/pdomain/pdomain-book-tools/issues/130) | `99d5efe91c4f54c1ac0f17e59db6cd461df415e47239d753a377899e28ff180c` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | WordList API types and render-prop signatures belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#131](https://github.com/pdomain/pdomain-book-tools/issues/131) | `7ad06c7b9a943623ba127f785e37d06a07413ce3de915bc3fa06d08bab390295` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The virtualized list shell belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#132](https://github.com/pdomain/pdomain-book-tools/issues/132) | `ab064ed19af53a9e1aa14297e69b959bb77cbbd199f9c9e85a438f8d50181a48` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | LineList and PageList sibling shells belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#133](https://github.com/pdomain/pdomain-book-tools/issues/133) | `226b2c6978f652414879c6b39cb79de8189d3d3fe2c905a633fb4e224b658564` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | LineCard adapter documentation belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#134](https://github.com/pdomain/pdomain-book-tools/issues/134) | `fda5f278988fb90f39d019441cd2c729d25b06e55fd350d1c9a355176d216b72` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Worklist filtering and sorting hooks belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#135](https://github.com/pdomain/pdomain-book-tools/issues/135) | `9fbe736f4877e2ecfb21d781be8d5baa9124b862623710f46c2d265586d5ecbf` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | StatusPip, ConfidenceBar, and MatchStatusChip belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#136](https://github.com/pdomain/pdomain-book-tools/issues/136) | `38d605c9165f767d2a4ad8d70b26ca6e747c00c14cba194b06112e23172edfac` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The worklist subpath export belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#137](https://github.com/pdomain/pdomain-book-tools/issues/137) | `c903e31eb7a923f1dc2a5c40877523c22cd960878a2fc89a204330602457e9fc` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | AppShell props and context types belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#138](https://github.com/pdomain/pdomain-book-tools/issues/138) | `b2d16fe5ed225966afdd59e27b65ec87f126a0fe1af3f3ae1dcf710f1ca029b5` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The AppShell grid skeleton belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#139](https://github.com/pdomain/pdomain-book-tools/issues/139) | `227d66a77918734140dcf8059e02e249dda692bdba659c6cc4783a4f2480d114` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | LauncherSlot and LauncherTile belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -833,6 +843,36 @@ local implementation.
 All ten child trackers are superseded by the parent and meta-repository
 destination. Their immutable raw exports preserve the exact tasks, anchors, and
 comments without creating active local records.
+
+### Issues #130 through #139 continued external worklist and shell work
+
+Issues #130 through #139 were children of #78. Every body tracks #78 and uses
+`Approach: (see plan)`. Each points to the historical
+`docs/superpowers/plans/2026-05-16-pd-ui-new-repo.md`. Their exact anchors and
+scopes were:
+
+- #130 `#wordlist-api-types-render-prop-signatures` — WordList API types and
+  render-prop signatures.
+- #131 `#virtualized-list-shell` — virtualized list shell.
+- #132 `#wordlist-sibling-shells-linelist-pagelist` — LineList and PageList
+  sibling shells.
+- #133 `#adapter-docs-for-linecard` — LineCard adapter documentation.
+- #134 `#useworklistfilter-useworklistsort-hooks` — `useWorklistFilter` and
+  `useWorklistSort` hooks.
+- #135 `#status-row-primitives-statuspip-confidencebar-matc` — StatusPip,
+  ConfidenceBar, and MatchStatusChip.
+- #136 `#worklist-subpath-export` — worklist subpath export.
+- #137 `#appshell-props-context-types` — AppShell props and context types.
+- #138 `#appshell-grid-skeleton` — AppShell grid skeleton.
+- #139 `#launcherslot-launchertile` — LauncherSlot and LauncherTile.
+
+Each issue has one comment saying the cross-cut plans were migrating to
+`ConcaveTrillion/ocr-container-meta`. Parent #78 points to
+[`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12).
+It says `pd-ui` work does not belong to this library. These ten child trackers
+are therefore superseded. Their immutable raw exports preserve the precise
+tasks, anchors, and comments. They do not create local implementation claims,
+product contracts, or active records.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
