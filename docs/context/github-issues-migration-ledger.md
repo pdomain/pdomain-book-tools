@@ -18,12 +18,16 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Twenty completed issues have durable or disposable destinations
+## Twenty-nine completed issues have durable or disposable destinations
 
-This ledger reconciles closed GitHub issues #8, #9, #10, #11, #12, #13,
-as well as #14, #18, #19, #21, and #22 through #31. Each issue appears exactly
-once. The details below map every durable body and comment fact to current code,
-tests, documentation, or an explicit disposable category.
+This ledger gives each of 29 completed issues one durable or disposable
+destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
+issues #18, #19, #21, #22 through #33, #35, #36, and #38 through #42.
+
+Closed issue #43 remains an active owner decision because this repository does
+not verify the claimed external refile. The details below map every durable body
+and comment fact to current code, tests, documentation, an active governed
+record, or an explicit disposable category.
 
 Raw exports live under `migration/github-issues/raw/`. Their SHA-256 digests
 bind each row to the source used for this classification. Issue bodies and
@@ -51,6 +55,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#29](https://github.com/pdomain/pdomain-book-tools/issues/29) | `5ad76da7c520fcd2148e8c68f61da3e5020969990296c1d0d7a78a93b7ad6c83` | This ledger; `docs/architecture/glyph-annotations.md`; `docs/context/decisions.md`; `pdomain_book_tools/ocr/glyph_annotations.py`; `tests/ocr/test_glyph_annotations.py` | The glyph-annotation spec was promoted to current architecture and retired | Retired; commit `b88b62c` | Deletion pending; merged cutover pending |
 | [#30](https://github.com/pdomain/pdomain-book-tools/issues/30) | `20464714da37f45ba9b5ba1a7043b6a993f15f0f6a98c47aaa0404a18bd5aecb` | This ledger; `docs/architecture/ocr-page-orientation.md`; `pdomain_book_tools/ocr/rotation.py`; `pdomain_book_tools/ocr/document.py`; `tests/ocr/test_rotation.py` | Orientation detection and its `Document` integration remain implemented; current architecture supersedes the cited spec | Completed; architecture promotion in `b88b62c` | Deletion pending; merged cutover pending |
 | [#31](https://github.com/pdomain/pdomain-book-tools/issues/31) | `d53cd5d3160317e54a3d6b10643404b643a67160d9a0fb69fe03c2fb783a644a` | This ledger; `docs/architecture/reorganize-page-pipeline.md`; `pdomain_book_tools/ocr/page.py`; `pdomain_book_tools/ocr/reorganize_page_utils.py`; reorganize tests | `Page.reorganize_page` and its pipeline remain implemented; current architecture supersedes the cited spec | Completed; architecture promotion in `b88b62c` | Deletion pending; merged cutover pending |
+| [#32](https://github.com/pdomain/pdomain-book-tools/issues/32) | `2850570d7533e763a83aadd065d6b5b614391588b1a68a63a2cf57dc2fa5e35a` | This ledger; `docs/architecture/layout-regression-fixture-corpus.md`; layout and reorganize fixture tests | The fixture corpus, per-case artifacts, regeneration tools, and baseline policy remain implemented | Completed; architecture promotion in `b88b62c` | Deletion pending; merged cutover pending |
+| [#33](https://github.com/pdomain/pdomain-book-tools/issues/33) | `51d4739b3034db307ea2eab185709ef1d9e1ee8a7a182d4f2f6a43f8811978e2` | This ledger; `docs/architecture/glyph-annotations.md`; issue #41 implementation evidence | Mislabeled duplicate of canonical feature request #41; the glyph contract shipped in `675ad76` | Superseded by #41 | Deletion pending; merged cutover pending |
+| [#35](https://github.com/pdomain/pdomain-book-tools/issues/35) | `b3d590b69d90603afa5406e4e1b2ce215b69ebc9baadccebc399a48e8c2766eb` | This ledger; geometry repr implementation and tests | The request became spec #36; `BoundingBox.__repr__` now emits the spec's eval-safe `from_ltrb` form | Completed; commit `b4c5b8c` | Deletion pending; merged cutover pending |
+| [#36](https://github.com/pdomain/pdomain-book-tools/issues/36) | `9b9917d8d6d772a2e6f00865e574054d1f189cfe30d5da8fc385b051dbe48b38` | This ledger; geometry repr implementation and tests | The repr contract chose eval-safe `BoundingBox.from_ltrb(...)`, positional `Point(...)`, and no other geometry types | Implemented; commit `b4c5b8c` | Deletion pending; merged cutover pending |
+| [#38](https://github.com/pdomain/pdomain-book-tools/issues/38) | `7e3fdcf0cb3906d5cf10cb365bcbb0688e03fb7f0dc365e1c92fde6f33a391a4` | This ledger; `pdomain_book_tools/geometry/bounding_box.py`; repr tests | `BoundingBox.__repr__` uses the corrected `from_ltrb` contract rather than the issue body's invalid four-argument constructor form | Completed; commit `b4c5b8c` | Deletion pending; merged cutover pending |
+| [#39](https://github.com/pdomain/pdomain-book-tools/issues/39) | `5424bd1958c4dbf8927f0f284b839e83cc7e869ef48966a680946e1e40fa2346` | This ledger; `pdomain_book_tools/geometry/point.py`; repr tests | `Point.__repr__` returns the requested positional form for integer and fractional coordinates | Completed; commit `b4c5b8c` | Deletion pending; merged cutover pending |
+| [#40](https://github.com/pdomain/pdomain-book-tools/issues/40) | `b90696134e506158a1df97265e00bd7a3446df9459a73eaada62b5998377e974` | This ledger; `tests/test_geometry_repr.py`; geometry repr tests | The tests were absorbed into PR #50 after blocker #51 corrected the BoundingBox form | Completed in squash merge `b4c5b8c` | Deletion pending; merged cutover pending |
+| [#41](https://github.com/pdomain/pdomain-book-tools/issues/41) | `ee2438437c67de6577ac92d9ef241007770cb6e70ec0a4d9f03fa8c5154bd9b5` | This ledger; `docs/architecture/glyph-annotations.md`; glyph implementation and tests | Glyph facts remain a side channel on `Word` and do not mutate canonical ground-truth text | Completed; merge `675ad76` | Deletion pending; merged cutover pending |
+| [#42](https://github.com/pdomain/pdomain-book-tools/issues/42) | `dc421b541e3c7126516360015d77c9f06868e8f4e06c7c31cca8e555d652f007` | This ledger; `Makefile` | `make ci` now runs an unconditional full-repository Ruff format and check gate | Completed; commit `e57a52c` | Deletion pending; merged cutover pending |
+| [#43](https://github.com/pdomain/pdomain-book-tools/issues/43) | `021ff1e31a1d5e3b6dd590d507f4e6def1f2ed03d1c2747156bab8ea3368e041` | This ledger; `docs/issues/2026-05-11-gh-043-style-review-detect-subprocess-failure.md` | The local issue only claims a refile to `ocr-container-meta#1`; this batch did not verify that external record or a fix | Needs owner decision; governed record remains active | Do not delete until external disposition is verified |
 
 ## Coverage details preserve each durable fact
 
@@ -190,10 +204,10 @@ Commit `b88b62c` later retired all four after promoting their durable contracts
 to the orientation, reorganize-pipeline, layout-fixture, and glyph-annotation
 architecture documents.
 
-Issue #26 tracked implementation issue #30, and issue #27 tracked #31. The
-issue #28 record pointed to #32, which is outside this batch. Issue #29 pointed
-to parent feature request #41, and its first comment recorded that backfilled
-chain.
+Issue #26 tracked implementation issue #30, and issue #27 tracked #31. Issue #28
+pointed to corpus implementation issue #32, which the dedicated section below
+reconciles. Issue #29 pointed to parent feature request #41. Its first comment
+recorded that backfilled chain.
 
 Those tracking links are historical provenance. Current behavior is governed
 by the architecture documents, implementation, and tests cited in the table.
@@ -217,6 +231,99 @@ test references include the grouping, dropped-word reconciliation, diagnostic,
 drop-cap, and layout suites. The broad claim that the pipeline had been core
 since Phase 2 is historical commentary, not a separate current contract.
 Proposal-stage boilerplate and the retired spec pointer are disposable.
+
+### Issue #32 remains an implemented fixture corpus
+
+Issue #32 requested the layout-regression corpus described by parent spec #28.
+Its closing comment reported 30 cases and 120 files. It also recorded the corpus
+structure and three regeneration scripts.
+
+The current corpus has grown to 31 page cases. Its `inputs/` directory contains
+31 PNGs, 31 OCR JSON files, 31 layout JSON files, and 27 optional proofread
+references, for 120 input files. The current architecture records the exact
+artifact shape, tests, baseline policy, scripts, and remaining coverage gaps.
+Commit `b88b62c` promoted that contract and retired the source spec. Adding cases
+remains maintenance rather than a new deliverable.
+
+### Issues #33 and #41 converge on the shipped glyph contract
+
+Issue #33 was a mislabeled proposal-layer duplicate. Its closing comment names
+issue #41 as the canonical feature request for spec #29. Issue #41 was the
+retroactive R2 Phase B backfill for the same chain. It was pre-approved because
+the spec already existed.
+
+The requested foundation-library behavior stores ligatures, long-s
+substitutions, swashes, and related printed-form facts beside canonical
+ground-truth text. It does not mutate that text. Merge `675ad76` added the data
+model, `Word` integration, and tests. The current architecture and tests preserve
+that contract. The raw cross-repository consumer list records historical scope;
+it does not prove that those downstream repositories adopted the feature.
+
+### Issues #35, #36, #38, #39, and #40 implemented the repr contract
+
+Issue #35 began as an R2 workflow smoke and a request for readable
+`BoundingBox` assertion failures. Triage created spec issue #36 to decide scope,
+format, and consistency across geometry primitives. The resulting contract made
+`BoundingBox.__repr__` eval-safe through `BoundingBox.from_ltrb(x0, y0, x1, y1)`,
+used positional `Point(x, y)`, omitted `is_normalized`, and excluded other
+geometry types from this slice. The current implementation and
+`tests/test_geometry_repr.py` match that decision. This corrects the invalid
+four-scalar primary-constructor form in the bodies of #35 and #38.
+
+Issues #38 and #39 supplied the two implementation slices. Their first bot runs
+were skipped because each issue had multiple `status:*` labels. Later claim
+comments record model `haiku`, effort `low`, their spec path, pre-claim SHAs
+`8ecbe77e414c0c52e4fbe156b9ec0cc7f8271884` and
+`764f8c3c009ca36534c5757e6df33837151a7058`, and no separate acceptance text.
+Those automation facts explain execution history but do not define product
+behavior.
+
+Issue #40 requested the combined repr tests and was blocked by #51 while that
+issue corrected the BoundingBox form. Its comments record one multi-status skip,
+temporary disarming, re-arming after spec PR #37, three blocked runs, a later
+`haiku`/`low` claim at pre-claim SHA
+`a2472baf388fe4c2d30f72387dc496870471aa47`, and final zero-delta handling. The
+closing comment says PR #50 had already absorbed `tests/test_geometry_repr.py`
+during issue #38's TDD slice. Squash merge `b4c5b8c` contains the two repr
+implementations and tests, including #51's corrected `from_ltrb` form.
+
+### Issue #42 closed the full-repository lint gap
+
+Issue #42 recorded three bot-generated coverage tests that passed local
+`make ci` during R4 B6 stress but failed GitHub CI. Ruff formatting found extra
+blank lines. B007 also found an unused `i` in
+`test_page_training_set_generators.py`.
+
+The issue attributed the mismatch to incremental or cached pre-commit behavior.
+It also noted that the orchestrator lacked a CI retry loop. It named manual
+branch commits `76388aa` and `b61a23f`. Those objects are not present in this
+repository, so the raw report is their only evidence here.
+
+The durable remediation is commit `e57a52c`. It added the read-only, full-repo
+`lint-check` target and wired it into `make ci`, closing the local-versus-GitHub
+scope gap. This implemented the outcome common to the issue's three proposed
+options without preserving transient skill or `success.sh` instructions as
+repository policy. The affected issues #8, #9, and #10 remain mapped to their
+coverage tests above. The original severity was Low.
+
+### Issue #43 requires an owner decision outside this repository
+
+Issue #43 reported a silent subprocess failure in the workspace
+`scripts/style-review-detect.py`. When `claude -p --bare` lacked a TTY or
+authentication, the subprocess could return exit 1. The caller then parsed an
+empty response as `{"findings": []}`.
+
+The R4 closeout report said PR #17 review agent `afec1b702bccfb635` required
+manual analysis to recover 11 findings. The requested outcome was a non-zero
+exit with diagnostic stderr, a mocked failure regression test, and unchanged
+happy-path tests.
+
+This repository does not contain that script or evidence of the fix. The only
+closure comment says the workspace-tooling bug was refiled as
+`ConcaveTrillion/ocr-container-meta#1`. This batch did not verify the external
+issue or its resolution. The active governed issue record preserves the full
+provenance and asks the owner to confirm the external disposition before raw
+deletion.
 
 ## Cutover remains pending
 

@@ -22,12 +22,17 @@ The layout-regression corpus tests layout detection consumers and reading-order 
 Each case uses one slug across these committed files:
 
 - `inputs/<case>.png`: source page image.
-- `inputs/<case>.pgdp.txt`: proofread reference text; it is an aspirational recognition reference, not the reorganize baseline.
+- `inputs/<case>.pgdp.txt`: optional proofread reference text, when available. It
+  is an aspirational recognition reference, not the reorganize baseline.
 - `inputs/<case>.json`: cached OCR document/page data.
 - `inputs/<case>.layout.json`: cached PP-DocLayout `PageLayout`.
 - `expected_text/baseline/<case>.reorganize.txt`: committed reading-order and block-rendering expectation.
 
 Generated inspection files live under `expected_text/current/`, `expected_text/diff/`, and `debug/`. Git ignores those directories. The per-case source and coverage manifest is `tests/fixtures/layout_regression/README.md`.
+
+The current 31-case corpus has 31 PNGs, 31 OCR JSON files, 31 layout JSON files,
+and 27 optional proofread references. A case remains part of layout and
+reorganize coverage when its proofread reference is missing.
 
 ## Test contract
 
