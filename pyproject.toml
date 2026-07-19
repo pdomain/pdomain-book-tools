@@ -340,10 +340,10 @@ venvPath = "."
 venv = ".venv"
 
 # Per-execution-environment overrides. typeCheckingMode is not valid
-# per-environment; tests run strict like everything else, with one scoped
-# deviation catalogued in docs/process/lint-deviations.md:
-# reportPrivateUsage is off for tests because unit tests legitimately
-# exercise private helpers.
+# per-environment; every root still runs strict. Two scoped deviations are
+# catalogued in docs/process/lint-deviations.md: tests may exercise private
+# helpers, and CPU-only environments may use local CuPy stubs without the
+# optional runtime source.
 #
 # extraPaths = ["."] on both environments: pinning `root` to "tests" (or
 # "scripts") narrows that environment's *own* module search path to the
@@ -358,8 +358,21 @@ venv = ".venv"
 # rootdir insertion resolves these same imports at runtime) fixes
 # resolution without any suppression.
 [[tool.basedpyright.executionEnvironments]]
+root = "pdomain_book_tools/geometry_correction"
+reportMissingModuleSource = "none"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "pdomain_book_tools/image_processing/cupy_processing"
+reportMissingModuleSource = "none"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "pdomain_book_tools/image_processing/grayscale_pipeline"
+reportMissingModuleSource = "none"
+
+[[tool.basedpyright.executionEnvironments]]
 root = "tests"
 reportPrivateUsage = "none"
+reportMissingModuleSource = "none"
 extraPaths = ["."]
 
 [[tool.basedpyright.executionEnvironments]]

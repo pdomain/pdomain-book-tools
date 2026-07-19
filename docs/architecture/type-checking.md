@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-15
+Last verified: 2026-07-19
 Kind: architecture
 ---
 
@@ -35,9 +35,13 @@ cupyx.scipy.ndimage, and pytesseract. The stubs are scoped to the API
 surface this repo uses. The repo also depends on the `pandas-stubs` dev
 dependency.
 
-One scoped deviation exists: `reportPrivateUsage` is off for the `tests`
-execution environment, because unit tests exercise private helpers. See
-`docs/process/lint-deviations.md` for this and the other catalogued
+Two scoped deviations exist. `reportPrivateUsage` is off for the `tests`
+execution environment because unit tests exercise private helpers.
+`reportMissingModuleSource` is off only in the three source trees that support
+the optional CuPy runtime and in tests, which exercise those optional paths.
+Local stubs still provide the checked CuPy API on CPU-only installs. Missing
+imports, unknown types, and other diagnostics remain enabled. See
+`docs/process/lint-deviations.md` for these and the other catalogued
 suppressions.
 
 The baseline is a generated integration artifact. Regenerate it only when
@@ -48,11 +52,11 @@ edit it on parallel file-level branches.
 
 - Code: `pyproject.toml` (`[tool.basedpyright]`), `Makefile` (`typecheck`),
   `typings/`, `.basedpyright/baseline.json`
-- Tests: `make ci AI=1`; `uv run basedpyright` reports 0 errors, 0
-  warnings, 0 notes (2026-07-15)
+- Tests: `make ci AI=1`; `uv run basedpyright` reports 0 errors, 0 warnings,
+  0 notes on GPU-capable and CPU-only dependency sets (2026-07-19)
 - Artifacts: empty basedpyright file baseline
-- Verified: 2026-07-15 during the recommended→strict migration (7,697
-  strict errors driven to zero)
+- Verified: 2026-07-19 after reproducing the CPU-only CI dependency set; the
+  original 2026-07-15 migration drove 7,697 strict errors to zero
 
 ## Residual intent
 
