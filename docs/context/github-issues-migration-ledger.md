@@ -18,13 +18,14 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred seventy completed issues have durable or disposable destinations
+## One hundred eighty completed issues have durable or disposable destinations
 
-This ledger gives each of 170 completed issues one durable or disposable
+This ledger gives each of 180 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
-issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #160 and #162 through #190. Open issue #161 has its own governed record
-and is not part of this completed-issue ledger.
+and #18, #19, #21, #22 through #33, #35, #36, and #38 through #44. It also
+covers #51 through #160, #162 through #190, #192 through #200, and #205. Open
+issues with governed records are outside this completed-issue ledger. They
+include #161 and #191.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
 decisions. The earlier records explain #43, #54, and #65. The consolidated #77
@@ -209,6 +210,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#188](https://github.com/pdomain/pdomain-book-tools/issues/188) | `0773e73f51ce8ba23daa03b9f6f5f49e032c0f7005c322cd3dfaf2ca55c3f792` | This ledger; immutable raw export; commit `cfc6e66`; merge `7a3493d`; coverage documentation tests | The reporter reads `fail_under` from `pyproject.toml`, and README guidance is drift-tested | Implemented; current configuration remains authoritative | Deletion pending; merged cutover pending |
 | [#189](https://github.com/pdomain/pdomain-book-tools/issues/189) | `8737079cc58b1035316e4b466d4db3b4ed23331ac577f31b83a50eb33eba1a2f` | This ledger; immutable raw export; commit `aed3962`; [quality-gates process](../process/repository-quality-gates.md) | Full GPU-capable coverage includes CuPy modules; CPU-only coverage omits unavailable GPU paths | Implemented as a source-set split with one threshold; no separate GPU CI threshold claim | Deletion pending; merged cutover pending |
 | [#190](https://github.com/pdomain/pdomain-book-tools/issues/190) | `401ee83d5263e992b7c0529c9ca462c60420dd095bb25abe08389888accd1993` | This ledger; immutable raw export; commit `c5ca010`; merge `bad42d3`; [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md) | The built-in source is pinned, custom remote repos require opt-in, and offline loading is supported | Implemented trust acknowledgment; allowlist, size, checksum, custom-source pinning, and local-artifact validation remain external | Deletion pending; merged cutover pending |
+| [#192](https://github.com/pdomain/pdomain-book-tools/issues/192) | `d2262ba27fc270fc6a2cf6276d50f4c486aec38e12184863c076f30834aa4b53` | This ledger; immutable raw export; commit `bd99ad1`; merge `7a3493d`; CPU and GPU crop tests | Both crop backends reject negative edge values before slicing | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#193](https://github.com/pdomain/pdomain-book-tools/issues/193) | `db9e989c6af80f7e5deeccadabcbcbed923c54d10c452d07aa36ff1bf999f4c0` | This ledger; immutable raw export; commit `0101f31`; merge `7a3493d`; Word and Block tests | Constructors copy incoming mutable metadata dictionaries | Implemented shallow ownership isolation for the two reported dictionaries | Deletion pending; merged cutover pending |
+| [#194](https://github.com/pdomain/pdomain-book-tools/issues/194) | `eb5d533ad760c28440060b04dc37a28c4bc2573331e8154075218373a1219102` | This ledger; immutable raw export; commit `59d7fbf`; merge `cb10703`; log-filter tests | The AI log filter reads at most 16 MiB and keeps the tail of larger logs | Implemented with bounded input memory | Deletion pending; merged cutover pending |
+| [#195](https://github.com/pdomain/pdomain-book-tools/issues/195) | `96089dac72ca3f76582396f5e9a5fcaee61c6b2b16e11c2b92875600a73099e8` | This ledger; immutable raw export; commit `4f14e3e`; merge `cb10703`; Make-variable tests | Developer layout-fork targets validate SHA, repository IDs, and mirror paths before recipes run | Implemented with strict allowlist patterns | Deletion pending; merged cutover pending |
+| [#196](https://github.com/pdomain/pdomain-book-tools/issues/196) | `565a1e60d4f89e84bb09734059647b7df0691bf858eb7d9a9121ac493af4fa18` | This ledger; immutable raw export; commit `81a0a22`; workflow and uv configuration | GitHub Actions and the CI uv version are pinned to immutable versions | Implemented for the release-critical workflow references; no all-dependency exact-pin claim | Deletion pending; merged cutover pending |
+| [#197](https://github.com/pdomain/pdomain-book-tools/issues/197) | `08c84a29ab650c0aaacd932a732573384754258516c74ad5623039c8815afdff` | This ledger; immutable raw export; commit `7b8d4fa`; merge `cb10703`; `CONTRIBUTING.md` | Contributor setup uses `uv sync --group dev` for the dependency group | Implemented documentation correction | Deletion pending; merged cutover pending |
+| [#198](https://github.com/pdomain/pdomain-book-tools/issues/198) | `b721cf8616b5ff2a877f2d80964568d46efd1fcc300dcc5eb48435a7001c0db0` | This ledger; immutable raw export; commit `86b6789`; merge `cb10703`; license tests | The vendored SPDX data has an adjacent notice naming source, vendor date, and CC0-1.0 | Implemented attribution metadata and package test | Deletion pending; merged cutover pending |
+| [#199](https://github.com/pdomain/pdomain-book-tools/issues/199) | `863a8abb140437da390d4ea20aa1417acdc3588f04123dd9f39dd855173c7c3c` | This ledger; immutable raw export; commit and tag `2e815f3` / `v0.13.0`; `CHANGELOG.md` | Release `v0.13.0` made the reconciled glyph annotations available by tag | Implemented release and changelog entry | Deletion pending; merged cutover pending |
+| [#200](https://github.com/pdomain/pdomain-book-tools/issues/200) | `d6085afb09065b86a29cd2527674d43d249ed506039aee9dc0bfb4a0da18f3c9` | This ledger; immutable raw export; commit `2b26ef3`; merge `bad42d3`; [local-dev architecture](../architecture/local-dev-mode.md) | Dependency upgrades detect local-dev state and refuse the clobbering path | Implemented guard, marker alignment, and local upgrade workflow | Deletion pending; merged cutover pending |
+| [#205](https://github.com/pdomain/pdomain-book-tools/issues/205) | `0596fc57cd1dea7f86f438aadf19564bfbd9202bcd86f95b8958ed1a2703b922` | This ledger; immutable raw export; commit `31137f1`; [DocTR checkpoint architecture](../architecture/checkpoint-loading-trust-boundary.md); loader tests | The finetuned predictor exposes a keyword-only injected loader with a `weights_only=True` default | Implemented the narrow safe-loader request; #165 retains separate unresolved checkpoint hardening | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -1233,6 +1244,77 @@ the adapter.
 The distinct
 [DocTR checkpoint boundary](../architecture/checkpoint-loading-trust-boundary.md)
 continues to own `torch.load`, `weights_only`, and state-dict validation.
+
+### Issues #192 through #195 bounded mutable and developer inputs
+
+Issue #192 found that negative `crop_edges()` arguments reached Python slicing.
+Commit `bd99ad1`, merged in `7a3493d`, validates all four edge values in the
+OpenCV and CuPy implementations. Both backend test suites cover negative input.
+The existing dimension checks still handle crops larger than the image.
+
+Issue #193 found that Word and Block constructors retained two caller-owned
+dictionaries by reference. Commit `0101f31`, also merged in `7a3493d`, copies
+`ground_truth_match_keys` and `additional_block_attributes` during
+construction. Aliasing tests prove that later caller mutation does not change
+model state. This is shallow ownership isolation for the reported dictionaries,
+not a general deep-copy promise for every constructor input.
+
+Issue #194 found that the AI log filter read an entire log before filtering.
+Commit `59d7fbf`, merged in `cb10703`, caps input at 16 MiB. Smaller logs are
+read whole; larger logs retain the tail, where CI failure context normally
+appears. `tests/utility/test_ai_filter_log.py` covers both paths.
+
+Issue #195 found shell-interpolation risk in developer layout-fork Make
+targets. Commit `4f14e3e`, also merged in `cb10703`, validates Git SHAs as 7–40
+lowercase hexadecimal characters, Hugging Face repository IDs as owner/name,
+and mirror paths against shell metacharacters. Tests show rejected values do
+not execute recipe bodies.
+
+### Issues #196 through #200 completed supply-chain and local workflow work
+
+Issue #196 requested stronger release-workflow pins. Commit `81a0a22` pins
+`actions/checkout`, `astral-sh/setup-uv`, and uv itself to immutable versions.
+It also pins the DocTR Git source tracked by issue #187. The issue is complete
+for those release-critical references; broad runtime lower bounds were not all
+converted to exact pins.
+
+Issue #197 found contributor setup using optional-extra syntax for a dependency
+group. Commit `7b8d4fa`, merged in `cb10703`, changes the command in
+`CONTRIBUTING.md` to `uv sync --group dev`, matching the project declaration
+and Makefile setup path.
+
+Issue #198 found no visible attribution beside the vendored SPDX license data.
+Commit `86b6789`, also merged in `cb10703`, adds
+`pdomain_book_tools/data/THIRD-PARTY-NOTICES.md`. The notice names the upstream
+project and repository, CC0-1.0 license, and vendor date. A package test ensures
+the notice ships and retains its source and license statements.
+
+Issue #199 requested a tagged release containing the reconciled glyph model.
+Commit `2e815f3` added the `v0.13.0` changelog entry and was tagged `v0.13.0`.
+That release includes the uppercased ligature vocabulary, `LONG_ST`, and the
+`OE` and `AE` members needed by downstream consumers.
+
+Issue #200 requested protection against dependency upgrades that silently
+replace local-dev overrides. Commit `2b26ef3`, merged in `bad42d3`, adds the
+two-tier probe to `upgrade-deps`, aligns marker creation, and tests marker and
+GPU-extra detection. The evolved
+[local-dev architecture](../architecture/local-dev-mode.md) records the current
+target names, marker contract, guard scope, and remaining caveats.
+
+### Issue #205 completed only the injectable safe-loader request
+
+Issue #205 requested a public injection point for DocTR `.pt` loading. Commit
+`31137f1` adds a keyword-only `torch_load` parameter to
+`get_finetuned_torch_doctr_predictor()`. Its default is
+`functools.partial(torch.load, weights_only=True)`, and the package's PyTorch
+minimum needs no older-version fallback. Tests prove keyword-only placement,
+custom-loader forwarding, and the safe default.
+
+The [DocTR checkpoint architecture](../architecture/checkpoint-loading-trust-boundary.md)
+records that shipped boundary. Issue #205 is narrower than issue #165. It does
+not claim maximum-size checks, checksums, immutable default model revisions,
+`safetensors`, or a complete local-path trust policy. Those residuals remain in
+the active governed #165 record.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
