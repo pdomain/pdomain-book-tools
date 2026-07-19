@@ -18,12 +18,13 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred forty completed issues have durable or disposable destinations
+## One hundred fifty completed issues have durable or disposable destinations
 
-This ledger gives each of 140 completed issues one durable or disposable
+This ledger gives each of 150 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #159.
+through #160 and #162 through #170. Open issue #161 has its own governed record
+and is not part of this completed-issue ledger.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
 decisions. The earlier records explain #43, #54, and #65. The consolidated #77
@@ -178,6 +179,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#157](https://github.com/pdomain/pdomain-book-tools/issues/157) | `b0c98220c30f907aa1760e60d7e55049099f9c4dc85417f512e52cb50f1f88f5` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Publishing `0.1.0-alpha` belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#158](https://github.com/pdomain/pdomain-book-tools/issues/158) | `d7a29e5a7c635ab0a8f58044748244a4addd9c35cd80241daa6e57e145517e28` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Release documentation belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#159](https://github.com/pdomain/pdomain-book-tools/issues/159) | `070afa6c1a7a0881e8f958906c0e8eca0839adbc380a7ee9f48b742964cbf401` | This ledger; immutable raw export; parent #56; meta-repository cross-cut tracking | The decompose-spec default-sync and compatibility changes belong to cross-cut skill tooling | Superseded by meta-repository tracking; no local implementation claim or successor issue inferred | Deletion pending; merged cutover pending |
+| [#160](https://github.com/pdomain/pdomain-book-tools/issues/160) | `541ba9a942a614fc08d8d7aeab1c4deda9aba70ed05d735bde170517b6293a60` | This ledger; immutable raw export | The one-time grooming report recorded seven `mark_complete` actions and no items for CT review | Abandoned as completed disposable workflow output; no product or implementation claim | Deletion pending; merged cutover pending |
+| [#162](https://github.com/pdomain/pdomain-book-tools/issues/162) | `c5d65ff48b84ed09035aeba90dfc6abd762d0c57b0aef8db17c1ba7e6e6ac9fb` | This ledger; immutable raw export; commit `46be7aa`; `pdomain_book_tools/licenses`; focused tests | The shared data-driven SPDX allowlist and validator shipped | Implemented; downstream integration remains outside this issue | Deletion pending; merged cutover pending |
+| [#163](https://github.com/pdomain/pdomain-book-tools/issues/163) | `7f441e6d436b2e88a95863124e180efaa63ee9976bd5f18f259dfdc09e1c609c` | This ledger; immutable raw export; commit `4d483ad`; glyph annotation code and tests | LigatureKind vocabulary and legacy wire-value migration shipped; the model remained a dataclass | Implemented; SPA-side adaptation was out of scope | Deletion pending; merged cutover pending |
+| [#164](https://github.com/pdomain/pdomain-book-tools/issues/164) | `67e90f1f6f955d874d7c843ff3b4fd6c5b2e9030bb5200ca7cfb3f0d438014e7` | This ledger; immutable raw export; commit `3480c3a`; `tests/hf/test_hf.py` | Both Hugging Face exception import paths are mocked, removing the xdist import-order flake | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#165](https://github.com/pdomain/pdomain-book-tools/issues/165) | `58b2edf5b86baf582e826bc2793e134f5fa09fdd3945681bdb60faeeedc9d005` | This ledger; immutable raw export; [active governed issue](../issues/2026-05-22-gh-165-checkpoint-hardening.md); [shipped architecture](../architecture/checkpoint-loading-trust-boundary.md) | Commits `31137f1` and `e5cf913` shipped the safe default, injected loader, and state-dict validation; file-size, checksum, pinned-revision, `safetensors`, and local-path trust work remains | Partially implemented; governed residual remains active | Do not delete while the governed issue is active |
+| [#166](https://github.com/pdomain/pdomain-book-tools/issues/166) | `c45824601666ef0d2f6a721272ba770a0450c76fb0b8b90c333919e61ffa53e5` | This ledger; immutable raw export; commit `12baa82`; page export code and tests | DocTR training-set export now branches on normalized versus pixel-space boxes | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#167](https://github.com/pdomain/pdomain-book-tools/issues/167) | `07ff814b4a1290308b683073ca3c1a2fa444061ccbc712b8adf17b84b46ffcbe` | This ledger; immutable raw export; commit `cc965da`; detector registry tests | Failed `log_and_null` fallbacks no longer poison the detector cache | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#168](https://github.com/pdomain/pdomain-book-tools/issues/168) | `b47b53848f25d7e526b3dd77aa2846d34162c7baf2998cdbb2806304cf61ae1f` | This ledger; immutable raw export; commit `68917a8`; merge `7a3493d`; detector registry tests | Detector registration now always evicts cached entries for the key | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#169](https://github.com/pdomain/pdomain-book-tools/issues/169) | `afd74ff4245e0700c661e88a18c9d6fffa5bbc43bc4ee2ebc27a6eb463112e44` | This ledger; immutable raw export; commit `e6e31c9`; merge `72db9fe`; geometry and backend tests | Zero-overlap crops no longer become unrelated one-pixel edge strips | Implemented across BoundingBox, OpenCV, and CuPy paths | Deletion pending; merged cutover pending |
+| [#170](https://github.com/pdomain/pdomain-book-tools/issues/170) | `fd6e1037661529afe0fbfbc6d9dfe04e848e7c6bc5c40c061a1b24ad161697a9` | This ledger; immutable raw export; commit `cd8485a`; merge `72db9fe`; image-op tests | Pixel-space float boxes now use floor-min, ceil-max, clamped integer ROI bounds | Implemented and regression-tested | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -976,6 +987,89 @@ names a successor issue. The row therefore records only meta-repository
 cross-cut tracking. It does not infer a successor issue, fold the work into the
 `pd-ui` plan, or create a local implementation claim, product contract,
 architecture promotion, or active record.
+
+### Issue #160 was disposable grooming output
+
+Issue #160 recorded a 2026-05-18 grooming run. It marked seven named plans
+complete and reported that no items required CT review. Its only comment says
+the actions were recorded when the issue was created and no further action was
+needed. The immutable raw export preserves that one-time workflow result. It
+does not establish a current product contract or implementation claim.
+
+### Issues #162 through #164 shipped focused library and test fixes
+
+Issue #162 requested one data-driven SPDX license source for downstream
+consumers. Commit `46be7aa` added `pdomain_book_tools/licenses.py`, a vendored
+SPDX JSON file, and `tests/test_licenses.py`. The public API exposes 518 exact,
+case-sensitive identifiers as `SPDX_VALID_IDS` and provides
+`is_valid_spdx_id()`. Non-string input returns `False`. The wheel test confirms
+that the vendored data ships with the package. Downstream adoption remains
+separate work.
+
+Issue #163 identified a wire-format and model-shape mismatch with a downstream
+SPA spec. Commit `4d483ad` uppercased `LigatureKind` values, renamed
+`LONG_S_T` to `LONG_ST`, retained the existing members, and added `OE` and
+`AE`. `LigatureMark.from_dict()` migrates legacy lowercase and old long-s
+values, while `to_dict()` emits the current uppercase form. The shipped model
+remains a dataclass; SPA-side adaptation was explicitly outside the commit's
+scope. `tests/ocr/test_glyph_annotations.py` covers the vocabulary and legacy
+migration.
+
+Issue #164 tracked two Hugging Face sidecar tests that depended on xdist import
+order. Commit `3480c3a` made both tests mock
+`huggingface_hub.errors` and `huggingface_hub.utils`. The sentinel exception now
+matches whichever supported import path production selects. The focused tests
+in `tests/hf/test_hf.py` preserve that deterministic behavior.
+
+### Issue #165 retains the unfinished checkpoint-hardening work
+
+Issue #165 reported unsafe and mutable checkpoint-loading risks. Commit
+`31137f1` made the injected, keyword-only `torch_load` callable default to
+`torch.load(..., weights_only=True)`. Commit `e5cf913` added plain tensor
+state-dict validation to both DocTR model-loading paths. Current code and tests
+prove those safeguards, and the
+[architecture record](../architecture/checkpoint-loading-trust-boundary.md)
+defines only that shipped contract.
+
+The original request also named maximum file sizes, checksums, immutable
+Hugging Face revisions, `safetensors`, and the trust policy for local paths.
+Those items remain unresolved. The
+[governed issue](../issues/2026-05-22-gh-165-checkpoint-hardening.md) binds the
+raw digest, delivered safeguards, and residual work. It remains active and
+blocks deletion of the imported issue record.
+
+### Issues #166 through #170 shipped correctness and cache fixes
+
+Issue #166 showed that DocTR training export multiplied pixel-space coordinates
+or tried to scale them as normalized values. Commit `12baa82` branches on
+`BoundingBox.is_normalized` in detection and recognition export. Normalized
+boxes keep the existing scaling path. Pixel-space boxes use clamped integer
+bounds without multiplying by image dimensions. Tests in
+`tests/ocr/test_page_training_set_generators.py` cover both export paths.
+
+Issue #167 showed that a failed `log_and_null` detector build could cache a
+`NullDetector` for later fail-fast calls. Commit `cc965da` stopped caching
+fallback detectors. Three focused cases in `tests/layout/test_detector.py`
+cover build-failure-then-raise, unknown-key-then-raise, and the no-cache
+contract.
+
+Issue #168 showed that first-time detector registration could leave a stale
+cached fallback. Commit `68917a8`, merged in `7a3493d`, makes
+`register_detector()` evict cached entries for the key on every registration.
+The detector registry tests cover first registration as well as replacement.
+
+Issue #169 showed that a crop entirely beyond an image edge could become an
+unrelated one-pixel strip. Commit `e6e31c9`, merged in `72db9fe`, checks overlap
+before clamping. `BoundingBox.crop_image()` returns `None` for zero overlap;
+the OpenCV and CuPy rectangle backends retain their established invalid-crop
+return convention. Geometry and backend tests cover right, below, exact-edge,
+and partial-overlap cases.
+
+Issue #170 showed that valid float pixel coordinates could reach NumPy slice
+bounds. Commit `cd8485a`, also merged in `72db9fe`, added a shared ROI-bound
+conversion. It floors minimums, ceils maximums, and clamps all bounds to image
+dimensions. `tests/test_image_ops_free_functions.py` covers refinement, top and
+bottom crops, and connected-component expansion with float coordinates.
 
 ### Issue #51 fixed the BoundingBox repr contract
 

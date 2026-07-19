@@ -92,6 +92,7 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 - [#48 — Specify the drop-cap heading cross-check](2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md)
 - [#49 — Specify sidenote-aware row-block expansion](2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md)
 - [#161 — Make heavy OCR dependencies optional](2026-05-21-gh-161-optional-ocr-dependencies.md)
+- [#165 — Complete checkpoint-loading hardening](2026-05-22-gh-165-checkpoint-hardening.md)
 - [#191 — Require strict image validation for untrusted inputs](2026-05-22-gh-191-strict-image-validation.md)
 - [#201 — Add advisory static-testing scanners](2026-05-22-gh-201-advisory-static-scanners.md)
 - [#208 — Specify page-order detection](2026-05-24-gh-208-spec-page-order-detection.md)
