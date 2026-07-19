@@ -92,6 +92,12 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 - [#161 — Make heavy OCR dependencies optional](2026-05-21-gh-161-optional-ocr-dependencies.md)
 - [#191 — Require strict image validation for untrusted inputs](2026-05-22-gh-191-strict-image-validation.md)
 - [#201 — Add advisory static-testing scanners](2026-05-22-gh-201-advisory-static-scanners.md)
+- [#208 — Specify page-order detection](2026-05-24-gh-208-spec-page-order-detection.md)
+- [#211 — Add the page-order module skeleton and proposal types](2026-05-24-gh-211-page-order-module-skeleton.md)
+- [#212 — Add the filename-sequence page-order signal](2026-05-24-gh-212-page-order-filename-signal.md)
+- [#213 — Add the OCR page-number page-order signal](2026-05-24-gh-213-page-order-ocr-signal.md)
+- [#214 — Add the visual-similarity page-order signal](2026-05-24-gh-214-page-order-visual-signal.md)
+- [#215 — Aggregate page-order signals behind the public API](2026-05-24-gh-215-page-order-aggregation.md)
 - [#226 — Verify release of predictor batch-size keyword arguments](2026-05-29-gh-226-release-batch-predictor-kwargs.md)
 
 ## Resolved issues
