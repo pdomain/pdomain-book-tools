@@ -49,7 +49,7 @@ The export states no operating system, package version, command, or environment 
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-49.json`
 - **Raw SHA-256:** `a48c62febdaae3cc0bd9be097eb3feb46223c1f09d05b60a7a489ce9a2fcf885`
-- **Migration cutover:** Pending — the governed-content commit does not yet exist.
+- **Migration cutover:** `a19c10b` — governed content and raw-export batch for GitHub issues #49, #161, #191, #201, and #226.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-11T11:36:19Z`
 - **Updated:** `2026-05-11T11:37:12Z`

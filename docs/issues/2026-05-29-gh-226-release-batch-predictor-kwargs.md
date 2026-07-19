@@ -47,7 +47,7 @@ The problem was found while building Tier-B real-OCR end-to-end coverage in
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-226.json`
 - **Raw SHA-256:** `a290466b967989d34a67cb18175049427a9a8e183a339e2aecaa48a91b82a264`
-- **Migration cutover:** Pending — the governed-content commit does not yet exist.
+- **Migration cutover:** `a19c10b` — governed content and raw-export batch for GitHub issues #49, #161, #191, #201, and #226.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-29T17:15:24Z`
 - **Updated:** `2026-05-29T17:15:24Z`
