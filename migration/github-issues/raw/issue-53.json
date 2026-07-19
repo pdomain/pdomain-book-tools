@@ -1,0 +1,271 @@
+{
+  "events": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-15T03:25:52Z",
+      "event": "labeled",
+      "id": 25558275959,
+      "label": {
+        "color": "fef2c0",
+        "name": "kind:chore"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABCUyUaM8AAAAF82RXdw",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25558275959"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-19T04:56:52Z",
+      "event": "closed",
+      "id": 25688871639,
+      "node_id": "CE_lADOONYVBs8AAAABCUyUaM8AAAAF-y0S1w",
+      "performed_via_github_app": null,
+      "state_reason": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25688871639"
+    }
+  ],
+  "graphql": {
+    "data": {
+      "repository": {
+        "issue": {
+          "assignees": {
+            "nodes": []
+          },
+          "author": {
+            "login": "ConcaveTrillion"
+          },
+          "body": "## Summary\n\nTwo methods named in the `pd-ocr-labeler-spa` page-payload spec are not present in pd-book-tools today. Filing for tracking; the SPA works around both for now.\n\n## 1. `Page.merge_words(targets)`\n\nThe spec ([`pd-ocr-labeler-spa/specs/23-page-payload-backend.md` §9](https://github.com/ConcaveTrillion/pd-ocr-labeler-spa/blob/main/specs/23-page-payload-backend.md)) lists `page.merge_words(targets)` as the canonical call for `POST /words/merge`. Today pd-book-tools exposes only the per-line variants:\n\n- `pd_book_tools/ocr/block.py:737` — `Line.merge_adjacent_words(word_index, direction)`\n- `pd_book_tools/ocr/block.py:785` — `Line.merge_word_left(word_index)`\n- `pd_book_tools/ocr/block.py:789` — `Line.merge_word_right(word_index)`\n\nThe SPA route is `POST /words/{li}/{wi}/merge` with `{direction: 'left'|'right'}`, so the per-line API is the natural fit. A `Page.merge_words(targets)` wrapper would only matter if/when the SPA grows a collective merge endpoint.\n\n**Workaround in SPA spec-23-C2 (#316):** call `page.lines[line_index].merge_word_left(word_index)` / `merge_word_right(word_index)` directly.\n\n## 2. `Page.erase_pixels(bbox, fill_value=255)`\n\nThe spec lists `page.erase_pixels(bbox, fill_value=255)` for `POST /words/{li}/{wi}/erase-pixels`. pd-book-tools has no such method; the legacy `pd-ocr-labeler` implements it inline at `pd_ocr_labeler/state/page_state.py:1802` (`erase_pixels_rect`), which mutates `page.cv2_numpy_page_image[top:bottom, left:right] = fill_value` then calls `_finalize_bbox_edit(page)`.\n\n**Workaround in SPA spec-23-C2 (#316):** the SPA handler mutates `page.cv2_numpy_page_image` in place (same shape as legacy) and calls `page.finalize_page_structure()`. pd-book-tools should consider absorbing this routine so all Page consumers get it.\n\n## Acceptance\n\nTracking issue, not a feature request — close when either method lands in pd-book-tools, or when the SPA agent confirms the workaround is sufficient long-term.\n\n## Refs\n\n- pd-ocr-labeler-spa#316 — spec-23-C2 word geometry mutations.\n- pd-ocr-labeler-spa#315 — spec-23-C1 (related: pd-book-tools#52 for `Word.set_validated`).",
+          "closedAt": "2026-05-19T04:56:51Z",
+          "comments": {
+            "nodes": [
+              {
+                "author": {
+                  "login": "ConcaveTrillion"
+                },
+                "body": "Tracking issue — workarounds are confirmed in place:\n1. Page.merge_words: SPA spec-23-C2 uses page.lines[line_index].merge_word_left/right directly (the per-line API is the natural fit for the current per-word endpoint).\n2. Page.erase_pixels: SPA mutates page.cv2_numpy_page_image in place + calls page.finalize_page_structure() — same shape as legacy labeler.\nRe-open if a collective endpoint is added to the SPA in a future milestone.",
+                "createdAt": "2026-05-19T04:56:51Z",
+                "id": "IC_kwDOONYVBs8AAAABC0ypzA",
+                "reactions": {
+                  "nodes": []
+                },
+                "updatedAt": "2026-05-19T04:56:51Z",
+                "url": "https://github.com/pdomain/pdomain-book-tools/issues/53#issuecomment-4484540876"
+              }
+            ]
+          },
+          "createdAt": "2026-05-15T03:25:51Z",
+          "id": "I_kwDOONYVBs8AAAABCUyUaA",
+          "issueType": null,
+          "labels": {
+            "nodes": [
+              {
+                "color": "7a7a85",
+                "description": "Maintenance / infra task",
+                "name": "kind:chore"
+              }
+            ]
+          },
+          "milestone": null,
+          "number": 53,
+          "parent": null,
+          "projectItems": {
+            "nodes": []
+          },
+          "reactions": {
+            "nodes": []
+          },
+          "state": "CLOSED",
+          "stateReason": "COMPLETED",
+          "subIssues": {
+            "nodes": []
+          },
+          "title": "Page.merge_words and Page.erase_pixels — collective wrappers for word-merge / image-pixel erase",
+          "updatedAt": "2026-05-19T04:56:51Z",
+          "url": "https://github.com/pdomain/pdomain-book-tools/issues/53"
+        }
+      }
+    }
+  },
+  "timeline": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-15T03:25:52Z",
+      "event": "labeled",
+      "id": 25558275959,
+      "label": {
+        "color": "fef2c0",
+        "name": "kind:chore"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABCUyUaM8AAAAF82RXdw",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25558275959"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "author_association": "MEMBER",
+      "body": "Tracking issue — workarounds are confirmed in place:\n1. Page.merge_words: SPA spec-23-C2 uses page.lines[line_index].merge_word_left/right directly (the per-line API is the natural fit for the current per-word endpoint).\n2. Page.erase_pixels: SPA mutates page.cv2_numpy_page_image in place + calls page.finalize_page_structure() — same shape as legacy labeler.\nRe-open if a collective endpoint is added to the SPA in a future milestone.",
+      "created_at": "2026-05-19T04:56:51Z",
+      "event": "commented",
+      "html_url": "https://github.com/pdomain/pdomain-book-tools/issues/53#issuecomment-4484540876",
+      "id": 4484540876,
+      "issue_url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/53",
+      "minimized": null,
+      "node_id": "IC_kwDOONYVBs8AAAABC0ypzA",
+      "performed_via_github_app": null,
+      "pin": null,
+      "reactions": {
+        "+1": 0,
+        "-1": 0,
+        "confused": 0,
+        "eyes": 0,
+        "heart": 0,
+        "hooray": 0,
+        "laugh": 0,
+        "rocket": 0,
+        "total_count": 0,
+        "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/comments/4484540876/reactions"
+      },
+      "updated_at": "2026-05-19T04:56:51Z",
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/comments/4484540876",
+      "user": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      }
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-19T04:56:52Z",
+      "event": "closed",
+      "id": 25688871639,
+      "node_id": "CE_lADOONYVBs8AAAABCUyUaM8AAAAF-y0S1w",
+      "performed_via_github_app": null,
+      "state_reason": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25688871639"
+    }
+  ]
+}

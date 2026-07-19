@@ -78,6 +78,7 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
+- [#54 — Decide whether monthly grooming remains part of the workspace workflow](2026-05-17-gh-054-monthly-grooming.md)
 - [#43 — Verify the external disposition of the style-review subprocess failure](2026-05-11-gh-043-style-review-detect-subprocess-failure.md)
 - [#2 — Decoration-vs-figure post-classification heuristic](2026-05-10-gh-002-decoration-figure-post-classification.md)
 - [#3 — Tune the sidenote height-ratio default](2026-05-10-gh-003-sidenote-height-ratio-default.md)
