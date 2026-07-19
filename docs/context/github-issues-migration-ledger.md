@@ -18,16 +18,18 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Twenty-nine completed issues have durable or disposable destinations
+## Thirty-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 29 completed issues one durable or disposable
+This ledger gives each of 39 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
-issues #18, #19, #21, #22 through #33, #35, #36, and #38 through #42.
+issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
+through #59.
 
-Closed issue #43 remains an active owner decision because this repository does
-not verify the claimed external refile. The details below map every durable body
-and comment fact to current code, tests, documentation, an active governed
-record, or an explicit disposable category.
+Closed issues #43 and #54 remain active owner decisions. Issue #43 lacks
+verified evidence for its external disposition. Issue #54 lacks evidence that
+the recurring grooming chore still matches the current workspace workflow. The
+details below map every durable body and comment fact to current code, tests,
+documentation, an active governed record, or an explicit disposable category.
 
 Raw exports live under `migration/github-issues/raw/`. Their SHA-256 digests
 bind each row to the source used for this classification. Issue bodies and
@@ -65,6 +67,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#41](https://github.com/pdomain/pdomain-book-tools/issues/41) | `ee2438437c67de6577ac92d9ef241007770cb6e70ec0a4d9f03fa8c5154bd9b5` | This ledger; `docs/architecture/glyph-annotations.md`; glyph implementation and tests | Glyph facts remain a side channel on `Word` and do not mutate canonical ground-truth text | Completed; merge `675ad76` | Deletion pending; merged cutover pending |
 | [#42](https://github.com/pdomain/pdomain-book-tools/issues/42) | `dc421b541e3c7126516360015d77c9f06868e8f4e06c7c31cca8e555d652f007` | This ledger; `Makefile` | `make ci` now runs an unconditional full-repository Ruff format and check gate | Completed; commit `e57a52c` | Deletion pending; merged cutover pending |
 | [#43](https://github.com/pdomain/pdomain-book-tools/issues/43) | `021ff1e31a1d5e3b6dd590d507f4e6def1f2ed03d1c2747156bab8ea3368e041` | This ledger; `docs/issues/2026-05-11-gh-043-style-review-detect-subprocess-failure.md` | The local issue only claims a refile to `ocr-container-meta#1`; this batch did not verify that external record or a fix | Needs owner decision; governed record remains active | Do not delete until external disposition is verified |
+| [#44](https://github.com/pdomain/pdomain-book-tools/issues/44) | `80abdf9870d18d98ca73ff442cee19bd906faac59271656ca6e81ebfdf93e058` | This ledger; immutable raw export; `ConcaveTrillion/ocr-container-meta#2` | The PR-body metadata bug belongs to cross-cut workspace tooling, not this library; AGENTS.md routes that work to the meta tracker | Superseded by meta-repository tracking | Deletion pending; merged cutover pending |
+| [#51](https://github.com/pdomain/pdomain-book-tools/issues/51) | `ddcce13f3f64f8e5c425fa1c8f5e1de698d4d1b541b738b26242cf5205fd758d` | This ledger; `pdomain_book_tools/geometry/bounding_box.py`; `tests/test_geometry_repr.py`; `tests/geometry/test_bounding_box.py` | `BoundingBox.__repr__` emits the eval-safe `BoundingBox.from_ltrb(...)` form and the tests pin its format and round trip | Implemented; commit `2bec8db` | Deletion pending; merged cutover pending |
+| [#52](https://github.com/pdomain/pdomain-book-tools/issues/52) | `c886d9b4f39387f9c0df368581d999b092ccc35bfc4f57c8d3bcc605d42e8490` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; `docs/architecture/page-serialization.md`; review metadata code and tests | The requested top-level `Word.is_validated` and setter were rejected; persisted validation lives at `word.review.validated` to preserve `ReviewMetadata` encapsulation | Abandoned / won't do; superseded by commit `60d0fc8` contract | Deletion pending; merged cutover pending |
+| [#53](https://github.com/pdomain/pdomain-book-tools/issues/53) | `c7f409ac8965db8ba397f948df60ed430f7072ea1b016db606d66c28b33cefb8` | This ledger; immutable raw export; existing line and page APIs | The current per-word workflow uses `Line.merge_word_left` / `merge_word_right`; pixel erasure can mutate the Page image and then call `finalize_page_structure` | Abandoned tracking request; no library change needed | Deletion pending; merged cutover pending |
+| [#54](https://github.com/pdomain/pdomain-book-tools/issues/54) | `d3e61adc8792f5589c9b5740e2f748e1e97668ca49338c0bf95ede2f1b70cf69` | This ledger; `docs/issues/2026-05-17-gh-054-monthly-grooming.md` | The May 2026 run found an empty queue, deleted `STATUS.md`, and archived strict-linting research; no evidence proves that the named recurring automation remains current | Needs owner decision; governed record remains active | Do not delete until the recurrence is reconciled |
+| [#55](https://github.com/pdomain/pdomain-book-tools/issues/55) | `f23e483e6a0ed1481533710cab55b8c28aa6ca1182aebb7c061a3cb06534838f` | This ledger; immutable raw export; meta-repository cross-cut tracking | Pipeline-foundation planning belongs to the workspace-wide workflow system named by AGENTS.md | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#56](https://github.com/pdomain/pdomain-book-tools/issues/56) | `08cd1949b1a73f3d75fad31c09a0eac07791a14aeec0ab732eb0797fb1c0e507` | This ledger; immutable raw export; meta-repository cross-cut tracking | Skill-prompt planning belongs to the workspace-wide workflow system named by AGENTS.md | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#57](https://github.com/pdomain/pdomain-book-tools/issues/57) | `e7e0ab33db019cbe59984ff2a9ee3ea175e147a79b37bb2351e0be139f3235af` | This ledger; immutable raw export; meta-repository cross-cut tracking | Grooming-system planning belongs to the workspace-wide workflow system named by AGENTS.md | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#58](https://github.com/pdomain/pdomain-book-tools/issues/58) | `8ff6df861e3ff25a7a09366b895f1e4f066d4231b80d608a10bc7aeb4d01d84e` | This ledger; immutable raw export; meta-repository cross-cut tracking | `ship-issue-pick.py` is cross-cut workflow tooling; its source issue was migrated to the meta repository | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#59](https://github.com/pdomain/pdomain-book-tools/issues/59) | `ab85ed796c243d0acef8658e584b8d38a873777a9f2b8c405288283ace95fe5b` | This ledger; immutable raw export; meta-repository cross-cut tracking | `decompose-spec-sync.py` is cross-cut workflow tooling; its source issue was migrated to the meta repository | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -324,6 +336,140 @@ closure comment says the workspace-tooling bug was refiled as
 issue or its resolution. The active governed issue record preserves the full
 provenance and asks the owner to confirm the external disposition before raw
 deletion.
+
+### Issues #44 and #55 through #59 moved to cross-cut tracking
+
+Issue #44 reported that the ship-issue bot added an unrelated `Closes #22`
+section to pull request #17 while shipping issues #8, #9, #10, and #12. The
+already-closed target made GitHub's reprocessing a no-op, but the metadata still
+proved that the bot selected the wrong issue. PR #17's R4 closeout static review
+recorded this as finding J-4. The
+source says `gh pr view 17 -R ConcaveTrillion/pd-book-tools --json body --jq
+.body` showed the orphan section before R4 cleanup on 2026-05-11. It suspected
+stale `ISSUE_JSON`, an environment variable, or `.ship-issue-tmp/` state from an
+aborted cycle. It proposed validating in `scripts/ship-issue-success.sh` that
+the issue belongs to the current repository and remains open before appending
+PR metadata. It also requested regression tests for closed and cross-repository
+issues, diagnostic stderr, and an orchestrator bounce. The closing comment
+classifies the bug as misfiled workspace tooling and points to
+`ConcaveTrillion/ocr-container-meta#2`. AGENTS.md now confirms that cross-cut
+workflow work belongs in that repository, so this local record is superseded.
+
+Issues #55, #56, and #57 were parent records for three parts of a shared GitHub
+workflow design: pipeline foundations, skill-prompt updates, and automated
+grooming. Each cited
+`docs/superpowers/specs/2026-05-17-superpowers-gh-workflow-integration-design.md`.
+They respectively cited plans
+`2026-05-17-gh-workflow-plan-a-pipeline.md`,
+`2026-05-17-gh-workflow-plan-b-skills.md`, and
+`2026-05-17-gh-workflow-plan-c-grooming.md` under the historical
+`docs/superpowers/plans/` path. Issue #55 named the eligibility picker and
+idempotent plan-to-GitHub sync. Issue #56 named prompt changes for triage,
+ship-issue, decompose-spec, spec-from-issue, and groom. Issue #57 named
+`groom-auto.py`, its deterministic nightly behavior, and the coding-bot
+workflow. Their closure comments say all children were closed. The paths and
+closure statements are superseded cross-cut provenance, not local
+implementation evidence.
+
+Issues #58 and #59 described two Plan A tasks. Issue #58 specified eligibility
+and closing-keyword behavior for `ship-issue-pick.py` under the historical
+Plan A `#ship-issue-pick` anchor. Its proposed `is_eligible` fast-path checked
+labels, parsed `Blocked-by:` lines, optionally queried blockers through a `gh`
+seam, and short-circuited on `virtually_closed`. Its proposed closing-keyword
+parser used one regex over GitHub's documented keyword set. Issue #59 specified
+seven FakeGh-based tests under Plan A's `#sync-tests` anchor: create a new slug,
+skip a matching slug, update a changed body, close a removed task, reopen a
+re-added task, write `synced:` and `milestone:` frontmatter, and resolve blocker
+slugs to `Blocked by: #N`. Their comments first claimed completion in session
+`2026-05-17 (superpowers-gh-integration)` and restoration from a plan update.
+Issue #58 also required a real `argparse` help section. Issue #59 proposed
+copying the FakeGh pattern from `test_decompose_spec_apply.py`. Those
+implementation suggestions are superseded cross-cut plan detail, not evidence
+of local delivery.
+They then explicitly migrated the cross-cut plans to
+`ConcaveTrillion/ocr-container-meta`. This ledger preserves that sequence and
+classifies the historical plan pointers as disposable without claiming that
+either tool shipped in this repository.
+
+### Issue #51 fixed the BoundingBox repr contract
+
+Issue #51 corrected an earlier implementation that emitted the invalid
+four-scalar primary-constructor form. Commit `2bec8db` changed
+`BoundingBox.__repr__` to emit `BoundingBox.from_ltrb(x0, y0, x1, y1)` and
+updated tests. `tests/test_geometry_repr.py` pins both the exact format and
+`eval(repr(bb)) == bb` for a box without `is_normalized`.
+
+The source says spec #36 landed through pull request #37 as commit `c3b0e8f7`.
+It says issue #38's earlier implementation was commit `764f8c3` on
+`wip/ship-issue` in pull request #50. Those references explain why the fix was
+needed; commit `2bec8db` and current tests prove the corrected local outcome.
+
+The issue's arm and claim comments record model `haiku`, effort `low`, spec
+`docs/specs/08-geometry-repr.md`, and pre-claim SHA
+`40ab3e9157b14d3e991b690f1c14442633342fae`. Those facts explain execution
+history. The implementation, tests, and commit provide the durable evidence.
+
+### Issue #52 was rejected in favor of ReviewMetadata encapsulation
+
+Issue #52 requested a top-level `Word.is_validated` field and a
+`Word.set_validated(bool)` setter. It aimed to persist labeler validation through
+`to_dict()` and `from_dict()` instead of a parallel SPA map that lost state on
+envelope reload.
+
+The requested field defaulted to `False`, and the setter would return `True`
+only when the value changed. Those proposed additive semantics were rejected
+with the top-level API; they are not promises of the replacement contract.
+
+The source located the legacy flag at
+`pd_ocr_labeler/models/word_match_model.py:34` and the SPA flag at
+`pd_ocr_labeler_spa/core/models.py:174`. It cited
+`pd-ocr-labeler-spa/specs/23-page-payload-backend.md` section 9 and SPA issue
+SPA issue `#315`. Its temporary `PageState.validated_words` map keyed entries by
+`(line_index, word_index)`. Those external paths and the workaround describe
+the rejected consumer design; they do not define this library's current API.
+
+The closing comment rejects that API because it would expose a nested review
+field directly on `Word`. Commit `60d0fc8` established the replacement
+`ReviewMetadata.validated` contract. Current `Word`, `Block`, and `Page`
+serialization persists optional review metadata, and current architecture
+documents that boundary. Consumers use `word.review.validated`; the requested
+top-level field and setter remain intentionally absent.
+
+### Issue #53 closed after its existing-API workarounds were accepted
+
+Issue #53 tracked possible collective wrappers rather than requesting an
+immediate feature. The current SPA endpoint already maps naturally to
+`Line.merge_word_left` and `Line.merge_word_right`. Its pixel-erasure workaround
+mutates `page.cv2_numpy_page_image` and calls `page.finalize_page_structure()`,
+matching the legacy labeler's operation shape.
+
+The source cited the per-line methods at historical `pd_book_tools/ocr/block.py`
+lines 737, 785, and 789. It cited the legacy inline erasure at
+`pd_ocr_labeler/state/page_state.py:1802`, which filled the selected rectangle
+and called `_finalize_bbox_edit(page)`. It also pointed to SPA issues #315 and
+SPA issue `#316` and the page-payload spec's section 9. These line numbers and external
+pointers are historical consumer provenance, not current local contracts.
+
+The closing comment confirms both workarounds and says to reopen only if a
+future SPA milestone adds a collective endpoint. No unresolved local product
+contract remains, and this migration does not claim that `Page.merge_words` or
+`Page.erase_pixels` was implemented.
+
+### Issue #54 needs a current owner decision on monthly grooming
+
+Issue #54 described a monthly `/groom all` chore layered on a nightly
+`groom-auto-nightly` job. Its only comment records the 2026-05-17 result: the
+queue was empty, `STATUS.md` was deleted as a pre-workflow meta-index, and
+strict-linting research was archived.
+
+The nightly workflow was also expected to create or update a Grooming report
+issue identified in the source as `#grooming-report`. The active governed issue
+record preserves that identifier with the remaining historical procedure.
+
+The source names old workspace paths and promises that a new recurrence will be
+filed, but local evidence does not verify either current behavior. The active
+governed issue record preserves the full procedure and asks the owner whether
+to retain, update, or retire the recurrence before deleting the raw export.
 
 ## Cutover remains pending
 
