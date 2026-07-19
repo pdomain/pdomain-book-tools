@@ -1,0 +1,199 @@
+{
+  "events": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-21T15:19:02Z",
+      "event": "labeled",
+      "id": 25811322426,
+      "label": {
+        "color": "ededed",
+        "name": "status:backlog"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABC_elA88AAAAGAnmGOg",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25811322426"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-21T15:19:02Z",
+      "event": "labeled",
+      "id": 25811322561,
+      "label": {
+        "color": "5d9fdf",
+        "name": "kind:feature-request"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABC_elA88AAAAGAnmGwQ",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25811322561"
+    }
+  ],
+  "graphql": {
+    "data": {
+      "repository": {
+        "issue": {
+          "assignees": {
+            "nodes": []
+          },
+          "author": {
+            "login": "ConcaveTrillion"
+          },
+          "body": "## Context\n\nDiscovered while scaffolding `pd-ocr-trainer-spa` (ocr-container-meta retirement plan #282).\n\n`pd-book-tools` declares `torch` (and `python-doctr` / `torchvision`) as hard `[project.dependencies]`. Every `pd-*` repo depends on `pd-book-tools`, so multi-GB torch lands in the dependency closure of every consumer — including FastAPI web processes that never run a model.\n\nThe `pd-ocr-trainer-spa` design decision **D-T1** wants the long-lived FastAPI web process to be torch-free; it imports only torch-free config models. But torch still enters `pd-ocr-trainer-spa`'s pip closure transitively via `pd-book-tools` → `pd-ocr-ops` → SPA. So \"torch-free web process\" currently holds only for *runtime imports*, not the install closure — every `uv tool install pd-ocr-trainer-spa` pulls multi-GB torch.\n\n## Proposal\n\nMirror what `pd-ocr-training` already did: move `torch` / `python-doctr` / `torchvision` (and any other heavy ML-only deps) out of `[project.dependencies]` into an optional extra, e.g.:\n\n```toml\n[project.optional-dependencies]\nocr = [\"python-doctr\", \"torch\", \"torchvision\"]\n```\n\n(extra name TBD — `ocr` / `doctr` / `ml`, whatever fits the API surface).\n\nThen ensure the **torch-free import path works**:\n- `import pd_book_tools` and the light data-model / layout / utility names must import with torch absent.\n- Modules that genuinely need torch/DocTR (the OCR engine wrappers) must be import-guarded or lazily loaded, so accessing them without the extra raises a helpful `ImportError` (\"install `pd-book-tools[ocr]`\") rather than a raw `ModuleNotFoundError` at package import.\n- Add a test (subprocess with torch hidden) asserting the torch-free surface imports clean.\n\nReference implementation: `pd-ocr-training` did exactly this — `torch`/DocTR behind a `[train]` extra, `__init__.py` restructured so the torch-free Protocol + config models import without torch, heavy names resolved lazily via module `__getattr__`.\n\n## Impact\n\nThis is a foundational change — `pd-book-tools` is the dependency root for the whole suite, so the import-surface restructuring needs care. But it is the only way the suite's FastAPI web processes get a genuinely torch-free install closure.\n\nTracks: (none yet)",
+          "closedAt": null,
+          "comments": {
+            "nodes": []
+          },
+          "createdAt": "2026-05-21T15:19:01Z",
+          "id": "I_kwDOONYVBs8AAAABC_elAw",
+          "issueType": null,
+          "labels": {
+            "nodes": [
+              {
+                "color": "ededed",
+                "description": "Accepted, not started",
+                "name": "status:backlog"
+              },
+              {
+                "color": "5d9fdf",
+                "description": "Untriaged request; entry point",
+                "name": "kind:feature-request"
+              }
+            ]
+          },
+          "milestone": null,
+          "number": 161,
+          "parent": null,
+          "projectItems": {
+            "nodes": []
+          },
+          "reactions": {
+            "nodes": []
+          },
+          "state": "OPEN",
+          "stateReason": null,
+          "subIssues": {
+            "nodes": []
+          },
+          "title": "Make torch/DocTR an optional extra so consumers can import torch-free",
+          "updatedAt": "2026-05-21T15:19:01Z",
+          "url": "https://github.com/pdomain/pdomain-book-tools/issues/161"
+        }
+      }
+    }
+  },
+  "timeline": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-21T15:19:02Z",
+      "event": "labeled",
+      "id": 25811322426,
+      "label": {
+        "color": "ededed",
+        "name": "status:backlog"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABC_elA88AAAAGAnmGOg",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25811322426"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-21T15:19:02Z",
+      "event": "labeled",
+      "id": 25811322561,
+      "label": {
+        "color": "5d9fdf",
+        "name": "kind:feature-request"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABC_elA88AAAAGAnmGwQ",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25811322561"
+    }
+  ]
+}
