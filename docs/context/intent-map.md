@@ -119,9 +119,9 @@ None.
   recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
   Evidence: docs/specs/2026-05-24-scannos-module.md, Adversarial Review.
 - Resolve migrated owner-decision records through the
-  [issue backlog](../issues/README.md). During remote cutover, protect all 38
-  active local records from deletion, including records whose source GitHub
-  issues are closed.
+  [issue backlog](../issues/README.md). Continue to protect all 38 active local
+  records, including the five records backed by 10 retained closed GitHub
+  issues.
 
 ## Legacy-unverified sweep
 

@@ -86,3 +86,8 @@ After every issue is deleted and verified, disable GitHub Issues. Verify
 `hasIssuesEnabled: false`. Run the full repository CI gate, docgraph reindex and
 strict check, and `git diff --check`. Require a fresh issue count of zero.
 Verify every migration and journal commit on the remote default branch.
+
+The 2026-07-19 completed-issue cleanup deleted and verified 171 issues in 18
+batches. GitHub retains 33 open issues and 10 closed issues with authoritative
+deletion blocks, so Issues remains enabled. The journal contains 171
+`pre_delete` rows and 171 matching `post_delete_verification` rows.
