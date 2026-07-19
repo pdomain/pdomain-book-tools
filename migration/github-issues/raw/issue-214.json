@@ -1,0 +1,498 @@
+{
+  "events": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:33Z",
+      "event": "milestoned",
+      "id": 25903557172,
+      "milestone": {
+        "title": "spec: 2026-05-24-page-order-detection (#208)"
+      },
+      "node_id": "MIE_lADOONYVBs8AAAABDPi9as8AAAAGB_jqNA",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557172"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:34Z",
+      "event": "labeled",
+      "id": 25903557468,
+      "label": {
+        "color": "5fbf6a",
+        "name": "kind:feature"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrXA",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557468"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557492,
+      "label": {
+        "color": "fbca04",
+        "name": "effort:M"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrdA",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557492"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557517,
+      "label": {
+        "color": "0052cc",
+        "name": "model:sonnet"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrjQ",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557517"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557542,
+      "label": {
+        "color": "1d76db",
+        "name": "model-effort:medium"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrpg",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557542"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557570,
+      "label": {
+        "color": "ededed",
+        "name": "status:backlog"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrwg",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557570"
+    }
+  ],
+  "graphql": {
+    "data": {
+      "repository": {
+        "issue": {
+          "assignees": {
+            "nodes": []
+          },
+          "author": {
+            "login": "ConcaveTrillion"
+          },
+          "body": "Source spec: docs/specs/2026-05-24-page-order-detection.md\nSection: §7.2 Signal implementations (visual similarity) + §7.4 Dependency notes\nTracks: #208\n\nImplement the perceptual-hash visual-similarity signal: compute pHash per page thumbnail, compare adjacent pairs and find swap-restoration candidates. Decide imagehash dep vs alternative (see spec §7.4). Unit test on synthetic thumbnails.",
+          "closedAt": null,
+          "comments": {
+            "nodes": []
+          },
+          "createdAt": "2026-05-24T18:52:33Z",
+          "id": "I_kwDOONYVBs8AAAABDPi9ag",
+          "issueType": null,
+          "labels": {
+            "nodes": [
+              {
+                "color": "5fbf6a",
+                "description": "Buildable feature task",
+                "name": "kind:feature"
+              },
+              {
+                "color": "fbca04",
+                "description": "One full session",
+                "name": "effort:M"
+              },
+              {
+                "color": "0052cc",
+                "description": "Right model: Sonnet",
+                "name": "model:sonnet"
+              },
+              {
+                "color": "1d76db",
+                "description": "Compute budget: medium",
+                "name": "model-effort:medium"
+              },
+              {
+                "color": "ededed",
+                "description": "Accepted, not started",
+                "name": "status:backlog"
+              }
+            ]
+          },
+          "milestone": {
+            "description": "Spec file: docs/specs/2026-05-24-page-order-detection.md — spec issue #208",
+            "dueOn": null,
+            "number": 15,
+            "state": "OPEN",
+            "title": "spec: 2026-05-24-page-order-detection (#208)"
+          },
+          "number": 214,
+          "parent": null,
+          "projectItems": {
+            "nodes": []
+          },
+          "reactions": {
+            "nodes": []
+          },
+          "state": "OPEN",
+          "stateReason": null,
+          "subIssues": {
+            "nodes": []
+          },
+          "title": "page-order: visual-similarity signal (perceptual hash)",
+          "updatedAt": "2026-05-24T18:52:33Z",
+          "url": "https://github.com/pdomain/pdomain-book-tools/issues/214"
+        }
+      }
+    }
+  },
+  "timeline": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:33Z",
+      "event": "milestoned",
+      "id": 25903557172,
+      "milestone": {
+        "title": "spec: 2026-05-24-page-order-detection (#208)"
+      },
+      "node_id": "MIE_lADOONYVBs8AAAABDPi9as8AAAAGB_jqNA",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557172"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:34Z",
+      "event": "labeled",
+      "id": 25903557468,
+      "label": {
+        "color": "5fbf6a",
+        "name": "kind:feature"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrXA",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557468"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557492,
+      "label": {
+        "color": "fbca04",
+        "name": "effort:M"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrdA",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557492"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557517,
+      "label": {
+        "color": "0052cc",
+        "name": "model:sonnet"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrjQ",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557517"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557542,
+      "label": {
+        "color": "1d76db",
+        "name": "model-effort:medium"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrpg",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557542"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-24T18:52:35Z",
+      "event": "labeled",
+      "id": 25903557570,
+      "label": {
+        "color": "ededed",
+        "name": "status:backlog"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABDPi9as8AAAAGB_jrwg",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25903557570"
+    }
+  ]
+}
