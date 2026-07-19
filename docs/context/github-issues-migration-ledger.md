@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred thirty completed issues have durable or disposable destinations
+## One hundred forty completed issues have durable or disposable destinations
 
-This ledger gives each of 130 completed issues one durable or disposable
+This ledger gives each of 140 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #149.
+through #159.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
 decisions. The earlier records explain #43, #54, and #65. The consolidated #77
@@ -168,6 +168,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#147](https://github.com/pdomain/pdomain-book-tools/issues/147) | `f7f869b479b8db8a96187542eb5b1e431076be58850f629bbcb0e5abbd56f4ee` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Canvas and worklist hook re-exports belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#148](https://github.com/pdomain/pdomain-book-tools/issues/148) | `d7e9074081ea71cf91f01b9f66f4c54515e5ab0dd91b0aff7e4498967ea252c8` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The stores subpath export belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#149](https://github.com/pdomain/pdomain-book-tools/issues/149) | `a9dbd7db983cbffc4d26e742bb7dce8ed320af84dddba39b07421baec1b67e5f` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The Storybook scaffold belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#150](https://github.com/pdomain/pdomain-book-tools/issues/150) | `8312adb6ae50548778d6a49b3e951558f1b50fe7c8416ae853a03f94b287d027` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Primitive-component stories belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#151](https://github.com/pdomain/pdomain-book-tools/issues/151) | `32769c0e6069555619d594646227947da798a576fd9f5586e6bb8674b8c4ea5a` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Canvas, Worklist, and Shell stories belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#152](https://github.com/pdomain/pdomain-book-tools/issues/152) | `be669161db8b3cbf8a8d53b3e2ec7f2e05c773a70302627d4446e036ebd88092` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Icon stories belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#153](https://github.com/pdomain/pdomain-book-tools/issues/153) | `e8e444e3783aac8d3b8703f9aa5f817cbf1852a4773f22bc4fb54d5816b2a6c7` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The story-presence CI gate belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#154](https://github.com/pdomain/pdomain-book-tools/issues/154) | `04d4ef26d84343eef6cd8e65c3268eae48f822dce37c0ae7c0417ad21313bd44` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Build-output completeness verification belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#155](https://github.com/pdomain/pdomain-book-tools/issues/155) | `d015a6e98a06cd901e76ccf6e5193a2cf7c8367396c7a0335de3345bfa0571f8` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `0.1.0-alpha` version bump belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#156](https://github.com/pdomain/pdomain-book-tools/issues/156) | `e11fe705f1d4eda3c67af3fa583ce73f92b0be9a844be56789c27eb0fc7407d2` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The publish dry run and temporary-consumer smoke install belong to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#157](https://github.com/pdomain/pdomain-book-tools/issues/157) | `b0c98220c30f907aa1760e60d7e55049099f9c4dc85417f512e52cb50f1f88f5` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Publishing `0.1.0-alpha` belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#158](https://github.com/pdomain/pdomain-book-tools/issues/158) | `d7a29e5a7c635ab0a8f58044748244a4addd9c35cd80241daa6e57e145517e28` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | Release documentation belongs to the external `pd-ui` plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#159](https://github.com/pdomain/pdomain-book-tools/issues/159) | `070afa6c1a7a0881e8f958906c0e8eca0839adbc380a7ee9f48b742964cbf401` | This ledger; immutable raw export; parent #56; meta-repository cross-cut tracking | The decompose-spec default-sync and compatibility changes belong to cross-cut skill tooling | Superseded by meta-repository tracking; no local implementation claim or successor issue inferred | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -922,6 +932,50 @@ These ten child trackers are therefore superseded. Their immutable raw exports
 preserve the precise tasks, anchors, and comments without creating local
 implementation claims, product contracts, architecture promotions, or active
 records.
+
+### Issues #150 through #158 moved with the external pd-ui release plan
+
+Issues #150 through #158 tracked external `pd-ui` work under parent #78.
+Each body uses `Approach: (see plan)`, tracks #78, and points to the historical
+`docs/superpowers/plans/2026-05-16-pd-ui-new-repo.md`. Their exact anchors and
+scopes were:
+
+- #150 `#primitives-stories-button-input-chip-statuspip-key` — stories for
+  Button, Input, Chip, StatusPip, KeyCap, Card, Separator, Progress, Badge, and
+  Field primitives.
+- #151 `#canvas-worklist-shell-stories` — Canvas, Worklist, and Shell stories.
+- #152 `#icons-stories` — icon stories.
+- #153 `#story-presence-ci-gate` — story-presence CI gate.
+- #154 `#verify-build-output-completeness` — verify build-output completeness.
+- #155 `#version-bump-to-010-alpha` — version bump to `0.1.0-alpha`.
+- #156 `#publish-dry-run-smoke-install-in-tmp-consumer` — publish dry run and
+  smoke install in a temporary consumer.
+- #157 `#publish-010-alpha` — publish `0.1.0-alpha`.
+- #158 `#document-the-release-in-changelogmd` — document the release in
+  `CHANGELOG.md`.
+
+Each issue has one comment stating that the cross-cut plans were migrating to
+`ConcaveTrillion/ocr-container-meta`. Parent #78 supplies the exact successor:
+[`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12).
+It also says `pd-ui` work does not belong to this library. These nine child
+trackers are therefore superseded. Their immutable raw exports preserve the
+precise tasks, anchors, and comments without creating local implementation
+claims, product contracts, architecture promotions, or active records.
+
+### Issue #159 moved decompose-spec skill work to cross-cut tracking
+
+Issue #159 was a child of #56. Its body uses `Approach: (see plan)` and points
+to the historical
+`docs/superpowers/plans/2026-05-17-gh-workflow-plan-b-skills.md#decompose-spec-sync`.
+It requested that `decompose-spec` use `--sync` by default, retain `--one-shot`
+for compatibility, and require `{#slug}` in plan task headings.
+
+Its one comment says the cross-cut plans were migrating to
+`ConcaveTrillion/ocr-container-meta`, but neither the child nor parent #56
+names a successor issue. The row therefore records only meta-repository
+cross-cut tracking. It does not infer a successor issue, fold the work into the
+`pd-ui` plan, or create a local implementation claim, product contract,
+architecture promotion, or active record.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
