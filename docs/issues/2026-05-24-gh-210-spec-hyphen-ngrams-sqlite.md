@@ -44,7 +44,7 @@ The task targets the draft spec dated 2026-05-24 and the Stage 15 design handoff
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-210.json`
 - **Raw SHA-256:** `e03bb0b0d5aa16fdbffef16f0ddbdc2f8997b636afc8c28d7e5a34a5895ddf10`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:52:01Z`
 - **Updated:** `2026-05-24T18:52:01Z`

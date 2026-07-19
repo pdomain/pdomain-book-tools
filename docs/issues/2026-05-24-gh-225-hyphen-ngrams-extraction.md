@@ -44,7 +44,7 @@ The task targets sections 6.4 and 8 of the draft 2026-05-24 spec. The export doe
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-225.json`
 - **Raw SHA-256:** `9524b42a9c110afb2d7c96a88560432da404700faf0385752290fff26c380125`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:53:20Z`
 - **Updated:** `2026-05-24T18:53:20Z`

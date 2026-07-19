@@ -55,7 +55,7 @@ The export states no operating system, package version, command, or environment 
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-4.json`
 - **Raw SHA-256:** `a018c05b2b832ac53a1a8f78874174c595d033abc87b586aa67082f05433d507`
-- **Migration cutover:** `dfadf9c` — governed content batch for GitHub issues #2–#7 and #45–#48.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-10T01:51:48Z`
 - **Updated:** `2026-05-11T11:37:05Z`

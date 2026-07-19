@@ -45,7 +45,7 @@ The issue and source spec describe planned work, not a completed runtime environ
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-208.json`
 - **Raw SHA-256:** `70039bbf70d4e8abf0ac7e2c7536e274030b01a9d1c02479a46238d0e07c83ce`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:51:59Z`
 - **Updated:** `2026-05-24T18:51:59Z`

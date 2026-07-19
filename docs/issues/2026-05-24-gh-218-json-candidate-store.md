@@ -44,7 +44,7 @@ The task targets the section 6 per-book-sidecar decision in the draft 2026-05-24
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-218.json`
 - **Raw SHA-256:** `62b925d19580ce5923a0492d0f4f36b3b1613d42d0ec9a422d22c38f64484246`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:52:56Z`
 - **Updated:** `2026-05-24T18:52:57Z`

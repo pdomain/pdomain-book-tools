@@ -44,7 +44,7 @@ The task targets sections 7 and 8 of the draft 2026-05-24 scannos spec. No runti
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-220.json`
 - **Raw SHA-256:** `7a263b955bfc53abb8451fcf6250e5170112f25f348f7d34c169b5a27a6b4c7f`
-- **Migration cutover:** Pending — record the immutable merged cutover commit before deleting the GitHub issue.
+- **Migration cutover:** `6842ec6b11c06c9b987b384b4abf7e9dc4699014` — merged migration cutover on `master`.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-24T18:52:59Z`
 - **Updated:** `2026-05-26T09:22:38Z`
