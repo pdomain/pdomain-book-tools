@@ -18,18 +18,19 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Sixty-nine completed issues have durable or disposable destinations
+## Seventy-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 69 completed issues one durable or disposable
+This ledger gives each of 79 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #89.
+through #99.
 
-Closed issues #43, #54, #65, and #77 remain active owner decisions. The earlier
-records explain #43, #54, and #65. Issue #77 depends on workspace agent files
-absent here. The details below map every durable body and comment fact to
-current code, tests, documentation, an active governed record, or an explicit
-disposable category.
+Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
+decisions. The earlier records explain #43, #54, and #65. The consolidated #77
+record covers its five workspace-agent children because all depend on external
+files and routing absent here. The details below map every durable body and
+comment fact to current code, tests, documentation, an active governed record,
+or an explicit disposable category.
 
 Raw exports live under `migration/github-issues/raw/`. Their SHA-256 digests
 bind each row to the source used for this classification. Issue bodies and
@@ -107,6 +108,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#87](https://github.com/pdomain/pdomain-book-tools/issues/87) | `c7e47a18a8db146c751b0a9f581c9816ad21673b9d11076afa7ea8ea50d807c6` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Point hook, shared helpers, and tests | Point exposes its Pydantic core schema; the shared schema helpers introduced in the same slice remain used | Implemented; commit `d973b91` | Deletion pending; merged cutover pending |
 | [#88](https://github.com/pdomain/pdomain-book-tools/issues/88) | `e56112bf8ba4e3e295797438273c07fae115eb70eb571c7b03887020aeeea910` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; BoundingBox hook and tests | BoundingBox exposes its Pydantic core schema; shared helpers had already landed with #87 | Implemented; commit `6f7c620` | Deletion pending; merged cutover pending |
 | [#89](https://github.com/pdomain/pdomain-book-tools/issues/89) | `89e46c9f1e2aeca587eb5b34e5b71c46414c895f1498b0b89077da4ecc5b555f` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Character hook and tests | Character exposes the wire-shape Pydantic core schema used by public schema emission | Implemented; commit `9f9fabd` | Deletion pending; merged cutover pending |
+| [#90](https://github.com/pdomain/pdomain-book-tools/issues/90) | `c76338dd5886ae852926c17c004f68a5204c593cd1aa5de1d35313bc8d02586b` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Word hook and tests | Word exposes its Pydantic core schema for public schema emission | Implemented; commit `6eb07ad` | Deletion pending; merged cutover pending |
+| [#91](https://github.com/pdomain/pdomain-book-tools/issues/91) | `897d31f4807beebdb99dad7f1ce3606ec577d88620ec01b3209fd2caec5bb488` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Block hook and tests | Block exposes its Pydantic core schema for public schema emission | Implemented; commit `4d7fa3a` | Deletion pending; merged cutover pending |
+| [#92](https://github.com/pdomain/pdomain-book-tools/issues/92) | `57cff67b7ce11e8626b8f02a8d9fd9bcc0a960f1fd218ec6c1e9f515f611a0aa` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Page hook and tests | Page exposes its Pydantic core schema while respecting its serialization boundary | Implemented; commit `ca84058` | Deletion pending; merged cutover pending |
+| [#93](https://github.com/pdomain/pdomain-book-tools/issues/93) | `2f6609bacd092dc347559ffcc49df9d7504b292cb3c3c2d81f7dd9bcd90ff11e` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; schema emitter and tests | `PUBLIC_MODELS` again covers the full public model set, and tests prevent narrowing | Implemented; commit `d6ad9d2` | Deletion pending; merged cutover pending |
+| [#94](https://github.com/pdomain/pdomain-book-tools/issues/94) | `98293c518f692545b519272d981449923c06a60fc8446a6c82d7b0006cdb9826` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The full-power `pd-ui` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#95](https://github.com/pdomain/pdomain-book-tools/issues/95) | `1a88aaa5197922c7f8acfa34b46d2b6ef1a3121837841c0726a5cda7196a9701` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The read-only Haiku `pd-ui-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#96](https://github.com/pdomain/pdomain-book-tools/issues/96) | `b121ea1fb68ebcfdb26c694fd4fff648446b9d540c39c57fffe94708269db500` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The full-power `pd-ocr-ops` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#97](https://github.com/pdomain/pdomain-book-tools/issues/97) | `6d025564bf304b5b674fc9800a0b2cdfead6bd0541e41326b771fad676aa5edb` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The read-only Haiku `pd-ocr-ops-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#98](https://github.com/pdomain/pdomain-book-tools/issues/98) | `237aab0f102df336a7198638c1922b70620c97a3c4c47e6788a82cb1f0fbaa52` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The workspace `CLAUDE.md` routing update is external state absent here | Needs owner decision; governed record remains active | Do not delete until the routing and migration destination are verified |
+| [#99](https://github.com/pdomain/pdomain-book-tools/issues/99) | `e8718ae16046cbda4f5e156b0cf5f6e9387ec6413323b215449e0896b7feaa82` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `pd-ui` repository bootstrap belongs to external tracking, not this library | Superseded by parent and meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -630,6 +641,60 @@ Block, and Page hooks complete the comment's broader list and are mapped under
 issue #76. `docs/architecture/ocr-model-and-schema-boundaries.md` owns the
 current public schema boundary, so no additional architecture promotion is
 needed.
+
+### Issues #90 through #93 completed the schema series
+
+Issues #90 through #93 were the remaining children of #76. Each used
+`Approach: (see plan)` and pointed to
+`docs/plans/2026-05-17-pd-book-tools-pydantic-core-schemas.md`. Their anchors
+were `#add-getpydanticcoreschema-to-word`,
+`#add-getpydanticcoreschema-to-block`,
+`#add-getpydanticcoreschema-to-page`, and
+`#re-add-models-to-publicmodels-restore-narrowed-tes`.
+
+The first three comments repeat the parent-series statement: Point,
+BoundingBox, Character, Word, Block, and Page expose the core-schema method.
+Commit `6eb07ad` added Word's hook and focused tests. Commit `4d7fa3a` added
+Block's hook and tests, and `ca84058` added Page's wire-shape hook and tests.
+Issue #93's comment says all subtasks were complete and cites `d6ad9d2`. That
+commit restored all public model classes to `PUBLIC_MODELS` and restored the
+full schema-emitter tests.
+
+The hooks, public-model list, emitter, and tests remain present. Their current
+contract is already covered by
+`docs/architecture/ocr-model-and-schema-boundaries.md`, so this batch needs no
+new architecture record.
+
+### Issues #94 through #98 remain one workspace owner decision
+
+Issues #94 through #98 were children of #77. They all used `Approach: (see
+plan)`, tracked #77, and pointed to the historical
+`docs/superpowers/plans/2026-05-16-workspace-agent-defs-pd-ui-pd-ocr-ops.md`.
+Their respective anchors specified a full-power `pd-ui` agent, read-only Haiku
+`pd-ui-docs` agent, full-power `pd-ocr-ops` agent, read-only Haiku
+`pd-ocr-ops-docs` agent, and workspace `CLAUDE.md` routing-table update.
+
+Each issue has one comment. All five comments say the cross-cut plans were
+migrating to `ConcaveTrillion/ocr-container-meta`. No comment identifies a
+successor issue, commit, test, or current file. All five tasks share one parent,
+plan, external ownership boundary, and verification decision. The expanded #77
+governed record therefore preserves their exact paths, anchors, raw links, and
+digests. All six raw exports remain protected from deletion until the owner
+verifies the four definitions, routing table, and migration destinations.
+
+### Issue #99 moved with the pd-ui repository plan
+
+Issue #99 was a child of #78. It used `Approach: (see plan)` and pointed to
+`docs/superpowers/plans/2026-05-16-pd-ui-new-repo.md` at
+`#create-directory-gitignore-license-readme-stub`. Its sole comment says the
+cross-cut plans were migrating to `ConcaveTrillion/ocr-container-meta`.
+
+Parent #78 explicitly places the shared React and TypeScript library in the
+external `pd-ui` repository and points to
+[`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12).
+That parent destination supersedes this local bootstrap tracker. It does not
+prove that the directory, `.gitignore`, license, or README stub shipped in this
+repository.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
