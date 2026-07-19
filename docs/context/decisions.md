@@ -288,3 +288,22 @@ Kind: context
 - **Remaining work:** The ruff strict-config families (`FA`, `PIE`, `PLE`,
   `PTH`) remain unadopted; tracked in the architecture doc's residual
   intent.
+
+### 2026-07-19 — Retired the writing-docs plugin routing design
+
+- **Context:** The implemented design was a process-only record for routing
+  repository writing guidance through the writing-docs plugin.
+- **Decision:** Delete the implemented design. Keep `AGENTS.md` and
+  `CONVENTIONS.md` as its canonical durable replacement. Do not duplicate this
+  process guidance in product architecture.
+- **Rationale:** The root guidance already carries the exact current routes:
+  new durable prose uses `writing-docs:write-readably`, and edits to existing
+  prose use `writing-docs:edit-for-readability`.
+- **Evidence:** Commits `a58e6b9` and `140283e`, plus the current exact routes
+  in `AGENTS.md` and `CONVENTIONS.md`.
+- **Old path:**
+  `docs/specs/2026-07-15-writing-docs-plugin-routing-design.md`
+- **Outcome:** implemented and deleted
+- **Superseded by:** `AGENTS.md` and `CONVENTIONS.md`
+- **Removal commit:** pending
+- **Remaining work:** none
