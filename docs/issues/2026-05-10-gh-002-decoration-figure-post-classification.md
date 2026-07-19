@@ -62,7 +62,7 @@ The export states no operating system, package version, command, or environment 
 - **Issue number:** 2
 - **GitHub state:** `OPEN`
 - **State reason:** None
-- **Raw export:** `/tmp/github-issues-migration/pdomain-book-tools/raw/issue-2.json`
+- **Raw export:** `migration/github-issues/raw/issue-2.json`
 - **Raw SHA-256:** `89797c004a6050cfd7ad20535f5c906ba63d007c691fa5ce7fa50b18cca4cc8e`
 - **Migration cutover:** `dfadf9c` — governed content batch for GitHub issues #2–#7 and #45–#48.
 - **Author:** `ConcaveTrillion` (CT)
