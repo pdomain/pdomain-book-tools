@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: architecture
 ---
 
@@ -58,11 +58,18 @@ Header and footer bands carry page-role labels. Special blocks carry role labels
 
 A stitched drop cap remains a separate `Word` tagged `drop cap`. `Block.text` joins it to the following body word without a space.
 
+Caption association claims a shared caption region at most once. The pipeline
+first builds figure-to-caption-region candidates, orders them by geometric gap,
+and lets the closest figure claim each region. Later figures that select the
+same region receive no caption words. This rule deduplicates a shared region;
+it does not provide global word-identity deduplication across unrelated caption
+regions.
+
 ## Evidence
 
 - Code: `pdomain_book_tools/ocr/page.py`, `pdomain_book_tools/ocr/reorganize_page_utils.py`, `pdomain_book_tools/ocr/layout_aware_reorg.py`, `pdomain_book_tools/ocr/dropcap.py`, `pdomain_book_tools/ocr/block.py`
 - Core behavior tests: `tests/ocr/test_reorganize_page_utils_grouping.py`, `tests/ocr/test_reconcile_dropped_words.py`, `tests/ocr/test_reorganize_diagnostic_snapshots.py`, `tests/ocr/test_dropcap.py`
-- Layout integration tests: `tests/layout/test_fixture_layouts.py`, `tests/layout/test_geometry.py`, `tests/layout/test_mappings.py`
+- Layout integration tests: `tests/layout/test_fixture_layouts.py`, `tests/layout/test_geometry.py`, `tests/layout/test_mappings.py`, `tests/layout/test_layout_aware_reorg.py`
 - Fixture artifacts: `tests/fixtures/layout_regression/inputs/`, `tests/fixtures/layout_regression/expected_text/baseline/`
 
 ## Residual intent
