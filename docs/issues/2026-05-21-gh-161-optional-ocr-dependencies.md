@@ -50,7 +50,7 @@ version was stated.
 - **State reason:** None
 - **Raw export:** `migration/github-issues/raw/issue-161.json`
 - **Raw SHA-256:** `0a7c4c7c49f77dbc64f72b3022bc6645faaf42b0a575ac5d8ff65c6f771069ad`
-- **Migration cutover:** Pending — the governed-content commit does not yet exist.
+- **Migration cutover:** `a19c10b` — governed content and raw-export batch for GitHub issues #49, #161, #191, #201, and #226.
 - **Author:** `ConcaveTrillion` (CT)
 - **Created:** `2026-05-21T15:19:01Z`
 - **Updated:** `2026-05-21T15:19:01Z`
