@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Fifty-nine completed issues have durable or disposable destinations
+## Sixty-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 59 completed issues one durable or disposable
+This ledger gives each of 69 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #79.
+through #89.
 
 Closed issues #43, #54, #65, and #77 remain active owner decisions. The earlier
 records explain #43, #54, and #65. Issue #77 depends on workspace agent files
@@ -97,6 +97,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#77](https://github.com/pdomain/pdomain-book-tools/issues/77) | `2da2187bd0a3ad5b0cb015e19811f6e29d49a2eb76181636eb0c7e79a09baee1` | This ledger; [active governed issue](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The completion comment names two workspace agent files, but this repository cannot verify their current contents or routing | Needs owner decision; governed record remains active | Do not delete until both external definitions are verified |
 | [#78](https://github.com/pdomain/pdomain-book-tools/issues/78) | `0fa9aa67947d649c97ebbea57491674022af0a14b3ec54fdc5a1cee2c304c9c6` | This ledger; immutable raw export; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The shared React and TypeScript library belongs to the external `pd-ui` repository and is explicitly tracked in the meta repository | Superseded by external repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#79](https://github.com/pdomain/pdomain-book-tools/issues/79) | `a14c85034838fc509807ba925c143171bdf5e83e6d22bbb79d59025bf5449db5` | This ledger; [repository quality gates](../process/repository-quality-gates.md); `docs/architecture/type-checking.md`; configuration and Makefile | The Pyright-to-basedpyright migration shipped in standard and then recommended mode; current strict zero-diagnostic architecture supersedes both | Implemented; commits `4ab7a93` and `f809701`; later strengthened | Deletion pending; merged cutover pending |
+| [#80](https://github.com/pdomain/pdomain-book-tools/issues/80) | `5319e06323c29eff144ab81e1db098643c5a2a66c5ab9d5397a9e2b5e0575a60` | This ledger; [repository quality gates](../process/repository-quality-gates.md); `.editorconfig` | The canonical editor configuration remains present | Implemented; commit `cbaa74a` | Deletion pending; merged cutover pending |
+| [#81](https://github.com/pdomain/pdomain-book-tools/issues/81) | `cc20ed3a92dcc155e18a901599fa0d053a129245cdab94f76d7bf9999182b47d` | This ledger; [repository quality gates](../process/repository-quality-gates.md); development dependencies | Standalone isort and pylint were removed; Ruff owns their adopted lint functions | Implemented; commit `bd0de40` | Deletion pending; merged cutover pending |
+| [#82](https://github.com/pdomain/pdomain-book-tools/issues/82) | `393485f39bce81cb61124ad2927dbe488b0d330cd7c9eca2c3baf4852369e8a9` | This ledger; [repository quality gates](../process/repository-quality-gates.md); `.pre-commit-config.yaml` | Gitleaks, file checks, debug detection, uv-lock checking, and the basedpyright hook remain configured | Implemented; commit `4a59ff2`; hook later strengthened | Deletion pending; merged cutover pending |
+| [#83](https://github.com/pdomain/pdomain-book-tools/issues/83) | `88b05397084a420e70526e9d4d084b324685a216a079a29f77d0d950a3d621c3` | This ledger; [repository quality gates](../process/repository-quality-gates.md); `.gitlint`; pre-commit configuration | Gitlint remains installed on the commit-message stage | Implemented; commit `b742231` | Deletion pending; merged cutover pending |
+| [#84](https://github.com/pdomain/pdomain-book-tools/issues/84) | `b6c9cd90dafecd00d47175e1fcff6c02ce55c68c231f1ad7a994e2fb93f9cd7a` | This ledger; [repository quality gates](../process/repository-quality-gates.md); Ruff configuration | The canonical Ruff selection and its dependency update shipped; current `pyproject.toml` owns the exact rule set | Implemented; commit `c500d91` | Deletion pending; merged cutover pending |
+| [#85](https://github.com/pdomain/pdomain-book-tools/issues/85) | `a0ba77b7210b50d8bec7751cf4f053ba0f81aab4c5c5bde88fc113928bcf3d2d` | This ledger; [repository quality gates](../process/repository-quality-gates.md); pytest configuration | Pytest treats warnings as errors and measures branch coverage | Implemented; commit `2e11974` | Deletion pending; merged cutover pending |
+| [#86](https://github.com/pdomain/pdomain-book-tools/issues/86) | `7ec219034dde610274342ef3d42342583c7a43d1857c79820619132a9e425069` | This ledger; `docs/architecture/type-checking.md`; [repository quality gates](../process/repository-quality-gates.md) | Basedpyright recommended mode and CI integration shipped; current strict zero-diagnostic mode supersedes the initial level | Implemented; commit `f809701`; later strengthened | Deletion pending; merged cutover pending |
+| [#87](https://github.com/pdomain/pdomain-book-tools/issues/87) | `c7e47a18a8db146c751b0a9f581c9816ad21673b9d11076afa7ea8ea50d807c6` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Point hook, shared helpers, and tests | Point exposes its Pydantic core schema; the shared schema helpers introduced in the same slice remain used | Implemented; commit `d973b91` | Deletion pending; merged cutover pending |
+| [#88](https://github.com/pdomain/pdomain-book-tools/issues/88) | `e56112bf8ba4e3e295797438273c07fae115eb70eb571c7b03887020aeeea910` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; BoundingBox hook and tests | BoundingBox exposes its Pydantic core schema; shared helpers had already landed with #87 | Implemented; commit `6f7c620` | Deletion pending; merged cutover pending |
+| [#89](https://github.com/pdomain/pdomain-book-tools/issues/89) | `89e46c9f1e2aeca587eb5b34e5b71c46414c895f1498b0b89077da4ecc5b555f` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Character hook and tests | Character exposes the wire-shape Pydantic core schema used by public schema emission | Implemented; commit `9f9fabd` | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -562,6 +572,64 @@ TypeScript component library for `pd-*` single-page applications. Its comment
 says the task moved to the `pd-ui` repository and issue #12 in
 `ocr-container-meta`, not this library. That explicit destination supersedes the
 local tracker without claiming implementation in this repository.
+
+### Issues #80 through #86 established the repository quality gates
+
+Issues #80 through #86 were children of #75. Each body used `Approach: (see
+plan)` and pointed to
+`docs/plans/2026-05-17-pd-book-tools-strict-linting-rollout.md`. The bodies
+named these anchors: `#add-canonical-editorconfig`,
+`#remove-isort-and-pylint-from-dev-deps`,
+`#expand-pre-commit-hooks-gitleaks-check-debug-state`,
+`#add-gitlint-for-commit-message-hygiene`,
+`#expand-ruff-select-to-the-full-proposed-set-bump-r`,
+`#pytest-hardening-filterwarnings-error-cov-branch`, and
+`#upgrade-basedpyright-to-recommended-mode-makefilec`.
+
+Their identical completion comments summarize the whole rollout and say it was
+implemented from `f809701` onward. The repository history provides
+more precise attribution. Commit `cbaa74a` added `.editorconfig`; `bd0de40`
+removed standalone isort and pylint; `4a59ff2` added gitleaks, the `check-*` and
+debug-statement hooks, uv-lock checking, and a local basedpyright hook;
+`b742231` added `.gitlint`, its dependency, and the commit-message hook;
+`c500d91` expanded the Ruff selection and updated the lint toolchain;
+`2e11974` adopted `filterwarnings=error` and `--cov-branch`; and `f809701`
+raised basedpyright to recommended mode and integrated it with Make and CI.
+
+Current configuration corroborates every outcome. `.editorconfig` and
+`.gitlint` remain present. Isort and pylint are absent as standalone development
+dependencies, while Ruff owns import sorting and its pylint subset. Pre-commit
+still includes the named safety hooks. Pytest still treats warnings as errors
+and measures branches. The exact current quality-gate contract lives in
+`docs/process/repository-quality-gates.md`.
+
+The basedpyright portion later strengthened beyond #86. Recommended mode is no
+longer current: `docs/architecture/type-checking.md` records strict mode with
+zero diagnostics over the package, tests, and scripts. The historical comment's
+ANN, BLE, TRY, LOG, and G examples remain in the current Ruff selection.
+However, `pyproject.toml` is authoritative for the complete present-day set.
+
+### Issues #87 through #89 implemented the first schema hooks
+
+Issues #87 through #89 were children of #76 and used `Approach: (see plan)`.
+They pointed to `docs/plans/2026-05-17-pd-book-tools-pydantic-core-schemas.md`
+at anchors `#add-getpydanticcoreschema-to-point`,
+`#add-shared-schema-helpers-getpydanticcoreschema-to`, and
+`#add-getpydanticcoreschema-to-character`.
+
+Their identical comments say the core-schema method exists on Point,
+BoundingBox, Character, Word, Block, and Page. That broad statement describes
+the completed parent series. For these three child slices, commit `d973b91`
+added Point's hook, the shared helper module, and focused tests; `6f7c620` added
+BoundingBox's hook and tests; and `9f9fabd` added Character's wire-shape hook and
+tests. The shared helpers therefore landed with #87 even though #88's title also
+names them.
+
+All three hooks and their tests remain in the current package. The later Word,
+Block, and Page hooks complete the comment's broader list and are mapped under
+issue #76. `docs/architecture/ocr-model-and-schema-boundaries.md` owns the
+current public schema boundary, so no additional architecture promotion is
+needed.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
