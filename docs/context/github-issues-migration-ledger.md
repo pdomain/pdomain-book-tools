@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred fifty completed issues have durable or disposable destinations
+## One hundred sixty completed issues have durable or disposable destinations
 
-This ledger gives each of 150 completed issues one durable or disposable
+This ledger gives each of 160 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #160 and #162 through #170. Open issue #161 has its own governed record
+through #160 and #162 through #180. Open issue #161 has its own governed record
 and is not part of this completed-issue ledger.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
@@ -189,6 +189,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#168](https://github.com/pdomain/pdomain-book-tools/issues/168) | `b47b53848f25d7e526b3dd77aa2846d34162c7baf2998cdbb2806304cf61ae1f` | This ledger; immutable raw export; commit `68917a8`; merge `7a3493d`; detector registry tests | Detector registration now always evicts cached entries for the key | Implemented and regression-tested | Deletion pending; merged cutover pending |
 | [#169](https://github.com/pdomain/pdomain-book-tools/issues/169) | `afd74ff4245e0700c661e88a18c9d6fffa5bbc43bc4ee2ebc27a6eb463112e44` | This ledger; immutable raw export; commit `e6e31c9`; merge `72db9fe`; geometry and backend tests | Zero-overlap crops no longer become unrelated one-pixel edge strips | Implemented across BoundingBox, OpenCV, and CuPy paths | Deletion pending; merged cutover pending |
 | [#170](https://github.com/pdomain/pdomain-book-tools/issues/170) | `fd6e1037661529afe0fbfbc6d9dfe04e848e7c6bc5c40c061a1b24ad161697a9` | This ledger; immutable raw export; commit `cd8485a`; merge `72db9fe`; image-op tests | Pixel-space float boxes now use floor-min, ceil-max, clamped integer ROI bounds | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#171](https://github.com/pdomain/pdomain-book-tools/issues/171) | `32719f09cb9e4a0af3e53f5ea396fcb1e19853a1b56ab384c11180ce98be8d51` | This ledger; immutable raw export; commit `48dcf7e` | The broken GPU job belonged to dead GitLab configuration in a GitHub-only repository | Disposed by deleting `.gitlab-ci.yml`; no GPU CI implementation claim | Deletion pending; merged cutover pending |
+| [#172](https://github.com/pdomain/pdomain-book-tools/issues/172) | `5cf24a59f71bbd55277f6c95f2b3b921847433d93b7f95422cd991cd5221ccdd` | This ledger; immutable raw export; commit `48dcf7e` | The missing XML artifact belonged to the same unused GitLab pipeline | Disposed by deleting `.gitlab-ci.yml`; no XML coverage-report implementation claim | Deletion pending; merged cutover pending |
+| [#173](https://github.com/pdomain/pdomain-book-tools/issues/173) | `41a53a1113df62ee77707fd567a4e3b565d63bbfe4fb7fea764f1740828ad269` | This ledger; immutable raw export; commits `e64abc5` and `48dcf7e`; packaging and CI configuration | The declared and tested Python range is 3.11 through 3.13 | Implemented with `>=3.11,<3.14`; no 3.14 support claim | Deletion pending; merged cutover pending |
+| [#174](https://github.com/pdomain/pdomain-book-tools/issues/174) | `1d95164e586c9cbb9034255609b786b5405cdfed820e55dc907c2429b6b83d8b` | This ledger; immutable raw export; commit `c7b6962`; page generator tests | Training-set prefixes reject absolute paths, separators, and `..` before writes | Implemented path-escape prevention; no basename allowlist or resolved-containment claim | Deletion pending; merged cutover pending |
+| [#175](https://github.com/pdomain/pdomain-book-tools/issues/175) | `238fbd90f601879a0c3d3ce1b2510482750c7eb1527e248fc5a4e6e9c246049f` | This ledger; immutable raw export; commit `32ea9ef`; schema-emission tests | `LayoutRegion` and `PageLayout` now appear in public schema emission | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#176](https://github.com/pdomain/pdomain-book-tools/issues/176) | `7fe3155b35b1590c5c6ef54ba537c93ab5fa14998a6b7b88fcec65742a65001e` | This ledger; immutable raw export; commit `66d36c9`; layout type tests | `LayoutRegion` coerces `RegionType` and requires finite confidence in `[0,1]` | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#177](https://github.com/pdomain/pdomain-book-tools/issues/177) | `27934ef13108961dc9fa3099ab230ae1dd680f27c12a1c1c0702fbd958c3bd9f` | This ledger; immutable raw export; commit `aed3962`; merge `165c55e`; adapter tests | The helper clips relevant out-of-range edges and drops degenerate boxes so emitted PP-DocLayout regions stay within image bounds | Implemented and regression-tested | Deletion pending; merged cutover pending |
+| [#178](https://github.com/pdomain/pdomain-book-tools/issues/178) | `b708accb0ed91b0842fae24616a73fb48145d9e6981ff04d39cabbfb2fbbb523` | This ledger; immutable raw export; commit `71596a9`; merge `bad42d3`; [pipeline architecture](../architecture/reorganize-page-pipeline.md) | Shared caption-region identity is claimed once by the closest figure | Implemented closest-wins region deduplication; no global word-ID claim | Deletion pending; merged cutover pending |
+| [#179](https://github.com/pdomain/pdomain-book-tools/issues/179) | `798d7337d2aa0768ad959aa2d0d81a4b4884558783cb07aff7dc7f21f58c72b9` | This ledger; immutable raw export; commit `cca69f0`; detector registry tests | Detector kwargs are checked for hashability before cache lookup | Implemented by rejecting unhashable kwargs with a contextual `TypeError` | Deletion pending; merged cutover pending |
+| [#180](https://github.com/pdomain/pdomain-book-tools/issues/180) | `f6496290c5aea88da27e9a38d72467a6afd1d2c277db537354dc43c7e98732c5` | This ledger; immutable raw export; commit `6d812d8`; [glyph architecture](../architecture/glyph-annotations.md); Pydantic tests | The Word schema passes nullable glyph mappings through `any_schema`; `from_dict()` reconstructs them | Implemented round-trip preservation; no standalone strong glyph-schema claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -1070,6 +1080,72 @@ bounds. Commit `cd8485a`, also merged in `72db9fe`, added a shared ROI-bound
 conversion. It floors minimums, ceils maximums, and clamps all bounds to image
 dimensions. `tests/test_image_ops_free_functions.py` covers refinement, top and
 bottom crops, and connected-component expansion with float coordinates.
+
+### Issues #171 through #173 aligned CI files with supported systems
+
+Issues #171 and #172 described a broken GitLab GPU job and a missing GitLab
+coverage XML artifact. Commit `48dcf7e` deleted `.gitlab-ci.yml` because this is
+a GitHub-only repository and no GitLab runner had been configured. That
+deletion disposes of both dead-configuration findings. It does not claim that a
+GPU CI job or XML coverage report was added elsewhere.
+
+Issue #173 found that the declared Python 3.10 support conflicted with
+`tomllib`, packaging tests, and the available CI runner. Commit `e64abc5`,
+included in `48dcf7e`, raised `requires-python` to `>=3.11,<3.14` and expanded
+the GitHub Actions matrix to Python 3.11, 3.12, and 3.13. The package supports
+those three minor versions. This record makes no Python 3.14 support claim.
+
+### Issues #174 through #177 hardened paths and public layout boundaries
+
+Issue #174 showed that a caller-controlled training-set prefix could influence
+write and delete paths. Commit `c7b6962` added early validation to both DocTR
+training-set generators. It rejects absolute paths, path separators, and parent
+traversal forms before filesystem writes. Focused generator tests cover unsafe
+and accepted prefixes. The change does not define a character allowlist or
+verify resolved-path containment under the output directory.
+
+Issue #175 found that two documented public layout models were missing from
+schema emission. Commit `32ea9ef` added `LayoutRegion` and `PageLayout` to
+`PUBLIC_MODELS`. `tests/test_schemas_emit.py` covers their emitted fields, enum
+values, and round-trip shapes.
+
+Issue #176 found that direct `LayoutRegion` construction accepted invalid
+types and confidence values. Commit `66d36c9` makes `__post_init__()` coerce
+strings through `RegionType`. It also rejects non-finite confidence and values
+outside the inclusive `[0.0, 1.0]` range. Constructor tests cover valid and
+invalid inputs.
+
+Issue #177 found that PP-DocLayout model boxes could exceed image bounds.
+Commit `aed3962`, merged in `165c55e`, added a helper that clips relevant
+out-of-range edges. The adapter drops boxes that become degenerate, so emitted
+regions stay within image bounds. Unit and adapter tests in
+`tests/layout/test_pp_doclayout.py` cover clipping and the post-processing path.
+
+### Issues #178 through #180 preserved deduplication and extension data
+
+Issue #178 showed that nearby figures could independently emit the same
+caption region. Commit `71596a9`, merged in `bad42d3`, builds candidate pairs,
+sorts them by geometric gap, and lets the closest figure claim each caption
+region identity once. The regression test covers two figures sharing one wide
+caption. The durable [pipeline
+architecture](../architecture/reorganize-page-pipeline.md) records that
+closest-wins region rule. Neither the implementation nor this migration claims
+global word-ID deduplication across different regions.
+
+Issue #179 found that unhashable detector kwargs failed during cache lookup
+without useful context. Commit `cca69f0` adds `_assert_hashable_kwargs()` before
+cache-key construction. It raises a contextual `TypeError` naming the kwarg.
+The public API still requires hashable values; it does not recursively freeze
+lists, dictionaries, or sets. Detector registry tests cover list and dictionary
+rejection.
+
+Issue #180 found that Pydantic validation silently dropped persisted glyph
+annotations. Commit `6d812d8` adds a nullable `any_schema` field to the custom
+`Word` schema, preserving the raw mapping until `Word.from_dict()` reconstructs
+`GlyphAnnotations`. Tests cover non-empty, reviewed-empty, and absent values.
+The [glyph architecture](../architecture/glyph-annotations.md) records this
+round-trip boundary. It does not claim a standalone strong Pydantic schema for
+`GlyphAnnotations`.
 
 ### Issue #51 fixed the BoundingBox repr contract
 

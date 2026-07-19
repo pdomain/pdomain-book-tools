@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: architecture
 ---
 
@@ -29,6 +29,13 @@ The controlled ligature values are `FI`, `FL`, `FF`, `FFI`, `FFL`, `CT`, `ST`, `
 
 `Word.to_dict()` omits `glyph_annotations` when the field is `None`. It includes the field when set, including an empty `GlyphAnnotations()` value. `Word.from_dict()` maps a missing or null field to `None`. It reconstructs an envelope when one is present. This behavior preserves the semantic difference between old or unreviewed data and reviewed data with no glyph facts.
 
+The Pydantic `Word` boundary declares `glyph_annotations` as a nullable
+`any_schema` field. This keeps the raw annotation mapping intact during
+`TypeAdapter(Word).validate_python()`. Pydantic does not validate a standalone
+strong glyph schema at that boundary. After the mapping passes through,
+`Word.from_dict()` reconstructs the typed value with
+`GlyphAnnotations.from_dict()`.
+
 ## Validation is explicit
 
 Callers invoke `GlyphAnnotations.validate(word)` when they need to check the cross-field contract. Construction and assignment do not call it automatically. Validation rejects ground-truth text containing U+FB00 through U+FB06 or U+017F. It also rejects invalid or empty ligature spans, out-of-range long-s positions, and long-s positions that do not point to `s` or `S`. Separately, `GlyphAnnotations` construction rejects an unknown provenance source. Ligature deserialization rejects an unknown kind.
@@ -48,3 +55,5 @@ Automatic validation and tolerant handling of future annotation kinds remain pro
 - `tests/ocr/test_glyph_annotations.py:23-365` covers vocabulary, legacy migration, provenance, and annotation serialization.
 - `tests/ocr/test_glyph_annotations.py:387-471` covers explicit validation.
 - `tests/ocr/test_glyph_annotations.py:483-557` covers `Word` integration and the unknown/reviewed-empty distinction.
+- `tests/ocr/test_word_pydantic_schema.py` covers non-empty, reviewed-empty, and
+  absent glyph annotations across the Pydantic round trip.
