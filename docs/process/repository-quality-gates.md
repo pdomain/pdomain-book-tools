@@ -47,6 +47,18 @@ coverage threshold and soft target may strengthen independently of the original
 May 2026 rollout; current values in `pyproject.toml` and the Makefile are
 authoritative.
 
+Coverage uses two source sets with one threshold. A GPU-capable local run uses
+`pyproject.toml` and includes `cupy_processing` modules in the 87% branch
+coverage gate. A CPU-only or CI run uses `.coveragerc.cpu`, which omits
+`cupy_processing` and `cv2cuda_processing` because those paths cannot execute
+without the GPU extra. `cv2cuda_processing` is also omitted from the full
+configuration because it is a thin wrapper around the exercised CuPy backend.
+
+The Makefile selects the full configuration when it detects a usable NVIDIA
+GPU and `CI` is absent. This split keeps CPU-only results honest without
+removing GPU modules from full coverage. It does not establish a separate
+GPU-only threshold or a required remote GPU CI job.
+
 ## Type checking
 
 [`type-checking.md`](../architecture/type-checking.md) owns the basedpyright
@@ -56,7 +68,8 @@ the package, tests, and scripts.
 
 ## Evidence
 
-- **Configuration:** `.pre-commit-config.yaml`, `pyproject.toml`, `.gitlint`, and `.editorconfig`
+- **Configuration:** `.pre-commit-config.yaml`, `pyproject.toml`,
+  `.coveragerc.cpu`, `.gitlint`, and `.editorconfig`
 - **Commands:** `Makefile` targets `pre-commit-check`, `lint-check`, `typecheck`, `test`, `build`, and `ci`
 - **Initial rollout:** commits `cbaa74a`, `4ab7a93`, `bd0de40`, `4a59ff2`, `b742231`, `c500d91`, `2e11974`, and `f809701`
 - **Current type-checking contract:** [`type-checking.md`](../architecture/type-checking.md)

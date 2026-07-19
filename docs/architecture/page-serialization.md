@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: architecture
 ---
 
@@ -62,6 +62,19 @@ Each corner also carries `is_normalized`. `BoundingBox.from_dict()` accepts
 older data without the box-level flag. It passes the available normalization
 state through `Point` and `BoundingBox` construction. Normalized and pixel
 coordinates remain distinct. Serialization does not coerce between them.
+
+## Scaling changes geometry without dropping current metadata
+
+`Document.scale()`, `Page.scale()`, and `Block.scale()` preserve every metadata
+field on their source objects. Scaling changes page dimensions and converts
+bounding boxes as required by their coordinate domain. It does not
+change entity identity, review data, labels, ground-truth matching data, sort
+overrides, additional block attributes, or `Document.source_identifier`.
+
+The implementation copies the metadata into new model instances. Tests cover
+every current field that was previously omitted. Historical Page provenance,
+image-path, rotation, source, and failure fields were later removed from the
+model. Scaling does not revive or promise those obsolete fields.
 
 ## Vocabulary ownership
 
@@ -134,6 +147,8 @@ where their spelling overlaps.
 - `tests/ocr/test_page_pydantic_schema.py`: Page schema behavior.
 - `tests/test_page_behavior_pin.py`: pinned Page behavior.
 - `tests/ocr/test_glyph_annotations.py`: optional Word glyph-annotation serialization and legacy loading.
+- `tests/ocr/test_scale_metadata_preservation.py`: metadata preservation across
+  `Document.scale()`, `Page.scale()`, and `Block.scale()`.
 
 ## Residual intent
 

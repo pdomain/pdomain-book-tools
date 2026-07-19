@@ -18,12 +18,12 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## One hundred sixty completed issues have durable or disposable destinations
+## One hundred seventy completed issues have durable or disposable destinations
 
-This ledger gives each of 160 completed issues one durable or disposable
+This ledger gives each of 170 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #160 and #162 through #180. Open issue #161 has its own governed record
+through #160 and #162 through #190. Open issue #161 has its own governed record
 and is not part of this completed-issue ledger.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
@@ -199,6 +199,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#178](https://github.com/pdomain/pdomain-book-tools/issues/178) | `b708accb0ed91b0842fae24616a73fb48145d9e6981ff04d39cabbfb2fbbb523` | This ledger; immutable raw export; commit `71596a9`; merge `bad42d3`; [pipeline architecture](../architecture/reorganize-page-pipeline.md) | Shared caption-region identity is claimed once by the closest figure | Implemented closest-wins region deduplication; no global word-ID claim | Deletion pending; merged cutover pending |
 | [#179](https://github.com/pdomain/pdomain-book-tools/issues/179) | `798d7337d2aa0768ad959aa2d0d81a4b4884558783cb07aff7dc7f21f58c72b9` | This ledger; immutable raw export; commit `cca69f0`; detector registry tests | Detector kwargs are checked for hashability before cache lookup | Implemented by rejecting unhashable kwargs with a contextual `TypeError` | Deletion pending; merged cutover pending |
 | [#180](https://github.com/pdomain/pdomain-book-tools/issues/180) | `f6496290c5aea88da27e9a38d72467a6afd1d2c277db537354dc43c7e98732c5` | This ledger; immutable raw export; commit `6d812d8`; [glyph architecture](../architecture/glyph-annotations.md); Pydantic tests | The Word schema passes nullable glyph mappings through `any_schema`; `from_dict()` reconstructs them | Implemented round-trip preservation; no standalone strong glyph-schema claim | Deletion pending; merged cutover pending |
+| [#181](https://github.com/pdomain/pdomain-book-tools/issues/181) | `a190cf80e79d8d7f5e8e24427793bf077342b755a48919219871a9491f3a6f86` | This ledger; immutable raw export; commit `75408db`; Block schema tests | The Block schema accepts integer-string pairs for unmatched ground-truth words | Implemented for Python tuples and JSON two-item arrays | Deletion pending; merged cutover pending |
+| [#182](https://github.com/pdomain/pdomain-book-tools/issues/182) | `9ecfb178a3ba6248ea86bb86ef2aa6cb9ae94d1df79095cdecd3b53c06fa1294` | This ledger; immutable raw export; commit `b8a9f6a`; historical Page schema tests | Three provenance fields accepted string-keyed dictionaries while those fields existed | Implemented historically; fields were later removed, so no obsolete contract is promoted | Deletion pending; merged cutover pending |
+| [#183](https://github.com/pdomain/pdomain-book-tools/issues/183) | `9232404ee4b68d4fe514777c6555906a466d776c88a2a0d7247756421a2065d9` | This ledger; immutable raw export; commit `8368a73`; [page serialization architecture](../architecture/page-serialization.md); scale tests | Document, Page, and Block scaling preserves current metadata while changing geometry | Implemented; removed historical Page fields are not revived | Deletion pending; merged cutover pending |
+| [#184](https://github.com/pdomain/pdomain-book-tools/issues/184) | `9c4d83a57aad2f8dc6d3ed836a0e85556206d73abf72ed0aee8c8f44a1320cc9` | This ledger; immutable raw export; commit `2797f63`; CuPy canvas tests | GPU canvas allocation now supports grayscale and three-channel input | Implemented with CPU/GPU parity coverage | Deletion pending; merged cutover pending |
+| [#185](https://github.com/pdomain/pdomain-book-tools/issues/185) | `e76662c56899128e480be660396502b94f7cc28046b558f8c80a7eb19f614fef` | This ledger; immutable raw export; commit `eb20ab0`; CuPy edge tests | GPU edge convolution now uses constant-zero padding to match CPU behavior | Implemented and regression-tested at the image border | Deletion pending; merged cutover pending |
+| [#186](https://github.com/pdomain/pdomain-book-tools/issues/186) | `1919e65342071c92bacb563c379b5c7f514bf264e7ccd6c1a072aac1f36309be` | This ledger; immutable raw export; commit `aed3962`; pytest and Makefile configuration | Default tests exclude slow model downloads; `make test-slow` runs them intentionally | Implemented; no scheduled remote integration-job claim | Deletion pending; merged cutover pending |
+| [#187](https://github.com/pdomain/pdomain-book-tools/issues/187) | `781d73068ae32295e7bdefcf283e0acf2af47f19291c338dd02b616fce9fec88` | This ledger; immutable raw export; commit `81a0a22`; dependency configuration | The DocTR Git source is pinned to immutable revision `390330ebe4fe25f214d84df89dc0f9b4dcdbf447` | Implemented with an explicit upgrade comment | Deletion pending; merged cutover pending |
+| [#188](https://github.com/pdomain/pdomain-book-tools/issues/188) | `0773e73f51ce8ba23daa03b9f6f5f49e032c0f7005c322cd3dfaf2ca55c3f792` | This ledger; immutable raw export; commit `cfc6e66`; merge `7a3493d`; coverage documentation tests | The reporter reads `fail_under` from `pyproject.toml`, and README guidance is drift-tested | Implemented; current configuration remains authoritative | Deletion pending; merged cutover pending |
+| [#189](https://github.com/pdomain/pdomain-book-tools/issues/189) | `8737079cc58b1035316e4b466d4db3b4ed23331ac577f31b83a50eb33eba1a2f` | This ledger; immutable raw export; commit `aed3962`; [quality-gates process](../process/repository-quality-gates.md) | Full GPU-capable coverage includes CuPy modules; CPU-only coverage omits unavailable GPU paths | Implemented as a source-set split with one threshold; no separate GPU CI threshold claim | Deletion pending; merged cutover pending |
+| [#190](https://github.com/pdomain/pdomain-book-tools/issues/190) | `401ee83d5263e992b7c0529c9ca462c60420dd095bb25abe08389888accd1993` | This ledger; immutable raw export; commit `c5ca010`; merge `bad42d3`; [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md) | The built-in source is pinned, custom remote repos require opt-in, and offline loading is supported | Implemented trust acknowledgment; allowlist, size, checksum, custom-source pinning, and local-artifact validation remain external | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -1146,6 +1156,83 @@ annotations. Commit `6d812d8` adds a nullable `any_schema` field to the custom
 The [glyph architecture](../architecture/glyph-annotations.md) records this
 round-trip boundary. It does not claim a standalone strong Pydantic schema for
 `GlyphAnnotations`.
+
+### Issues #181 through #183 aligned schemas and scaling with model data
+
+Issue #181 found that the Block Pydantic schema rejected the
+`unmatched_ground_truth_words` shape emitted by `to_dict()`. Commit `75408db`
+added `INT_STR_PAIR_LIST_SCHEMA` and applied it to that field. The schema
+accepts Python `(int, str)` tuples and JSON two-item arrays. A non-empty
+round-trip test preserves the runtime shape.
+
+Issue #182 found the same kind of mismatch for three Page provenance fields.
+Commit `b8a9f6a` changed their schema from nullable strings to nullable
+string-keyed dictionaries with arbitrary values. Those provenance fields were
+later removed from Page in commit `f28746f`. The fix remains historical
+provenance, but the removed fields are not promoted into current architecture
+or revived as a compatibility promise.
+
+Issue #183 showed that coordinate scaling dropped metadata from Document,
+Page, and Block. Commit `8368a73` preserves every current metadata field while
+changing page dimensions and bounding boxes. The focused tests cover
+`Document.source_identifier`; Page identity, labels, name, and review fields;
+and Block sort, ground-truth, attribute, and review fields. The
+[page serialization architecture](../architecture/page-serialization.md)
+records the current invariant and explicitly excludes removed historical Page
+fields.
+
+### Issues #184 through #189 aligned backends and quality gates
+
+Issue #184 found that the GPU canvas always allocated two dimensions. Commit
+`2797f63` now mirrors CPU allocation: grayscale input creates a two-dimensional
+canvas and color input creates a three-channel canvas. CuPy tests cover shape,
+pixel parity, and the white border.
+
+Issue #185 found different convolution padding at image edges. Commit
+`eb20ab0` changed the GPU path to constant-zero padding, matching CPU
+`np.convolve(..., mode="same")` behavior. Its regression test covers content at
+the image border that previously produced a false GPU detection.
+
+Issue #186 found that default tests could download the roughly 132 MB
+PP-DocLayout model. Commit `aed3962` excludes `slow` tests from the default
+Pytest configuration and adds `make test-slow` for intentional network-backed
+runs. It does not add or promise a scheduled remote integration job.
+
+Issue #187 found that the DocTR Git source could move during dependency
+upgrades. Commit `81a0a22` pins it to
+`390330ebe4fe25f214d84df89dc0f9b4dcdbf447` and documents the upgrade location.
+The lock and source declaration now name the same immutable revision.
+
+Issue #188 found that coverage guidance said 80% while the configured gate was
+87%. Commit `cfc6e66`, merged in `7a3493d`, makes the reporter read
+`tool.coverage.report.fail_under` from `pyproject.toml`. README and focused
+tests prevent the displayed threshold from drifting away from that authority.
+
+Issue #189 found that CuPy modules were excluded even when GPU tests could run.
+The configuration introduced with commit `aed3962` uses two source sets. Full
+GPU-capable coverage includes CuPy modules in the common 87% gate. CPU-only or
+CI coverage uses `.coveragerc.cpu` and omits unavailable GPU paths. The
+[quality-gates record](../process/repository-quality-gates.md) documents that
+split. It does not claim a separate GPU-only threshold or a required remote GPU
+CI job.
+
+### Issue #190 added a separate PP-DocLayout model trust boundary
+
+Issue #190 concerns Hugging Face `from_pretrained()` for PP-DocLayout models,
+not DocTR `.pt` state-dict deserialization. Commit `c5ca010`, merged in
+`bad42d3`, keeps the built-in fork and revision pinned. It requires
+`trust_remote_checkpoint=True` for a custom remote repository and forwards
+`local_files_only=True` when callers require offline loading. Local paths and
+the built-in source do not require the remote trust flag.
+
+The [PP-DocLayout trust-boundary architecture](../architecture/pp-doclayout-trust-boundary.md)
+records the shipped rules and their limits. The flag acknowledges trust; it
+does not validate a repository. Custom-source pinning, allowlists,
+artifact-size limits, checksums, and local-artifact inspection remain outside
+the adapter.
+The distinct
+[DocTR checkpoint boundary](../architecture/checkpoint-loading-trust-boundary.md)
+continues to own `torch.load`, `weights_only`, and state-dict validation.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
