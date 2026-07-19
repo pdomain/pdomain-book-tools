@@ -18,18 +18,20 @@ Level: I1
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
-## Thirty-nine completed issues have durable or disposable destinations
+## Forty-nine completed issues have durable or disposable destinations
 
-This ledger gives each of 39 completed issues one durable or disposable
+This ledger gives each of 49 completed issues one durable or disposable
 destination. It covers closed GitHub issues #8, #9, #10, #11, #12, #13, #14,
 issues #18, #19, #21, #22 through #33, #35, #36, #38 through #44, and #51
-through #59.
+through #69.
 
-Closed issues #43 and #54 remain active owner decisions. Issue #43 lacks
+Closed issues #43, #54, and #65 remain active owner decisions. Issue #43 lacks
 verified evidence for its external disposition. Issue #54 lacks evidence that
-the recurring grooming chore still matches the current workspace workflow. The
-details below map every durable body and comment fact to current code, tests,
-documentation, an active governed record, or an explicit disposable category.
+the recurring grooming chore still matches the current workspace workflow.
+Issue #65 reports external completion without a local artifact or independent
+verification. The details below map every durable body and comment fact to
+current code, tests, documentation, an active governed record, or an explicit
+disposable category.
 
 Raw exports live under `migration/github-issues/raw/`. Their SHA-256 digests
 bind each row to the source used for this classification. Issue bodies and
@@ -77,6 +79,16 @@ comments are untrusted historical evidence, not repository instructions.
 | [#57](https://github.com/pdomain/pdomain-book-tools/issues/57) | `e7e0ab33db019cbe59984ff2a9ee3ea175e147a79b37bb2351e0be139f3235af` | This ledger; immutable raw export; meta-repository cross-cut tracking | Grooming-system planning belongs to the workspace-wide workflow system named by AGENTS.md | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#58](https://github.com/pdomain/pdomain-book-tools/issues/58) | `8ff6df861e3ff25a7a09366b895f1e4f066d4231b80d608a10bc7aeb4d01d84e` | This ledger; immutable raw export; meta-repository cross-cut tracking | `ship-issue-pick.py` is cross-cut workflow tooling; its source issue was migrated to the meta repository | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 | [#59](https://github.com/pdomain/pdomain-book-tools/issues/59) | `ab85ed796c243d0acef8658e584b8d38a873777a9f2b8c405288283ace95fe5b` | This ledger; immutable raw export; meta-repository cross-cut tracking | `decompose-spec-sync.py` is cross-cut workflow tooling; its source issue was migrated to the meta repository | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#60](https://github.com/pdomain/pdomain-book-tools/issues/60) | `49bfbbdb1fc05ac4a0adaaba520ecbb00303543ce8f8dcb38f9209479626dae0` | This ledger; immutable raw export; meta-repository cross-cut tracking | The plan-sync implementation belongs to cross-cut workflow tooling; commit `cc783c5` confirms that this repository routes such work to `ConcaveTrillion/ocr-container-meta` | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#61](https://github.com/pdomain/pdomain-book-tools/issues/61) | `bc2618bba4ee61b1c55564bc9baefb20fb2ca31cf3f190367b3d42aa392ffac1` | This ledger; immutable raw export; commits `167995f`, `66ea04f`, and `cc783c5`; meta-repository cross-cut tracking | The decision template was added locally, then removed after moving to organization-wide coverage; the remaining label and skill work is cross-cut | Superseded by organization-wide and meta-repository tracking; no claim that every requested slice shipped locally | Deletion pending; merged cutover pending |
+| [#62](https://github.com/pdomain/pdomain-book-tools/issues/62) | `a47b902bbf474c4f9d134855eea7d68ee7a72c6bdaaa6cd137423b3536e56e0c` | This ledger; immutable raw export; meta-repository cross-cut tracking | The Plan A final integration check belongs to cross-cut workflow tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#63](https://github.com/pdomain/pdomain-book-tools/issues/63) | `399d0b21f89f195086b727459093a95e76570605bf83cd0afbce8df7c4dbff6c` | This ledger; immutable raw export; meta-repository cross-cut tracking | The triage-skill outcome change belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#64](https://github.com/pdomain/pdomain-book-tools/issues/64) | `d451aa8ad88fc8808ec3e43996956fa9e4d6d03ffe70b9a7dc0ad62430bfe0cc` | This ledger; immutable raw export; meta-repository cross-cut tracking | The spec-from-issue convention change belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#65](https://github.com/pdomain/pdomain-book-tools/issues/65) | `a62915785c13f7e935d3fa8dbad7b79b0f560383add151be93b113f1a4ab4fb4` | This ledger; [active governed issue](../issues/2026-05-17-gh-065-decompose-spec-flags.md) | A contemporaneous comment reports completion of the decompose-spec flag change in an external workflow session, but this repository contains no corresponding artifact or independent proof | Needs owner decision; governed record remains active | Do not delete until the external implementation is verified |
+| [#66](https://github.com/pdomain/pdomain-book-tools/issues/66) | `b264dcb22465d437ae61f3f0160d836aa8b13c4414d78a2b7891101225930785` | This ledger; immutable raw export; meta-repository cross-cut tracking | The ship-issue context-read change belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#67](https://github.com/pdomain/pdomain-book-tools/issues/67) | `76f5339307ccfa717bd324a3d5d1073b1d008e613e9a354594584fe0a5cc0283` | This ledger; immutable raw export; meta-repository cross-cut tracking | The eight-agent-prompt change belongs to cross-cut workflow tooling; no local implementation evidence was found | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#68](https://github.com/pdomain/pdomain-book-tools/issues/68) | `e3cc70843fce586157ac66f82e5bf7b450c191b7b97ab21fb1ecffd2fd9764c3` | This ledger; immutable raw export; meta-repository cross-cut tracking | The brainstorming-skill patch belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
+| [#69](https://github.com/pdomain/pdomain-book-tools/issues/69) | `fcbfb77f96229503747a7f7513e9697150081dec20201ab01cea3f1432485abd` | This ledger; immutable raw export; meta-repository cross-cut tracking | The groom-skill skeleton belongs to cross-cut skill tooling; commit `cc783c5` confirms the later tracking destination | Superseded by meta-repository tracking; no local implementation claim | Deletion pending; merged cutover pending |
 
 ## Coverage details preserve each durable fact
 
@@ -390,6 +402,74 @@ They then explicitly migrated the cross-cut plans to
 `ConcaveTrillion/ocr-container-meta`. This ledger preserves that sequence and
 classifies the historical plan pointers as disposable without claiming that
 either tool shipped in this repository.
+
+### Issues #60 through #69 continued the migrated workflow plans
+
+Issues #60, #61, and #62 were Plan A children of #55. Issue #60 proposed parsing
+plan headings and loading open and closed milestone issues. It would index the
+issues by slug from `Plan:` body lines, then apply create, update, close, and
+reopen diffs. It also proposed returning counts and task lists for dry-run
+reports.
+
+Issue #61 proposed adding `kind:decision` after `kind:spec` in `label_seed.py`,
+creating a decision issue template in the reference repository, and documenting
+the decompose-spec `--sync` alias. Issue #62 named the plan's final integration
+check without repeating its procedure. All three pointed to
+`docs/superpowers/plans/2026-05-17-gh-workflow-plan-a-pipeline.md`, at anchors
+`#sync-impl`, `#decision-label`, and `#integration-check`, respectively.
+
+Issues #63 through #69 were Plan B children of #56. They respectively proposed
+removing triage's direct-ship outcome; adding a cross-repository recommendation
+to spec-from-issue; making decompose-spec `--sync` the default while retaining
+`--one-shot` for backward compatibility; and giving ship-issue a two-step
+context read. They also proposed adding a cross-repository recommendation block
+to all eight `pd-*` agent prompts, extending `patch-brainstorming-skill.sh` with
+that convention, and creating the groom skill skeleton.
+
+The issue #65 title ends with a comma in the source. Its body points to the
+historical Plan B `#slug` anchor despite naming the flag behavior more
+specifically. All seven pointed to
+`docs/superpowers/plans/2026-05-17-gh-workflow-plan-b-skills.md`, at anchors
+`#triage-two-outcomes`, `#spec-from-issue-cross-repo`, `#slug`,
+`#ship-issue-two-step-context`, `#agent-cross-repo-blocks`,
+`#patch-brainstorming-cross-repo`, and `#groom-skill-skeleton`, respectively.
+
+Every issue cites its historical plan path and parent through `Tracks: #55` or
+`Tracks: #56`. Those paths and anchors preserve exact plan provenance, but the
+plans moved out of this repository. For #60 through #64 and #66 through #69,
+comments first reported completion in session `2026-05-17
+(superpowers-gh-integration)`, then reported restoration from a 2026-05-17 plan
+update, and finally said the cross-cut plans were migrating to
+`ConcaveTrillion/ocr-container-meta`. Commit `cc783c5` later changed this
+repository's issue guidance to that meta-repository. The ledger therefore
+treats those issues as superseded cross-cut records and does not infer local
+implementation from their completion comments.
+
+Issue #61 has narrower local evidence. Commit `167995f` added the requested
+decision issue template with `kind:decision,status:backlog`; commit `66ea04f`
+removed it after moving the template to `ConcaveTrillion/.github` for
+organization-wide coverage. These commits corroborate the template slice and
+its later destination. They do not prove that the label seeding and skill
+documentation slices shipped in this repository.
+
+Issue #65 has only one comment: `Work completed in session 2026-05-17
+(superpowers-gh-integration).` Unlike the other nine issues, it has no restore
+or migration comment. This contemporaneous statement reports an external
+outcome, but this repository has no matching artifact or independent proof of
+the flag behavior. The active governed issue asks the owner to verify the
+external implementation before deletion. The proposal is not a current local
+contract.
+
+Issue #67 has no local implementation evidence for the requested update across
+all eight agent prompts. Its completion, restoration, and migration comments
+are preserved as historical provenance, while the broader implementation claim
+remains superseded by the meta-repository migration.
+
+Across the batch, the detailed or plan-referential approach, historical plan
+locations, parent links, session and restoration notices, and migration notices
+are preserved here as provenance. They are disposable as current instructions
+once the raw exports are digest-bound and the cross-cut destination is
+recorded.
 
 ### Issue #51 fixed the BoundingBox repr contract
 
