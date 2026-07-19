@@ -1,0 +1,263 @@
+{
+  "events": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-11T10:29:14Z",
+      "event": "labeled",
+      "id": 25377056283,
+      "label": {
+        "color": "d73a4a",
+        "name": "kind:bug"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABB3RyAc8AAAAF6JcmGw",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25377056283"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-11T10:29:14Z",
+      "event": "labeled",
+      "id": 25377056486,
+      "label": {
+        "color": "c2e0c6",
+        "name": "effort:S"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABB3RyAc8AAAAF6Jcm5g",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25377056486"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": "e57a52c9d4a5db5054ccda3b24bbb835a2bd2672",
+      "commit_url": "https://api.github.com/repos/pdomain/pdomain-book-tools/commits/e57a52c9d4a5db5054ccda3b24bbb835a2bd2672",
+      "created_at": "2026-05-11T10:37:20Z",
+      "event": "closed",
+      "id": 25377349224,
+      "node_id": "CE_lADOONYVBs8AAAABB3RyAc8AAAAF6JueaA",
+      "performed_via_github_app": null,
+      "state_reason": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25377349224"
+    }
+  ],
+  "graphql": {
+    "data": {
+      "repository": {
+        "issue": {
+          "assignees": {
+            "nodes": []
+          },
+          "author": {
+            "login": "ConcaveTrillion"
+          },
+          "body": "## Finding\n\nDuring R4 B6 multi-cycle stress, 3 bot-generated test files passed local `make ci` but failed GitHub CI:\n\n1. **ruff format**: Test files had double blank lines between class definitions. Local pre-commit hook runs `ruff format` on staged files only (incremental), so the full-file check in GitHub CI found additional reformatting needed.\n\n2. **B007** (ruff check): `test_page_training_set_generators.py` used `for i, text in enumerate(words_list)` where `i` was not used. Local pre-commit passed (unknown why — possibly pre-commit ruff check ran on the old cached state), but GitHub CI's full ruff check caught it.\n\n## Fix applied\n\n- `fix(tests): ruff format 3 coverage test files` (commit 76388aa on wip/ship-issue)\n- `fix(tests): rename unused loop vars i→_i (B007)` (commit b61a23f on wip/ship-issue)\n\nBoth fixes were applied manually after CI failure surfaced them. The orchestrator has no retry loop for CI.\n\n## Remediation options\n\n1. The ship-issue skill prompt should instruct the bot to run `uv run ruff format .` and `uv run ruff check .` (full repo, not just changed files) before committing — not just rely on pre-commit.\n2. Alternatively, configure the local pre-commit hook to always run `--all-files` (slower but matches CI).\n3. Add a lint-all step to `success.sh` before `make ci`.\n\n## Affected issues\n\n- Issue #8 (page rendering helpers coverage)\n- Issue #9 (page training-set generators coverage)  \n- Issue #10 (ground_truth_matching fallback branches coverage)\n\n## Severity\n\n**Low** — orchestrator and skill infrastructure works; only the bot's code quality in generated tests is lower than CI requires. Easy to fix in the skill prompt or success.sh.",
+          "closedAt": "2026-05-11T10:37:20Z",
+          "comments": {
+            "nodes": []
+          },
+          "createdAt": "2026-05-11T10:29:12Z",
+          "id": "I_kwDOONYVBs8AAAABB3RyAQ",
+          "issueType": null,
+          "labels": {
+            "nodes": [
+              {
+                "color": "dc6555",
+                "description": "Defect",
+                "name": "kind:bug"
+              },
+              {
+                "color": "c2e0c6",
+                "description": "Under a session",
+                "name": "effort:S"
+              }
+            ]
+          },
+          "milestone": null,
+          "number": 42,
+          "parent": null,
+          "projectItems": {
+            "nodes": []
+          },
+          "reactions": {
+            "nodes": []
+          },
+          "state": "CLOSED",
+          "stateReason": "COMPLETED",
+          "subIssues": {
+            "nodes": []
+          },
+          "title": "[pilot-feedback] Bot-generated test files fail GitHub CI ruff format/check (pre-commit scope gap)",
+          "updatedAt": "2026-05-11T10:37:20Z",
+          "url": "https://github.com/pdomain/pdomain-book-tools/issues/42"
+        }
+      }
+    }
+  },
+  "timeline": [
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-11T10:29:14Z",
+      "event": "labeled",
+      "id": 25377056283,
+      "label": {
+        "color": "d73a4a",
+        "name": "kind:bug"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABB3RyAc8AAAAF6JcmGw",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25377056283"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": null,
+      "commit_url": null,
+      "created_at": "2026-05-11T10:29:14Z",
+      "event": "labeled",
+      "id": 25377056486,
+      "label": {
+        "color": "c2e0c6",
+        "name": "effort:S"
+      },
+      "node_id": "LE_lADOONYVBs8AAAABB3RyAc8AAAAF6Jcm5g",
+      "performed_via_github_app": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25377056486"
+    },
+    {
+      "actor": {
+        "avatar_url": "https://avatars.githubusercontent.com/u/78697905?v=4",
+        "events_url": "https://api.github.com/users/ConcaveTrillion/events{/privacy}",
+        "followers_url": "https://api.github.com/users/ConcaveTrillion/followers",
+        "following_url": "https://api.github.com/users/ConcaveTrillion/following{/other_user}",
+        "gists_url": "https://api.github.com/users/ConcaveTrillion/gists{/gist_id}",
+        "gravatar_id": "",
+        "html_url": "https://github.com/ConcaveTrillion",
+        "id": 78697905,
+        "login": "ConcaveTrillion",
+        "node_id": "MDQ6VXNlcjc4Njk3OTA1",
+        "organizations_url": "https://api.github.com/users/ConcaveTrillion/orgs",
+        "received_events_url": "https://api.github.com/users/ConcaveTrillion/received_events",
+        "repos_url": "https://api.github.com/users/ConcaveTrillion/repos",
+        "site_admin": false,
+        "starred_url": "https://api.github.com/users/ConcaveTrillion/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/ConcaveTrillion/subscriptions",
+        "type": "User",
+        "url": "https://api.github.com/users/ConcaveTrillion",
+        "user_view_type": "public"
+      },
+      "commit_id": "e57a52c9d4a5db5054ccda3b24bbb835a2bd2672",
+      "commit_url": "https://api.github.com/repos/pdomain/pdomain-book-tools/commits/e57a52c9d4a5db5054ccda3b24bbb835a2bd2672",
+      "created_at": "2026-05-11T10:37:20Z",
+      "event": "closed",
+      "id": 25377349224,
+      "node_id": "CE_lADOONYVBs8AAAABB3RyAc8AAAAF6JueaA",
+      "performed_via_github_app": null,
+      "state_reason": null,
+      "url": "https://api.github.com/repos/pdomain/pdomain-book-tools/issues/events/25377349224"
+    }
+  ]
+}
