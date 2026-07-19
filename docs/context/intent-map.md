@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: context
 ---
 
@@ -17,9 +17,21 @@ Kind: context
 
 ## Active bets
 
-- Complete the active designs in specs 06a–06c, 09, 10, page-order detection,
-  scannos, and hyphen n-grams.
-- Continue the residual work in docs/plans/roadmap.md.
+- Complete the active designs in
+  [specs 06a](../specs/06a-word-reference-lines-audit.md),
+  [06b](../specs/06b-word-reference-lines-api.md),
+  [06c](../specs/06c-word-reference-lines-testing.md),
+  [09](../specs/09-char-bbox-extraction.md),
+  [10](../specs/10-table-structure.md),
+  [page-order detection](../specs/2026-05-24-page-order-detection.md),
+  [scannos](../specs/2026-05-24-scannos-module.md), and
+  [hyphen n-grams](../specs/2026-05-24-hyphen-ngrams-sqlite.md).
+- Continue the residual work in the [roadmap](../plans/roadmap.md).
+- Work the 38 active local records from the [issue backlog](../issues/README.md):
+  33 source-open issues and five records retained for closed-source residual or
+  owner-decision work (#43, #54, #65, consolidated #77/#94–98, and #165). A
+  closed source GitHub issue does not supersede its active local governance
+  status.
 
 ## Deferred work
 
@@ -55,19 +67,19 @@ Kind: context
   docs/architecture/glyph-annotations.md.
 - Consolidate the duplicate local-dev marker contracts
   (`.venv/.pdomain-local-mode` for the shell scripts,
-  `.venv/.pdomain-dev-local` for the Python probe) into one shared contract,
-  and decide whether an intentional-clobber escape for `make upgrade-deps` is
-  wanted — the old advertised `PDOMAIN_DEV_LOCAL=0` escape never worked and its
+  `.venv/.pdomain-dev-local` for the Python probe) into one shared contract.
+  Decide whether an intentional-clobber escape for `make upgrade-deps` is
+  wanted. The old advertised `PDOMAIN_DEV_LOCAL=0` escape never worked, and its
   message was removed. Evidence: docs/architecture/local-dev-mode.md, Residual
   intent.
 - Protect active layout-debug runs with a liveness marker or lock, and test
   cleanup races and suppressed filesystem failures. Evidence:
   docs/architecture/layout-debug-cleanup.md.
 - Decide whether large mixed-order PGDP integration tests are wanted. Three
-  drafts (`test_pgdp_large_mixed_order_case1/2/3`) were removed 2026-07-15:
-  an indentation bug had nested them inside another test so pytest never
-  collected them, and their assertions assumed behaviors the pipeline does
-  not implement (space-separated footnote markers, trailing `-*`
+  drafts (`test_pgdp_large_mixed_order_case1/2/3`) were removed 2026-07-15.
+  An indentation bug had nested them inside another test, so pytest never
+  collected them. Their assertions assumed behaviors the pipeline does not
+  implement (space-separated footnote markers, trailing `-*`
   end-of-line cleanup, quote conversion for an elision with attached
   footnote digits such as `'Tis[77][88]`). Git history preserves the
   drafts. Evidence: tests/pgdp/test_pgdp_page.py,
@@ -106,6 +118,10 @@ None.
 - For scannos, define stable book/occurrence IDs, evidence storage, dual-write
   recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
   Evidence: docs/specs/2026-05-24-scannos-module.md, Adversarial Review.
+- Resolve migrated owner-decision records through the
+  [issue backlog](../issues/README.md). During remote cutover, protect all 38
+  active local records from deletion, including records whose source GitHub
+  issues are closed.
 
 ## Legacy-unverified sweep
 
@@ -114,7 +130,6 @@ None.
 - **Still active:** docs/plans/roadmap.md, docs/process/lint-deviations.md,
   active specs 06a–06c, 09, 10, hyphen n-grams, page-order detection, scannos,
   and the specs index.
-- **Still active pending architecture promotion:** implemented spec 07.
 - **Superseded:** the original word-reference-lines parent spec, replaced by
   specs 06a, 06b, and 06c.
 - **Needs owner review:** none beyond the remaining architecture destinations

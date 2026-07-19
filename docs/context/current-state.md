@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-19
 Kind: context
 ---
 
@@ -17,26 +17,33 @@ Kind: context
 
 ## What matters now
 
-Docgraph manages the documentation lifecycle and retrieval for this repository.
-Live specs now state whether they are active or implemented. Git history
-preserves retired documentation instead of an archive directory.
+The GitHub issue migration preserves all 214 source issues as exact raw JSON.
+The [completed migration ledger](github-issues-migration-ledger.md) records 181
+completed issues. The [governed issue backlog](../issues/README.md) holds 38
+active local records: 33 source-open issues and five records retained for
+closed-source residual or owner-decision work (#43, #54, #65,
+consolidated #77/#94–98, and #165).
 
-The shipped geometry behavior is documented in
-[`geometry-correction.md`](../architecture/geometry-correction.md). OCR model,
-blob, review, and schema ownership are documented in
-[`ocr-model-and-schema-boundaries.md`](../architecture/ocr-model-and-schema-boundaries.md).
-The local-development mode and `upgrade-deps` guard contract lives in
-[`local-dev-mode.md`](../architecture/local-dev-mode.md).
+Durable shipped behavior found during the migration has moved into architecture
+records. These records cover [geometry correction](../architecture/geometry-correction.md),
+[page serialization](../architecture/page-serialization.md),
+[OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md),
+[page reorganization](../architecture/reorganize-page-pipeline.md),
+[glyph annotations](../architecture/glyph-annotations.md),
+[checkpoint loading](../architecture/checkpoint-loading-trust-boundary.md),
+[model trust](../architecture/pp-doclayout-trust-boundary.md), and
+[local-development mode](../architecture/local-dev-mode.md). The active designs
+and remaining delivery order live in the [roadmap](../plans/roadmap.md), the
+[specs index](../specs/_index.md), and the governed issue backlog.
 
 ## In-flight work
 
-- The conformance and lifecycle migration is on docs/docgraph-conformance.
+- The migration is authored on branch `docs/github-issues-migration`.
+- Remote cutover and deletion of the imported GitHub records remain pending.
 
 ## Risks
 
-- Required-section conformance is enforced as an error. This enforcement
-  followed the 2026-07-13 conformance migration, which closed all 37 findings
-  and completed adversarial review of 15 specs.
-- The orphan queue is clear after two changes. Type-checking and layout-debug
-  behavior were promoted to architecture, and their implementation documents
-  were retired.
+- Delete source GitHub issues only after the migration branch is merged and the
+  imported records are verified on the target branch.
+- Do not delete any of the 38 active governed records or documents awaiting an
+  owner decision during cutover.
