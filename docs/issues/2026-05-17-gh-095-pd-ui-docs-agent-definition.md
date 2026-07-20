@@ -90,5 +90,6 @@ only comment says cross-cut plans were moving to
 
 ## Resolution
 
-_Open._ Retain issue #95 until the external definition and migration
-destination are verified.
+_Open._ The external definition and migration destination still need
+verification. The governed file and raw export retain that work after GitHub
+issue #95 is deleted.

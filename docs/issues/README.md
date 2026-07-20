@@ -78,9 +78,9 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
-This index covers all 43 retained GitHub issues with one active governed record
-per source: 33 source-open records and 10 closed-source residual or
-owner-decision records.
+This index covers all 43 migrated source issues with one active governed Git
+record per source: 33 sources that were open and 10 closed-source residual or
+owner-decision records. These files remain active independently of GitHub.
 
 - [#43 — Verify the external disposition of the style-review subprocess failure](2026-05-11-gh-043-style-review-detect-subprocess-failure.md)
 - [#54 — Decide whether monthly grooming remains part of the workspace workflow](2026-05-17-gh-054-monthly-grooming.md)

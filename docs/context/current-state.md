@@ -39,14 +39,13 @@ and remaining delivery order live in the [roadmap](../plans/roadmap.md), the
 
 - The migration and immutable cutover SHA are merged on `master`.
 - All 171 deletion-ready completed issues were permanently deleted in 18
-  journaled batches. GitHub retains 33 open issues and 10 closed issues whose
-  governed records still block deletion.
-- GitHub Issues remains enabled because those 43 retained source issues are
-  still active or awaiting an owner decision.
+  journaled batches. The remaining 43 GitHub sources now have one-to-one
+  governed files and are ready for journaled deletion.
+- GitHub is no longer an issue-tracking authority for this repository. Active
+  work and owner decisions remain in `docs/issues/` after source deletion.
 
 ## Risks
 
-- Do not delete the 10 held closed issues until their individual evidence gates
-  are resolved.
-- Do not delete any of the 43 active governed records or their 33 open and 10
-  held closed source issues merely to reach a zero tracker count.
+- Do not treat deletion of a GitHub source as resolution of its governed file.
+- Keep every active governed record until its own technical or owner-decision
+  resolution passes the normal `doc-retirer` workflow.

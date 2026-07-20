@@ -108,5 +108,6 @@ The current shipped contract is documented in
 ## Resolution
 
 _Open._ The safe loader and state-dict validation shipped in `31137f1` and
-`e5cf913`. Deletion remains blocked while the maximum-size, checksum,
-pinned-revision, `safetensors`, and local-path trust-boundary work is unresolved.
+`e5cf913`. The maximum-size, checksum, pinned-revision, `safetensors`, and
+local-path trust-boundary work remains active in this governed file after its
+GitHub source is deleted.

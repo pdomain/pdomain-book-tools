@@ -88,5 +88,6 @@ comment says cross-cut plans were moving to
 
 ## Resolution
 
-_Open._ Retain issue #98 until the external routing and migration destination
-are verified.
+_Open._ The external routing and migration destination still need verification.
+The governed file and raw export retain that work after GitHub issue #98 is
+deleted.
