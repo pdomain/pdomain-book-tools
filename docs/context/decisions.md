@@ -307,3 +307,25 @@ Kind: context
 - **Superseded by:** `AGENTS.md` and `CONVENTIONS.md`
 - **Removal commit:** pending
 - **Remaining work:** none
+
+### 2026-07-20 — Retired the portable docs-issues installer bundle
+
+- **Context:** The repository had already installed and adapted the portable
+  `docs-issues/` bundle under `docs/issues/`. The two template copies were
+  byte-identical, while `docs/issues/README.md` contained the repository's live
+  convention and issue index.
+- **Decision:** Delete `docs-issues/` and keep `docs/issues/README.md` plus
+  `docs/issues/TEMPLATE.md` as the only issue-document convention and default
+  docgraph issue template.
+- **Rationale:** A second installer location creates competing template paths
+  after installation. The governed destination preserves the bundle's durable
+  function without the duplicate files.
+- **Evidence:** `docs/issues/README.md`, `docs/issues/TEMPLATE.md`, and SHA-256
+  `8d07be9b24484052f15c81a74ddaabbd52ca03bbda9b030d2c5a45401fd23d91`
+  for both template copies before removal.
+- **Old paths:** `docs-issues/README.md`, `docs-issues/template/TEMPLATE.md`,
+  and `docs-issues/template/docs-issues-README.md`
+- **Outcome:** superseded and deleted
+- **Superseded by:** `docs/issues/README.md` and `docs/issues/TEMPLATE.md`
+- **Removal commit:** pending
+- **Remaining work:** none

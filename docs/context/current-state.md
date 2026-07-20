@@ -19,10 +19,9 @@ Kind: context
 
 The GitHub issue migration preserves all 214 source issues as exact raw JSON.
 The [completed migration ledger](github-issues-migration-ledger.md) records 181
-completed issues. The [governed issue backlog](../issues/README.md) holds 38
-active local records: 33 source-open issues and five records retained for
-closed-source residual or owner-decision work (#43, #54, #65,
-consolidated #77/#94–98, and #165).
+completed issues. The [governed issue backlog](../issues/README.md) holds 43
+active local records: one for each of the 33 source-open issues and 10 retained
+closed-source issues (#43, #54, #65, #77, #94 through #98, and #165).
 
 Durable shipped behavior found during the migration has moved into architecture
 records. These records cover [geometry correction](../architecture/geometry-correction.md),
@@ -49,5 +48,5 @@ and remaining delivery order live in the [roadmap](../plans/roadmap.md), the
 
 - Do not delete the 10 held closed issues until their individual evidence gates
   are resolved.
-- Do not delete any of the 38 active governed records or their 33 open and 10
+- Do not delete any of the 43 active governed records or their 33 open and 10
   held closed source issues merely to reach a zero tracker count.

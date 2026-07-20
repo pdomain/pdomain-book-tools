@@ -46,11 +46,10 @@ local status, and cutover action from
 file under `docs/issues/`, keeps completion unclaimed, and blocks source
 deletion until the replacement is merged and its digest is verified.
 
-The 38 active local records comprise all 33 source-open records and five
-closed-source residual or owner-decision records. The five closed-source
-records cover #43, #54, #65, consolidated #77 and #94–98, and #165. Their
-deletion blocks remain authoritative even though their source issues are
-closed.
+The 43 active local records comprise all 33 source-open records and one record
+for each of the 10 closed-source residual or owner-decision issues. The retained
+closed sources are #43, #54, #65, #77, #94 through #98, and #165. Their
+deletion blocks remain authoritative even though their source issues are closed.
 
 Every row starts with `merged_commit` set to `PENDING`. Replace that value only
 when the governed destination is present at the immutable merge commit on the

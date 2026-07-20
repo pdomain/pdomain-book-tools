@@ -78,13 +78,19 @@ Lead with the **smallest decisive evidence**, separate **observation** from
 
 ## Open issues
 
-This index covers all 38 active governed issue records: 33 source-open records
-and five records retained for closed-source residual or owner-decision work.
+This index covers all 43 retained GitHub issues with one active governed record
+per source: 33 source-open records and 10 closed-source residual or
+owner-decision records.
 
 - [#43 — Verify the external disposition of the style-review subprocess failure](2026-05-11-gh-043-style-review-detect-subprocess-failure.md)
 - [#54 — Decide whether monthly grooming remains part of the workspace workflow](2026-05-17-gh-054-monthly-grooming.md)
 - [#65 — Verify the external decompose-spec flag implementation](2026-05-17-gh-065-decompose-spec-flags.md)
-- [#77 — Verify consolidated workspace-agent definitions for #77 and #94–98](2026-05-17-gh-077-workspace-agent-definitions.md)
+- [#77 — Verify the parent workspace-agent definition claim](2026-05-17-gh-077-workspace-agent-definitions.md)
+- [#94 — Verify the full-power pd-ui agent definition](2026-05-17-gh-094-pd-ui-agent-definition.md)
+- [#95 — Verify the read-only pd-ui-docs agent definition](2026-05-17-gh-095-pd-ui-docs-agent-definition.md)
+- [#96 — Verify the full-power pd-ocr-ops agent definition](2026-05-17-gh-096-pd-ocr-ops-agent-definition.md)
+- [#97 — Verify the read-only pd-ocr-ops-docs agent definition](2026-05-17-gh-097-pd-ocr-ops-docs-agent-definition.md)
+- [#98 — Verify the workspace agent routing table](2026-05-17-gh-098-workspace-routing-table.md)
 - [#2 — Decoration-vs-figure post-classification heuristic](2026-05-10-gh-002-decoration-figure-post-classification.md)
 - [#3 — Tune the sidenote height-ratio default](2026-05-10-gh-003-sidenote-height-ratio-default.md)
 - [#4 — Refine sidenote x-height with image projection](2026-05-10-gh-004-sidenote-projection-x-height.md)

@@ -27,9 +27,9 @@ Kind: context
   [scannos](../specs/2026-05-24-scannos-module.md), and
   [hyphen n-grams](../specs/2026-05-24-hyphen-ngrams-sqlite.md).
 - Continue the residual work in the [roadmap](../plans/roadmap.md).
-- Work the 38 active local records from the [issue backlog](../issues/README.md):
-  33 source-open issues and five records retained for closed-source residual or
-  owner-decision work (#43, #54, #65, consolidated #77/#94–98, and #165). A
+- Work the 43 active local records from the [issue backlog](../issues/README.md):
+  one record for each of the 33 source-open issues and 10 retained closed-source
+  issues (#43, #54, #65, #77, #94 through #98, and #165). A
   closed source GitHub issue does not supersede its active local governance
   status.
 
@@ -119,9 +119,8 @@ None.
   recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
   Evidence: docs/specs/2026-05-24-scannos-module.md, Adversarial Review.
 - Resolve migrated owner-decision records through the
-  [issue backlog](../issues/README.md). Continue to protect all 38 active local
-  records, including the five records backed by 10 retained closed GitHub
-  issues.
+  [issue backlog](../issues/README.md). Continue to protect all 43 active local
+  records, including the 10 records backed by retained closed GitHub issues.
 
 ## Legacy-unverified sweep
 
