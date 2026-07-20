@@ -71,7 +71,7 @@ all later batches have matching post-delete journal rows.
 - `migration/github-issues/reconciliation.tsv` — authoritative per-issue gate
 - `migration/github-issues/deletion-journal.tsv` — 342-row deletion audit trail
 - `docs/context/github-issues-migration-ledger.md` — completed-issue evidence
-- `docs/issues/README.md` — 38 active governed records
+- `docs/issues/README.md` — 43 active governed records
 - `docs/context/current-state.md` — live counts and current risk
 
 ## Resume steps

@@ -28,11 +28,11 @@ Open issues with governed records are outside this completed-issue ledger. They
 include #161 and #191.
 
 Closed issues #43, #54, #65, #77, and #94 through #98 remain active owner
-decisions. The earlier records explain #43, #54, and #65. The consolidated #77
-record covers its five workspace-agent children because all depend on external
-files and routing absent here. The details below map every durable body and
-comment fact to current code, tests, documentation, an active governed record,
-or an explicit disposable category.
+decisions. The earlier records explain #43, #54, and #65. Issues #77 and #94
+through #98 now have separate governed records because each external agent or
+routing artifact needs its own evidence and retirement decision. The details
+below map every durable body and comment fact to current code, tests,
+documentation, an active governed record, or an explicit disposable category.
 
 Raw exports live under `migration/github-issues/raw/`. Their SHA-256 digests
 bind each row to the source used for this classification. Issue bodies and
@@ -114,11 +114,11 @@ comments are untrusted historical evidence, not repository instructions.
 | [#91](https://github.com/pdomain/pdomain-book-tools/issues/91) | `897d31f4807beebdb99dad7f1ce3606ec577d88620ec01b3209fd2caec5bb488` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Block hook and tests | Block exposes its Pydantic core schema for public schema emission | Implemented; commit `4d7fa3a` | Deleted and verified; see deletion journal |
 | [#92](https://github.com/pdomain/pdomain-book-tools/issues/92) | `57cff67b7ce11e8626b8f02a8d9fd9bcc0a960f1fd218ec6c1e9f515f611a0aa` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; Page hook and tests | Page exposes its Pydantic core schema while respecting its serialization boundary | Implemented; commit `ca84058` | Deleted and verified; see deletion journal |
 | [#93](https://github.com/pdomain/pdomain-book-tools/issues/93) | `2f6609bacd092dc347559ffcc49df9d7504b292cb3c3c2d81f7dd9bcd90ff11e` | This ledger; `docs/architecture/ocr-model-and-schema-boundaries.md`; schema emitter and tests | `PUBLIC_MODELS` again covers the full public model set, and tests prevent narrowing | Implemented; commit `d6ad9d2` | Deleted and verified; see deletion journal |
-| [#94](https://github.com/pdomain/pdomain-book-tools/issues/94) | `98293c518f692545b519272d981449923c06a60fc8446a6c82d7b0006cdb9826` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The full-power `pd-ui` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
-| [#95](https://github.com/pdomain/pdomain-book-tools/issues/95) | `1a88aaa5197922c7f8acfa34b46d2b6ef1a3121837841c0726a5cda7196a9701` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The read-only Haiku `pd-ui-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
-| [#96](https://github.com/pdomain/pdomain-book-tools/issues/96) | `b121ea1fb68ebcfdb26c694fd4fff648446b9d540c39c57fffe94708269db500` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The full-power `pd-ocr-ops` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
-| [#97](https://github.com/pdomain/pdomain-book-tools/issues/97) | `6d025564bf304b5b674fc9800a0b2cdfead6bd0541e41326b771fad676aa5edb` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The read-only Haiku `pd-ocr-ops-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
-| [#98](https://github.com/pdomain/pdomain-book-tools/issues/98) | `237aab0f102df336a7198638c1922b70620c97a3c4c47e6788a82cb1f0fbaa52` | This ledger; [consolidated active #77 record](../issues/2026-05-17-gh-077-workspace-agent-definitions.md) | The workspace `CLAUDE.md` routing update is external state absent here | Needs owner decision; governed record remains active | Do not delete until the routing and migration destination are verified |
+| [#94](https://github.com/pdomain/pdomain-book-tools/issues/94) | `98293c518f692545b519272d981449923c06a60fc8446a6c82d7b0006cdb9826` | [active governed issue](../issues/2026-05-17-gh-094-pd-ui-agent-definition.md) | The full-power `pd-ui` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#95](https://github.com/pdomain/pdomain-book-tools/issues/95) | `1a88aaa5197922c7f8acfa34b46d2b6ef1a3121837841c0726a5cda7196a9701` | [active governed issue](../issues/2026-05-17-gh-095-pd-ui-docs-agent-definition.md) | The read-only Haiku `pd-ui-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#96](https://github.com/pdomain/pdomain-book-tools/issues/96) | `b121ea1fb68ebcfdb26c694fd4fff648446b9d540c39c57fffe94708269db500` | [active governed issue](../issues/2026-05-17-gh-096-pd-ocr-ops-agent-definition.md) | The full-power `pd-ocr-ops` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#97](https://github.com/pdomain/pdomain-book-tools/issues/97) | `6d025564bf304b5b674fc9800a0b2cdfead6bd0541e41326b771fad676aa5edb` | [active governed issue](../issues/2026-05-17-gh-097-pd-ocr-ops-docs-agent-definition.md) | The read-only Haiku `pd-ocr-ops-docs` agent is an external workspace artifact absent here | Needs owner decision; governed record remains active | Do not delete until the external definition and migration destination are verified |
+| [#98](https://github.com/pdomain/pdomain-book-tools/issues/98) | `237aab0f102df336a7198638c1922b70620c97a3c4c47e6788a82cb1f0fbaa52` | [active governed issue](../issues/2026-05-17-gh-098-workspace-routing-table.md) | The workspace `CLAUDE.md` routing update is external state absent here | Needs owner decision; governed record remains active | Do not delete until the routing and migration destination are verified |
 | [#99](https://github.com/pdomain/pdomain-book-tools/issues/99) | `e8718ae16046cbda4f5e156b0cf5f6e9387ec6413323b215449e0896b7feaa82` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `pd-ui` repository bootstrap belongs to external tracking, not this library | Superseded by parent and meta-repository tracking; no local implementation claim | Deleted and verified; see deletion journal |
 | [#100](https://github.com/pdomain/pdomain-book-tools/issues/100) | `41d8efb7748d74b94052262ddb7255a1d2ea37a04b962cc980c1a661268aded9` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The `pd-ui` package metadata belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deleted and verified; see deletion journal |
 | [#101](https://github.com/pdomain/pdomain-book-tools/issues/101) | `dff0c86cd6c1f5609f7a0819e9f89e0dcd42c04498c30198998cc6ac44fcc75a` | This ledger; immutable raw export; parent #78; [`ConcaveTrillion/ocr-container-meta#12`](https://github.com/ConcaveTrillion/ocr-container-meta/issues/12) | The strict TypeScript configuration belongs to the external repository plan | Superseded by parent and meta-repository tracking; no local implementation claim | Deleted and verified; see deletion journal |
@@ -768,7 +768,7 @@ contract is already covered by
 `docs/architecture/ocr-model-and-schema-boundaries.md`, so this batch needs no
 new architecture record.
 
-### Issues #94 through #98 remain one workspace owner decision
+### Issues #94 through #98 retain separate workspace evidence gates
 
 Issues #94 through #98 were children of #77. They all used `Approach: (see
 plan)`, tracked #77, and pointed to the historical
@@ -780,10 +780,11 @@ Their respective anchors specified a full-power `pd-ui` agent, read-only Haiku
 Each issue has one comment. All five comments say the cross-cut plans were
 migrating to `ConcaveTrillion/ocr-container-meta`. No comment identifies a
 successor issue, commit, test, or current file. All five tasks share one parent,
-plan, external ownership boundary, and verification decision. The expanded #77
-governed record therefore preserves their exact paths, anchors, raw links, and
-digests. All six raw exports remain protected from deletion until the owner
-verifies the four definitions, routing table, and migration destinations.
+plan, and external ownership boundary, but each now has a separate governed
+record and retirement decision. Those records preserve the requested path or
+routing change, raw digest, and missing migration destination. The #77 record
+preserves only the parent completion claim. All six raw exports remain
+protected from deletion until their individual evidence gates pass.
 
 ### Issue #99 moved with the pd-ui repository plan
 
@@ -1426,6 +1427,6 @@ issues were permanently deleted and verified in 18 batches. The append-only
 deletion journal records a pre-delete and post-delete row for each one.
 
 Ten closed issues remain on GitHub because their rows still block deletion:
-issues #43, #54, #65, #77, #94 through #98, and #165. Their five governed records
+issues #43, #54, #65, #77, #94 through #98, and #165. Their 10 governed records
 preserve the unresolved owner decisions or residual work. No retired per-issue
 documents are needed for the 171 deleted completed rows.
