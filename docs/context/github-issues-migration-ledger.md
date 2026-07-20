@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-07-20
 Kind: context
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** context
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-07-20
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
@@ -478,8 +478,9 @@ This repository does not contain that script or evidence of the fix. The only
 closure comment says the workspace-tooling bug was refiled as
 `ConcaveTrillion/ocr-container-meta#1`. This batch did not verify the external
 issue or its resolution. The active governed issue record preserves the full
-provenance and asks the owner to confirm the external disposition before raw
-deletion.
+provenance and asks the owner to confirm the external disposition before
+retiring the local record. Its GitHub source copy was deleted after the
+Git-only tracking decision.
 
 ### Issues #44 and #55 through #59 moved to cross-cut tracking
 
@@ -589,8 +590,9 @@ Issue #65 has only one comment: `Work completed in session 2026-05-17
 or migration comment. This contemporaneous statement reports an external
 outcome, but this repository has no matching artifact or independent proof of
 the flag behavior. The active governed issue asks the owner to verify the
-external implementation before deletion. The proposal is not a current local
-contract.
+external implementation before retiring the local record. Its GitHub source
+copy was deleted after the Git-only tracking decision. The proposal is not a
+current local contract.
 
 Issue #67 has no local implementation evidence for the requested update across
 all eight agent prompts. Its completion, restoration, and migration comments
@@ -783,8 +785,9 @@ successor issue, commit, test, or current file. All five tasks share one parent,
 plan, and external ownership boundary, but each now has a separate governed
 record and retirement decision. Those records preserve the requested path or
 routing change, raw digest, and missing migration destination. The #77 record
-preserves only the parent completion claim. All six raw exports remain
-protected from deletion until their individual evidence gates pass.
+preserves only the parent completion claim. Their GitHub source copies were
+deleted after the Git-only tracking decision; all six local records remain
+active until their individual evidence gates pass.
 
 ### Issue #99 moved with the pd-ui repository plan
 
@@ -1068,8 +1071,9 @@ The original request also named maximum file sizes, checksums, immutable
 Hugging Face revisions, `safetensors`, and the trust policy for local paths.
 Those items remain unresolved. The
 [governed issue](../issues/2026-05-22-gh-165-checkpoint-hardening.md) binds the
-raw digest, delivered safeguards, and residual work. It remains active and
-blocks deletion of the imported issue record.
+raw digest, delivered safeguards, and residual work. Its GitHub source copy was
+deleted after the Git-only tracking decision, but the local record remains
+active until the residual work is resolved.
 
 ### Issues #166 through #170 shipped correctness and cache fixes
 
@@ -1420,13 +1424,14 @@ filed, but local evidence does not verify either current behavior. The active
 governed issue record preserves the full procedure and asks the owner whether
 to retain, update, or retire the recurrence before deleting the raw export.
 
-## Completed issues were deleted only when their evidence gates passed
+## Every source issue was deleted only when its evidence gates passed
 
-The migration was merged on `master`, and all 171 deletion-ready completed
-issues were permanently deleted and verified in 18 batches. The append-only
-deletion journal records a pre-delete and post-delete row for each one.
+The migration and Git-only tracking decision were merged on `master`. All 214
+source issues were permanently deleted and verified in 23 batches. The
+append-only deletion journal records one pre-delete and one post-delete row for
+each issue. The live count is zero, and GitHub Issues is disabled.
 
-Ten closed issues still have unresolved owner decisions or residual work:
+Ten records still have unresolved owner decisions or residual work:
 issues #43, #54, #65, #77, #94 through #98, and #165. Their 10 governed records
 remain active after GitHub source deletion. No retired per-issue documents are
 needed for the 171 deleted completed rows.

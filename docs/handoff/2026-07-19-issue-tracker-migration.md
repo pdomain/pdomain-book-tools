@@ -1,6 +1,6 @@
 ---
 kind: handoff
-status: "active"
+status: "complete"
 created: "2026-07-19"
 created_at: "2026-07-19T15:51:00Z"
 owner: CT
@@ -11,19 +11,19 @@ base_commit: e94e8a683fe41fc7070cfcb24aa5068dde9f446a
 supersedes: docs/handoff/2026-07-17-issue-tracker-migration.md
 ---
 
-# GitHub issue migration is ready for the final 43-source cutover
+# GitHub issue migration completed with a zero-issue cutover
 
 ## Agent Index
 
 - Kind: handoff
-- Status: active
-- Read when: completing or auditing the final GitHub issue cutover
+- Status: complete
+- Read when: auditing the completed GitHub issue cutover
 - Search terms: GitHub migration, zero issue count, source deletion, deletion journal
 
 ## Goal
 
-Delete and verify all 43 remaining GitHub source issues, then disable GitHub
-Issues. Keep their governed Git records active until the underlying work is
+Preserve every source issue in Git, delete the remote copies, and disable
+GitHub Issues. Keep governed Git records active until their underlying work is
 actually resolved.
 
 ## Done
@@ -38,15 +38,15 @@ actually resolved.
 - Permanently deleted and verified 171 completed issues in 18 batches.
 - Merged 171 matching `pre_delete` and `post_delete_verification` journal rows
   in PR #236.
-- Verified the live tracker contains exactly 33 open issues and 10 held closed
-  issues. That retained set matches the reconciliation table.
+- Deleted and verified the final 43 source copies in five batches after the
+  Git-only tracking decision merged.
+- Verified all 214 issues have one pre-delete and one post-delete journal row.
+- Verified the live issue count is zero and disabled GitHub Issues.
 
 ## Not done
 
-- Delete and verify the remaining 43 GitHub source issues, then disable GitHub
-  Issues.
-- Keep the 43 governed records under `docs/issues/`; deletion of their source
-  copies does not change their local resolution state.
+- Resolve the 43 active governed records under `docs/issues/`. Remote source
+  deletion did not change their local resolution state.
 
 ## Failed approach
 
@@ -68,17 +68,14 @@ all later batches have matching post-delete journal rows.
 ## Pointers
 
 - `migration/github-issues/reconciliation.tsv` — authoritative per-issue gate
-- `migration/github-issues/deletion-journal.tsv` — 342-row deletion audit trail
+- `migration/github-issues/deletion-journal.tsv` — 428-row deletion audit trail
 - `docs/context/github-issues-migration-ledger.md` — completed-issue evidence
 - `docs/issues/README.md` — 43 active governed records
 - `docs/context/current-state.md` — live counts and current risk
 
 ## Resume steps
 
-1. Merge the owner decision and the 43 deletion-ready reconciliation rows.
-2. Delete closed sources first, then open sources, in batches of at most 10.
-3. Commit and push pre-delete journal rows before each batch.
-4. Verify the REST absence and deleted-page marker, then commit and push the
-   matching post-delete rows before continuing.
-5. Confirm the live count is zero, disable GitHub Issues, and verify the feature
-   is disabled.
+1. Use `docs/issues/README.md` as the active work index.
+2. Resolve each record through its technical or owner-decision workflow.
+3. Use `doc-retirer` only when the local record's own evidence supports
+   retirement; remote deletion alone is not resolution evidence.

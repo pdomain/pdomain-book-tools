@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-07-20
 Kind: context
 ---
 
@@ -37,10 +37,10 @@ and remaining delivery order live in the [roadmap](../plans/roadmap.md), the
 
 ## In-flight work
 
-- The migration and immutable cutover SHA are merged on `master`.
-- All 171 deletion-ready completed issues were permanently deleted in 18
-  journaled batches. The remaining 43 GitHub sources now have one-to-one
-  governed files and are ready for journaled deletion.
+- The migration and Git-only tracking decision are merged on `master`.
+- All 214 GitHub source issues were permanently deleted and verified in 23
+  journaled batches. The live issue count is zero, and GitHub Issues is
+  disabled for this repository.
 - GitHub is no longer an issue-tracking authority for this repository. Active
   work and owner decisions remain in `docs/issues/` after source deletion.
 
