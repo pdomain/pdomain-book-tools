@@ -94,5 +94,5 @@ current path, or governed successor.
 
 ## Resolution
 
-_Open._ Retain issue #77 until the parent completion claim is independently
-verified.
+_Open._ The parent completion claim still needs independent verification. The
+governed file and raw export retain that work after GitHub issue #77 is deleted.

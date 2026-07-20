@@ -109,5 +109,5 @@ comment, metadata, and event history. Its SHA-256 digest is
 ## Resolution
 
 _Open._ Owner decision required: verify, supersede, or reject the reported
-external implementation. Closed source issue #65 and its raw export must remain
-until that disposition is confirmed.
+external implementation. The governed file and raw export retain this work
+after its GitHub source is deleted.

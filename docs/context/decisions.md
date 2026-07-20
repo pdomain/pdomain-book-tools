@@ -329,3 +329,20 @@ Kind: context
 - **Superseded by:** `docs/issues/README.md` and `docs/issues/TEMPLATE.md`
 - **Removal commit:** pending
 - **Remaining work:** none
+
+### 2026-07-20 — Git files replace GitHub Issues as the tracker
+
+- **Context:** All 43 remaining GitHub issues have one-to-one governed records
+  under `docs/issues/`, exact raw exports, reconciliation rows, and merged
+  provenance. Ten records preserve unresolved external evidence or residual
+  work; their GitHub closed state does not resolve that local work.
+- **Decision:** Permanently delete all remaining GitHub issues and disable the
+  repository's Issues feature. Keep unresolved governed records active until
+  their own technical or owner-decision resolution passes `doc-retirer`.
+- **Rationale:** Git now contains the complete evidence and work state. Keeping
+  a second tracker creates two authorities and makes status drift likely.
+- **Evidence:** `docs/issues/README.md`,
+  `migration/github-issues/reconciliation.tsv`, the 214 raw exports, and merged
+  commit `66a71c7ac05589428c98995508e2639e4e95642c`.
+- **Remaining work:** Complete the journaled deletion, verify a zero issue
+  count, and disable GitHub Issues.

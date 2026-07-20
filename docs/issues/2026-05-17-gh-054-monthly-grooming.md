@@ -123,5 +123,5 @@ comment, metadata, and event history. Its SHA-256 digest is
 ## Resolution
 
 _Open._ Owner decision required: retain, update, supersede, or retire the monthly
-grooming recurrence. Closed source issue #54 and its raw export must remain until
-the current workflow and destination are verified.
+grooming recurrence. The governed file and raw export retain this decision after
+its GitHub source is deleted.

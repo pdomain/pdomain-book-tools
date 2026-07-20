@@ -113,5 +113,5 @@ external resolution. The external issue was not verified during this batch.
 ## Resolution
 
 _Open._ Owner decision required: verify the state and evidence for
-`ConcaveTrillion/ocr-container-meta#1`. Closed source issue #43 and its raw export
-must remain until that external disposition is confirmed.
+`ConcaveTrillion/ocr-container-meta#1`. The governed file and raw export retain
+this work after its GitHub source is deleted.

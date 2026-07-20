@@ -11,19 +11,20 @@ base_commit: e94e8a683fe41fc7070cfcb24aa5068dde9f446a
 supersedes: docs/handoff/2026-07-17-issue-tracker-migration.md
 ---
 
-# GitHub issue migration retains 43 gated source issues
+# GitHub issue migration is ready for the final 43-source cutover
 
 ## Agent Index
 
 - Kind: handoff
 - Status: active
-- Read when: resolving the retained GitHub issues after the documentation migration
-- Search terms: GitHub migration, deletion holds, retained issues, deletion journal
+- Read when: completing or auditing the final GitHub issue cutover
+- Search terms: GitHub migration, zero issue count, source deletion, deletion journal
 
 ## Goal
 
-Finish the remaining issue cleanup only when each governed record's evidence
-gate permits it. Do not treat a zero GitHub issue count as the current goal.
+Delete and verify all 43 remaining GitHub source issues, then disable GitHub
+Issues. Keep their governed Git records active until the underlying work is
+actually resolved.
 
 ## Done
 
@@ -42,13 +43,10 @@ gate permits it. Do not treat a zero GitHub issue count as the current goal.
 
 ## Not done
 
-- GitHub Issues remains enabled because 43 source issues are intentionally
-  retained.
-- Closed issues #43, #54, #65, #77, #94 through #98, and #165 remain. Their
-  reconciliation rows prohibit deletion until external evidence, owner
-  decisions, or residual implementation work resolves the named gate.
-- The 33 open issues remain active work represented by governed records under
-  `docs/issues/`.
+- Delete and verify the remaining 43 GitHub source issues, then disable GitHub
+  Issues.
+- Keep the 43 governed records under `docs/issues/`; deletion of their source
+  copies does not change their local resolution state.
 
 ## Failed approach
 
@@ -60,9 +58,10 @@ all later batches have matching post-delete journal rows.
 
 ## Decisions
 
-- Keep GitHub Issues enabled while any governed source issue remains.
-- Never bypass a reconciliation row whose cutover action starts with
-  `Do not delete`.
+- Git files replace GitHub Issues as the sole tracker after the journaled
+  cutover.
+- Keep unresolved local records active even after their GitHub copies are
+  deleted.
 - Use the immutable raw exports and append-only journal as the deletion audit
   trail; do not recreate retired per-issue documents for completed work.
 
@@ -76,11 +75,10 @@ all later batches have matching post-delete journal rows.
 
 ## Resume steps
 
-1. Read the relevant governed record and reconciliation row before changing a
-   retained issue.
-2. Resolve the exact external-evidence, owner-decision, or residual-work gate.
-3. Update the governed record, authored context, and reconciliation action.
-4. If deletion becomes eligible, repeat the journal-before-delete and
-   journal-after-verification sequence from the migration runbook.
-5. Disable GitHub Issues only after the live count reaches zero through valid
-   per-record decisions.
+1. Merge the owner decision and the 43 deletion-ready reconciliation rows.
+2. Delete closed sources first, then open sources, in batches of at most 10.
+3. Commit and push pre-delete journal rows before each batch.
+4. Verify the REST absence and deleted-page marker, then commit and push the
+   matching post-delete rows before continuing.
+5. Confirm the live count is zero, disable GitHub Issues, and verify the feature
+   is disabled.

@@ -47,9 +47,9 @@ file under `docs/issues/`, keeps completion unclaimed, and blocks source
 deletion until the replacement is merged and its digest is verified.
 
 The 43 active local records comprise all 33 source-open records and one record
-for each of the 10 closed-source residual or owner-decision issues. The retained
-closed sources are #43, #54, #65, #77, #94 through #98, and #165. Their
-deletion blocks remain authoritative even though their source issues are closed.
+for each of the 10 closed-source residual or owner-decision issues. The owner
+chose Git as the sole tracker on 2026-07-20. Source deletion does not resolve an
+active local record; it removes only the duplicate GitHub transport.
 
 Every row starts with `merged_commit` set to `PENDING`. Replace that value only
 when the governed destination is present at the immutable merge commit on the
@@ -87,6 +87,7 @@ strict check, and `git diff --check`. Require a fresh issue count of zero.
 Verify every migration and journal commit on the remote default branch.
 
 The 2026-07-19 completed-issue cleanup deleted and verified 171 issues in 18
-batches. GitHub retains 33 open issues and 10 closed issues with authoritative
-deletion blocks, so Issues remains enabled. The journal contains 171
-`pre_delete` rows and 171 matching `post_delete_verification` rows.
+batches. The journal contains 171 `pre_delete` rows and 171 matching
+`post_delete_verification` rows. The 2026-07-20 owner decision authorizes the
+same journaled process for the remaining 43 sources, followed by disabling
+GitHub Issues.
