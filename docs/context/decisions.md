@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-07-20
 Kind: context
 ---
 
@@ -344,5 +344,7 @@ Kind: context
 - **Evidence:** `docs/issues/README.md`,
   `migration/github-issues/reconciliation.tsv`, the 214 raw exports, and merged
   commit `66a71c7ac05589428c98995508e2639e4e95642c`.
-- **Remaining work:** Complete the journaled deletion, verify a zero issue
-  count, and disable GitHub Issues.
+- **Outcome:** All 214 issues were deleted and verified in 23 journaled
+  batches. The live issue count is zero, and GitHub Issues is disabled.
+- **Remaining work:** Resolve the 43 active Git records through their normal
+  technical or owner-decision workflows.

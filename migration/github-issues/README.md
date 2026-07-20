@@ -41,20 +41,19 @@ Its exact columns are `issue_number`, `node_id`, `former_url`, `source_state`,
 `cutover_action`, and `merged_commit`.
 
 Each completed row preserves the governed destination, architecture coverage,
-local status, and cutover action from
+local status, and cutover result from
 `docs/context/github-issues-migration-ledger.md`. Each open row names its unique
-file under `docs/issues/`, keeps completion unclaimed, and blocks source
-deletion until the replacement is merged and its digest is verified.
+file under `docs/issues/` and keeps completion unclaimed.
 
 The 43 active local records comprise all 33 source-open records and one record
 for each of the 10 closed-source residual or owner-decision issues. The owner
 chose Git as the sole tracker on 2026-07-20. Source deletion does not resolve an
 active local record; it removes only the duplicate GitHub transport.
 
-Every row starts with `merged_commit` set to `PENDING`. Replace that value only
-when the governed destination is present at the immutable merge commit on the
-fetched remote default branch. For a closed issue, its completed-issue ledger
-row must also be present there.
+During migration, every row started with `merged_commit` set to `PENDING`. The
+completed table now records an immutable merge commit only after the governed
+destination was found at that commit on the fetched remote default branch. For
+a closed issue, its completed-issue ledger row was also required there.
 
 ## The deletion journal precedes every deletion
 
@@ -86,8 +85,8 @@ After every issue is deleted and verified, disable GitHub Issues. Verify
 strict check, and `git diff --check`. Require a fresh issue count of zero.
 Verify every migration and journal commit on the remote default branch.
 
-The 2026-07-19 completed-issue cleanup deleted and verified 171 issues in 18
-batches. The journal contains 171 `pre_delete` rows and 171 matching
-`post_delete_verification` rows. The 2026-07-20 owner decision authorizes the
-same journaled process for the remaining 43 sources, followed by disabling
-GitHub Issues.
+The cutover deleted and verified all 214 issues in 23 batches: 171 completed
+issues on 2026-07-19 and the 43 retained-source copies on 2026-07-20. The
+journal contains 214 `pre_delete` rows and 214 matching
+`post_delete_verification` rows. The live issue count is zero, and GitHub
+Issues is disabled for the repository.

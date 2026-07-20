@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-15
-Last verified: 2026-07-19
+Last verified: 2026-07-20
 Kind: process
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** process
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-07-20
 - **Read when:** filing a bug / defect / investigation report, or looking up an
   open issue's status, evidence, or resolution.
 - **Search terms:** issues folder, bug report, defect report, issue template,
@@ -76,11 +76,12 @@ Use this section order:
 Lead with the **smallest decisive evidence**, separate **observation** from
 **hypothesis**, and always include a **What is NOT broken** section.
 
-## Open issues
+## Active issue files
 
-This index covers all 43 migrated source issues with one active governed Git
-record per source: 33 sources that were open and 10 closed-source residual or
-owner-decision records. These files remain active independently of GitHub.
+This index covers all 43 active governed Git records: 33 migrated from open
+sources and 10 retained for residual work or owner decisions. Their GitHub
+source copies were deleted after migration. These files remain active until
+their own work is resolved.
 
 - [#43 — Verify the external disposition of the style-review subprocess failure](2026-05-11-gh-043-style-review-detect-subprocess-failure.md)
 - [#54 — Decide whether monthly grooming remains part of the workspace workflow](2026-05-17-gh-054-monthly-grooming.md)
