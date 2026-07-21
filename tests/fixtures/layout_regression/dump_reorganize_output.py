@@ -50,12 +50,22 @@ def dump_case(case_name: str) -> str:
         raise SystemExit(f"failed to load fixture image: {png_path}")
     page.cv2_numpy_page_image = image
     page.refine_bounding_boxes()
+    # Prefer committed layout JSON so dumps match the regression harness
+    # (layout tagging + layout-aware drops + captions).
+    layout = None
+    layout_json_path = INPUT_DIR / f"{case_name}.layout.json"
+    if layout_json_path.exists():
+        from pdomain_book_tools.layout.types import PageLayout
+
+        layout = PageLayout.from_dict(
+            json.loads(layout_json_path.read_text(encoding="utf-8"))
+        )
     # Opt into the legacy word-dropping paths so freshly-dumped baselines
     # match the regression test's expectation (it also passes
     # ``drop_layout_words=True``). The new default preserves all words; if
     # you want a baseline with footnotes/figure-noise included, drop the
     # kwarg.
-    page.reorganize_page(drop_layout_words=True)
+    page.reorganize_page(layout=layout, drop_layout_words=True)
     return (page.text or "").rstrip() + "\n"
 
 

@@ -331,12 +331,22 @@ def test_reorganize_page_expected_text_outputs(
         )
 
     page = _load_fixture_page(case_name)
+    # Load layout when present so the flagship corpus exercises tagging,
+    # layout-aware figure drops, sidenotes, role bubble-up, and captions —
+    # not only pure-geometry reorg (plan B1 / A1 prerequisite now green).
+    layout = None
+    if layout_json_path.exists():
+        from pdomain_book_tools.layout.types import PageLayout
+
+        layout = PageLayout.from_dict(
+            json.loads(layout_json_path.read_text(encoding="utf-8"))
+        )
     # Opt into the legacy word-dropping paths (heuristic figure-noise +
     # layout-region drops) — the committed text baselines were generated
     # against that behaviour, so this test's "intent" is to lock in the
     # post-drop output even though the new default preserves all words.
     # See ``Page.reorganize_page`` docstring for ``drop_layout_words``.
-    page.reorganize_page(drop_layout_words=True)
+    page.reorganize_page(layout=layout, drop_layout_words=True)
     current_text = (page.text or "").rstrip() + "\n"
 
     baseline_path = TEXT_BASELINE_DIR / f"{case_name}.reorganize.txt"

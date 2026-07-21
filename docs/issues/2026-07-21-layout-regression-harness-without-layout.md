@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High — layout-aware pipeline untested on real fixtures
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** changing layout_aware_reorg, layout fixtures, or reorganize baselines
@@ -84,6 +84,7 @@ Dump tool ~58 same pattern. Pipeline layout steps require `layout is not None`.
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).** Harness and dump script load `inputs/<case>.layout.json`
+and call `reorganize_page(layout=layout, drop_layout_words=True)`. Reviewed
+re-baseline of 13 cases under layout-aware figure drops/captions; 5 known
+xfails remain for residual figure-noise gaps (B3).
