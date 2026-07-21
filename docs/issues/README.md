@@ -178,3 +178,4 @@ their own work is resolved.
 
 - [README OCR orientation examples](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0` (2026-07-21)
 - [roadmap / intent-map backlog sync](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0` (2026-07-21)
+- [reorganize band classify coordinate-domain thresholds](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1` (2026-07-21)

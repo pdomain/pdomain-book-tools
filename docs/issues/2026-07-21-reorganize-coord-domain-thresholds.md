@@ -100,6 +100,18 @@ geometry; bare `0.08` breaks on pixel geometry.
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).**
+
+1. `_classify_row_block` thresholds use `_coord_dims_for_block` (`coord_w` /
+   `coord_h` from `is_normalized` / max-coordinate heuristic), not raw page
+   pixel dims.
+2. `split_mixed_content_lines` preferred-split Y gap scales as `0.08 * coord_h`
+   (optional `page_height`; call site passes `page.height`).
+3. Dual-domain unit matrix in
+   `tests/ocr/test_reorganize_coord_domain.py` (normalized vs pixel WxH) is
+   green.
+4. Reviewed re-baseline of 7 layout-regression text fixtures: blank-line
+   spacing only (non-blank content identical) after correct band roles.
+
+Resolved in commit message
+`fix(ocr): A1 dual-domain reorganize band thresholds` (2026-07-21).
