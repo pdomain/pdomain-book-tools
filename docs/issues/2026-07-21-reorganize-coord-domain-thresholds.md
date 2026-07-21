@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High — wrong header/footer geometry under DocTR-normalized OCR
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** changing reorganize_page_utils classify, bands, or coordinate metrics; before re-baselining layout fixtures

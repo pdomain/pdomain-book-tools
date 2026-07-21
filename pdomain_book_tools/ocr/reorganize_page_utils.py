@@ -2146,8 +2146,35 @@ def split_line_by_gap_and_word_height(
     return left_line, right_line
 
 
-def split_mixed_content_lines(paragraphs: list[Block], page_width: int) -> None:
-    """Split OCR lines that merge figure-caption and body fragments."""
+def split_mixed_content_lines(
+    paragraphs: list[Block],
+    page_width: int,
+    page_height: int | None = None,
+) -> None:
+    """Split OCR lines that merge figure-caption and body fragments.
+
+    ``page_height`` is optional for call-site compatibility; when omitted the
+    preferred-split Y gap falls back to the max observed line ``maxY`` heuristic
+    (normalized → 1.0, else the observed pixel extent).
+    """
+    # Domain for the preferred-split Y continuity threshold (unit-space 0.08).
+    observed_max_y = 0.0
+    for paragraph in paragraphs:
+        for item in paragraph.items:
+            if (
+                isinstance(item, Block)
+                and item.block_category == BlockCategory.LINE
+                and item.bounding_box is not None
+            ):
+                observed_max_y = max(observed_max_y, item.bounding_box.maxY)
+    if observed_max_y <= 2.0:
+        coord_h = 1.0
+    elif page_height is not None and page_height > 0:
+        coord_h = float(page_height)
+    else:
+        coord_h = float(observed_max_y)
+    y_gap_reset = 0.08 * coord_h
+
     for paragraph in paragraphs:
         candidate_lines = [
             line
@@ -2189,7 +2216,7 @@ def split_mixed_content_lines(paragraphs: list[Block], page_width: int) -> None:
                 preferred_split_x is not None
                 and last_split_y is not None
                 and line.bounding_box is not None
-                and (line.bounding_box.minY - last_split_y) > 0.08
+                and (line.bounding_box.minY - last_split_y) > y_gap_reset
             ):
                 preferred_split_x = None
                 last_split_y = None
@@ -3139,7 +3166,7 @@ def run_step_d_split_mixed_content(
         pre_split_line_ids = {id(line) for line in page.lines}
         pre_split_line_count = len(pre_split_line_ids)
 
-    split_mixed_content_lines(page.paragraphs, page.width)
+    split_mixed_content_lines(page.paragraphs, page.width, page.height)
 
     if not debug:
         return
@@ -4099,6 +4126,27 @@ def _split_caption_like_prefix(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+def _coord_dims_for_block(
+    block: Block, page_width: float, page_height: float
+) -> tuple[float, float]:
+    """Return (coord_w, coord_h) matching the block's coordinate domain.
+
+    Prefer ``BoundingBox.is_normalized`` when set; otherwise fall back to the
+    max-coordinate heuristic used by ``_coord_dims_from_words``.
+    """
+    bb = block.bounding_box
+    if bb is not None and bb.is_normalized:
+        return 1.0, 1.0
+    words = [w for w in block.words if w.bounding_box]
+    if words:
+        return _coord_dims_from_words(words, page_width, page_height)
+    if bb is not None:
+        coord_w = 1.0 if bb.maxX <= 2.0 else float(page_width or bb.maxX)
+        coord_h = 1.0 if bb.maxY <= 2.0 else float(page_height or bb.maxY)
+        return coord_w, coord_h
+    return float(page_width or 1.0), float(page_height or 1.0)
+
+
 def _classify_row_block(
     block: Block,
     page_width: int,
@@ -4115,6 +4163,10 @@ def _classify_row_block(
 
     Returns one of: 'page header', 'page footer', 'sidenote left',
     'sidenote right', 'poetry', 'blockquote', or None (normal body text).
+
+    Band thresholds are scaled by the block's coordinate domain (``coord_w`` /
+    ``coord_h``), not raw page pixel dims, so DocTR-normalized boxes and pixel
+    boxes classify consistently.
     """
     if not block.bounding_box:
         return None
@@ -4122,23 +4174,27 @@ def _classify_row_block(
     if not lines:
         return None
 
+    coord_w, coord_h = _coord_dims_for_block(
+        block, float(page_width), float(page_height)
+    )
+
     # Page header: must be near the top of BOTH the image and the OCR content.
     # Checking both prevents chapter headings and title-page text from being
     # misidentified -- those are near the top of the OCR extent but not always
     # near the top of the image, or vice-versa.
-    near_top_of_image = block.bounding_box.minY < 0.12 * page_height
+    near_top_of_image = block.bounding_box.minY < 0.12 * coord_h
     near_top_of_ocr = block.bounding_box.minY <= ocr_minY + 1.5 * avg_line_height
     if near_top_of_image and near_top_of_ocr and len(lines) <= 3:
         return "page header"
 
     # Page footer: same dual check against image bottom and OCR content bottom.
-    near_bottom_of_image = block.bounding_box.maxY > 0.88 * page_height
+    near_bottom_of_image = block.bounding_box.maxY > 0.88 * coord_h
     near_bottom_of_ocr = block.bounding_box.maxY >= ocr_maxY - 1.5 * avg_line_height
     if near_bottom_of_image and near_bottom_of_ocr and len(lines) <= 3:
         return "page footer"
 
     # Sidenotes: block X extent lies entirely outside the main body region
-    margin = 0.02 * page_width
+    margin = 0.02 * coord_w
     if block.bounding_box.maxX < body_minX - margin:
         return "sidenote left"
     if block.bounding_box.minX > body_maxX + margin:
@@ -4152,13 +4208,13 @@ def _classify_row_block(
             if block_median_width < 0.75 * page_median_line_width:
                 line_min_xs = [l.bounding_box.minX for l in lines if l.bounding_box]
                 block_left = float(np_median(line_min_xs)) if line_min_xs else body_minX
-                if block_left > body_minX + 0.03 * page_width:
+                if block_left > body_minX + 0.03 * coord_w:
                     # Poetry: right edges vary a lot (lines of different lengths)
                     line_max_xs = [l.bounding_box.maxX for l in lines if l.bounding_box]
                     right_std = (
                         float(np_std(line_max_xs)) if len(line_max_xs) > 1 else 0.0
                     )
-                    if right_std > 0.05 * page_width:
+                    if right_std > 0.05 * coord_w:
                         return "poetry"
                     return "blockquote"
 

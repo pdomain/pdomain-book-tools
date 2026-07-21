@@ -143,7 +143,6 @@ their own work is resolved.
 
 ## Open issues
 
-- **[High]** [reorganize band classify uses page pixel dims against normalized boxes](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1`
 - **[High]** [reorganize_page early-return skips word reconciliation on empty row blocks](./2026-07-21-reorganize-early-return-skips-reconcile.md) — plan `A2 / S2`
 - **[High]** [soft word-recover path never runs in default CI](./2026-07-21-reorganize-soft-recover-untested.md) — plan `A3 / S2`
 - **[High]** [GPU textline _ensure_foreground polarity diverges from CPU](./2026-07-21-gpu-textline-foreground-polarity.md) — plan `A4 / S3`
