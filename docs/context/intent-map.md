@@ -100,7 +100,6 @@ None.
 Governed issue reports for the 2026-07-21 continued-work plan live under
 [`docs/issues/`](../issues/README.md). High-severity open items:
 
-- [reorganize coord-domain thresholds](../issues/2026-07-21-reorganize-coord-domain-thresholds.md) (A1)
 - [early-return skips reconcile](../issues/2026-07-21-reorganize-early-return-skips-reconcile.md) (A2)
 - [soft recover untested](../issues/2026-07-21-reorganize-soft-recover-untested.md) (A3)
 - [GPU textline foreground polarity](../issues/2026-07-21-gpu-textline-foreground-polarity.md) (A4)
