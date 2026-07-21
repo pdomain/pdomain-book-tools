@@ -27,6 +27,9 @@ Turn the 2026-07-21 deep review into ordered engineering work that:
 Source findings:
 [`docs/research/2026-07-21-deep-code-review-findings.md`](../research/2026-07-21-deep-code-review-findings.md).
 
+Per-item governed trackers (evidence, defects, severity):
+[`docs/issues/README.md`](../issues/README.md).
+
 This plan **extends** [`docs/plans/roadmap.md`](roadmap.md). It does not
 replace residual layout, image, or dev items already there: sidenote default
 flip, drop-cap C, decoration postclassify, and doctr-from-git signal.
@@ -104,10 +107,11 @@ with it under both strict and soft modes.
 1. Unit tests with `PD_OCR_REORGANIZE_STRICT` unset.
 2. Forced drop yields a `recovered` role block, a stderr warning, and words
    still on the page.
-3. Document and assert empty-bbox recovery failure.
+3. Document and assert intentional **filter** for bbox-less words (they are
+   dropped before soft recover; do not invent a “recover failure” path).
 
-**Done when:** at least one non-strict recover test and one empty-bbox
-failure-mode test land in CI under default markers.
+**Done when:** at least one non-strict recover test lands in CI under default
+markers, plus a filter/docs assert for bbox-less words if useful.
 
 ### A4. Fix GPU textline `_ensure_foreground`
 
@@ -206,9 +210,10 @@ Add a pixel-style fixture or unit page.
    **or** change code to match docs.
 2. Stop advertising `map_points` for grid dewarp until implemented, or
    implement box-corner sampling.
-3. Surface missing UVDoc / conf=0 as explicit skip, not silent success.
-4. Fix usage claim that default page-side is `SuppliedPageSide`
-   (code uses gutter_shadow).
+3. Surface **missing backend omit** vs **conf=0 identity no-op** explicitly
+   (do not lump both as “skip”).
+4. Fix usage **hint** paragraph that wrongly names `SuppliedPageSide`; keep
+   the backend table’s `gutter_shadow` default.
 
 ### C5. Image I/O contracts
 
@@ -258,10 +263,12 @@ out-of-registry only. Dual-side caption has a unit or fixture case.
 ### D1. One public-API policy
 
 **Default if no owner pick:** Expand `docs/usage/public-api.md`, package
-`__all__`, and pin tests to match what README and monorepo consumers already
-treat as stable. That surface is `Document`, `hf`, `geometry_correction`,
-`schemas.emit`, and key image-processing entry points. Alternative: stop
-teaching deep imports and mark them internal.
+`__all__`, and pin tests to match what README already teaches as usable:
+at least `Document` / DocTR ingestion and `schemas.emit` (plus any other
+deep imports README demonstrates). `geometry_correction` has a separate
+usage doc; `hf` has package `__all__` only — include them only with a
+consumer cite or deliberate expand. Alternative: stop teaching deep imports
+and mark them internal.
 
 **Done when:** public-api.md, `__all__`, and tests agree on one surface.
 README imports only listed names.

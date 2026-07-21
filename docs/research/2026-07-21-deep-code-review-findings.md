@@ -167,7 +167,7 @@ consumers and hide risk.
 
 | Gap | Evidence |
 |---|---|
-| Public API thinner than taught surface | README deep-imports `Document`, `hf`, image processing; not in `public-api.md` |
+| Public API thinner than taught surface | README teaches `Document`/DocTR and related deep imports; not fully in `public-api.md`. `hf` is package `__all__` only (not README-taught); `geometry_correction` has separate usage doc |
 | `GlyphAnnotations` not in `PUBLIC_MODELS` | Word schema uses `any_schema` for glyphs |
 | Provenance built then deleted at ingest | Intentional for Page; no handoff API for ops |
 | Soft target 88% vs hard 87% | Almost no distinct signal at 90%+ |
