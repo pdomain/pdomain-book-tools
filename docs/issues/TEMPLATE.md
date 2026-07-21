@@ -49,7 +49,7 @@ contradiction up front if there is one.>
 
 ## Environment / versions
 
-```
+```text
 <pkg + versions, OS, launch command, relevant env vars, repo under test>
 ```
 
@@ -59,7 +59,7 @@ contradiction up front if there is one.>
 
 ### 1. <Decisive observation>
 
-```
+```text
 <command / query>
 <output>
 ```
@@ -93,6 +93,6 @@ contradiction up front if there is one.>
 
 ## Resolution
 
-_Open._ When fixed: set frontmatter + Agent Index `Status: retired`, add the
+*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, add the
 resolving commit/spec link here, move the README pointer to "Resolved", and route
 the retirement through `doc-retirer`.

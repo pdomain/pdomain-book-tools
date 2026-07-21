@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-15
-Last verified: 2026-07-20
+Last verified: 2026-07-21
 Kind: process
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** process
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-20
+- **Last verified:** 2026-07-21
 - **Read when:** filing a bug / defect / investigation report, or looking up an
   open issue's status, evidence, or resolution.
 - **Search terms:** issues folder, bug report, defect report, issue template,
@@ -76,6 +76,20 @@ Use this section order:
 Lead with the **smallest decisive evidence**, separate **observation** from
 **hypothesis**, and always include a **What is NOT broken** section.
 
+## Two record sets live here
+
+This folder carries records from two independent efforts, both still live:
+
+- **Active issue files** — the 43 records migrated out of the GitHub tracker in
+  July 2026, named `YYYY-MM-DD-gh-NNN-*.md`. They keep their original issue
+  number as provenance.
+- **Open issues** — the reports filed by the 2026-07-21 deep code review, named
+  `2026-07-21-*.md` and mapped to themes in the continued-work plan.
+
+Several records describe the same work from both angles. Reconciling the
+duplicates is tracked as its own task; until then, check both lists before
+filing a new report.
+
 ## Active issue files
 
 This index covers all 43 active governed Git records: 33 migrated from open
@@ -126,6 +140,42 @@ their own work is resolved.
 - [#224 — Download and cache the hyphen n-grams database](2026-05-24-gh-224-hyphen-ngrams-download.md)
 - [#225 — Build the hyphen n-grams extraction pipeline](2026-05-24-gh-225-hyphen-ngrams-extraction.md)
 - [#226 — Verify release of predictor batch-size keyword arguments](2026-05-29-gh-226-release-batch-predictor-kwargs.md)
+
+## Open issues
+
+- **[High]** [reorganize band classify uses page pixel dims against normalized boxes](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1`
+- **[High]** [reorganize_page early-return skips word reconciliation on empty row blocks](./2026-07-21-reorganize-early-return-skips-reconcile.md) — plan `A2 / S2`
+- **[High]** [soft word-recover path never runs in default CI](./2026-07-21-reorganize-soft-recover-untested.md) — plan `A3 / S2`
+- **[High]** [GPU textline _ensure_foreground polarity diverges from CPU](./2026-07-21-gpu-textline-foreground-polarity.md) — plan `A4 / S3`
+- **[Medium]** [README documents removed rotation_applied and wrong DocTR return type](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0`
+- **[High]** [layout regression text harness never passes layout= into reorganize_page](./2026-07-21-layout-regression-harness-without-layout.md) — plan `B1 / S4`
+- **[High]** [layout corpus locks drop_layout_words=True not production default False](./2026-07-21-reorganize-default-mode-not-baselined.md) — plan `B2 / S5`
+- **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
+- **[Medium]** [reorganize_page_utils branch coverage thin on high-risk heuristics](./2026-07-21-reorganize-branch-unit-coverage.md) — plan `B4`
+- **[Medium]** [DocTR and Tesseract OCR ingress omit explicit is_normalized flags](./2026-07-21-ocr-ingress-is-normalized-explicit.md) — plan `C1 / S6`
+- **[Medium]** [drop-cap path forces is_normalized=True and unit-space thresholds](./2026-07-21-dropcap-coordinate-domain.md) — plan `C2 / S6`
+- **[Medium]** [BoundingBox.center and contains_point weaken is_normalized discipline](./2026-07-21-geometry-primitive-flag-hygiene.md) — plan `C3 / S7`
+- **[Medium]** [geometry_correction dual gate and docs disagree; grid map_points unsupported](./2026-07-21-geometry-correction-gate-and-docs.md) — plan `C4 / S7`
+- **[Medium]** [HEIF/AVIF identify then fail on cv2 load; writes ignore imwrite success](./2026-07-21-image-io-heif-write-failures.md) — plan `C5 / S8`
+- **[Medium]** [default CI never runs GPU or @slow model paths](./2026-07-21-gpu-slow-ci-strategy.md) — plan `C6 / S8b`
+- **[Medium]** [PP-DocLayout registry rejects security kwargs; captions ignore above side](./2026-07-21-layout-registry-knobs-caption-above.md) — plan `C7 / S8b`
+- **[Medium]** [public-api.md is narrower than taught Document/hf/geometry_correction surface](./2026-07-21-public-api-surface-policy.md) — plan `D1 / S9`
+- **[Medium]** [schema emit incomplete for glyphs; public-api path drift; Block GT tuples](./2026-07-21-schema-emit-and-path-hygiene.md) — plan `D2 / S9`
+- **[Medium]** [roadmap omits #208–#225 clusters; intent-map still claims spec 07 pending](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0`
+- **[Medium]** [greenfield specs blocked on unresolved owner decisions](./2026-07-21-owner-decision-pack-greenfield.md) — plan `E / S11`
+- **[Medium]** [drop-cap Iteration C missing heading cross-check for ambiguous lexicon](./2026-07-21-dropcap-iteration-c-heading-crosscheck.md) — plan `F1 / S10`
+- **[Medium]** [page-order module specified but not implemented](./2026-07-21-page-order-module-unbuilt.md) — plan `G1 (after E)`
+- **[Medium]** [scannos module specified but not implemented](./2026-07-21-scannos-module-unbuilt.md) — plan `G2 (after E)`
+- **[Medium]** [hyphen n-grams client and SQLite asset not implemented](./2026-07-21-hyphen-ngrams-unbuilt.md) — plan `G3 (after E)`
+- **[Medium]** [word reference lines API (06b/c) not implemented beyond baseline helpers](./2026-07-21-word-reference-lines-api-unbuilt.md) — plan `H1 (after E)`
+- **[Medium]** [char-bbox extraction (spec 09) not implemented](./2026-07-21-char-bbox-extraction-unbuilt.md) — plan `H2 (after E)`
+- **[Medium]** [table structure TABLE/CELL grid layer (spec 10) not implemented](./2026-07-21-table-structure-unbuilt.md) — plan `I1 (after E)`
+
+## Deferred plan items (no dedicated issue file)
+
+- **F2** sidenote height default — after B1 evidence only (plan Theme F2).
+- **F3** decorations postclassify — until fine-tune policy allows (plan Theme F3).
+- **Theme J** coverage/process hygiene — ongoing after A/B; ratchet choices in Theme E.
 
 ## Resolved issues
 
