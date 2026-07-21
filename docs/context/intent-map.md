@@ -100,7 +100,6 @@ None.
 Governed issue reports for the 2026-07-21 continued-work plan live under
 [`docs/issues/`](../issues/README.md). High-severity open items:
 
-- [default mode not baselined](../issues/2026-07-21-reorganize-default-mode-not-baselined.md) (B2)
 - [known-failing xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md) (B3)
 
 Full open list (including Medium and greenfield trackers):

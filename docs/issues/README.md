@@ -143,7 +143,6 @@ their own work is resolved.
 
 ## Open issues
 
-- **[High]** [layout corpus locks drop_layout_words=True not production default False](./2026-07-21-reorganize-default-mode-not-baselined.md) — plan `B2 / S5`
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
 - **[Medium]** [reorganize_page_utils branch coverage thin on high-risk heuristics](./2026-07-21-reorganize-branch-unit-coverage.md) — plan `B4`
 - **[Medium]** [DocTR and Tesseract OCR ingress omit explicit is_normalized flags](./2026-07-21-ocr-ingress-is-normalized-explicit.md) — plan `C1 / S6`
@@ -172,6 +171,7 @@ their own work is resolved.
 
 ## Resolved issues
 
+- [default mode not baselined](./2026-07-21-reorganize-default-mode-not-baselined.md) — plan `B2 / S5` (2026-07-21)
 - [layout regression harness without layout=](./2026-07-21-layout-regression-harness-without-layout.md) — plan `B1 / S4` (2026-07-21)
 - [GPU textline _ensure_foreground polarity diverges from CPU](./2026-07-21-gpu-textline-foreground-polarity.md) — plan `A4 / S3` (2026-07-21)
 - [soft word-recover path never runs in default CI](./2026-07-21-reorganize-soft-recover-untested.md) — plan `A3 / S2` (2026-07-21)

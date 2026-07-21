@@ -77,6 +77,10 @@ residual + intent-map already schedule fix or dated accept (not “done forever�
 - Non-xfail corpus cases still enforce baselines.
 - strict=True is intentional for XPASS detection; the issue is leaving them forever.
 
+### Progress (2026-07-21 B1)
+
+Layout harness now passes `layout=`; the five KNOWN_FAILING_BASELINES cases still xfail under drop=True (residual figure-noise gaps). No dated owner accept yet — still open for fix-or-accept (B3).
+
 ## Resolution
 
 *Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the

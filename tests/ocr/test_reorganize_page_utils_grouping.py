@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"
 TEXT_BASELINE_DIR = FIXTURE_ROOT / "expected_text" / "baseline"
+# Production-default track: drop_layout_words=False (word-preserving).
+TEXT_DEFAULT_BASELINE_DIR = FIXTURE_ROOT / "expected_text" / "default_baseline"
 _TEXT_CURRENT_ROOT = FIXTURE_ROOT / "expected_text" / "current"
 _TEXT_DIFF_ROOT = FIXTURE_ROOT / "expected_text" / "diff"
 # Per-worker subtree under each output root so xdist workers don't race on
@@ -245,6 +247,17 @@ KNOWN_FAILING_BASELINES: dict[str, str] = {
     ),
 }
 
+# Core subset locking production default ``drop_layout_words=False`` (plan B2).
+# Full corpus still uses the legacy True track above until B3 closes xfails.
+DEFAULT_MODE_CORE_CASES: tuple[str, ...] = (
+    "preface-with-drop-cap",
+    "chapter-head-credulities",
+    "notes-on-illustrations-list",
+    "catalog-multi-block-ads",
+    "contents-page",
+    "footnotes-stacked-with-anchor",
+)
+
 
 def _all_baseline_cases() -> list[str | ParameterSet]:
     """Enumerate every case that has both an OCR fixture and a baseline.
@@ -369,4 +382,37 @@ def test_reorganize_page_expected_text_outputs(
     )
     diff_path.write_text(diff_text, encoding="utf-8")
 
+    assert current_text == expected_text
+
+
+@pytest.mark.parametrize("case_name", list(DEFAULT_MODE_CORE_CASES))
+def test_reorganize_page_default_mode_core_outputs(
+    case_name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lock production default ``drop_layout_words=False`` on a core subset.
+
+    The full corpus still baselines the legacy drop=True path. This track
+    ensures the word-preserving default cannot regress silently (plan B2).
+    """
+    monkeypatch.setenv("PD_OCR_REORGANIZE_STRICT", "1")
+    monkeypatch.delenv("PD_OCR_LAYOUT_DEBUG", raising=False)
+
+    layout_json_path = INPUT_DIR / f"{case_name}.layout.json"
+    layout = None
+    if layout_json_path.exists():
+        from pdomain_book_tools.layout.types import PageLayout
+
+        layout = PageLayout.from_dict(
+            json.loads(layout_json_path.read_text(encoding="utf-8"))
+        )
+
+    page = _load_fixture_page(case_name)
+    page.reorganize_page(layout=layout, drop_layout_words=False)
+    current_text = (page.text or "").rstrip() + "\n"
+
+    baseline_path = TEXT_DEFAULT_BASELINE_DIR / f"{case_name}.reorganize.txt"
+    assert baseline_path.exists(), (
+        f"Missing default-mode baseline. Create it at: {baseline_path}"
+    )
+    expected_text = baseline_path.read_text(encoding="utf-8")
     assert current_text == expected_text

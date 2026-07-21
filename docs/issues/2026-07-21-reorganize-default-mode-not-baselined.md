@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High — CI green while default reorganize path untested by baselines
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** changing reorganize defaults or layout regression baselines
@@ -83,6 +83,8 @@ doc notes the divergence.
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).** Core default-mode track under
+`expected_text/default_baseline/` for six body-heavy cases with
+`drop_layout_words=False` + `layout=`. CI:
+`test_reorganize_page_default_mode_core_outputs`. Full corpus still uses the
+legacy True track until B3 xfails close.
