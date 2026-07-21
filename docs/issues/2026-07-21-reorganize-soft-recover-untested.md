@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I2
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I2
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High — untested production soft-recover path (CI-blind)
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** changing reconcile_dropped_words or PD_OCR_REORGANIZE_STRICT behavior
@@ -84,6 +84,4 @@ Non-strict branch in `reorganize_page_utils.py` ~973–989: stderr warning +
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).** Soft recover covered without STRICT env: recovered role, stderr warning, words on page; empty-bbox filter asserted. Tests: `test_reorganize_early_return_and_soft_recover.py`.

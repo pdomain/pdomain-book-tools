@@ -49,24 +49,41 @@ def _foreground_binary(image: Any) -> Any:
     gray = gray.astype(cp.float32)
     # Otsu on GPU histogram, INV polarity (text -> 255)
     hist = cp.histogram(gray, bins=256, range=(0, 255))[0].astype(cp.float64)
-    total = gray.size
+    total = float(gray.size)
     w0 = cp.cumsum(hist)
     levels = cp.arange(256, dtype=cp.float64)
     mu = cp.cumsum(hist * levels)
     mu_t = mu[-1]
     w1 = total - w0
-    between = (mu_t * w0 - mu) ** 2 / (w0 * w1 + 1e-9)
+    # Zero out invalid class weights (empty foreground or background bin).
+    # Without this, w1==0 at the last level blows between-class variance and
+    # thr collapses to 255, inverting library text=0 / bg=255 binaries to all-255.
+    valid = (w0 > 0) & (w1 > 0)
+    between = cp.where(
+        valid,
+        (mu_t * w0 - mu) ** 2 / (w0 * w1),
+        cp.float64(0),
+    )
     thr = float(cp.argmax(between))
     return cp.where(gray <= thr, cp.uint8(255), cp.uint8(0))
 
 
 def _ensure_foreground(binary: Any) -> Any:
-    """Accept a grayscale image *or* a foreground-text binary; return text=255 (GPU)."""
+    """Accept a grayscale image *or* a foreground-text binary; return text=255 (GPU).
+
+    Mirrors the CPU contract: a ``{0, 255}`` uint8 binary is passed through only
+    when mean < 128 (majority dark background → text already at 255). Library-
+    standard text=0 / background=255 binaries have mean ≥ 128 and are
+    re-binarized so GPU and CPU polarity stay aligned.
+    """
     require_cupy()
     arr = cp.asarray(binary)
-    if arr.dtype == cp.uint8 and bool(
-        cp.isin(cp.unique(arr), cp.asarray([0, 255])).all()
+    if (
+        arr.dtype == cp.uint8
+        and bool(cp.isin(cp.unique(arr), cp.asarray([0, 255])).all())
+        and float(arr.mean()) < 128.0
     ):
+        # Dark background (most pixels 0): text is already at 255
         return arr
     return _foreground_binary(arr)
 

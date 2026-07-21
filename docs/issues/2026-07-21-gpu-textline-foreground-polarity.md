@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High â€” dual-path dewarp binary polarity bug
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** editing textline_dewarp, geometry_correction dewarp, or GPU parity tests
@@ -86,6 +86,4 @@ Threshold/denoise contract is text=0, background=255. Typical pages have mean â‰
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).** GPU `_ensure_foreground` mean < 128 gate matches CPU; Otsu empty-class weights fixed so thr does not collapse to 255. CPU always-on + cupy parity tests (skip without CUDA).

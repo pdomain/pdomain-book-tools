@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High — silent body word loss without strict or soft recover
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** editing Page.reorganize_page control flow or word-preservation safety net
@@ -88,6 +88,4 @@ bands is not reattached before return.
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).** Early-return path runs `reconcile_dropped_words` after band-only emit; multiset signature matching for duplicate text+bbox. Immutable to_dict pre-snapshot deferred (conflicts with in-place drop-cap under STRICT corpus). Tests: `test_reorganize_early_return_and_soft_recover.py`.

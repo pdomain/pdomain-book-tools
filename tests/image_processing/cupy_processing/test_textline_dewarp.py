@@ -129,3 +129,27 @@ class TestCuPyTextlineDewarpParity:
         cpu_centers = sorted(float(ln.ys.mean()) for ln in cpu_lines)[:n]
         gpu_centers = sorted(float(cp.asnumpy(ln.ys).mean()) for ln in gpu_lines)[:n]
         np.testing.assert_allclose(gpu_centers, cpu_centers, atol=5.0)
+
+
+@pytest.mark.gpu
+@pytest.mark.cupy
+class TestCuPyEnsureForegroundParity:
+    def test_ensure_foreground_parity_text255_and_text0(
+        self, cupy_module: _CupyModule
+    ) -> None:
+        """GPU mean gate matches CPU for both binary polarities."""
+        cp = cupy_module
+        from pdomain_book_tools.image_processing.cupy_processing import (
+            textline_dewarp as gtd,
+        )
+        from pdomain_book_tools.image_processing.cv2_processing import (
+            textline_dewarp as ctd,
+        )
+
+        text255 = _lined_page()  # foreground=255, mean < 128
+        text0 = (255 - text255).astype(np.uint8)  # library polarity, mean >= 128
+
+        for page in (text255, text0):
+            cpu = ctd._ensure_foreground(page)
+            gpu = cp.asnumpy(gtd._ensure_foreground(cp.asarray(page)))
+            np.testing.assert_array_equal(gpu, cpu)

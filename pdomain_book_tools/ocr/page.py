@@ -3064,6 +3064,13 @@ class Page:
         # Captured AFTER refine_bounding_boxes + Step B + heuristic noise
         # filter so the snapshot reflects what the rest of the pipeline is
         # supposed to preserve through Step D onwards.
+        #
+        # Live references (not to_dict freeze): drop-cap intentionally mutates
+        # Word text/geometry in place; a deep freeze would report those
+        # transforms as drops under PD_OCR_REORGANIZE_STRICT and break the
+        # layout-regression corpus. Multiset signature matching still catches
+        # genuine removals. Full immutable snapshot remains a follow-on once
+        # drop-cap emits explicit provenance for transformed words.
         pre_reorg_words = list(self.words)
 
         # Snapshot 2 of 2: post-noise-removal — same capture point as the
@@ -3127,6 +3134,16 @@ class Page:
                 debug_sections.append(("Step 2", ["No row blocks to reorganize."]))
                 _ = write_layout_debug_report(self, debug_sections)
             emit_band_only_blocks(self, page_header_block, page_footer_block)
+            # Safety net: band-only assembly can drop body words that never
+            # formed row blocks. Reconcile against the pre-reorg snapshot so
+            # strict mode raises and soft mode recovers (same as main path).
+            final_blocks = reconcile_dropped_words(
+                self, pre_reorg_words, list(self.items)
+            )
+            for idx, block in enumerate(final_blocks):
+                block.override_page_sort_order = idx
+            self.items = final_blocks
+            self.refresh_page_images()
             if layout is not None:
                 from pdomain_book_tools.ocr import layout_aware_reorg
 

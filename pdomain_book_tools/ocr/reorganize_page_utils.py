@@ -15,6 +15,7 @@ from __future__ import annotations
 import itertools
 import os
 import pathlib
+from collections import Counter
 from dataclasses import dataclass
 from logging import getLogger
 from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, TypedDict, cast
@@ -801,22 +802,27 @@ def validate_word_preservation(
 
     The reorganize pipeline must never *drop* OCR words \u2014 it may move them  # EM DASH
     between blocks, merge OCR-fragmented lines, or reclassify them, but the
-    raw word multiset must round-trip. This helper diffs the two word sets by
-    (text, bbox) signature and returns a list of human-readable error lines
-    describing any drops. An empty list means the post set is a superset of
-    the pre set (extra words allowed; missing words are not).
+    raw word multiset must round-trip. This helper diffs the two word multisets
+    by (text, bbox) signature and returns a list of human-readable error lines
+    describing any drops. An empty list means the post multiset covers the pre
+    multiset (extra words allowed; missing *counts* are not).
 
     Caller is expected to log the messages and either fail loudly or continue
     with the post set, depending on policy.
     """
-    pre_sigs = collect_word_signatures(pre_words)
-    post_sig_set = set(collect_word_signatures(post_words))
+    pre_counts = Counter(collect_word_signatures(pre_words))
+    post_counts = Counter(collect_word_signatures(post_words))
     errors: list[str] = []
-    for sig in pre_sigs:
-        if sig not in post_sig_set:
-            text, x0, y0, x1, y1 = sig
+    for sig, pre_n in pre_counts.items():
+        post_n = post_counts.get(sig, 0)
+        missing = pre_n - post_n
+        if missing <= 0:
+            continue
+        text, x0, y0, x1, y1 = sig
+        for _ in range(missing):
             errors.append(
-                f"reorganize dropped word: text={text!r} bbox=({x0:.4f},{y0:.4f})-({x1:.4f},{y1:.4f})"
+                f"reorganize dropped word: text={text!r} "
+                f"bbox=({x0:.4f},{y0:.4f})-({x1:.4f},{y1:.4f})"
             )
     return errors
 
@@ -826,12 +832,13 @@ def find_dropped_words(
     post_words: list[Word],
 ) -> list[Word]:
     """Return ``Word`` objects that appear in ``pre_words`` but not in
-    ``post_words`` (compared by text + bbox signature).
+    ``post_words`` (compared by text + bbox signature multiset).
 
-    Sister to :func:`validate_word_preservation` \u2014 same diff, but returns the  # EM DASH
-    actual ``Word`` instances so callers can splice them back into the output.
+    Sister to :func:`validate_word_preservation` \u2014 same multiset diff, but  # EM DASH
+    returns the actual ``Word`` instances so callers can splice them back into
+    the output. Duplicate text+bbox pairs are handled by remaining count.
     """
-    post_sig_set = set(collect_word_signatures(post_words))
+    post_counts = Counter(collect_word_signatures(post_words))
     dropped: list[Word] = []
     for w in _meaningful_words(pre_words):
         bb = w.bounding_box
@@ -842,8 +849,11 @@ def find_dropped_words(
             round(float(bb.maxX), 4),
             round(float(bb.maxY), 4),
         )
-        if sig not in post_sig_set:
-            dropped.append(w)
+        remaining = post_counts.get(sig, 0)
+        if remaining > 0:
+            post_counts[sig] = remaining - 1
+            continue
+        dropped.append(w)
     return dropped
 
 

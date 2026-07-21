@@ -143,9 +143,6 @@ their own work is resolved.
 
 ## Open issues
 
-- **[High]** [reorganize_page early-return skips word reconciliation on empty row blocks](./2026-07-21-reorganize-early-return-skips-reconcile.md) — plan `A2 / S2`
-- **[High]** [soft word-recover path never runs in default CI](./2026-07-21-reorganize-soft-recover-untested.md) — plan `A3 / S2`
-- **[High]** [GPU textline _ensure_foreground polarity diverges from CPU](./2026-07-21-gpu-textline-foreground-polarity.md) — plan `A4 / S3`
 - **[High]** [layout regression text harness never passes layout= into reorganize_page](./2026-07-21-layout-regression-harness-without-layout.md) — plan `B1 / S4`
 - **[High]** [layout corpus locks drop_layout_words=True not production default False](./2026-07-21-reorganize-default-mode-not-baselined.md) — plan `B2 / S5`
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
@@ -176,6 +173,9 @@ their own work is resolved.
 
 ## Resolved issues
 
+- [GPU textline _ensure_foreground polarity diverges from CPU](./2026-07-21-gpu-textline-foreground-polarity.md) — plan `A4 / S3` (2026-07-21)
+- [soft word-recover path never runs in default CI](./2026-07-21-reorganize-soft-recover-untested.md) — plan `A3 / S2` (2026-07-21)
+- [early-return skips word reconciliation](./2026-07-21-reorganize-early-return-skips-reconcile.md) — plan `A2 / S2` (2026-07-21)
 - [README OCR orientation examples](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0` (2026-07-21)
 - [roadmap / intent-map backlog sync](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0` (2026-07-21)
 - [reorganize band classify coordinate-domain thresholds](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1` (2026-07-21)

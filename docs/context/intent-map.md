@@ -100,9 +100,6 @@ None.
 Governed issue reports for the 2026-07-21 continued-work plan live under
 [`docs/issues/`](../issues/README.md). High-severity open items:
 
-- [early-return skips reconcile](../issues/2026-07-21-reorganize-early-return-skips-reconcile.md) (A2)
-- [soft recover untested](../issues/2026-07-21-reorganize-soft-recover-untested.md) (A3)
-- [GPU textline foreground polarity](../issues/2026-07-21-gpu-textline-foreground-polarity.md) (A4)
 - [layout harness without layout=](../issues/2026-07-21-layout-regression-harness-without-layout.md) (B1)
 - [default mode not baselined](../issues/2026-07-21-reorganize-default-mode-not-baselined.md) (B2)
 - [known-failing xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md) (B3)

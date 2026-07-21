@@ -309,3 +309,25 @@ def test_detect_textlines_unknown_method_raises() -> None:
     page = _lined_page()
     with pytest.raises(ValueError, match="Unknown binarization method"):
         td.detect_textlines(page, page_width=page.shape[1], binarization="bogus")
+
+
+def test_ensure_foreground_passes_through_text255_majority_dark() -> None:
+    """Foreground=255 on dark background (mean < 128) is already correct."""
+    page = _lined_page(text=255)  # mostly zeros, sparse 255 bars → mean < 128
+    assert float(page.mean()) < 128.0
+    out = td._ensure_foreground(page)
+    np.testing.assert_array_equal(out, page)
+
+
+def test_ensure_foreground_reinverts_library_text0_binary() -> None:
+    """text=0 / background=255 (mean ≥ 128) must not pass through as-is."""
+    # Invert lined page: text=0 on paper=255
+    page: ImageArray = np.asarray(255 - _lined_page(text=255), dtype=np.uint8)
+    assert set(np.unique(page)).issubset({0, 255})
+    assert float(page.mean()) >= 128.0
+    out = td._ensure_foreground(page)
+    # Result must be majority-dark (text=255 polarity) for morphology
+    assert float(out.mean()) < 128.0
+    assert set(np.unique(out)).issubset({0, 255})
+    # Text bars that were 0 on white should become 255 on black
+    assert int(out[95, 85]) == 255
