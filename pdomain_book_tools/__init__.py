@@ -6,7 +6,7 @@ Public API
 The top-level package re-exports the canonical types most consumers
 need. These names are the supported public API; submodule paths
 (e.g. ``pdomain_book_tools.ocr.page``) are not part of the supported API
-and may relocate in future versions. See ``docs/public-api.md``.
+and may relocate in future versions. See ``docs/usage/public-api.md``.
 
 Importing this package eagerly imports the OCR / layout / geometry
 stack (``cv2``, ``numpy``, DocTR, transformers). If you need a
@@ -34,7 +34,7 @@ except ImportError:  # pragma: no cover - fallback for unbuilt source trees
         __version__ = "0.0.0+unknown"
     version = __version__
 
-# Public API re-exports. See docs/public-api.md.
+# Public API re-exports. See docs/usage/public-api.md.
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.layout.types import RegionType

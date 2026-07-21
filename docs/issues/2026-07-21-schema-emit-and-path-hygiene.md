@@ -60,6 +60,13 @@ rg -n 'PUBLIC_MODELS|GlyphAnnotations|any_schema' pdomain_book_tools/schemas/emi
 Stale path refs; glyphs not in PUBLIC_MODELS; Block unmatched GT pairs not
 tuple-restored after JSON (contrast Page gt_orphans).
 
+### Progress (2026-07-21 S0)
+
+**Defect 1 (path refs) fixed** in `pdomain_book_tools/__init__.py` and
+`tests/test_public_api.py` → `docs/usage/public-api.md`. Remaining open:
+glyph PUBLIC_MODELS, Block unmatched GT list→tuple, provenance ownership
+sentence (still S9 with D1).
+
 ## Root-cause hypotheses
 
 1. **(Most likely) Docs moved to usage/ without pointer update** — Confirmed path drift.

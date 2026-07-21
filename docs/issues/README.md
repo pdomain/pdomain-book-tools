@@ -147,7 +147,6 @@ their own work is resolved.
 - **[High]** [reorganize_page early-return skips word reconciliation on empty row blocks](./2026-07-21-reorganize-early-return-skips-reconcile.md) — plan `A2 / S2`
 - **[High]** [soft word-recover path never runs in default CI](./2026-07-21-reorganize-soft-recover-untested.md) — plan `A3 / S2`
 - **[High]** [GPU textline _ensure_foreground polarity diverges from CPU](./2026-07-21-gpu-textline-foreground-polarity.md) — plan `A4 / S3`
-- **[Medium]** [README documents removed rotation_applied and wrong DocTR return type](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0`
 - **[High]** [layout regression text harness never passes layout= into reorganize_page](./2026-07-21-layout-regression-harness-without-layout.md) — plan `B1 / S4`
 - **[High]** [layout corpus locks drop_layout_words=True not production default False](./2026-07-21-reorganize-default-mode-not-baselined.md) — plan `B2 / S5`
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
@@ -161,7 +160,6 @@ their own work is resolved.
 - **[Medium]** [PP-DocLayout registry rejects security kwargs; captions ignore above side](./2026-07-21-layout-registry-knobs-caption-above.md) — plan `C7 / S8b`
 - **[Medium]** [public-api.md is narrower than taught Document/hf/geometry_correction surface](./2026-07-21-public-api-surface-policy.md) — plan `D1 / S9`
 - **[Medium]** [schema emit incomplete for glyphs; public-api path drift; Block GT tuples](./2026-07-21-schema-emit-and-path-hygiene.md) — plan `D2 / S9`
-- **[Medium]** [roadmap omits #208–#225 clusters; intent-map still claims spec 07 pending](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0`
 - **[Medium]** [greenfield specs blocked on unresolved owner decisions](./2026-07-21-owner-decision-pack-greenfield.md) — plan `E / S11`
 - **[Medium]** [drop-cap Iteration C missing heading cross-check for ambiguous lexicon](./2026-07-21-dropcap-iteration-c-heading-crosscheck.md) — plan `F1 / S10`
 - **[Medium]** [page-order module specified but not implemented](./2026-07-21-page-order-module-unbuilt.md) — plan `G1 (after E)`
@@ -179,4 +177,5 @@ their own work is resolved.
 
 ## Resolved issues
 
-- *None yet.*
+- [README OCR orientation examples](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0` (2026-07-21)
+- [roadmap / intent-map backlog sync](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0` (2026-07-21)

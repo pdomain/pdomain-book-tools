@@ -1,7 +1,7 @@
 """Public API surface tests for ``pdomain_book_tools``.
 
 These tests pin the documented re-exports listed in
-``docs/public-api.md``. Submodule paths are not part of the supported
+``docs/usage/public-api.md``. Submodule paths are not part of the supported
 public API and may relocate in future versions.
 
 The presence (and identity) of these re-exports is what downstream

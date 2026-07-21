@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** Medium — process dual sources of truth before tracker wipe
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** editing roadmap, intent-map, or preparing issue-tracker migration
@@ -86,6 +86,15 @@ still has stale 07 line; table wording over-reads as structure complete.
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).**
+
+1. Intent-map: retired-07 line now points at
+   `docs/architecture/local-dev-mode.md` (promoted 2026-07-15).
+2. Roadmap: new **Open — prep-for-pgdp / greenfield** section absorbs GH
+   **#208–#225** (page-order / scannos / hyphen) with plan G1–G3 and issue
+   report links; blocked on Theme E.
+3. Roadmap out-of-scope table wording disambiguates layout *detection* vs
+   TABLE/CELL structure (spec 10) vs PGDP syntax.
+
+Resolved in commit
+`docs: close deep-review S0 orientation and backlog sync` (2026-07-21).

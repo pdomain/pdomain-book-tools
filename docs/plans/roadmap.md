@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-04
-Last verified: 2026-07-13
+Last verified: 2026-07-21
 Kind: plan
 ---
 
@@ -147,6 +147,23 @@ Still open:
   from `mindee/doctr.git` (so canonical installs leave a `vcs_info`
   block too). This work is deferred until a concrete fork-pin workflow needs it.
 
+## Open — prep-for-pgdp / greenfield (absorbed from GH #208–#225)
+
+Absorbed **2026-07-21** from the open GitHub clusters so tracker wipe does not
+lose provenance. Implementation is **blocked on Theme E** owner decisions in
+[`2026-07-21-continued-work-from-deep-review.md`](./2026-07-21-continued-work-from-deep-review.md)
+(Themes G–I). Per-item trackers live under `docs/issues/`.
+
+| Cluster | GH issues | Plan | Issue report |
+|---|---|---|---|
+| page-order | #208 (spec), #211–#215 | G1 | [`page-order-module-unbuilt`](../issues/2026-07-21-page-order-module-unbuilt.md) |
+| scannos | #209 (spec), #216–#220 | G2 | [`scannos-module-unbuilt`](../issues/2026-07-21-scannos-module-unbuilt.md) |
+| hyphen-ngrams | #210 (spec), #221–#225 | G3 | [`hyphen-ngrams-unbuilt`](../issues/2026-07-21-hyphen-ngrams-unbuilt.md) |
+
+Related (not in #208–#225, same decision gate): word reference lines (H1),
+char-bbox extraction (H2), table structure (I1). Do not start G/H/I code until
+the decision pack answers land.
+
 ## Out of scope (still)
 
 - **Training PP-DocLayout from scratch.** The model's pretrained
@@ -155,8 +172,11 @@ Still open:
   RT-DETR is a solid baseline. Swapping architectures buys little
   for the engineering cost.
 - **Cross-book transfer learning** beyond what fine-tuning provides.
-- **Table-to-PGDP-table syntax.** Table detection is complete, but
-  serialising into PGDP table syntax stays manual.
+- **Table-to-PGDP-table syntax.** Layout *detection* for tables (PP-DocLayout
+  table regions) is available. TABLE/CELL structure (spec 10) is **not**
+  shipped — see Theme I in the continued-work plan and
+  `docs/issues/2026-07-21-table-structure-unbuilt.md`. Serialising into PGDP
+  table syntax stays out of scope / manual either way.
 - **Cross-page figure stitching** (foldout maps spanning two pages).
 - **Layout-aware OCR crops** (different recognition models per
   region type — handwriting / fraktur / running text). This would be a real

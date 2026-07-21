@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-07-21
 Kind: context
 ---
 
@@ -12,6 +12,7 @@ Kind: context
 
 - **Kind:** context
 - **Status:** active
+- **Last verified:** 2026-07-21
 - **Read when:** deciding whether proposed work is active, deferred, rejected, blocked, or awaiting an owner decision.
 - **Search terms:** intent, deferred, rejected, blocked, legacy sweep.
 

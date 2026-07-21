@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-07-21
 Last verified: 2026-07-21
@@ -12,10 +12,10 @@ Level: I2
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I2
 - **Last verified:** 2026-07-21
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** Medium — consumer-facing API docs are false
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** editing README OCR examples or orientation API
@@ -80,6 +80,7 @@ README still shows assignment to `doc` and `page.rotation_applied` (~215–223).
 
 ## Resolution
 
-*Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the
-resolving commit here, move the README pointer to Resolved, and route retirement
-through `doc-retirer`.
+**Resolved (2026-07-21).** README OCR examples unpack
+`(document, rotation_degrees)`, drop `page.rotation_applied`, and keep the
+architecture link to `docs/architecture/ocr-page-orientation.md`. Resolved in commit
+`docs: close deep-review S0 orientation and backlog sync` (2026-07-21).
