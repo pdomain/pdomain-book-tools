@@ -51,7 +51,7 @@ Related governed docs:
 - [deep review findings](../research/2026-07-21-deep-code-review-findings.md)
 - [roadmap](../plans/roadmap.md)
 - [intent-map](../context/intent-map.md)
-- [issue tracker handoff](../handoff/2026-07-17-issue-tracker-migration.md)
+- [issue tracker handoff](../handoff/2026-07-19-issue-tracker-migration.md)
 
 ### 1. Decisive observation
 

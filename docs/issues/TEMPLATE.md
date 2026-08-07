@@ -53,7 +53,7 @@ contradiction up front if there is one.>
 <pkg + versions, OS, launch command, relevant env vars, repo under test>
 ```
 
-## Evidence — reproduction & diagnosis
+## Evidence
 
 <Lead with the smallest decisive test. Show commands AND output. Number steps.>
 
@@ -70,7 +70,7 @@ contradiction up front if there is one.>
 
 ...
 
-## Root-cause hypotheses (ranked)
+## Root-cause hypotheses
 
 1. **(Most likely) <hypothesis>** — <why it fits the evidence; what would confirm it>.
 2. **<alternative>** — <fit / what distinguishes it>.
@@ -82,12 +82,12 @@ contradiction up front if there is one.>
 1. **<defect>** — <one line>. (Primary)
 2. ...
 
-## Recommended next steps
+## Next steps
 
 1. <The single most disambiguating action first.>
 2. ...
 
-## What is NOT broken (to scope the fix)
+## What is NOT broken
 
 - <Adjacent things you ruled out, so a reader doesn't re-investigate them.>
 

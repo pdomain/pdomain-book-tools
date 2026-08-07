@@ -1,17 +1,14 @@
 ---
-kind: handoff
-status: "active"
+kind: archive
+status: retired
+owner: "CT"
 created: "2026-07-21"
-created_at: "2026-07-21T14:32:46Z"
-owner: CT
-branch: master
-scope: deep-review-continued-work
-worktree: /workspaces/pdomain/pdomain-book-tools
-base_commit: e49d60601eac8cbb419164f130a0bd417235ca61
-supersedes: ""
+last_verified: "2026-08-07"
 ---
 
 # Deep review continued work — pdomain-book-tools
+
+> **Retired — superseded by `docs/handoff/2026-08-07-211601-deep-review-continued-work-after-origin-rebase.md`.**
 
 ## Agent Index
 

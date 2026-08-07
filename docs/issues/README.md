@@ -84,11 +84,14 @@ This folder carries records from two independent efforts, both still live:
   July 2026, named `YYYY-MM-DD-gh-NNN-*.md`. They keep their original issue
   number as provenance.
 - **Open issues** — the reports filed by the 2026-07-21 deep code review, named
-  `2026-07-21-*.md` and mapped to themes in the continued-work plan.
+  `2026-07-21-*.md` and mapped to themes in the continued-work plan, plus any
+  report filed since under the same dated convention.
 
-Several records describe the same work from both angles. Reconciling the
-duplicates is tracked as its own task; until then, check both lists before
-filing a new report.
+Twenty-four of the 43 migrated records describe the same six work clusters as
+four open deep-review reports and two deferred plan items, so the two counts
+below overlap. Reconciling them is tracked in
+[duplicate issue records after rebase](./2026-08-07-duplicate-issue-records-after-rebase.md).
+Until that lands, check both lists before filing a new report.
 
 ## Active issue files
 
@@ -144,6 +147,7 @@ their own work is resolved.
 ## Open issues
 
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
+- **[Medium]** [docs/issues/ carries two record sets that describe the same work twice](./2026-08-07-duplicate-issue-records-after-rebase.md) — reconcile the two lists above
 - **[Medium]** [reorganize_page_utils branch coverage thin on high-risk heuristics](./2026-07-21-reorganize-branch-unit-coverage.md) — plan `B4`
 - **[Medium]** [DocTR and Tesseract OCR ingress omit explicit is_normalized flags](./2026-07-21-ocr-ingress-is-normalized-explicit.md) — plan `C1 / S6`
 - **[Medium]** [drop-cap path forces is_normalized=True and unit-space thresholds](./2026-07-21-dropcap-coordinate-domain.md) — plan `C2 / S6`
