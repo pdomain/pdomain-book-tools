@@ -28,6 +28,7 @@ def test_quad_coeffs_eval_matches_polyval() -> None:
 
 
 def _lined_page(
+    *,
     h: int = 900,
     w: int = 700,
     n_lines: int = 14,
@@ -79,6 +80,7 @@ def test_fit_baselines_skips_degenerate_short_line() -> None:
 
 
 def _curved_coeffs(
+    *,
     n: int = 12,
     h: int = 900,
     w: int = 700,
@@ -126,6 +128,7 @@ def test_apply_disparity_identity_maps_is_noop() -> None:
 
 
 def _stair_lines(
+    *,
     n: int = 10,
     h: int = 900,
     w: int = 700,

@@ -428,7 +428,7 @@ class TestReboxWord:
     def test_rebox_word_pixel_coords(self) -> None:
         """rebox_word with pixel bboxes completes successfully."""
         page = _make_page([["hello"]])
-        result = page.rebox_word(0, 0, 10, 10, 50, 30, refine_after=False)
+        result = page.rebox_word(0, 0, x1=10, y1=10, x2=50, y2=30, refine_after=False)
         assert result is True
 
     def test_rebox_word_normalized_coords(self) -> None:
@@ -442,20 +442,20 @@ class TestReboxWord:
         para = _make_paragraph([line])
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         assert page.is_content_normalized
-        result = page.rebox_word(0, 0, 50, 50, 200, 100, refine_after=False)
+        result = page.rebox_word(0, 0, x1=50, y1=50, x2=200, y2=100, refine_after=False)
         assert result is True
 
     def test_rebox_word_out_of_range_word_index(self) -> None:
         """rebox_word with out-of-range word index returns False."""
         page = _make_page([["hello"]])
-        result = page.rebox_word(0, 5, 10, 10, 50, 30, refine_after=False)
+        result = page.rebox_word(0, 5, x1=10, y1=10, x2=50, y2=30, refine_after=False)
         assert result is False
 
     def test_rebox_word_invalid_rect(self) -> None:
         """rebox_word with degenerate rectangle (equal x coords) returns False."""
         page = _make_page([["hello"]])
         # x1 == x2 → after min/max rx1 == rx2 → condition rx2 <= rx1 is True
-        result = page.rebox_word(0, 0, 50, 50, 50, 100, refine_after=False)
+        result = page.rebox_word(0, 0, x1=50, y1=50, x2=50, y2=100, refine_after=False)
         assert result is False
 
     def test_rebox_word_normalized_zero_dims(self) -> None:
@@ -470,7 +470,9 @@ class TestReboxWord:
         page = Page(width=0, height=0, page_index=0, blocks=[para])
         assert page.resolved_dimensions == (0.0, 0.0)
         # normalized word on zero-dim page -> cannot compute pixel bbox -> returns False
-        result = page.rebox_word(0, 0, 0.1, 0.1, 0.5, 0.2, refine_after=False)
+        result = page.rebox_word(
+            0, 0, x1=0.1, y1=0.1, x2=0.5, y2=0.2, refine_after=False
+        )
         assert result is False
 
 
@@ -834,7 +836,9 @@ class TestNudgeWordBboxEdge:
         # None", ...)`` reads in word.py); this test exercises that
         # defensive no-bbox path.
         word.bounding_box = None  # pyright: ignore[reportAttributeAccessIssue]
-        result = page.nudge_word_bbox(0, 0, 1.0, 1.0, 1.0, 1.0)
+        result = page.nudge_word_bbox(
+            0, 0, left_delta=1.0, right_delta=1.0, top_delta=1.0, bottom_delta=1.0
+        )
         assert result is False
 
     def test_rejects_collapsed_bbox_after_nudge(self) -> None:
@@ -850,13 +854,17 @@ class TestNudgeWordBboxEdge:
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
         # right_delta = -20 -> nx2 = 60 + (-20) = 40; nx1 = max(0, 50-0) = 50
         # nx2 (40) <= nx1 (50) -> invalid -> return False
-        result = page.nudge_word_bbox(0, 0, 0.0, -20.0, 0.0, 0.0)
+        result = page.nudge_word_bbox(
+            0, 0, left_delta=0.0, right_delta=-20.0, top_delta=0.0, bottom_delta=0.0
+        )
         assert result is False
 
     def test_rejects_word_index_out_of_range(self) -> None:
         """nudge_word_bbox returns False when word index is out of range (2432-2439)."""
         page = _make_page([["hello"]])
-        result = page.nudge_word_bbox(0, 5, 1.0, 1.0, 1.0, 1.0)
+        result = page.nudge_word_bbox(
+            0, 5, left_delta=1.0, right_delta=1.0, top_delta=1.0, bottom_delta=1.0
+        )
         assert result is False
 
     def test_normalized_word_zero_dims_returns_false(self) -> None:
@@ -869,7 +877,9 @@ class TestNudgeWordBboxEdge:
         )
         para = _make_paragraph([line])
         page = Page(width=0, height=0, page_index=0, blocks=[para])
-        result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0)
+        result = page.nudge_word_bbox(
+            0, 0, left_delta=0.0, right_delta=1.0, top_delta=0.0, bottom_delta=0.0
+        )
         assert result is False
 
     def test_normalized_word_valid_page_succeeds(self) -> None:
@@ -882,7 +892,15 @@ class TestNudgeWordBboxEdge:
         )
         para = _make_paragraph([line])
         page = Page(width=1000, height=1000, page_index=0, blocks=[para])
-        result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0, refine_after=False)
+        result = page.nudge_word_bbox(
+            0,
+            0,
+            left_delta=0.0,
+            right_delta=1.0,
+            top_delta=0.0,
+            bottom_delta=0.0,
+            refine_after=False,
+        )
         assert result is True
 
     def test_pixel_word_zero_dim_page_skips_clamping(self) -> None:
@@ -903,7 +921,15 @@ class TestNudgeWordBboxEdge:
         page = Page(width=0, height=0, page_index=0, blocks=[para])
         # Small nudge: right +1, others 0 -> nx2 = 51, ny2 = 30, nx1 = 10, ny1 = 10
         # page dims = 0 -> no clamping applied; nx2 > nx1 -> valid -> rebox succeeds
-        result = page.nudge_word_bbox(0, 0, 0.0, 1.0, 0.0, 0.0, refine_after=False)
+        result = page.nudge_word_bbox(
+            0,
+            0,
+            left_delta=0.0,
+            right_delta=1.0,
+            top_delta=0.0,
+            bottom_delta=0.0,
+            refine_after=False,
+        )
         assert result is True
 
 

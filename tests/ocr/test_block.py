@@ -128,6 +128,7 @@ def test_line_block_estimate_baseline_from_image_sets_attribute() -> None:
 
 
 def test_paragraph(
+    *,
     sample_paragraph_block1: Block,
     sample_line1: list[Word],
     sample_line2: list[Word],
@@ -167,6 +168,7 @@ def test_paragraph(
 
 
 def test_two_paragraph_block(
+    *,
     sample_two_paragraph_block1: Block,
     sample_line1: list[Word],
     sample_line2: list[Word],

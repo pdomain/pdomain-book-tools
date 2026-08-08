@@ -139,14 +139,14 @@ def _classify(
 ) -> str | None:
     return _classify_row_block(
         block,
-        PAGE_W,
-        PAGE_H,
-        body_min_x,
-        body_max_x,
-        median_line_w,
-        ocr_min_y,
-        ocr_max_y,
-        avg_line_h,
+        page_width=PAGE_W,
+        page_height=PAGE_H,
+        body_minX=body_min_x,
+        body_maxX=body_max_x,
+        page_median_line_width=median_line_w,
+        ocr_minY=ocr_min_y,
+        ocr_maxY=ocr_max_y,
+        avg_line_height=avg_line_h,
     )
 
 

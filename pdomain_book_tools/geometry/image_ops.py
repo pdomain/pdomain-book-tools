@@ -48,7 +48,7 @@ __all__ = [
 
 
 def pixel_roi_bounds(
-    x1: float, y1: float, x2: float, y2: float, img_w: int, img_h: int
+    x1: float, y1: float, x2: float, y2: float, *, img_w: int, img_h: int
 ) -> tuple[int, int, int, int]:
     """Convert float pixel coords to integer slice bounds, clamped to image dims.
 
@@ -84,7 +84,7 @@ def _extract_roi(
     original_is_normalized = bool(bbox.is_normalized)
     box = bbox.scale(img_w, img_h) if original_is_normalized else bbox
     x1, y1, x2, y2 = box.to_ltrb()
-    ix1, iy1, ix2, iy2 = pixel_roi_bounds(x1, y1, x2, y2, img_w, img_h)
+    ix1, iy1, ix2, iy2 = pixel_roi_bounds(x1, y1, x2, y2, img_w=img_w, img_h=img_h)
     roi = image[iy1:iy2, ix1:ix2]
     return roi, x1, y1, x2, y2, img_w, img_h, original_is_normalized
 
@@ -137,7 +137,9 @@ def _connected_content_bbox_from_image_thresh(
         return None
 
     thresh_h, thresh_w = cast("tuple[int, int]", thresh.shape[:2])
-    ix1, iy1, ix2, iy2 = pixel_roi_bounds(x1, y1, x2, y2, thresh_w, thresh_h)
+    ix1, iy1, ix2, iy2 = pixel_roi_bounds(
+        x1, y1, x2, y2, img_w=thresh_w, img_h=thresh_h
+    )
     roi_labels = labels[iy1:iy2, ix1:ix2]
     touching_labels = {int(label) for label in roi_labels.ravel() if int(label) != 0}
     if not touching_labels:
@@ -166,6 +168,7 @@ def _finalize_pixel_bbox(
     y_min: float,
     x_max: float,
     y_max: float,
+    *,
     img_w: int,
     img_h: int,
     original_is_normalized: bool,
@@ -236,7 +239,13 @@ def refine_bbox(
         x_max = min(orig_x2, float(img_w), x_max + padding_px)
         y_max = min(orig_y2, float(img_h), y_max + padding_px)
     return _finalize_pixel_bbox(
-        x_min, y_min, x_max, y_max, img_w, img_h, original_is_normalized
+        x_min,
+        y_min,
+        x_max,
+        y_max,
+        img_w=img_w,
+        img_h=img_h,
+        original_is_normalized=original_is_normalized,
     )
 
 
@@ -282,7 +291,15 @@ def _vertical_crop(bbox: BoundingBox, image: MatLike, keep: str) -> BoundingBox:
                 continue
             y2 = y1 + y
             break
-    return _finalize_pixel_bbox(x1, y1, x2, y2, img_w, img_h, original_is_normalized)
+    return _finalize_pixel_bbox(
+        x1,
+        y1,
+        x2,
+        y2,
+        img_w=img_w,
+        img_h=img_h,
+        original_is_normalized=original_is_normalized,
+    )
 
 
 def crop_top_bbox(bbox: BoundingBox, image: MatLike) -> BoundingBox:

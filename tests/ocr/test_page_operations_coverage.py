@@ -336,20 +336,28 @@ class TestAddGroundTruth:
 
 class TestReboxWord:
     def test_rebox_with_valid_indices(self, multi_paragraph_page: Page) -> None:
-        result = multi_paragraph_page.rebox_word(0, 0, 1, 1, 25, 9, refine_after=False)
+        result = multi_paragraph_page.rebox_word(
+            0, 0, x1=1, y1=1, x2=25, y2=9, refine_after=False
+        )
         assert result in (True, False)
 
     def test_rebox_invalid_line(self, multi_paragraph_page: Page) -> None:
-        result = multi_paragraph_page.rebox_word(99, 0, 1, 1, 25, 9, refine_after=False)
+        result = multi_paragraph_page.rebox_word(
+            99, 0, x1=1, y1=1, x2=25, y2=9, refine_after=False
+        )
         assert result is False
 
     def test_rebox_invalid_rectangle(self, multi_paragraph_page: Page) -> None:
         # x2 < x1 -> after normalization rx2 == rx1; rejected
-        result = multi_paragraph_page.rebox_word(0, 0, 5, 5, 5, 5, refine_after=False)
+        result = multi_paragraph_page.rebox_word(
+            0, 0, x1=5, y1=5, x2=5, y2=5, refine_after=False
+        )
         assert result is False
 
     def test_rebox_invalid_word_index(self, multi_paragraph_page: Page) -> None:
-        result = multi_paragraph_page.rebox_word(0, 99, 1, 1, 25, 9, refine_after=False)
+        result = multi_paragraph_page.rebox_word(
+            0, 99, x1=1, y1=1, x2=25, y2=9, refine_after=False
+        )
         assert result is False
 
 

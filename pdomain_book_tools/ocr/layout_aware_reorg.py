@@ -156,6 +156,7 @@ def _word_bbox_in_layout_frame(
 def _word_center_in_region(
     word: Word,
     region: LayoutRegion,
+    *,
     page_w: float,
     page_h: float,
     layout_w: float,
@@ -173,6 +174,7 @@ def _word_center_in_region(
 def words_inside(
     region: LayoutRegion,
     words: Iterable[Word],
+    *,
     page_width: float,
     page_height: float,
     layout_width: float,
@@ -182,7 +184,12 @@ def words_inside(
         w
         for w in words
         if _word_center_in_region(
-            w, region, page_width, page_height, layout_width, layout_height
+            w,
+            region,
+            page_w=page_width,
+            page_h=page_height,
+            layout_w=layout_width,
+            layout_h=layout_height,
         )
     ]
 
@@ -239,7 +246,12 @@ def tag_words_with_layout(
     for word in page.words:
         for region in relevant:
             if not _word_center_in_region(
-                word, region, page_w, page_h, layout_w, layout_h
+                word,
+                region,
+                page_w=page_w,
+                page_h=page_h,
+                layout_w=layout_w,
+                layout_h=layout_h,
             ):
                 continue
             label = _layout_label(region.type)
@@ -312,7 +324,14 @@ def drop_layout_regions(
     targets: set[int] = set()
     for word in page.words:
         for region in relevant:
-            if _word_center_in_region(word, region, page_w, page_h, layout_w, layout_h):
+            if _word_center_in_region(
+                word,
+                region,
+                page_w=page_w,
+                page_h=page_h,
+                layout_w=layout_w,
+                layout_h=layout_h,
+            ):
                 targets.add(id(word))
                 break
 
@@ -769,6 +788,7 @@ def emit_caption_block(
 
 def _empty_illustration_block(
     region: LayoutRegion,
+    *,
     page_w: float,
     page_h: float,
     layout_w: float,
@@ -872,7 +892,12 @@ def associate_captions(
         if caption_region is not None and id(caption_region) not in claimed:
             claimed.add(id(caption_region))
             caption_words = words_inside(
-                caption_region, page.words, page_w, page_h, layout_w, layout_h
+                caption_region,
+                page.words,
+                page_width=page_w,
+                page_height=page_h,
+                layout_width=layout_w,
+                layout_height=layout_h,
             )
         plan_ordered.append((region, caption_words))
 
@@ -899,7 +924,12 @@ def associate_captions(
     for region, caption_words in plan:
         if emit_placeholders:
             illustration = _empty_illustration_block(
-                region, page_w, page_h, layout_w, layout_h, is_normalized
+                region,
+                page_w=page_w,
+                page_h=page_h,
+                layout_w=layout_w,
+                layout_h=layout_h,
+                is_normalized=is_normalized,
             )
             illustration.override_page_sort_order = sort_offset
             sort_offset += 1

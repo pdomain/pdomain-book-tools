@@ -335,6 +335,47 @@ This is the canonical pattern for optional-dependency discovery flags.
 implementations kept as documented examples, not dead code awaiting
 deletion. The comments are intentional and load-bearing as documentation.
 
+## 19. Markdown excluded from the formatter — ruff
+
+**Config:** `extend-exclude = ["*.md"]` under `[tool.ruff]` in `pyproject.toml`.
+
+**Justification.** Ruff 0.16 began formatting Python code fences inside
+Markdown. On this repo that reached nine files and no Python at all: `README.md`,
+`GPU_TESTING.md`, `docs/usage/geometry-correction.md`, and six specs under
+`docs/specs/`.
+
+Those fences are written to be read, not run. Several align trailing comments
+so a reader can scan them, and the formatter collapses that alignment. Six of
+the nine are governed specs still carrying unresolved owner decisions, so
+reformatting them would put tooling churn into documents that are under review.
+
+Markdown in this repo is already owned by markdownlint and docgraph. A second
+formatter with a different idea of correct style produces recurring diffs for
+no gain in shipped code. Added 2026-08-08, during the ruff 0.15 → 0.16 upgrade.
+
+---
+
+## 20. `PLR0917` — ruff (too-many-positional-arguments), tests only
+
+**Config:** included in the `"tests/**/*.py"` bundle under
+`[tool.ruff.lint.per-file-ignores]`.
+
+**Justification.** Ruff 0.16 promoted `PLR0917` from preview to stable, and it
+fired 37 times. The 20 hits in library code were fixed properly, by making the
+excess parameters keyword-only rather than suppressing the rule. Nothing in
+`pdomain_book_tools/` suppresses it.
+
+The suppression covers one case that a signature change cannot fix. In
+`tests/ocr/test_cv2_tesseract.py`, eight test methods stack three or four
+`@patch` decorators, and `unittest.mock` injects one positional mock argument
+per decorator. The positional count is a consequence of the decorators, not a
+choice the test author can reduce.
+
+The other nine test hits were fixed properly and are not covered by this entry.
+Added 2026-08-08, during the ruff 0.15 → 0.16 upgrade.
+
+---
+
 ## 6. `reportPrivateUsage` — basedpyright (tests only)
 
 **Files:** all of `tests/` (execution-environment override in

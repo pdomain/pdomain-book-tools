@@ -85,14 +85,31 @@ class TestWordsInside:
         region = LayoutRegion(
             type=RegionType.text, L=0, R=300, T=50, B=200, confidence=1.0
         )
-        assert words_inside(region, [w], PAGE_W, PAGE_H, PAGE_W, PAGE_H) == [w]
+        assert words_inside(
+            region,
+            [w],
+            page_width=PAGE_W,
+            page_height=PAGE_H,
+            layout_width=PAGE_W,
+            layout_height=PAGE_H,
+        ) == [w]
 
     def test_pixel_word_outside_region(self) -> None:
         w = _word("hi", 800, 800, 850, 830)
         region = LayoutRegion(
             type=RegionType.text, L=0, R=300, T=50, B=200, confidence=1.0
         )
-        assert words_inside(region, [w], PAGE_W, PAGE_H, PAGE_W, PAGE_H) == []
+        assert (
+            words_inside(
+                region,
+                [w],
+                page_width=PAGE_W,
+                page_height=PAGE_H,
+                layout_width=PAGE_W,
+                layout_height=PAGE_H,
+            )
+            == []
+        )
 
     def test_normalized_word(self) -> None:
         # Word centered at (0.15, 0.1) in normalized coords → page-pixel (150, 150)
@@ -100,7 +117,14 @@ class TestWordsInside:
         region = LayoutRegion(
             type=RegionType.text, L=0, R=400, T=0, B=300, confidence=1.0
         )
-        assert words_inside(region, [w], PAGE_W, PAGE_H, PAGE_W, PAGE_H) == [w]
+        assert words_inside(
+            region,
+            [w],
+            page_width=PAGE_W,
+            page_height=PAGE_H,
+            layout_width=PAGE_W,
+            layout_height=PAGE_H,
+        ) == [w]
 
 
 class TestDropLayoutRegions:

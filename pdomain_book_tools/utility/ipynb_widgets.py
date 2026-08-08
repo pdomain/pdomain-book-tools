@@ -98,6 +98,7 @@ def get_html_string_from_image(
 def get_html_string_from_cropped_image(
     img: ndarray,
     bounding_box: BoundingBox,
+    *,
     height: str = "",
     width: str = "",
     padding: str = "",

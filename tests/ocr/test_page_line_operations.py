@@ -413,7 +413,7 @@ class TestReboxWord:
         line = _line([_word("alpha", "A", 0)], 0)
         page = Page(width=200, height=100, page_index=0, blocks=[line])
 
-        result = page.rebox_word(0, 0, 30.0, 5.0, 70.0, 25.0)
+        result = page.rebox_word(0, 0, x1=30.0, y1=5.0, x2=70.0, y2=25.0)
 
         assert result is True
         updated_bbox = page.lines[0].words[0].bounding_box
@@ -442,7 +442,7 @@ class TestReboxWord:
 
         target_word.crop_bottom = _fake_crop_bottom
 
-        result = page.rebox_word(0, 0, 30.0, 5.0, 70.0, 25.0)
+        result = page.rebox_word(0, 0, x1=30.0, y1=5.0, x2=70.0, y2=25.0)
 
         assert result is True
 
@@ -453,7 +453,9 @@ class TestNudgeWordBbox:
         line = _line([_word("alpha", "A", 20)], 20)
         page = Page(width=200, height=100, page_index=0, blocks=[line])
 
-        result = page.nudge_word_bbox(0, 0, 3.0, 3.0, 2.0, 2.0)
+        result = page.nudge_word_bbox(
+            0, 0, left_delta=3.0, right_delta=3.0, top_delta=2.0, bottom_delta=2.0
+        )
 
         assert result is True
         updated_bbox = page.lines[0].words[0].bounding_box
@@ -462,7 +464,9 @@ class TestNudgeWordBbox:
         assert updated_bbox.bottom_right.x == 33.0
         assert updated_bbox.bottom_right.y == 12.0
 
-        contract_result = page.nudge_word_bbox(0, 0, -2.0, -2.0, -1.0, -1.0)
+        contract_result = page.nudge_word_bbox(
+            0, 0, left_delta=-2.0, right_delta=-2.0, top_delta=-1.0, bottom_delta=-1.0
+        )
 
         assert contract_result is True
         contracted_bbox = page.lines[0].words[0].bounding_box
@@ -487,7 +491,15 @@ class TestNudgeWordBbox:
         # instance) pinning that no such helper is ever invoked here.
         word.expand_to_content = MagicMock()  # pyright: ignore[reportAttributeAccessIssue]
 
-        result = page.nudge_word_bbox(0, 0, 3.0, 3.0, 2.0, 2.0, refine_after=False)
+        result = page.nudge_word_bbox(
+            0,
+            0,
+            left_delta=3.0,
+            right_delta=3.0,
+            top_delta=2.0,
+            bottom_delta=2.0,
+            refine_after=False,
+        )
 
         assert result is True
         word.crop_bottom.assert_not_called()

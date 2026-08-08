@@ -12,6 +12,7 @@ ImageArray = npt.NDArray[np.uint8]
 
 def find_edges(
     img: ImageArray,
+    *,
     fuzzy_pct: float = 0.02,
     pixel_count_columns: int = 150,
     pixel_count_rows: int = 75,

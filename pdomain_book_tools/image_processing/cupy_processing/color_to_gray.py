@@ -70,6 +70,7 @@ _RGBA_NOTICE_LOGGED = False
 
 def cupy_color_to_gray(
     img: CuPyArray,
+    *,
     radius: int = 300,
     samples: int = 4,
     iterations: int = 10,
@@ -163,6 +164,7 @@ def cupy_color_to_gray(
 
 def np_uint8_color_to_gray(
     img: np.ndarray,
+    *,
     radius: int = 300,
     samples: int = 4,
     iterations: int = 10,

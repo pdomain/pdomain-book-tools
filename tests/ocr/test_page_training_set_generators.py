@@ -27,6 +27,7 @@ def _make_word(
     y1: float,
     x2: float,
     y2: float,
+    *,
     ground_truth: str | None = None,
     is_normalized: bool = True,
 ) -> Word:
@@ -532,6 +533,7 @@ class TestPixelSpaceExport:
         y1: int,
         x2: int,
         y2: int,
+        *,
         ground_truth: str | None = None,
     ) -> Word:
         """Create a Word with pixel-space (non-normalized) bounding box."""

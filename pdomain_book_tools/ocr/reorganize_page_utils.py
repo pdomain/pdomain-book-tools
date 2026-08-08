@@ -2400,6 +2400,7 @@ def _yx_sort_key(line: Block) -> tuple[float, float]:
 
 def record_floated_flow_debug_squeezed(
     row_idx: int,
+    *,
     pre_lines: list[Block],
     left_flow: list[Block],
     right_flow: list[Block],
@@ -2517,6 +2518,7 @@ def expand_floated_flow_row_block(
     page: Page,
     b: Block,
     floated_flow: FloatedFlowSplit,
+    *,
     row_idx: int,
     debug_squeezed_lines: list[str],
     step_h_decisions: list[StepHDecision],
@@ -2544,12 +2546,12 @@ def expand_floated_flow_row_block(
     if layout_debug_enabled():
         record_floated_flow_debug_squeezed(
             row_idx,
-            pre_lines,
-            left_flow,
-            right_flow,
-            band_body,
-            post_lines,
-            debug_squeezed_lines,
+            pre_lines=pre_lines,
+            left_flow=left_flow,
+            right_flow=right_flow,
+            band_body=band_body,
+            post_lines=post_lines,
+            debug_squeezed_lines=debug_squeezed_lines,
         )
 
     left_caption, left_flow_rest = _split_caption_like_prefix(left_flow, page.width)
@@ -2803,9 +2805,9 @@ def expand_row_blocks(
                     page,
                     b,
                     floated_flow,
-                    row_idx,
-                    debug_squeezed_lines,
-                    step_h_decisions,
+                    row_idx=row_idx,
+                    debug_squeezed_lines=debug_squeezed_lines,
+                    step_h_decisions=step_h_decisions,
                 )
             )
             continue
@@ -2891,14 +2893,14 @@ def classify_and_paragraphize_blocks(
     for b in expanded_row_blocks:
         block_type = _classify_row_block(
             b,
-            page.width,
-            page.height,
-            body_minX,
-            body_maxX,
-            page_median_line_width,
-            ocr_minY,
-            ocr_maxY,
-            avg_line_height,
+            page_width=page.width,
+            page_height=page.height,
+            body_minX=body_minX,
+            body_maxX=body_maxX,
+            page_median_line_width=page_median_line_width,
+            ocr_minY=ocr_minY,
+            ocr_maxY=ocr_maxY,
+            avg_line_height=avg_line_height,
         )
         logger.debug("Row block classified as: %s", str(block_type))
         if block_type in SPECIAL_BLOCK_TYPES:
@@ -4159,6 +4161,7 @@ def _coord_dims_for_block(
 
 def _classify_row_block(
     block: Block,
+    *,
     page_width: int,
     page_height: int,
     body_minX: float,

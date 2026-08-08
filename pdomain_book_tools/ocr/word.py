@@ -110,6 +110,7 @@ class Word:
         text: str,
         bounding_box: BoundingBox,
         ocr_confidence: float | None = None,
+        *,
         word_labels: list[str] | None = None,
         text_style_labels: list[str] | None = None,
         text_style_label_scopes: dict[str, str] | None = None,

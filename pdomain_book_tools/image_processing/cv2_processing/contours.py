@@ -45,6 +45,7 @@ def find_and_draw_contours(img: ImageArray) -> tuple[ImageArray, tuple[Contour, 
 def remove_small_contours(
     img: ImageArray,
     contours: Sequence[Contour],
+    *,
     min_w_pct: float = 0.04,
     min_w_pixels: int = 5,
     min_h_pct: float = 0.03,

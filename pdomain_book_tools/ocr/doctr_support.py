@@ -409,10 +409,10 @@ def get_finetuned_torch_doctr_predictor(
     dectection_pt_file: str | PathLike[str],
     recognition_pt_file: str | PathLike[str],
     vocab: str = "",
+    *,
     pretrained: bool = True,
     pretrained_backbone: bool = True,  # public API; _load_reco_model hardcodes pretrained_backbone=False
     device: str | None = None,
-    *,
     det_bs: int = 2,
     reco_bs: int = 128,
     torch_load: TorchLoadFn | None = None,

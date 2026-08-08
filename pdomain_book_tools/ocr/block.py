@@ -167,6 +167,7 @@ class Block:
         bounding_box: BoundingBox | None = None,
         child_type: BlockChildType | None = BlockChildType.BLOCKS,
         block_category: BlockCategory | None = BlockCategory.BLOCK,
+        *,
         block_labels: list[str] | None = None,
         block_role_labels: list[str] | None = None,
         block_position_labels: list[str] | None = None,

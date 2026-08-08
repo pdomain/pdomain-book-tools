@@ -53,6 +53,7 @@ class _ColorToGrayModule(Protocol):
     def cupy_color_to_gray(
         self,
         img: CuPyArray,
+        *,
         radius: int = 300,
         samples: int = 4,
         iterations: int = 10,
@@ -62,6 +63,7 @@ class _ColorToGrayModule(Protocol):
     def np_uint8_color_to_gray(
         self,
         img: npt.NDArray[np.generic],
+        *,
         radius: int = 300,
         samples: int = 4,
         iterations: int = 10,

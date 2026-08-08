@@ -57,7 +57,7 @@ class TestReboxWordExceptionHandling:
             "validated_line_words",
             side_effect=RuntimeError("Simulated error"),
         ):
-            result = simple_page.rebox_word(0, 0, 10, 10, 40, 20)
+            result = simple_page.rebox_word(0, 0, x1=10, y1=10, x2=40, y2=20)
             assert result is False
 
 
@@ -212,7 +212,7 @@ class TestRenderingHelpersIntegration:
         para = _make_paragraph([line])
         page = Page(width=100, height=100, page_index=0, blocks=[para])
 
-        result = page.rebox_word(0, 0, 5, 5, 25, 15, refine_after=False)
+        result = page.rebox_word(0, 0, x1=5, y1=5, x2=25, y2=15, refine_after=False)
         assert result is True
 
         result = page.split_line_with_selected_words([(0, 0)])

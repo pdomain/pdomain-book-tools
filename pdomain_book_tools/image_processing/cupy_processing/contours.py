@@ -135,6 +135,7 @@ def contour_size_stats_gpu(img_cp: CuPyArray) -> ContourSizeStats:
 
 def remove_small_contours_gpu(
     img_cp: CuPyArray,
+    *,
     min_w_pct: float = 0.04,
     min_w_pixels: int = 5,
     min_h_pct: float = 0.03,

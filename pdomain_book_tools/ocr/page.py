@@ -2086,6 +2086,7 @@ class Page:
         self,
         line_index: int,
         word_index: int,
+        *,
         x1: float,
         y1: float,
         x2: float,
@@ -2616,6 +2617,7 @@ class Page:
         self,
         line_index: int,
         word_index: int,
+        *,
         left_delta: float,
         right_delta: float,
         top_delta: float,
@@ -2692,10 +2694,10 @@ class Page:
             return self.rebox_word(
                 line_index,
                 word_index,
-                nx1,
-                ny1,
-                nx2,
-                ny2,
+                x1=nx1,
+                y1=ny1,
+                x2=nx2,
+                y2=ny2,
                 refine_after=refine_after,
             )
         except Exception as e:
@@ -3487,13 +3489,18 @@ class Page:
                     bbox.minY * img_height,
                     bbox.maxX * img_width,
                     bbox.maxY * img_height,
-                    img_width,
-                    img_height,
+                    img_w=img_width,
+                    img_h=img_height,
                 )
             else:
                 # Pixel-space: clamp and int-cast without scaling.
                 x1, y1, x2, y2 = pixel_roi_bounds(
-                    bbox.minX, bbox.minY, bbox.maxX, bbox.maxY, img_width, img_height
+                    bbox.minX,
+                    bbox.minY,
+                    bbox.maxX,
+                    bbox.maxY,
+                    img_w=img_width,
+                    img_h=img_height,
                 )
             return [
                 [x1, y1],
@@ -3613,7 +3620,12 @@ class Page:
             if word.bounding_box.is_normalized:
                 bb = word.bounding_box.scale(width=img_width, height=img_height)
                 ix1, iy1, ix2, iy2 = pixel_roi_bounds(
-                    bb.minX, bb.minY, bb.maxX, bb.maxY, img_width, img_height
+                    bb.minX,
+                    bb.minY,
+                    bb.maxX,
+                    bb.maxY,
+                    img_w=img_width,
+                    img_h=img_height,
                 )
             else:
                 # Pixel-space box: clamp and int-cast without scaling.
@@ -3622,8 +3634,8 @@ class Page:
                     word.bounding_box.minY,
                     word.bounding_box.maxX,
                     word.bounding_box.maxY,
-                    img_width,
-                    img_height,
+                    img_w=img_width,
+                    img_h=img_height,
                 )
             cropped_image = image[iy1:iy2, ix1:ix2]
             cropped_image_name = (

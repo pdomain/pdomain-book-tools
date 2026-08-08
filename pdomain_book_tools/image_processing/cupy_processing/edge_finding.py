@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 def find_edges_gpu(
     img_cp: CuPyArray,
+    *,
     fuzzy_pct: float = 0.02,
     pixel_count_columns: int = 150,
     pixel_count_rows: int = 75,
