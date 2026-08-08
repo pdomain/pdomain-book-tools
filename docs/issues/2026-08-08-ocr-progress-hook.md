@@ -76,12 +76,21 @@ Costs measured by the consumer on 2026-08-07 and 2026-08-08, on the machine
 named under Environment / versions above:
 
 ```text
-detection model load (db_resnet50)      15s   once per predictor-cache key
-recognition model load (crnn_vgg16_bn)   5s   once per predictor-cache key
-one page's OCR pass                  13-30s   per page, per store miss
+build the predictor                  26.22s   once per predictor-cache key
+one page's OCR pass, predictor warm   3-17s   per page, per store miss
 ```
 
-Three separate later-page loads on a clean store measured 30.18s, 17.06s, and 13.26s.
+The predictor build is a load, not a download. Both weight files were already on
+disk when that 26.22s was measured, at 102 MB for `db_resnet50` and 63 MB for
+`crnn_vgg16_bn` under `~/.cache/doctr/models`. Importing torch accounted for
+3.59s of it and initialising the CUDA context for 0.28s. The rest is
+deserialising the weights, building the graph, and moving it to the device.
+
+Warm per-page cost varies widely on identical inputs. Five consecutive uncached
+pages measured 22.17s, 3.08s, 3.76s, 9.98s, and 9.91s, where the first includes
+the predictor build. An earlier run on the same machine and book gave 30.18s,
+17.06s, and 13.26s. The consumer did not chase the roughly threefold spread.
+Treat these as orders of magnitude, not benchmarks.
 
 Note for scoping: the consumer passes `auto_rotate=False`, so these numbers are a single
 OCR pass and not the 90/180/270 rotation probes. Any progress contract should still account
@@ -105,7 +114,7 @@ for the multi-probe path, since `auto_rotate` defaults to `True` for other calle
    an image, a source identifier, an optional predictor, and two rotation
    arguments, and nothing else. (Primary)
 2. **`get_default_doctr_predictor` reports nothing during model load.** This is
-   where the 15s and 5s costs are paid.
+   where the 26.22s predictor build is paid.
 3. **Log scraping is the only current workaround**, and neither side should
    depend on doctr's root-logger format as a contract.
 
