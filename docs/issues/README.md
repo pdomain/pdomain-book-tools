@@ -45,8 +45,12 @@ harness memory.
   `Resolved` / `Won't fix` / `Duplicate`) and a final `## Resolution` section.
   Map the governed `Status:`:
   - **Open** → `Status: active`.
-  - **Resolved / Won't fix / Duplicate** → `Status: retired`, routed through
-    `doc-retirer`, with the resolving commit/spec linked in `## Resolution`.
+  - **Resolved / Won't fix / Duplicate** → route through `doc-retirer`, which
+    **deletes** the report. Promote any specific a reader still needs into the
+    architecture or process doc that owns it, repoint inbound references at the
+    resolving commit, drop the pointer below, and append a tombstone to
+    `docs/context/decisions.md`. Git history keeps the report, so no resolved
+    file stays in the tree and there is no resolved index to maintain.
 - **Link it (no orphans):** reference every new issue from a governed doc — by
   default an **Open issues** bullet in `docs/context/intent-map.md`, or a Risk in
   `docs/context/current-state.md`. This `README` also links the live issues below,
@@ -166,6 +170,7 @@ their own work is resolved.
 - **[Medium]** [word reference lines API (06b/c) not implemented beyond baseline helpers](./2026-07-21-word-reference-lines-api-unbuilt.md) — plan `H1 (after E)`
 - **[Medium]** [char-bbox extraction (spec 09) not implemented](./2026-07-21-char-bbox-extraction-unbuilt.md) — plan `H2 (after E)`
 - **[Medium]** [table structure TABLE/CELL grid layer (spec 10) not implemented](./2026-07-21-table-structure-unbuilt.md) — plan `I1 (after E)`
+- **[Medium]** [OCR entry points report no progress, so callers can only show a spinner](./2026-08-08-ocr-progress-hook.md) — requested by `pdomain-ocr-labeler-spa`
 
 ## Deferred plan items (no dedicated issue file)
 
@@ -173,7 +178,7 @@ their own work is resolved.
 - **F3** decorations postclassify — until fine-tune policy allows (plan Theme F3).
 - **Theme J** coverage/process hygiene — ongoing after A/B; ratchet choices in Theme E.
 
-## Resolved issues
+## Where resolved work is recorded
 
 - [default mode not baselined](./2026-07-21-reorganize-default-mode-not-baselined.md) — plan `B2 / S5` (2026-07-21)
 - [layout regression harness without layout=](./2026-07-21-layout-regression-harness-without-layout.md) — plan `B1 / S4` (2026-07-21)
@@ -183,3 +188,7 @@ their own work is resolved.
 - [README OCR orientation examples](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0` (2026-07-21)
 - [roadmap / intent-map backlog sync](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0` (2026-07-21)
 - [reorganize band classify coordinate-domain thresholds](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1` (2026-07-21)
+
+These reports are resolved but still in the tree. Under the current rule each
+one is deleted once anything durable is promoted and a tombstone is written to
+`docs/context/decisions.md`; git history keeps the report.
