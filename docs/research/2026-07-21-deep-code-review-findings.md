@@ -23,7 +23,17 @@ The three patterns are coordinate-domain bugs in reorganize heuristics; CI that 
 
 Adversarial challengers re-read the cited source and **confirmed** every high-severity claim in this report against the tree. They retained no separate challenge artifact files.
 
-## How this review was run
+## Goal
+
+Establish where this library's production confidence is justified and where it
+is not, at a depth a single reading pass cannot reach. The review had to
+separate three things that look alike from the outside: real correctness bugs,
+documented residual intent, and gaps that only appear as green CI.
+
+The output had to be actionable. Every claim needed a source location a later
+session could open, and a severity a reader could sequence work against.
+
+## Method
 
 | Phase | What ran |
 |---|---|
@@ -32,11 +42,28 @@ Adversarial challengers re-read the cited source and **confirmed** every high-se
 | Focused (2) | Unfinished modules inventory; reorganize_page branch risk |
 | Adversarial (3) | Coordinate/reorg findings; IP/API findings; test/spec claims |
 
-## Severity legend
+Specialists were gap-focused explore agents, each scoped to an isolated
+package. Adversarial challengers then re-read the cited source and returned
+`CONFIRM`, `WEAKEN`, or `REJECT` only. They kept no separate artifact files, so
+this report is the sole record of their verdicts.
+
+One nuance survived the challenge round. `BoundingBox.center` has few call
+sites, which weakens its priority but not its status: it is still a real
+flag-loss bug.
+
+## Evidence
+
+Findings follow in three severity tiers. Each carries the file and approximate
+line range it was read at, so a later session can re-open the source rather
+than trust the summary.
 
 - **P0** — Correctness trap or false green CI on a product path.
 - **P1** — Material gap or incomplete dual-path/API contract; ship soon.
 - **P2** — Hygiene, deferred features, or doc drift without immediate product break.
+
+Every P0 item below was re-read against the tree by an adversarial challenger
+and confirmed. P1 and P2 items carry evidence but did not all go through a
+challenge pass.
 
 ---
 
@@ -212,7 +239,29 @@ Package and tests still cite `docs/public-api.md`; the real path is
 
 ---
 
-## What is in good shape
+## Conclusions
+
+The core OCR and geometry code is sound. What inflates confidence is the
+measurement layer around it, in three specific ways.
+
+1. **Reorganize heuristics mix coordinate domains.** Band classification and
+   some absolute thresholds compare box values against page pixel dimensions
+   without adapting for normalized geometry. This is a correctness bug, not a
+   documentation gap.
+2. **CI locks the wrong path.** Baselines pin `drop_layout_words=True` while
+   production defaults to `False`, the harness never passes `layout=`, and five
+   strict xfails keep known product gaps green.
+3. **The design backlog is larger than the roadmap shows.** Specs 06b, 09, and
+   10, plus page-order, scannos, and hyphen n-grams, have no implementation and
+   were not fully carried onto the live roadmap.
+
+Aggregate coverage is what hides the first two. The headline sits near 90.3%
+while `reorganize_page_utils.py` sits near 80.1% line coverage with 298 missing
+statements. Architecture docs for shipped systems are generally honest about
+residual intent, so the failure mode is false confidence from aggregate
+numbers, not silent overclaim inside residual sections.
+
+### What is in good shape
 
 Do not rewrite these for “completeness theater”:
 
@@ -225,21 +274,38 @@ Do not rewrite these for “completeness theater”:
   fixes already landed (Otsu, morph borders, read_image fail-hard).
 - Meta-tests that pin coverage gates against silent config drift.
 
-Architecture docs for shipped systems are generally honest about residual
-intent. The failure mode is **false confidence from aggregate coverage and
-xfail/strict-mode CI**, not silent overclaim inside residual sections.
-
 ---
 
-## Method notes
+## Next steps
 
-Specialists were gap-focused explore agents on isolated packages.
+Execution sequencing lives in
+[`docs/plans/2026-07-21-continued-work-from-deep-review.md`](../plans/2026-07-21-continued-work-from-deep-review.md),
+which turns these findings into ordered themes A through J. Per-item trackers
+with evidence and severity live in
+[`docs/issues/README.md`](../issues/README.md).
 
-Adversarial challengers re-read source and returned CONFIRM/WEAKEN/REJECT only.
-All P0 items above were **CONFIRMED**.
+The order the plan sets, and the reason for it:
 
-One nuance: `BoundingBox.center` has few call sites but is still a real
-flag-loss bug.
+1. Close the P0 coordinate-domain and word-preservation bugs first. They need
+   no product decision.
+2. Make CI lock the default reorganize path and layout-fed behavior, so a green
+   run means more before any baseline is rewritten.
+3. Run the owner decision pack. Six of the P2 design clusters cannot start
+   without it.
 
-Continued execution sequencing lives in
-[`docs/plans/2026-07-21-continued-work-from-deep-review.md`](../plans/2026-07-21-continued-work-from-deep-review.md).
+## What this does NOT establish
+
+- **No runtime measurement.** Nothing here was profiled or benchmarked. Claims
+  about risk are about correctness and coverage, never speed or memory.
+- **No security audit.** This was a correctness and completeness review. The
+  checkpoint and layout trust boundaries were noted as tested, not re-audited.
+- **No GPU hardware ran.** The CPU/GPU polarity divergence was read from source
+  on both paths. It was not reproduced on a CUDA device.
+- **Coverage numbers are a snapshot.** The ~90.3% headline and the
+  `reorganize_page_utils.py` figures come from an htmlcov run dated
+  2026-07-17. They drift with every commit.
+- **P1 and P2 items are single-pass.** Only P0 findings went through
+  adversarial confirmation. A P1 or P2 entry may be weaker than it reads.
+- **Absence of a finding is not a clean bill.** Specialists were scoped to
+  isolated packages, so cross-package interactions were not systematically
+  probed.

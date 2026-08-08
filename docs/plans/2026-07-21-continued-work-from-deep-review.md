@@ -34,6 +34,68 @@ This plan **extends** [`docs/plans/roadmap.md`](roadmap.md). It does not
 replace residual layout, image, or dev items already there: sidenote default
 flip, drop-cap C, decoration postclassify, and doctr-from-git signal.
 
+## Architecture
+
+The work touches four layers of this library, in the order the themes hit them.
+
+**OCR page model and reorganize.** `pdomain_book_tools/ocr/` holds the `Page`
+and `Block` tree plus `reorganize_page_utils.py`, the heuristic pipeline that
+groups words into rows, classifies bands, and assigns roles. Themes A and B
+land almost entirely here. This is also where the coordinate-domain bugs live,
+because the pipeline mixes normalized `[0,1]` geometry from DocTR with pixel
+geometry from Tesseract.
+
+**Geometry primitives and correction.** `Point`, `BoundingBox`, and the
+`geometry_correction` backends carry the `is_normalized` contract that the
+reorganize layer depends on. Theme C hardens it at both ends: explicit flags at
+OCR ingress, and fail-closed behavior in the primitives.
+
+**Image processing, CPU and GPU.** `cv2_processing/` and `cupy_processing/`
+implement the same algorithms twice. Every change to one is a parity question
+for the other. Theme A4 and Theme C6 both sit on this seam.
+
+**Layout adapters and serialization.** The PP-DocLayout registry, caption
+association, and the `schemas.emit` surface. Themes C7 and D cover them.
+
+Above all four sits the layout regression corpus in
+`tests/fixtures/layout_regression/`: 31 cases with expected-text baselines.
+Theme B makes it exercise the paths production actually runs.
+
+## Tech Stack
+
+- **Python 3.13**, packaged with Hatchling, managed with `uv`.
+- **OCR engines:** DocTR (normalized coordinates) and Tesseract (pixel
+  coordinates). The domain mismatch between them is the root of Theme A1.
+- **Layout:** PP-DocLayout via `transformers`, a mandatory dependency since the
+  `[layout]` extra was dropped.
+- **Image processing:** OpenCV and NumPy on CPU; CuPy under the optional
+  `[gpu]` extra.
+- **Validation and serialization:** Pydantic models behind `schemas.emit`.
+- **Tests:** pytest with `-n auto`; slow model-download tests excluded by
+  default.
+- **Gates:** ruff, basedpyright in strict mode with zero diagnostics,
+  markdownlint, and docgraph.
+
+## Global Constraints
+
+These bind every theme. They are repo rules, not preferences.
+
+1. **Never silently coerce coordinate systems.** Merge, split, and union fail
+   explicitly on an `is_normalized` mismatch. A fix that makes a domain error
+   pass quietly is worse than the bug.
+2. **Preserve `is_normalized` semantics** across `Point`, `BoundingBox`, and the
+   OCR model types.
+3. **No unreviewed baseline rewrites.** After B1 and B2, review expected-text
+   diffs case by case. A bulk accept destroys the signal the corpus exists for.
+4. **Both paths, every time.** A change to a CPU algorithm is incomplete until
+   the GPU twin agrees. CPU tests always run; GPU tests skip without CUDA.
+5. **Public API changes ripple downstream.** Every other `pdomain-*` project
+   depends on this library, so a surface change is a cross-repo change.
+6. **Verify before committing.** Focused tests for the changed contract, then
+   the full gate.
+7. **No permanent strict xfail.** A remaining entry needs a dated owner accept
+   with an issue id, not silence.
+
 ## Non-goals
 
 - Implementing greenfield specs against unrevised post-adversarial drafts
