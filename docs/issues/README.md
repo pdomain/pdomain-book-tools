@@ -80,6 +80,12 @@ Use this section order:
 Lead with the **smallest decisive evidence**, separate **observation** from
 **hypothesis**, and always include a **What is NOT broken** section.
 
+## Cross-cut workspace items live here
+
+Items affecting several `pdomain-*` repos are filed in this folder and linked
+from the repos they affect. `ConcaveTrillion/ocr-container-meta` is no longer
+the home for that work. Repo-local defects stay in their own repo.
+
 ## Two record sets live here
 
 This folder carries records from two independent efforts, both still live:
@@ -150,6 +156,7 @@ their own work is resolved.
 
 ## Open issues
 
+- **[High]** [five workspace repos have had no CI since 2026-07-12](./2026-08-08-actions-disabled-five-repos.md) — cross-cut, stub
 - **[High]** [no pull request can satisfy the required check, so dep-refresh never lands](./2026-08-08-dep-refresh-cannot-auto-land.md) — CI gate
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
 - **[Medium]** [docs/issues/ carries two record sets that describe the same work twice](./2026-08-07-duplicate-issue-records-after-rebase.md) — reconcile the two lists above
