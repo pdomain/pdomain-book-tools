@@ -150,6 +150,7 @@ their own work is resolved.
 
 ## Open issues
 
+- **[High]** [no pull request can satisfy the required check, so dep-refresh never lands](./2026-08-08-dep-refresh-cannot-auto-land.md) — CI gate
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
 - **[Medium]** [docs/issues/ carries two record sets that describe the same work twice](./2026-08-07-duplicate-issue-records-after-rebase.md) — reconcile the two lists above
 - **[Medium]** [reorganize_page_utils branch coverage thin on high-risk heuristics](./2026-07-21-reorganize-branch-unit-coverage.md) — plan `B4`
