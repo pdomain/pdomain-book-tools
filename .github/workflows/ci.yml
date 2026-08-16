@@ -27,9 +27,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6.0.2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v8.1.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v8.1.0
         with:
-          version: "0.12.1"
+          version: "0.12.5"
       - run: make setup
       - name: Run pre-commit hooks
         run: SKIP=basedpyright uv run pre-commit run --all-files
@@ -43,9 +43,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6.0.2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v8.1.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v8.1.0
         with:
-          version: "0.12.1"
+          version: "0.12.5"
       - run: make setup
       - run: make lint-check
 
@@ -58,9 +58,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6.0.2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v8.1.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v8.1.0
         with:
-          version: "0.12.1"
+          version: "0.12.5"
       - run: make setup
       - run: make typecheck
 
@@ -77,9 +77,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6.0.2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v8.1.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v8.1.0
         with:
-          version: "0.12.1"
+          version: "0.12.5"
       - run: make setup
       - run: make test
 
@@ -92,9 +92,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6.0.2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v8.1.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v8.1.0
         with:
-          version: "0.12.1"
+          version: "0.12.5"
       - run: make setup
       - run: make build
 
@@ -107,8 +107,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v6.0.2
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y tesseract-ocr
-      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v8.1.0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v8.1.0
         with:
-          version: "0.12.1"
+          version: "0.12.5"
       - run: make setup
       - run: make layout-fork-info
