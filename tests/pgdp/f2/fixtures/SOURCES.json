@@ -1,0 +1,59 @@
+{
+  "license": "Public-domain Distributed Proofreaders transcription excerpts",
+  "fixtures": {
+    "audited-unicode-combining.txt": {
+      "audit_basis": "pdomain-ocr-training/docs/plans/2026-08-21-fine-grained-typography-model.md:165",
+      "corpus_search": "2026-08-21: Unicode category M scan of all 79 F2.json and all mounted round JSON files found 0 pages. This audited requirement vector is not represented verbatim in the current snapshot.",
+      "coverage": ["unicode_combining_sequence"],
+      "source": "Audited plan-required F2 tokenizer vector"
+    },
+    "nested-b-i.txt": {
+      "coverage": ["nested_bold_italic"],
+      "source": "projectID62a57a5d9113f/rounds/F2.json:004.png"
+    },
+    "nested-i-b.txt": {
+      "coverage": ["nested_italic_bold"],
+      "source": "projectID6265ffcaf301a/rounds/F2.json:057.png"
+    },
+    "nested-i-sc.txt": {
+      "coverage": ["nested_italic_small_caps", "proofer_note"],
+      "source": "projectID617a05acb9d93/rounds/F2.json:003.png"
+    },
+    "nested-sc-i.txt": {
+      "coverage": ["nested_small_caps_italic"],
+      "source": "projectID6500a743e5eb8/rounds/F2.json:a0050.png"
+    },
+    "projectID61f8a50869170-1810.txt": {
+      "coverage": ["font_change"],
+      "source": "projectID61f8a50869170/rounds/F2.json:181.png"
+    },
+    "projectID62930b71a45bb-a0000.txt": {
+      "coverage": ["italic", "proofer_note", "caret"],
+      "source": "projectID62930b71a45bb/rounds/F2.json:a0000.png"
+    },
+    "projectID62930b71a45bb-p3640-unclosed-sc.txt": {
+      "coverage": ["unclosed_small_caps", "unclosed_proofer_note"],
+      "source": "projectID62930b71a45bb/rounds/F2.json:p3640.png"
+    },
+    "projectID6489c4e9d4e74-2090-g.txt": {
+      "coverage": ["letter_spacing_tag"],
+      "source": "projectID6489c4e9d4e74/rounds/F2.json:209.png"
+    },
+    "projectID673cd4c091c6a-0920.txt": {
+      "coverage": ["bold", "italic", "proofer_note", "block_marker"],
+      "source": "projectID673cd4c091c6a/rounds/F2.json:092.png"
+    }
+  },
+  "unavailable_required_forms": {
+    "project_authorized_u": {
+      "corpus_search": "2026-08-21: rg -l -F '<u>' /workspaces/pdomain-data/pgdp-corpus --glob F2.json returned 0 files.",
+      "rule_evidence": "pdomain-ocr-training/docs/research/2026-08-21-fine-grained-typography-model-research.md:111-117 records that <u> needs an explicit Project Comments rule.",
+      "status": "No current-snapshot fixture; Task 4 must resolve only a supplied Project Comments rule."
+    },
+    "unapproved_u": {
+      "corpus_search": "2026-08-21: rg -l -F '<u>' /workspaces/pdomain-data/pgdp-corpus --glob F2.json returned 0 files.",
+      "rule_evidence": "pdomain-ocr-training/docs/specs/2026-08-21-fine-grained-typography-model-design.md:192 and 197 require unapproved <u> quarantine.",
+      "status": "No current-snapshot fixture; retained as a Task 4 rule test, not claimed as copied provenance."
+    }
+  }
+}
