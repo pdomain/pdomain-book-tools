@@ -336,6 +336,7 @@ class AlignmentEvidence(CanonicalModel):
     operations: tuple[str, ...]
     score: float
     margin: float | None
+    low_margin_threshold: Annotated[float, Field(ge=0.0)] = 0.0
     alternatives: tuple[Mapping[str, object], ...]
     accepted: bool
 
@@ -365,8 +366,19 @@ class AlignmentEvidence(CanonicalModel):
         if not math.isfinite(self.score):
             msg = "score must be finite"
             raise ValueError(msg)
-        if self.margin is not None and not math.isfinite(self.margin):
-            msg = "margin must be finite when present"
+        if self.margin is not None and (
+            self.margin < 0 or not math.isfinite(self.margin)
+        ):
+            msg = "margin must be finite and nonnegative when present"
+            raise ValueError(msg)
+        if not math.isfinite(self.low_margin_threshold):
+            msg = "low_margin_threshold must be finite"
+            raise ValueError(msg)
+        expected_accepted = (
+            self.margin is None or self.margin >= self.low_margin_threshold
+        )
+        if self.accepted is not expected_accepted:
+            msg = "accepted must match the recorded low_margin_threshold"
             raise ValueError(msg)
         return self
 

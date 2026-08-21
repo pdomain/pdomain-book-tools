@@ -1,11 +1,28 @@
-"""Canonical typography labels and grapheme-span contracts."""
+from __future__ import annotations
 
+from pdomain_book_tools.typography.alignment import (
+    AlignmentConfig,
+    AlignmentEdit,
+    AlignmentEditKind,
+    ProjectedBoundingBox,
+    ProjectedStyleSpan,
+    TokenAlignmentResult,
+    align_tokens,
+    project_style_span,
+    project_token_ranges,
+)
 from pdomain_book_tools.typography.annotations import TypographyAnnotations
 from pdomain_book_tools.typography.labels import (
     ConfidenceTier,
     KnowledgeState,
     LabelSource,
     StyleLabel,
+)
+from pdomain_book_tools.typography.normalization import (
+    ComparisonOperation,
+    ComparisonOperationKind,
+    ComparisonView,
+    build_comparison_view,
 )
 from pdomain_book_tools.typography.records import (
     AlignmentEvidence,
@@ -34,9 +51,15 @@ from pdomain_book_tools.typography.spans import (
 
 __all__ = [
     "GRAPHEME_SEGMENTATION_VERSION",
+    "AlignmentConfig",
+    "AlignmentEdit",
+    "AlignmentEditKind",
     "AlignmentEvidence",
     "ArtifactRef",
     "ArtifactSource",
+    "ComparisonOperation",
+    "ComparisonOperationKind",
+    "ComparisonView",
     "ConfidenceTier",
     "Grapheme",
     "KnowledgeState",
@@ -48,14 +71,21 @@ __all__ = [
     "ParserNormalizationKind",
     "ParserNoteEvidence",
     "ParserNoteStatus",
+    "ProjectedBoundingBox",
+    "ProjectedStyleSpan",
     "SourceCoordinateSpace",
     "SourceSlice",
     "StyleLabel",
     "StyleSpan",
     "TargetCoordinateSpace",
     "TextIdentity",
+    "TokenAlignmentResult",
     "TypographyAnnotations",
     "TypographyPageRecord",
     "TypographySpans",
+    "align_tokens",
+    "build_comparison_view",
+    "project_style_span",
+    "project_token_ranges",
     "split_graphemes",
 ]
