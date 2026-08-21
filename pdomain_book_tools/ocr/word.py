@@ -38,6 +38,8 @@ from pdomain_book_tools.schemas._helpers import (
     STR_LIST_SCHEMA,
     STR_STR_DICT_SCHEMA,
 )
+from pdomain_book_tools.typography.annotations import TypographyAnnotations
+from pdomain_book_tools.typography.spans import split_graphemes
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -104,6 +106,7 @@ class Word:
     # GlyphAnnotations() = "reviewed; no glyph annotations to record for this word".
     # These two states are semantically distinct — see spec §1.3.
     glyph_annotations: GlyphAnnotations | None = None
+    typography_annotations: TypographyAnnotations | None = None
 
     def __init__(
         self,
@@ -121,6 +124,7 @@ class Word:
         ground_truth_match_keys: dict[str, object] | None = None,
         review: ReviewMetadata | None = None,
         glyph_annotations: GlyphAnnotations | None = None,
+        typography_annotations: TypographyAnnotations | None = None,
     ) -> None:
         self.text = text  # Use the setter for validation or processing
         self.bounding_box = bounding_box
@@ -144,6 +148,15 @@ class Word:
             self.ground_truth_match_keys = {}
         self.review = review
         self.glyph_annotations = glyph_annotations
+        if (
+            typography_annotations is not None
+            and typography_annotations.spans
+            and typography_annotations.grapheme_count != len(split_graphemes(self.text))
+        ):
+            raise ValueError(
+                "typography_annotations.grapheme_count must match Word.text"
+            )
+        self.typography_annotations = typography_annotations
 
     @classmethod
     def _normalize_text_style_label(cls, label: str) -> str:
@@ -694,6 +707,10 @@ class Word:
             d["review"] = self.review.to_dict()
         if self.glyph_annotations is not None:
             d["glyph_annotations"] = self.glyph_annotations.to_dict()
+        if self.typography_annotations is not None:
+            d["typography_annotations"] = self.typography_annotations.model_dump(
+                mode="json"
+            )
         return d
 
     @classmethod
@@ -731,6 +748,16 @@ class Word:
             if ga_raw is not None
             else None
         )
+        typography_raw = data.get("typography_annotations")
+        typography_annotations = (
+            typography_raw
+            if isinstance(typography_raw, TypographyAnnotations)
+            else (
+                TypographyAnnotations.model_validate(typography_raw)
+                if typography_raw is not None
+                else None
+            )
+        )
         return Word(
             text=cast("str", data["text"]),
             bounding_box=bounding_box,
@@ -751,6 +778,7 @@ class Word:
             ),
             review=review,
             glyph_annotations=glyph_annotations,
+            typography_annotations=typography_annotations,
         )
 
     def refine_bounding_box(self, image: ndarray | None, padding_px: int = 0) -> None:
@@ -1209,6 +1237,9 @@ class Word:
         # delegates to GlyphAnnotations.from_dict to reconstruct the object.
         # We use nullable any_schema so the raw dict passes through intact.
         nullable_ga_schema = core_schema.nullable_schema(core_schema.any_schema())
+        nullable_typography_schema = core_schema.nullable_schema(
+            core_schema.any_schema()
+        )
         return core_schema.no_info_after_validator_function(
             function=cls.from_dict,
             schema=core_schema.typed_dict_schema(
@@ -1263,6 +1294,10 @@ class Word:
                     ),
                     "glyph_annotations": core_schema.typed_dict_field(
                         nullable_ga_schema,
+                        required=False,
+                    ),
+                    "typography_annotations": core_schema.typed_dict_field(
+                        nullable_typography_schema,
                         required=False,
                     ),
                 }

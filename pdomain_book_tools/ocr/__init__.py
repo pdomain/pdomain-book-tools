@@ -7,10 +7,12 @@ from pdomain_book_tools.ocr.text_normalize import (
     normalize_curly_quotes,
     normalize_em_dash,
 )
+from pdomain_book_tools.typography.annotations import TypographyAnnotations
 
 __all__ = [
     "BlobStoreProtocol",
     "GtOrphans",
+    "TypographyAnnotations",
     "apply_text_normalizations",
     "normalize_curly_quotes",
     "normalize_em_dash",

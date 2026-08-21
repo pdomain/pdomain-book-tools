@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from pydantic import TypeAdapter
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
@@ -13,6 +14,14 @@ from pdomain_book_tools.ocr.glyph_annotations import (
 )
 from pdomain_book_tools.ocr.review import ReviewMetadata
 from pdomain_book_tools.ocr.word import Word
+from pdomain_book_tools.typography import (
+    ConfidenceTier,
+    KnowledgeState,
+    LabelSource,
+    StyleLabel,
+    StyleSpan,
+    TypographyAnnotations,
+)
 
 
 def _bbox() -> BoundingBox:
@@ -48,6 +57,7 @@ def test_word_json_schema_shape():
         "ground_truth_match_keys",
         "review",
         "glyph_annotations",
+        "typography_annotations",
     }
     assert set(props.keys()) == expected_keys
     assert "_text" not in props
@@ -148,3 +158,68 @@ def test_word_pydantic_roundtrip_none_glyph_annotations_stays_none():
     d = w.to_dict()
     validated = adapter.validate_python(d)
     assert validated.glyph_annotations is None
+
+
+def test_empty_and_unknown_typography_annotations_are_distinct() -> None:
+    unknown = Word(text="word", bounding_box=_bbox())
+    reviewed = Word(
+        text="word",
+        bounding_box=_bbox(),
+        typography_annotations=TypographyAnnotations(spans=[]),
+    )
+
+    assert unknown.typography_annotations is None
+    assert "typography_annotations" not in unknown.to_dict()
+    assert reviewed.typography_annotations is not None
+    assert reviewed.typography_annotations.spans == ()
+    assert "typography_annotations" in reviewed.to_dict()
+
+
+def test_old_word_payload_round_trips_without_new_optional_key() -> None:
+    legacy_payload = Word(text="word", bounding_box=_bbox()).to_dict()
+
+    round_tripped = Word.from_dict(legacy_payload).to_dict()
+
+    assert round_tripped == legacy_payload
+    assert "typography_annotations" not in round_tripped
+
+
+def test_pydantic_roundtrip_preserves_empty_typography_annotations() -> None:
+    adapter = TypeAdapter(Word)
+    word = Word(
+        text="word",
+        bounding_box=_bbox(),
+        typography_annotations=TypographyAnnotations(spans=[]),
+    )
+
+    validated = adapter.validate_python(word.to_dict())
+
+    assert validated.typography_annotations == word.typography_annotations
+    assert adapter.dump_python(validated) == word.to_dict()
+
+
+def test_word_rejects_nonempty_annotations_for_the_wrong_grapheme_count() -> None:
+    annotations = TypographyAnnotations(
+        grapheme_count=1,
+        spans=[
+            StyleSpan(
+                label=StyleLabel.ITALIC,
+                start=0,
+                end=1,
+                state=KnowledgeState.POSITIVE,
+                label_source=LabelSource.HUMAN,
+                confidence_tier=ConfidenceTier.GOLD,
+                source_slices=(),
+                rule_ref=None,
+                semantic_reason=None,
+                warnings=(),
+            )
+        ],
+    )
+
+    with pytest.raises(ValueError, match="grapheme_count"):
+        Word(
+            text="word",
+            bounding_box=_bbox(),
+            typography_annotations=annotations,
+        )
