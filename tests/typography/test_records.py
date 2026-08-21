@@ -17,6 +17,12 @@ from pdomain_book_tools.typography import (
     KnowledgeState,
     LabelSource,
     OcrTokenRef,
+    ParserControlEvidence,
+    ParserControlKind,
+    ParserNormalizationEvidence,
+    ParserNormalizationKind,
+    ParserNoteEvidence,
+    ParserNoteStatus,
     SourceCoordinateSpace,
     SourceSlice,
     StyleLabel,
@@ -140,6 +146,121 @@ def test_page_record_preserves_full_f2_artifact_bytes() -> None:
 
     assert base64.b64decode(decoded.original_f2_artifact_base64 or "") == _F2_BYTES
     assert decoded.to_json_bytes() == encoded
+
+
+def test_page_record_defaults_and_serializes_training_eligibility() -> None:
+    record = _record()
+    legacy_data = record.model_dump(mode="json")
+    legacy_data.pop("training_eligible", None)
+
+    restored = TypographyPageRecord.model_validate(legacy_data)
+
+    assert restored.training_eligible is True
+    assert record.model_dump(mode="json")["training_eligible"] is True
+
+
+def test_page_record_round_trips_typed_parser_evidence() -> None:
+    record = _record().model_copy(
+        update={
+            "parser_notes": (
+                ParserNoteEvidence(
+                    raw_text="[**P1: unsure]",
+                    page_review_content="P1: unsure",
+                    question_status=ParserNoteStatus.COMMENT,
+                    source_slices=(
+                        SourceSlice(
+                            artifact_sha256=_F2_SHA256,
+                            byte_start=11,
+                            byte_end=21,
+                        ),
+                    ),
+                ),
+            ),
+            "normalization_operations": (
+                ParserNormalizationEvidence(
+                    kind=ParserNormalizationKind.LETTER_SPACE_REMOVED,
+                    source_slices=(
+                        SourceSlice(
+                            artifact_sha256=_F2_SHA256,
+                            byte_start=11,
+                            byte_end=12,
+                        ),
+                    ),
+                    replacement_text="",
+                    grapheme_indices=(),
+                ),
+            ),
+        }
+    )
+
+    restored = TypographyPageRecord.from_json_bytes(record.to_json_bytes())
+
+    assert restored == record
+
+
+@pytest.mark.parametrize(
+    ("field_name", "evidence"),
+    [
+        (
+            "parser_notes",
+            {
+                "raw_text": "[**P1: unsure]",
+                "page_review_content": "P1: unsure",
+                "question_status": "comment",
+                "source_slices": [
+                    {
+                        "artifact_sha256": _IMAGE_SHA256,
+                        "byte_start": 11,
+                        "byte_end": 21,
+                    }
+                ],
+            },
+        ),
+        (
+            "normalization_operations",
+            {
+                "kind": "letter_space_removed",
+                "source_slices": [
+                    {
+                        "artifact_sha256": _F2_SHA256,
+                        "byte_start": 11,
+                        "byte_end": len(_F2_BYTES) + 1,
+                    }
+                ],
+                "replacement_text": "",
+                "grapheme_indices": [],
+            },
+        ),
+    ],
+)
+def test_page_record_rejects_forged_parser_evidence_source_slices(
+    field_name: str, evidence: dict[str, object]
+) -> None:
+    data = _record().model_dump(mode="json")
+    data[field_name] = [evidence]
+
+    with pytest.raises(ValidationError, match="parser evidence"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_page_record_binds_unresolved_control_evidence_to_f2_bytes() -> None:
+    data = _record().model_dump(mode="json")
+    data["parser_controls"] = [
+        ParserControlEvidence(
+            kind=ParserControlKind.UNCLOSED_STYLE_TAG,
+            tag_name="i",
+            raw_text="<i>",
+            source_slices=(
+                SourceSlice(
+                    artifact_sha256=_F2_SHA256,
+                    byte_start=11,
+                    byte_end=14,
+                ),
+            ),
+        ).model_dump(mode="json")
+    ]
+
+    assert TypographyPageRecord.model_validate(data).parser_controls[0].tag_name == "i"
 
 
 def test_page_record_rejects_mismatched_f2_hash() -> None:

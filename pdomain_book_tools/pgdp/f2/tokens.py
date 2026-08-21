@@ -13,6 +13,7 @@ import regex
 from pdomain_book_tools.pgdp.f2.offsets import (
     DecodedF2Character,
     read_lexical_f2_json,
+    read_lexical_f2_page,
 )
 from pdomain_book_tools.typography.records import Grapheme
 from pdomain_book_tools.typography.spans import CanonicalModel, SourceSlice
@@ -20,7 +21,7 @@ from pdomain_book_tools.typography.spans import CanonicalModel, SourceSlice
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from pdomain_book_tools.pgdp.f2.offsets import LexicalF2Page
+    from pdomain_book_tools.pgdp.f2.offsets import LexicalF2Index, LexicalF2Page
 
 F2_TOKENIZER_VERSION = f"f2-tokenizer-1+regex-{regex.__version__}"
 _KNOWN_TAGS = frozenset({"i", "b", "sc", "g", "f", "u"})
@@ -695,3 +696,13 @@ def read_f2_json(artifact_bytes: bytes) -> F2JsonDocument:
             for page in lexical_document.pages
         ),
     )
+
+
+def read_f2_json_page(
+    artifact_bytes: bytes,
+    page_key: str,
+    index: LexicalF2Index,
+) -> F2JsonPage:
+    """Tokenize exactly one page from a lightweight lexical F2 index."""
+    lexical_page = read_lexical_f2_page(artifact_bytes, page_key, index)
+    return _tokenize_lexical_page(lexical_page, index.artifact_sha256)

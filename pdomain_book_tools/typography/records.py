@@ -218,6 +218,83 @@ class Grapheme(CanonicalModel):
         return value
 
 
+class ParserNoteStatus(StrEnum):
+    """Whether a retained PGDP note asks an unresolved question."""
+
+    COMMENT = "comment"
+    QUESTION = "question"
+
+
+class ParserNoteEvidence(CanonicalModel):
+    """A quarantined PGDP note with exact source and review content."""
+
+    raw_text: str
+    page_review_content: str
+    question_status: ParserNoteStatus
+    source_slices: tuple[SourceSlice, ...]
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> Self:
+        if not self.raw_text.startswith("[**"):
+            msg = "raw_text must begin with a PGDP note marker"
+            raise ValueError(msg)
+        if not self.source_slices:
+            msg = "note evidence requires source slices"
+            raise ValueError(msg)
+        return self
+
+
+class ParserNormalizationKind(StrEnum):
+    """Source-preserving normalization evidence produced by the F2 parser."""
+
+    LETTER_SPACE_REMOVED = "letter_space_removed"
+    SMALL_CAPS_CASE_NORMALIZED = "small_caps_case_normalized"
+
+
+class ParserNormalizationEvidence(CanonicalModel):
+    """One comparison-only normalization with its raw source map."""
+
+    kind: ParserNormalizationKind
+    source_slices: tuple[SourceSlice, ...]
+    replacement_text: str
+    grapheme_indices: tuple[_StrictIndex, ...]
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> Self:
+        if not self.source_slices:
+            msg = "normalization evidence requires source slices"
+            raise ValueError(msg)
+        if any(index < 0 for index in self.grapheme_indices):
+            msg = "normalization grapheme indices must be nonnegative"
+            raise ValueError(msg)
+        return self
+
+
+class ParserControlKind(StrEnum):
+    """Quarantined F2 controls that did not resolve to a style span."""
+
+    UNCLOSED_STYLE_TAG = "unclosed_style_tag"
+
+
+class ParserControlEvidence(CanonicalModel):
+    """Raw source evidence for one unresolved F2 control."""
+
+    kind: ParserControlKind
+    tag_name: str
+    raw_text: str
+    source_slices: tuple[SourceSlice, ...]
+
+    @model_validator(mode="after")
+    def _validate_source(self) -> Self:
+        if not self.tag_name:
+            msg = "control evidence requires a tag name"
+            raise ValueError(msg)
+        if not self.source_slices:
+            msg = "control evidence requires source slices"
+            raise ValueError(msg)
+        return self
+
+
 class OcrTokenRef(CanonicalModel):
     """An OCR token and its projection into canonical grapheme coordinates."""
 
@@ -310,6 +387,10 @@ class TypographyPageRecord(CanonicalModel):
     style_spans: tuple[StyleSpan, ...]
     structural_context: tuple[str, ...]
     parser_warnings: tuple[str, ...]
+    parser_notes: tuple[ParserNoteEvidence, ...] = ()
+    normalization_operations: tuple[ParserNormalizationEvidence, ...] = ()
+    parser_controls: tuple[ParserControlEvidence, ...] = ()
+    training_eligible: bool = True
     alignments: tuple[AlignmentEvidence, ...]
     project_comments_artifact: ArtifactRef | None
     guideline_version: str
@@ -341,6 +422,14 @@ class TypographyPageRecord(CanonicalModel):
         if any(span.end > len(self.graphemes) for span in self.style_spans):
             msg = "style span end cannot exceed the page grapheme count"
             raise ValueError(msg)
+        if any(
+            index >= len(self.graphemes)
+            for operation in self.normalization_operations
+            for index in operation.grapheme_indices
+        ):
+            msg = "normalization grapheme indices cannot exceed the page grapheme count"
+            raise ValueError(msg)
+        self._validate_parser_evidence()
         alignment_ids = {alignment.alignment_id for alignment in self.alignments}
         if len(alignment_ids) != len(self.alignments):
             msg = "alignment_id values must be unique within a page record"
@@ -363,6 +452,13 @@ class TypographyPageRecord(CanonicalModel):
             self.f2_decoded_page_utf8_sha256,
         )
         if all(value is None for value in values):
+            if (
+                self.parser_notes
+                or self.normalization_operations
+                or self.parser_controls
+            ):
+                msg = "parser evidence requires complete F2 artifact fields"
+                raise ValueError(msg)
             return
         if any(value is None for value in values):
             msg = "F2 artifact fields must be either all present or all absent"
@@ -419,3 +515,27 @@ class TypographyPageRecord(CanonicalModel):
         if hashlib.sha256(lexical_value.encode()).hexdigest() != decoded_page_hash:
             msg = "decoded page hash does not match the F2 lexical value"
             raise ValueError(msg)
+
+    def _validate_parser_evidence(self) -> None:
+        expected_hash = self.original_f2_artifact_sha256
+        encoded = self.original_f2_artifact_base64
+        if expected_hash is None or encoded is None:
+            return
+        artifact_bytes = base64.b64decode(encoded, validate=True)
+        evidence = (
+            *self.parser_notes,
+            *self.normalization_operations,
+            *self.parser_controls,
+        )
+        for item in evidence:
+            for source_slice in item.source_slices:
+                if source_slice.artifact_sha256 != expected_hash:
+                    msg = (
+                        "parser evidence source slices must use the original F2 SHA-256"
+                    )
+                    raise ValueError(msg)
+                if source_slice.byte_end > len(artifact_bytes):
+                    msg = (
+                        "parser evidence source slices must lie within the F2 artifact"
+                    )
+                    raise ValueError(msg)
