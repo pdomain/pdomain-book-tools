@@ -6,7 +6,12 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
-from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
+from pdomain_book_tools.typography.labels import KnowledgeState, StyleLabel
+from pdomain_book_tools.typography.spans import (
+    CanonicalModel,
+    StyleSpan,
+    split_graphemes,
+)
 
 _StrictIndex = Annotated[int, Field(strict=True, ge=0)]
 
@@ -70,7 +75,8 @@ class ComparisonView(CanonicalModel):
     graphemes: tuple[str, ...]
     source_grapheme_map: tuple[tuple[_StrictIndex, ...], ...]
     operations: tuple[ComparisonOperation, ...]
-    small_caps_case_insensitive: bool = False
+    small_caps_ranges: tuple[tuple[_StrictIndex, _StrictIndex], ...] = ()
+    casefold_all: bool = False
 
     @property
     def text(self) -> str:
@@ -125,16 +131,49 @@ def _validated_letter_space_indices(
     return frozenset(removed)
 
 
+def _validated_small_caps_indices(
+    source_graphemes: tuple[str, ...], ranges: tuple[tuple[int, int], ...]
+) -> frozenset[int]:
+    indices: set[int] = set()
+    for start, end in ranges:
+        if start < 0 or start >= end or end > len(source_graphemes):
+            msg = "small_caps_ranges must be nonempty source grapheme ranges"
+            raise ValueError(msg)
+        indices.update(range(start, end))
+    return frozenset(indices)
+
+
+def small_caps_ranges_from_spans(
+    spans: tuple[StyleSpan, ...], *, grapheme_count: int
+) -> tuple[tuple[int, int], ...]:
+    """Derive comparison-only case-fold ranges from positive small-cap spans."""
+    ranges: list[tuple[int, int]] = []
+    for span in spans:
+        if span.label is not StyleLabel.SMALL_CAPS:
+            continue
+        if span.state is not KnowledgeState.POSITIVE:
+            continue
+        if span.end > grapheme_count:
+            msg = "small-cap span cannot exceed comparison source grapheme count"
+            raise ValueError(msg)
+        ranges.append((span.start, span.end))
+    return tuple(ranges)
+
+
 def build_comparison_view(
     source_text: str,
     *,
-    small_caps_case_insensitive: bool = False,
+    small_caps_ranges: tuple[tuple[int, int], ...] = (),
+    casefold_all: bool = False,
     letter_spaced_ranges: tuple[tuple[int, int], ...] = (),
 ) -> ComparisonView:
     """Build an immutable comparison view without changing canonical source text."""
     source_graphemes = split_graphemes(source_text)
     letter_space_indices = _validated_letter_space_indices(
         source_graphemes, letter_spaced_ranges
+    )
+    small_caps_indices = _validated_small_caps_indices(
+        source_graphemes, small_caps_ranges
     )
     graphemes: list[str] = []
     source_map: list[tuple[int, ...]] = []
@@ -193,7 +232,7 @@ def build_comparison_view(
                 )
             )
             transformed = dash
-        if small_caps_case_insensitive:
+        if casefold_all or index in small_caps_indices:
             folded = transformed.casefold()
             if folded != transformed:
                 transformed_graphemes = split_graphemes(folded)
@@ -233,5 +272,6 @@ def build_comparison_view(
         graphemes=tuple(graphemes),
         source_grapheme_map=tuple(source_map),
         operations=tuple(operations),
-        small_caps_case_insensitive=small_caps_case_insensitive,
+        small_caps_ranges=small_caps_ranges,
+        casefold_all=casefold_all,
     )

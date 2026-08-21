@@ -16,6 +16,7 @@ from pydantic import Field, field_serializer, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.typography.normalization import ComparisonOperation
 from pdomain_book_tools.typography.spans import (
     CanonicalModel,
     SourceSlice,
@@ -322,6 +323,45 @@ class OcrTokenRef(CanonicalModel):
         return self
 
 
+class AlignmentPathOperation(CanonicalModel):
+    """One typed monotonic edit retained for an alignment alternative path."""
+
+    kind: Literal[
+        "match",
+        "substitution",
+        "source_only_deletion",
+        "target_only_insertion",
+    ]
+    source_range: tuple[_StrictIndex, _StrictIndex]
+    target_range: tuple[_StrictIndex, _StrictIndex]
+
+    @model_validator(mode="after")
+    def _validate_ranges(self) -> Self:
+        source_start, source_end = self.source_range
+        target_start, target_end = self.target_range
+        if source_start > source_end or target_start > target_end:
+            msg = "alignment path operation ranges must be ordered"
+            raise ValueError(msg)
+        source_consumed = source_start < source_end
+        target_consumed = target_start < target_end
+        if self.kind in {"match", "substitution"} and not (
+            source_consumed and target_consumed
+        ):
+            msg = "match and substitution path operations must consume both source and target"
+            raise ValueError(msg)
+        if self.kind == "source_only_deletion" and not (
+            source_consumed and not target_consumed
+        ):
+            msg = "source-only deletion path operation must consume only source"
+            raise ValueError(msg)
+        if self.kind == "target_only_insertion" and not (
+            target_consumed and not source_consumed
+        ):
+            msg = "target-only insertion path operation must consume only target"
+            raise ValueError(msg)
+        return self
+
+
 class AlignmentEvidence(CanonicalModel):
     """Versioned evidence for one source-to-target alignment."""
 
@@ -339,6 +379,12 @@ class AlignmentEvidence(CanonicalModel):
     low_margin_threshold: Annotated[float, Field(ge=0.0)] = 0.0
     alternatives: tuple[Mapping[str, object], ...]
     accepted: bool
+    source_normalization_operations: tuple[ComparisonOperation, ...] = ()
+    target_normalization_operations: tuple[ComparisonOperation, ...] = ()
+    runner_up_operations: tuple[AlignmentPathOperation, ...] | None = None
+    runner_up_target_normalization_operations: (
+        tuple[ComparisonOperation, ...] | None
+    ) = None
 
     @field_validator("source_artifact_sha256", "target_artifact_sha256")
     @classmethod
@@ -380,7 +426,120 @@ class AlignmentEvidence(CanonicalModel):
         if self.accepted is not expected_accepted:
             msg = "accepted must match the recorded low_margin_threshold"
             raise ValueError(msg)
+        self._validate_normalization_operation_inputs(
+            self.source_normalization_operations,
+            coordinate_range=self.source_range,
+            field_name="source_normalization_operations",
+        )
+        self._validate_normalization_operation_inputs(
+            self.target_normalization_operations,
+            coordinate_range=self.target_range,
+            field_name="target_normalization_operations",
+        )
+        if self.runner_up_operations is not None:
+            self._validate_path_operations(self.runner_up_operations)
+        elif self.runner_up_target_normalization_operations is not None:
+            msg = (
+                "runner-up target normalization operations require runner_up_operations"
+            )
+            raise ValueError(msg)
+        if self.runner_up_target_normalization_operations is not None:
+            self._validate_runner_up_target_normalization_operations(
+                self.runner_up_target_normalization_operations
+            )
         return self
+
+    @staticmethod
+    def _validate_normalization_operation_inputs(
+        operations: tuple[ComparisonOperation, ...],
+        *,
+        coordinate_range: tuple[int, int],
+        field_name: str,
+    ) -> None:
+        range_start, range_end = coordinate_range
+        for operation in operations:
+            operation_start, operation_end = operation.input_range
+            if not (range_start <= operation_start < operation_end <= range_end):
+                msg = f"{field_name} input ranges must lie within the evidence range"
+                raise ValueError(msg)
+
+    def _validate_runner_up_target_normalization_operations(
+        self, operations: tuple[ComparisonOperation, ...]
+    ) -> None:
+        self._validate_normalization_operation_inputs(
+            operations,
+            coordinate_range=self.target_range,
+            field_name="runner_up_target_normalization_operations",
+        )
+        runner_up_operations = self.runner_up_operations
+        if runner_up_operations is None:
+            msg = (
+                "runner-up target normalization operations require runner_up_operations"
+            )
+            raise ValueError(msg)
+        matched_target_ranges = {
+            operation.target_range
+            for operation in runner_up_operations
+            if operation.kind in {"match", "substitution"}
+        }
+        if any(
+            operation.input_range not in matched_target_ranges
+            for operation in operations
+        ):
+            msg = (
+                "runner_up_target_normalization_operations must match a runner-up "
+                "comparison transition target range"
+            )
+            raise ValueError(msg)
+
+    def _validate_path_operations(
+        self, operations: tuple[AlignmentPathOperation, ...]
+    ) -> None:
+        previous_source: tuple[int, int] | None = None
+        previous_target: tuple[int, int] | None = None
+        for operation in operations:
+            source_start, source_end = operation.source_range
+            target_start, target_end = operation.target_range
+            if not (
+                self.source_range[0]
+                <= source_start
+                <= source_end
+                <= self.source_range[1]
+            ):
+                msg = "runner_up_operations source ranges must lie within source_range"
+                raise ValueError(msg)
+            if not (
+                self.target_range[0]
+                <= target_start
+                <= target_end
+                <= self.target_range[1]
+            ):
+                msg = "runner_up_operations target ranges must lie within target_range"
+                raise ValueError(msg)
+            if previous_source is not None and (
+                source_start < previous_source[0] or source_end < previous_source[1]
+            ):
+                msg = "runner_up_operations source ranges must be monotonic"
+                raise ValueError(msg)
+            if previous_target is not None and (
+                target_start < previous_target[0] or target_end < previous_target[1]
+            ):
+                msg = "runner_up_operations target ranges must be monotonic"
+                raise ValueError(msg)
+            if previous_source is not None and (
+                source_start < previous_source[1]
+                and operation.source_range != previous_source
+            ):
+                msg = "runner_up_operations source ranges cannot partially overlap"
+                raise ValueError(msg)
+            if previous_target is not None and (
+                target_start < previous_target[1]
+                and operation.target_range != previous_target
+            ):
+                msg = "runner_up_operations target ranges cannot partially overlap"
+                raise ValueError(msg)
+            previous_source = operation.source_range
+            previous_target = operation.target_range
 
 
 class TypographyPageRecord(CanonicalModel):
@@ -423,6 +582,7 @@ class TypographyPageRecord(CanonicalModel):
                 "f2_page_value_lexical_byte_range",
             )
         self._validate_f2_artifact()
+        self._validate_page_source_slices()
         expected_indices = tuple(range(len(self.graphemes)))
         actual_indices = tuple(grapheme.index for grapheme in self.graphemes)
         if actual_indices != expected_indices:
@@ -453,7 +613,88 @@ class TypographyPageRecord(CanonicalModel):
             if token.alignment_id not in alignment_ids:
                 msg = "OCR token alignment_id must reference a supplied alignment"
                 raise ValueError(msg)
+        self._validate_alignment_artifacts()
         return self
+
+    def _validate_page_source_slices(self) -> None:
+        expected_hash = self.original_f2_artifact_sha256
+        encoded = self.original_f2_artifact_base64
+        if expected_hash is None or encoded is None:
+            return
+        artifact_bytes = base64.b64decode(encoded, validate=True)
+        for grapheme in self.graphemes:
+            for source_slice in grapheme.source_slices:
+                if source_slice.artifact_sha256 != expected_hash:
+                    msg = "F2-backed grapheme source slices must use the original F2 SHA-256"
+                    raise ValueError(msg)
+                if source_slice.byte_end > len(artifact_bytes):
+                    msg = "F2-backed grapheme source slices must lie within the F2 artifact"
+                    raise ValueError(msg)
+        for span in self.style_spans:
+            for source_slice in span.source_slices:
+                if source_slice.artifact_sha256 != expected_hash:
+                    msg = "F2-backed style span source slices must use the original F2 SHA-256"
+                    raise ValueError(msg)
+                if source_slice.byte_end > len(artifact_bytes):
+                    msg = "F2-backed style span source slices must lie within the F2 artifact"
+                    raise ValueError(msg)
+
+    def _validate_alignment_artifacts(self) -> None:
+        text_hashes = {artifact.sha256 for artifact in self.identity.text_artifacts}
+        comments_hash = (
+            None
+            if self.project_comments_artifact is None
+            else self.project_comments_artifact.sha256
+        )
+        target_grapheme_count = sum(
+            len(split_graphemes(token.text)) for token in self.ocr_tokens
+        )
+        for alignment in self.alignments:
+            source_hashes = set(text_hashes)
+            if (
+                alignment.source_coordinate_space is SourceCoordinateSpace.RAW_BYTES
+                and comments_hash is not None
+            ):
+                source_hashes.add(comments_hash)
+            if alignment.source_artifact_sha256 not in source_hashes:
+                msg = "alignment source_artifact_sha256 must identify a declared text artifact"
+                raise ValueError(msg)
+            if alignment.target_coordinate_space in {
+                TargetCoordinateSpace.OCR_GRAPHEMES,
+                TargetCoordinateSpace.OCR_TOKENS,
+            }:
+                if (
+                    alignment.target_artifact_sha256
+                    != self.identity.image_artifact.sha256
+                ):
+                    msg = "OCR alignment target_artifact_sha256 must identify the page image"
+                    raise ValueError(msg)
+                if (
+                    alignment.target_coordinate_space
+                    is TargetCoordinateSpace.OCR_TOKENS
+                ):
+                    if alignment.target_range[1] > len(self.ocr_tokens):
+                        msg = "OCR alignment target_range cannot exceed OCR token count"
+                        raise ValueError(msg)
+                elif alignment.target_range[1] > target_grapheme_count:
+                    msg = "OCR alignment target_range cannot exceed OCR grapheme count"
+                    raise ValueError(msg)
+            elif alignment.target_artifact_sha256 not in (
+                text_hashes
+                | {self.identity.image_artifact.sha256}
+                | ({comments_hash} if comments_hash is not None else set())
+            ):
+                msg = "alignment target_artifact_sha256 must identify a declared page artifact"
+                raise ValueError(msg)
+            if (
+                alignment.source_coordinate_space
+                is SourceCoordinateSpace.SOURCE_GRAPHEMES
+                and alignment.source_range[1] > len(self.graphemes)
+            ):
+                msg = (
+                    "source grapheme alignment range cannot exceed page grapheme count"
+                )
+                raise ValueError(msg)
 
     def _validate_f2_artifact(self) -> None:
         values = (

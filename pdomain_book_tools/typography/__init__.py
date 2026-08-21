@@ -23,9 +23,11 @@ from pdomain_book_tools.typography.normalization import (
     ComparisonOperationKind,
     ComparisonView,
     build_comparison_view,
+    small_caps_ranges_from_spans,
 )
 from pdomain_book_tools.typography.records import (
     AlignmentEvidence,
+    AlignmentPathOperation,
     ArtifactRef,
     ArtifactSource,
     Grapheme,
@@ -55,6 +57,7 @@ __all__ = [
     "AlignmentEdit",
     "AlignmentEditKind",
     "AlignmentEvidence",
+    "AlignmentPathOperation",
     "ArtifactRef",
     "ArtifactSource",
     "ComparisonOperation",
@@ -87,5 +90,6 @@ __all__ = [
     "build_comparison_view",
     "project_style_span",
     "project_token_ranges",
+    "small_caps_ranges_from_spans",
     "split_graphemes",
 ]

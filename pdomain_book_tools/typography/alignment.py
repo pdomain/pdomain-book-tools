@@ -9,11 +9,14 @@ from pydantic import Field, field_validator, model_validator
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.typography.normalization import (
+    ComparisonOperation,
+    ComparisonOperationKind,
     ComparisonView,
     build_comparison_view,
 )
 from pdomain_book_tools.typography.records import (
     AlignmentEvidence,
+    AlignmentPathOperation,
     OcrTokenRef,
     SourceCoordinateSpace,
     TargetCoordinateSpace,
@@ -228,6 +231,11 @@ class TokenAlignmentResult(CanonicalModel):
     token_source_ranges: tuple[tuple[_StrictIndex, _StrictIndex] | None, ...]
     dp_state_count: _StrictIndex
     accepted: bool
+    source_normalization_operations: tuple[ComparisonOperation, ...]
+    target_normalization_operations: tuple[ComparisonOperation, ...]
+    runner_up_target_normalization_operations: (
+        tuple[ComparisonOperation, ...] | None
+    ) = None
 
     @field_validator("runner_up_margin")
     @classmethod
@@ -249,6 +257,9 @@ class TokenAlignmentResult(CanonicalModel):
         self._validate_path_ranges(self.best_path, path_name="best_path")
         if self.runner_up_path is not None:
             self._validate_path_ranges(self.runner_up_path, path_name="runner_up_path")
+        elif self.runner_up_target_normalization_operations is not None:
+            msg = "runner_up target normalization operations require a runner-up path"
+            raise ValueError(msg)
         previous_end = 0
         for source_range in self.token_source_ranges:
             if source_range is None:
@@ -341,6 +352,23 @@ class TokenAlignmentResult(CanonicalModel):
             low_margin_threshold=self.config.low_margin_threshold,
             alternatives=(),
             accepted=self.accepted,
+            source_normalization_operations=self.source_normalization_operations,
+            target_normalization_operations=self.target_normalization_operations,
+            runner_up_target_normalization_operations=(
+                self.runner_up_target_normalization_operations
+            ),
+            runner_up_operations=(
+                None
+                if self.runner_up_path is None
+                else tuple(
+                    AlignmentPathOperation(
+                        kind=edit.kind.value,
+                        source_range=edit.source_range,
+                        target_range=edit.target_range,
+                    )
+                    for edit in self.runner_up_path
+                )
+            ),
         )
 
 
@@ -353,14 +381,18 @@ class _Backpointer:
     kind: AlignmentEditKind | None
     source_range: tuple[int, int] | None
     target_range: tuple[int, int] | None
+    target_case_fold_operation: ComparisonOperation | None
 
 
 @dataclass(frozen=True)
 class _TargetComparison:
     graphemes: tuple[str, ...]
+    case_sensitive_graphemes: tuple[str, ...]
     grapheme_map: tuple[tuple[int, ...], ...]
     canonical_grapheme_count: int
     token_ranges: tuple[tuple[int, int], ...]
+    normalization_operations: tuple[ComparisonOperation, ...]
+    case_fold_operations: tuple[ComparisonOperation | None, ...]
 
 
 def _backpointer_sort_key(pointer: _Backpointer) -> tuple[int, int, int]:
@@ -382,8 +414,8 @@ def _add_candidate(
 
 def _reconstruct_path(
     backpointers: list[_Backpointer], terminal_index: int
-) -> tuple[AlignmentEdit, ...]:
-    edits: list[AlignmentEdit] = []
+) -> tuple[tuple[AlignmentEdit, ...], tuple[ComparisonOperation, ...]]:
+    reconstructed: list[tuple[AlignmentEdit, ComparisonOperation | None]] = []
     current_index: int | None = terminal_index
     while current_index is not None:
         pointer = backpointers[current_index]
@@ -392,15 +424,26 @@ def _reconstruct_path(
             and pointer.source_range is not None
             and pointer.target_range is not None
         ):
-            edits.append(
-                AlignmentEdit(
-                    kind=pointer.kind,
-                    source_range=pointer.source_range,
-                    target_range=pointer.target_range,
+            reconstructed.append(
+                (
+                    AlignmentEdit(
+                        kind=pointer.kind,
+                        source_range=pointer.source_range,
+                        target_range=pointer.target_range,
+                    ),
+                    pointer.target_case_fold_operation,
                 )
             )
         current_index = pointer.parent_index
-    return tuple(reversed(edits))
+    reconstructed.reverse()
+    operations: list[ComparisonOperation] = []
+    for _edit, operation in reconstructed:
+        if operation is not None and operation not in operations:
+            operations.append(operation)
+    return (
+        tuple(edit for edit, _operation in reconstructed),
+        tuple(operations),
+    )
 
 
 def _source_range(view: ComparisonView, index: int) -> tuple[int, int]:
@@ -414,19 +457,69 @@ def _source_boundary(view: ComparisonView, index: int) -> int:
     return _source_range(view, index - 1)[1]
 
 
-def _target_comparison(
-    tokens: tuple[OcrTokenRef, ...], *, case_insensitive: bool
-) -> _TargetComparison:
+def _target_comparison(tokens: tuple[OcrTokenRef, ...]) -> _TargetComparison:
     graphemes: list[str] = []
+    case_sensitive_graphemes: list[str] = []
     grapheme_map: list[tuple[int, ...]] = []
     token_ranges: list[tuple[int, int]] = []
+    operations: list[ComparisonOperation] = []
+    case_fold_operations: list[ComparisonOperation | None] = []
     canonical_offset = 0
     for token in tokens:
         canonical_count = len(split_graphemes(token.text))
-        view = build_comparison_view(
-            token.text, small_caps_case_insensitive=case_insensitive
-        )
+        case_sensitive_view = build_comparison_view(token.text)
+        view = build_comparison_view(token.text, casefold_all=True)
+        original_text_by_grapheme = {
+            index: "".join(
+                grapheme
+                for grapheme, mapped in zip(
+                    case_sensitive_view.graphemes,
+                    case_sensitive_view.source_grapheme_map,
+                    strict=True,
+                )
+                if mapped == (index,)
+            )
+            for index in range(canonical_count)
+        }
+        comparison_offset = len(graphemes)
         graphemes.extend(view.graphemes)
+        case_sensitive_graphemes.extend(
+            original_text_by_grapheme[mapped[0]] for mapped in view.source_grapheme_map
+        )
+        offset_operations = tuple(
+            operation.model_copy(
+                update={
+                    "input_range": (
+                        operation.input_range[0] + canonical_offset,
+                        operation.input_range[1] + canonical_offset,
+                    ),
+                    "output_range": (
+                        operation.output_range[0] + comparison_offset,
+                        operation.output_range[1] + comparison_offset,
+                    ),
+                }
+            )
+            for operation in view.operations
+        )
+        operations.extend(
+            operation
+            for operation in offset_operations
+            if operation.kind is not ComparisonOperationKind.SMALL_CAPS_CASE_FOLDED
+        )
+        case_fold_operations.extend(
+            next(
+                (
+                    operation
+                    for operation in offset_operations
+                    if operation.kind is ComparisonOperationKind.SMALL_CAPS_CASE_FOLDED
+                    and operation.output_range[0]
+                    <= comparison_index + comparison_offset
+                    < operation.output_range[1]
+                ),
+                None,
+            )
+            for comparison_index in range(len(view.graphemes))
+        )
         grapheme_map.extend(
             tuple(canonical_offset + index for index in mapped)
             for mapped in view.source_grapheme_map
@@ -435,9 +528,12 @@ def _target_comparison(
         canonical_offset += canonical_count
     return _TargetComparison(
         graphemes=tuple(graphemes),
+        case_sensitive_graphemes=tuple(case_sensitive_graphemes),
         grapheme_map=tuple(grapheme_map),
         canonical_grapheme_count=canonical_offset,
         token_ranges=tuple(token_ranges),
+        normalization_operations=tuple(operations),
+        case_fold_operations=tuple(case_fold_operations),
     )
 
 
@@ -452,6 +548,25 @@ def _target_boundary(comparison: _TargetComparison, index: int) -> int:
     if index == len(comparison.graphemes):
         return comparison.canonical_grapheme_count
     return comparison.grapheme_map[index][0]
+
+
+def _source_is_small_caps(view: ComparisonView, index: int) -> bool:
+    source_start, source_end = _source_range(view, index)
+    return any(
+        small_caps_start <= source_start and source_end <= small_caps_end
+        for small_caps_start, small_caps_end in view.small_caps_ranges
+    )
+
+
+def _target_group_end(comparison: _TargetComparison, index: int) -> int:
+    target_range = _target_range(comparison, index)
+    end = index + 1
+    while (
+        end < len(comparison.graphemes)
+        and _target_range(comparison, end) == target_range
+    ):
+        end += 1
+    return end
 
 
 def _token_source_ranges(
@@ -488,9 +603,7 @@ def align_tokens(
 ) -> TokenAlignmentResult:
     """Align a source comparison view to OCR tokens in deterministic reading order."""
     active_config = config or AlignmentConfig()
-    target_comparison = _target_comparison(
-        tokens, case_insensitive=source_view.small_caps_case_insensitive
-    )
+    target_comparison = _target_comparison(tokens)
     source_count = len(source_view.graphemes)
     target_count = len(target_comparison.graphemes)
     cells: list[list[list[int]]] = [
@@ -505,6 +618,7 @@ def align_tokens(
             kind=None,
             source_range=None,
             target_range=None,
+            target_case_fold_operation=None,
         )
     ]
     next_rank = 1
@@ -519,6 +633,7 @@ def align_tokens(
         kind: AlignmentEditKind,
         source_range: tuple[int, int],
         target_range: tuple[int, int],
+        target_case_fold_operation: ComparisonOperation | None = None,
     ) -> None:
         nonlocal next_rank
         backpointers.append(
@@ -534,6 +649,7 @@ def align_tokens(
                 kind=kind,
                 source_range=source_range,
                 target_range=target_range,
+                target_case_fold_operation=target_case_fold_operation,
             )
         )
         _add_candidate(cells, backpointers, row, column, len(backpointers) - 1)
@@ -546,13 +662,22 @@ def align_tokens(
                 if source_index < source_count and target_index < target_count:
                     source_range = _source_range(source_view, source_index)
                     target_range = _target_range(target_comparison, target_index)
-                    equal = (
-                        source_view.graphemes[source_index]
-                        == target_comparison.graphemes[target_index]
+                    source_is_small_caps = _source_is_small_caps(
+                        source_view, source_index
+                    )
+                    equal = source_view.graphemes[source_index] == (
+                        target_comparison.graphemes[target_index]
+                        if source_is_small_caps
+                        else target_comparison.case_sensitive_graphemes[target_index]
+                    )
+                    target_step = (
+                        target_index + 1
+                        if source_is_small_caps
+                        else _target_group_end(target_comparison, target_index)
                     )
                     add_transition(
                         row=source_index + 1,
-                        column=target_index + 1,
+                        column=target_step,
                         parent_index=parent_index,
                         cost=parent.cost + (0 if equal else 1),
                         kind=(
@@ -562,6 +687,11 @@ def align_tokens(
                         ),
                         source_range=source_range,
                         target_range=target_range,
+                        target_case_fold_operation=(
+                            target_comparison.case_fold_operations[target_index]
+                            if source_is_small_caps
+                            else None
+                        ),
                     )
                 if source_index < source_count:
                     target_boundary = _target_boundary(target_comparison, target_index)
@@ -594,9 +724,11 @@ def align_tokens(
     runner_up_index = complete[1] if len(complete) > 1 else None
     best = backpointers[best_index]
     runner_up = None if runner_up_index is None else backpointers[runner_up_index]
-    best_path = _reconstruct_path(backpointers, best_index)
-    runner_up_path = (
-        None
+    best_path, best_target_case_fold_operations = _reconstruct_path(
+        backpointers, best_index
+    )
+    runner_up_path, runner_up_target_case_fold_operations = (
+        (None, None)
         if runner_up_index is None
         else _reconstruct_path(backpointers, runner_up_index)
     )
@@ -615,6 +747,14 @@ def align_tokens(
         token_source_ranges=token_source_ranges,
         dp_state_count=len(backpointers),
         accepted=margin is None or margin >= active_config.low_margin_threshold,
+        source_normalization_operations=source_view.operations,
+        target_normalization_operations=(
+            *target_comparison.normalization_operations,
+            *best_target_case_fold_operations,
+        ),
+        runner_up_target_normalization_operations=(
+            runner_up_target_case_fold_operations
+        ),
     )
 
 

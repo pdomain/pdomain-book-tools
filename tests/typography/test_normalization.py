@@ -32,7 +32,7 @@ def test_quotes_and_dashes_use_approved_equivalents_only() -> None:
 
 def test_small_caps_case_comparison_is_explicit() -> None:
     unchanged = build_comparison_view("SMALL")
-    folded = build_comparison_view("SMALL", small_caps_case_insensitive=True)
+    folded = build_comparison_view("SMALL", small_caps_ranges=((0, 5),))
 
     assert unchanged.text == "SMALL"
     assert folded.text == "small"
@@ -40,7 +40,7 @@ def test_small_caps_case_comparison_is_explicit() -> None:
 
 
 def test_small_caps_case_folding_resegments_an_expanding_grapheme() -> None:
-    view = build_comparison_view("STRAßE", small_caps_case_insensitive=True)
+    view = build_comparison_view("STRAßE", small_caps_ranges=((0, 6),))
 
     assert view.graphemes == ("s", "t", "r", "a", "s", "s", "e")
     assert view.source_grapheme_map == ((0,), (1,), (2,), (3,), (4,), (4,), (5,))

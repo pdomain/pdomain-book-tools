@@ -148,6 +148,124 @@ def test_page_record_preserves_full_f2_artifact_bytes() -> None:
     assert decoded.to_json_bytes() == encoded
 
 
+def test_page_record_rejects_forged_grapheme_f2_provenance() -> None:
+    record = _record()
+    forged_grapheme = record.graphemes[0].model_copy(
+        update={
+            "source_slices": (
+                SourceSlice(
+                    artifact_sha256=_IMAGE_SHA256,
+                    byte_start=15,
+                    byte_end=16,
+                ),
+            )
+        }
+    )
+    forged = record.model_copy(update={"graphemes": (forged_grapheme,)})
+
+    with pytest.raises(ValidationError, match="F2-backed grapheme"):
+        TypographyPageRecord.model_validate(forged.model_dump())
+
+
+def test_page_record_rejects_forged_style_f2_bounds() -> None:
+    record = _record()
+    forged_span = record.style_spans[0].model_copy(
+        update={
+            "source_slices": (
+                SourceSlice(
+                    artifact_sha256=_F2_SHA256,
+                    byte_start=15,
+                    byte_end=len(_F2_BYTES) + 1,
+                ),
+            )
+        }
+    )
+    forged = record.model_copy(update={"style_spans": (forged_span,)})
+
+    with pytest.raises(ValidationError, match="F2-backed style"):
+        TypographyPageRecord.model_validate(forged.model_dump())
+
+
+def test_page_record_rejects_forged_alignment_artifact_hashes() -> None:
+    record = _record()
+    forged_source = record.alignments[0].model_copy(
+        update={"source_artifact_sha256": "c" * 64}
+    )
+    forged_target = record.alignments[0].model_copy(
+        update={"target_artifact_sha256": _F2_SHA256}
+    )
+
+    with pytest.raises(ValidationError, match="alignment source_artifact"):
+        TypographyPageRecord.model_validate(
+            record.model_copy(update={"alignments": (forged_source,)}).model_dump()
+        )
+    with pytest.raises(ValidationError, match="OCR alignment target"):
+        TypographyPageRecord.model_validate(
+            record.model_copy(update={"alignments": (forged_target,)}).model_dump()
+        )
+
+
+def test_page_record_rejects_ocr_token_ranges_beyond_the_token_count() -> None:
+    record = _record()
+    second_grapheme = record.graphemes[0].model_copy(update={"index": 1})
+    expanded_token = record.ocr_tokens[0].model_copy(
+        update={"text": "xx", "grapheme_end": 2}
+    )
+    token_alignment = record.alignments[0].model_copy(
+        update={
+            "target_coordinate_space": TargetCoordinateSpace.OCR_TOKENS,
+            "target_range": (0, 2),
+        }
+    )
+    forged = record.model_copy(
+        update={
+            "parsed_text": "xx",
+            "graphemes": (record.graphemes[0], second_grapheme),
+            "ocr_tokens": (expanded_token,),
+            "alignments": (token_alignment,),
+        }
+    )
+
+    with pytest.raises(ValidationError, match="OCR token count"):
+        TypographyPageRecord.model_validate(forged.model_dump())
+
+
+@pytest.mark.parametrize(
+    "runner_up_operations",
+    [
+        [
+            {
+                "kind": "match",
+                "source_range": (0, 1),
+                "target_range": (0, 0),
+            }
+        ],
+        [
+            {
+                "kind": "match",
+                "source_range": (0, 2),
+                "target_range": (0, 2),
+            },
+            {
+                "kind": "match",
+                "source_range": (1, 2),
+                "target_range": (1, 2),
+            },
+        ],
+    ],
+)
+def test_alignment_evidence_rejects_forged_runner_up_operations(
+    runner_up_operations: list[dict[str, object]],
+) -> None:
+    data = _record().alignments[0].model_dump()
+    data["source_range"] = (0, 2)
+    data["target_range"] = (0, 2)
+    data["runner_up_operations"] = runner_up_operations
+
+    with pytest.raises(ValidationError, match=r"runner_up_operations|must consume"):
+        AlignmentEvidence.model_validate(data)
+
+
 def test_page_record_defaults_and_serializes_training_eligibility() -> None:
     record = _record()
     legacy_data = record.model_dump(mode="json")

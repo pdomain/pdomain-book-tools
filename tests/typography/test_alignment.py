@@ -27,7 +27,10 @@ from pdomain_book_tools.typography.alignment import (
     project_style_span,
     project_token_ranges,
 )
-from pdomain_book_tools.typography.normalization import build_comparison_view
+from pdomain_book_tools.typography.normalization import (
+    ComparisonOperationKind,
+    build_comparison_view,
+)
 
 _SOURCE_SHA256 = "a" * 64
 _TARGET_SHA256 = "b" * 64
@@ -127,7 +130,7 @@ def test_alignment_retains_deleted_source_characters_and_combining_marks() -> No
 
 def test_alignment_uses_small_caps_case_and_validated_letter_spacing_views() -> None:
     small_caps = align_tokens(
-        build_comparison_view("THE", small_caps_case_insensitive=True),
+        build_comparison_view("THE", small_caps_ranges=((0, 3),)),
         (_token("the", "the"),),
     )
     letter_spaced = align_tokens(
@@ -137,6 +140,115 @@ def test_alignment_uses_small_caps_case_and_validated_letter_spacing_views() -> 
 
     assert small_caps.best_cost == 0
     assert letter_spaced.best_cost == 0
+
+
+def test_small_caps_case_comparison_does_not_mask_ordinary_case_mismatches() -> None:
+    source = build_comparison_view("THE Word", small_caps_ranges=((0, 3),))
+    result = align_tokens(
+        source,
+        (_token("the", "the"), _token("word", "word", x=10)),
+    )
+
+    assert result.best_cost > 0
+    assert any(edit.kind is AlignmentEditKind.SUBSTITUTION for edit in result.best_path)
+
+
+def test_small_caps_matching_follows_source_ranges_after_leading_target_insertion() -> (
+    None
+):
+    result = align_tokens(
+        build_comparison_view("THE", small_caps_ranges=((0, 3),)),
+        (_token("inserted", "x"), _token("word", "the", x=10)),
+    )
+
+    assert result.best_cost == 1
+    assert result.token_source_ranges == (None, (0, 3))
+    assert all(
+        edit.kind is not AlignmentEditKind.SUBSTITUTION
+        for edit in result.best_path
+        if edit.source_range[0] < edit.source_range[1]
+    )
+
+
+def test_small_caps_matching_handles_split_merge_and_source_deletion() -> None:
+    split = align_tokens(
+        build_comparison_view("THE", small_caps_ranges=((0, 3),)),
+        (_token("first", "t"), _token("second", "he", x=10)),
+    )
+    deletion = align_tokens(
+        build_comparison_view("THE!", small_caps_ranges=((0, 3),)),
+        (_token("word", "the"),),
+    )
+
+    assert split.best_cost == 0
+    assert split.token_source_ranges == ((0, 1), (1, 3))
+    assert any(
+        edit.kind is AlignmentEditKind.SOURCE_ONLY_DELETION
+        for edit in deletion.best_path
+    )
+
+
+def test_alignment_evidence_records_only_selected_target_small_caps_folds() -> None:
+    result = align_tokens(
+        build_comparison_view("THE Word", small_caps_ranges=((0, 3),)),
+        (_token("mixed", "THE Word"),),
+    )
+    evidence = result.to_evidence(
+        alignment_id="alignment-1",
+        source_artifact_sha256=_SOURCE_SHA256,
+        target_artifact_sha256=_TARGET_SHA256,
+    )
+
+    target_folds = tuple(
+        operation
+        for operation in evidence.target_normalization_operations
+        if operation.kind is ComparisonOperationKind.SMALL_CAPS_CASE_FOLDED
+    )
+
+    assert result.best_cost == 0
+    assert tuple(operation.input_range for operation in target_folds) == (
+        (0, 1),
+        (1, 2),
+        (2, 3),
+    )
+    assert all(operation.input_range[0] < 3 for operation in target_folds)
+    assert type(evidence).from_json_bytes(evidence.to_json_bytes()) == evidence
+    assert evidence.runner_up_target_normalization_operations is not None
+    assert tuple(
+        operation.input_range
+        for operation in evidence.runner_up_target_normalization_operations
+    ) == ((0, 1), (2, 3))
+
+
+def test_evidence_round_trips_typed_comparison_operations_and_runner_up_path() -> None:
+    source = build_comparison_view(
+        "\u201ce\u0301\u201d\u2014T H E\u00ad",
+        letter_spaced_ranges=((4, 9),),
+        small_caps_ranges=((4, 9),),
+    )
+    result = align_tokens(
+        source,
+        (_token("word", "\u201cé\u201d\u2014the"),),
+    )
+    evidence = result.to_evidence(
+        alignment_id="alignment-1",
+        source_artifact_sha256=_SOURCE_SHA256,
+        target_artifact_sha256=_TARGET_SHA256,
+    )
+
+    assert {
+        operation.kind for operation in evidence.source_normalization_operations
+    } == {
+        ComparisonOperationKind.UNICODE_CANONICAL,
+        ComparisonOperationKind.QUOTE_EQUIVALENCE,
+        ComparisonOperationKind.DASH_EQUIVALENCE,
+        ComparisonOperationKind.SOFT_HYPHEN_REMOVED,
+        ComparisonOperationKind.LETTER_SPACE_REMOVED,
+        ComparisonOperationKind.SMALL_CAPS_CASE_FOLDED,
+    }
+    assert evidence.target_normalization_operations
+    assert evidence.runner_up_operations is not None
+    assert type(evidence).from_json_bytes(evidence.to_json_bytes()) == evidence
 
 
 def test_alignment_rejects_an_ambiguous_low_margin_path_and_serializes_threshold() -> (
@@ -173,7 +285,7 @@ def test_rejected_alignment_cannot_project_ocr_token_ranges() -> None:
 
 def test_case_fold_expansion_uses_canonical_ocr_grapheme_coordinates() -> None:
     result = align_tokens(
-        build_comparison_view("SS", small_caps_case_insensitive=True),
+        build_comparison_view("SS", small_caps_ranges=((0, 2),)),
         (_token("sharp-s", "ẞ"),),
     )
     evidence = result.to_evidence(
@@ -185,6 +297,11 @@ def test_case_fold_expansion_uses_canonical_ocr_grapheme_coordinates() -> None:
     assert result.target_grapheme_count == 1
     assert tuple(edit.target_range for edit in result.best_path) == ((0, 1), (0, 1))
     assert evidence.target_range == (0, 1)
+    assert tuple(
+        operation.output_range
+        for operation in evidence.target_normalization_operations
+        if operation.kind is ComparisonOperationKind.SMALL_CAPS_CASE_FOLDED
+    ) == ((0, 2),)
 
 
 def test_combining_equivalence_uses_one_canonical_ocr_grapheme_coordinate() -> None:
@@ -215,7 +332,7 @@ def test_target_soft_hyphen_removal_keeps_canonical_ocr_count() -> None:
 
 def test_target_case_fold_expansion_preserves_ocr_token_boundaries() -> None:
     result = align_tokens(
-        build_comparison_view("SSx", small_caps_case_insensitive=True),
+        build_comparison_view("SSx", small_caps_ranges=((0, 2),)),
         (_token("sharp-s", "ẞ"), _token("x", "x", x=10)),
     )
 
@@ -561,3 +678,35 @@ def test_alignment_evidence_rejects_a_negative_runner_up_margin() -> None:
                 target_artifact_sha256=_TARGET_SHA256,
             )
         ).model_validate(evidence_data)
+
+
+def test_alignment_evidence_rejects_unbound_normalization_operation_coordinates() -> (
+    None
+):
+    result = align_tokens(
+        build_comparison_view("THE", small_caps_ranges=((0, 3),)),
+        (_token("word", "THE"),),
+    )
+    evidence = result.to_evidence(
+        alignment_id="alignment-1",
+        source_artifact_sha256=_SOURCE_SHA256,
+        target_artifact_sha256=_TARGET_SHA256,
+    )
+    source_forged = evidence.model_dump()
+    target_forged = evidence.model_dump()
+    runner_up_forged = evidence.model_dump()
+    source_forged["source_normalization_operations"][0]["input_range"] = (3, 4)
+    target_forged["target_normalization_operations"][0]["input_range"] = (3, 4)
+    runner_up_forged["runner_up_target_normalization_operations"][0]["input_range"] = (
+        1,
+        2,
+    )
+
+    with pytest.raises(ValidationError, match="source_normalization_operations"):
+        type(evidence).model_validate(source_forged)
+    with pytest.raises(ValidationError, match="target_normalization_operations"):
+        type(evidence).model_validate(target_forged)
+    with pytest.raises(
+        ValidationError, match="runner_up_target_normalization_operations"
+    ):
+        type(evidence).model_validate(runner_up_forged)
