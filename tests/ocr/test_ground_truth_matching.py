@@ -6,12 +6,22 @@ from typing import TYPE_CHECKING, cast
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.matching import (
+    MatchDocument,
+    MatchLine,
+    MatchPage,
+    MatchPolicy,
+    MatchToken,
+    legacy_page_to_match_document,
+    match_documents,
+)
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
 from pdomain_book_tools.ocr.ground_truth_matching import (
     WordDiffOpCodes,
     try_matching_combined_words,
     update_line_with_ground_truth_replace_words,
     update_page_with_ground_truth_text,
+    update_page_with_match_graph,
 )
 from pdomain_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
     CharacterGroups,
@@ -571,6 +581,13 @@ class TestUpdatePageWithGroundTruthText:
         )
 
         page = _make_page(ocr_lines)
+        original_word_ids = tuple(
+            tuple(id(word) for word in line.words) for line in page.lines
+        )
+        original_document = legacy_page_to_match_document(
+            page,
+            document_id="displaced-line-page",
+        )
         update_page_with_ground_truth_text(page, gt_text)
 
         line_texts = [line.text for line in page.lines]
@@ -598,6 +615,16 @@ class TestUpdatePageWithGroundTruthText:
         para_third_idx = 2
         assert "valueless" in gts[para_third_idx] or "fell" in gts[para_third_idx]
         assert "GEORGE" not in gts[para_third_idx]
+        assert tuple(tuple(id(word) for word in line.words) for line in page.lines) == (
+            original_word_ids
+        )
+        assert (
+            legacy_page_to_match_document(
+                page,
+                document_id="displaced-line-page",
+            ).token_ids()
+            == original_document.token_ids()
+        )
 
     def test_same_count_replace_with_rearranged_lines_uses_similarity(self) -> None:
         """Two lines with OCR errors that are reordered between OCR and GT
@@ -956,3 +983,50 @@ class TestUpdatePageWithGroundTruthText:
         assert page.lines[1].words[-1].text == "op"
         assert page.lines[1].words[-1].ground_truth_text == "op-"
         assert page.lines[2].words[0].ground_truth_text == "posed"
+
+    def test_opt_in_graph_projection_preserves_legacy_ground_truth_entrypoint(
+        self,
+    ) -> None:
+        """Legacy callers can explicitly project a pure graph onto a page."""
+        page = _make_page((("hel", "lo"),))
+        target = legacy_page_to_match_document(page, document_id="legacy-page")
+        source = MatchDocument(
+            document_id="ground-truth",
+            pages=(
+                MatchPage(
+                    page_id="ground-truth:page:0",
+                    lines=(
+                        MatchLine(
+                            line_id="ground-truth:page:0:line:0",
+                            tokens=(
+                                MatchToken(
+                                    token_id="ground-truth:page:0:line:0:word:0",
+                                    text="hello",
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        policy = MatchPolicy(
+            policy_id="legacy-bridge-test",
+            version="1",
+            low_margin_threshold=0.5,
+            max_merge_size=2,
+            max_state_count=100,
+            max_transition_count=100,
+        )
+        graph = match_documents(source, target, policy=policy)
+
+        result = update_page_with_match_graph(
+            page,
+            graph,
+            document_id="legacy-page",
+        )
+
+        assert result.mutated_relation_ids == (
+            graph.best_alternative.relations[0].relation_id,
+        )
+        assert [word.text for word in page.lines[0].words] == ["hello"]
+        assert page.lines[0].words[0].ground_truth_text == "hello"

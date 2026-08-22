@@ -1,0 +1,335 @@
+{
+  "project_id": "projectID643ab41f2b9e6",
+  "artifacts": {
+    "f2": {
+      "artifact_id": "F2.json",
+      "sha256": "e5ead692f44d9c48381a337d51f6f1994334522a9ad65069b50407b7ca860cdc"
+    },
+    "p3": {
+      "artifact_id": "P3.json",
+      "sha256": "3969398fdb7b4d0eed2909dc8298cbac84ec151696aacb68c7aed6c32ad11528"
+    }
+  },
+  "cases": [
+    {
+      "case_id": "same-page-bread-winners",
+      "rounds": {
+        "f2": {
+          "tokens": [
+            {
+              "page_id": "005.png",
+              "line_id": "005.png:continuation",
+              "token_id": "f2:005.png:bread-winners",
+              "text": "bread-*winners",
+              "source_range": {
+                "byte_start": 1930,
+                "byte_end": 1944,
+                "grapheme_start": 1552,
+                "grapheme_end": 1566
+              }
+            }
+          ]
+        },
+        "p3": {
+          "tokens": [
+            {
+              "page_id": "005.png",
+              "line_id": "005.png:continuation",
+              "token_id": "p3:005.png:bread-winners",
+              "text": "bread-*winners",
+              "source_range": {
+                "byte_start": 1840,
+                "byte_end": 1854,
+                "grapheme_start": 1546,
+                "grapheme_end": 1560
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "boundary": "same_line",
+        "decision": "ambiguous",
+        "logical_candidates": [
+          "breadwinners",
+          "bread-winners",
+          "bread- winners"
+        ],
+        "marker_counts": [1, 1],
+        "target_text": "breadwinners"
+      }
+    },
+    {
+      "case_id": "cross-page-tam-far",
+      "rounds": {
+        "f2": {
+          "tokens": [
+            {
+              "page_id": "014.png",
+              "line_id": "014.png:continuation",
+              "token_id": "f2:014.png:tam",
+              "text": "Tam--*",
+              "source_range": {
+                "byte_start": 10985,
+                "byte_end": 10991,
+                "grapheme_start": 9767,
+                "grapheme_end": 9773
+              }
+            },
+            {
+              "page_id": "015.png",
+              "line_id": "015.png:continuation",
+              "token_id": "f2:015.png:far",
+              "text": "*far",
+              "source_range": {
+                "byte_start": 11012,
+                "byte_end": 11016,
+                "grapheme_start": 9774,
+                "grapheme_end": 9778
+              }
+            }
+          ]
+        },
+        "p3": {
+          "tokens": [
+            {
+              "page_id": "014.png",
+              "line_id": "014.png:continuation",
+              "token_id": "p3:014.png:tam",
+              "text": "Tam--*",
+              "source_range": {
+                "byte_start": 10852,
+                "byte_end": 10858,
+                "grapheme_start": 9745,
+                "grapheme_end": 9751
+              }
+            },
+            {
+              "page_id": "015.png",
+              "line_id": "015.png:continuation",
+              "token_id": "p3:015.png:far",
+              "text": "far",
+              "source_range": {
+                "byte_start": 10875,
+                "byte_end": 10878,
+                "grapheme_start": 9751,
+                "grapheme_end": 9754
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "boundary": "page",
+        "decision": "preserve_punctuation",
+        "logical_candidates": ["Tam--far"],
+        "marker_counts": [2, 1],
+        "target_text": "Tam--far"
+      }
+    },
+    {
+      "case_id": "cross-page-unmannerly-for",
+      "rounds": {
+        "f2": {
+          "tokens": [
+            {
+              "page_id": "054.png",
+              "line_id": "054.png:continuation",
+              "token_id": "f2:054.png:unmannerly",
+              "text": "unmannerly*",
+              "source_range": {
+                "byte_start": 49642,
+                "byte_end": 49653,
+                "grapheme_start": 44883,
+                "grapheme_end": 44894
+              }
+            },
+            {
+              "page_id": "055.png",
+              "line_id": "055.png:continuation",
+              "token_id": "f2:055.png:for",
+              "text": "*--for",
+              "source_range": {
+                "byte_start": 49674,
+                "byte_end": 49680,
+                "grapheme_start": 44895,
+                "grapheme_end": 44901
+              }
+            }
+          ]
+        },
+        "p3": {
+          "tokens": [
+            {
+              "page_id": "054.png",
+              "line_id": "054.png:continuation",
+              "token_id": "p3:054.png:unmannerly",
+              "text": "unmannerly",
+              "source_range": {
+                "byte_start": 49288,
+                "byte_end": 49298,
+                "grapheme_start": 44784,
+                "grapheme_end": 44794
+              }
+            },
+            {
+              "page_id": "055.png",
+              "line_id": "055.png:continuation",
+              "token_id": "p3:055.png:for",
+              "text": "*--for",
+              "source_range": {
+                "byte_start": 49315,
+                "byte_end": 49321,
+                "grapheme_start": 44794,
+                "grapheme_end": 44800
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "boundary": "page",
+        "decision": "preserve_punctuation",
+        "logical_candidates": ["unmannerly--for"],
+        "marker_counts": [2, 1],
+        "target_text": "unmannerly--for"
+      }
+    },
+    {
+      "case_id": "cross-page-sim-plicity",
+      "rounds": {
+        "f2": {
+          "tokens": [
+            {
+              "page_id": "058.png",
+              "line_id": "058.png:continuation",
+              "token_id": "f2:058.png:sim",
+              "text": "sim-*",
+              "source_range": {
+                "byte_start": 53597,
+                "byte_end": 53602,
+                "grapheme_start": 48476,
+                "grapheme_end": 48481
+              }
+            },
+            {
+              "page_id": "059.png",
+              "line_id": "059.png:continuation",
+              "token_id": "f2:059.png:plicity",
+              "text": "*plicity",
+              "source_range": {
+                "byte_start": 53623,
+                "byte_end": 53631,
+                "grapheme_start": 48482,
+                "grapheme_end": 48490
+              }
+            }
+          ]
+        },
+        "p3": {
+          "tokens": [
+            {
+              "page_id": "058.png",
+              "line_id": "058.png:continuation",
+              "token_id": "p3:058.png:sim",
+              "text": "sim-*",
+              "source_range": {
+                "byte_start": 53226,
+                "byte_end": 53231,
+                "grapheme_start": 48372,
+                "grapheme_end": 48377
+              }
+            },
+            {
+              "page_id": "059.png",
+              "line_id": "059.png:continuation",
+              "token_id": "p3:059.png:plicity",
+              "text": "*plicity",
+              "source_range": {
+                "byte_start": 53248,
+                "byte_end": 53256,
+                "grapheme_start": 48377,
+                "grapheme_end": 48385
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "boundary": "page",
+        "decision": "ambiguous",
+        "logical_candidates": ["simplicity", "sim-plicity", "sim- plicity"],
+        "marker_counts": [2, 2],
+        "target_text": "simplicity"
+      }
+    },
+    {
+      "case_id": "cross-page-ad-vantages",
+      "rounds": {
+        "f2": {
+          "tokens": [
+            {
+              "page_id": "062.png",
+              "line_id": "062.png:continuation",
+              "token_id": "f2:062.png:ad",
+              "text": "ad-*",
+              "source_range": {
+                "byte_start": 57714,
+                "byte_end": 57718,
+                "grapheme_start": 52231,
+                "grapheme_end": 52235
+              }
+            },
+            {
+              "page_id": "063.png",
+              "line_id": "063.png:continuation",
+              "token_id": "f2:063.png:vantages",
+              "text": "*vantages",
+              "source_range": {
+                "byte_start": 57739,
+                "byte_end": 57748,
+                "grapheme_start": 52236,
+                "grapheme_end": 52245
+              }
+            }
+          ]
+        },
+        "p3": {
+          "tokens": [
+            {
+              "page_id": "062.png",
+              "line_id": "062.png:continuation",
+              "token_id": "p3:062.png:ad",
+              "text": "ad-*",
+              "source_range": {
+                "byte_start": 57327,
+                "byte_end": 57331,
+                "grapheme_start": 52123,
+                "grapheme_end": 52127
+              }
+            },
+            {
+              "page_id": "063.png",
+              "line_id": "063.png:continuation",
+              "token_id": "p3:063.png:vantages",
+              "text": "*vantages",
+              "source_range": {
+                "byte_start": 57348,
+                "byte_end": 57357,
+                "grapheme_start": 52127,
+                "grapheme_end": 52136
+              }
+            }
+          ]
+        }
+      },
+      "expected": {
+        "boundary": "page",
+        "decision": "ambiguous",
+        "logical_candidates": ["advantages", "ad-vantages", "ad- vantages"],
+        "marker_counts": [2, 2],
+        "target_text": "advantages"
+      }
+    }
+  ]
+}
