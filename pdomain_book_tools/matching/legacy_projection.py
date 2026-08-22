@@ -45,6 +45,7 @@ class LegacyProjectionMutation(StrEnum):
     MANUAL_SPLIT_PRESERVED = "manual_split_preserved"
     PROTECTED_WORD_STATE_PRESERVED = "protected_word_state_preserved"
     CROSS_LINE_FRAGMENTS_PRESERVED = "cross_line_fragments_preserved"
+    CONTAINER_REVIEW_PRESERVED = "container_review_preserved"
 
 
 class LegacyMatchEvidence(TypedDict):
@@ -130,7 +131,6 @@ def project_match_graph_onto_page(
         msg = "legacy page does not match the graph's pre-projection document"
         raise ValueError(msg)
 
-    page.remove_ground_truth()
     locations = _word_locations(page, document_id=document_id)
     counterpart_tokens = _counterpart_tokens(graph, page_side=page_side)
     page_relation_ids = _page_relation_token_ids(graph, page_side=page_side)
@@ -167,7 +167,6 @@ def project_match_graph_onto_page(
                 relation=relation,
                 page_side=page_side,
                 mutation=LegacyProjectionMutation.MANUAL_SPLIT_PRESERVED,
-                first_word_ground_truth_text=other_text,
             )
             skipped.append(relation_id)
             continue
@@ -178,7 +177,16 @@ def project_match_graph_onto_page(
                 relation=relation,
                 page_side=page_side,
                 mutation=LegacyProjectionMutation.PROTECTED_WORD_STATE_PRESERVED,
-                first_word_ground_truth_text=None,
+            )
+            skipped.append(relation_id)
+            continue
+        if _has_container_review(page, relation_locations):
+            _record_skipped_relation(
+                relation_locations,
+                graph=graph,
+                relation=relation,
+                page_side=page_side,
+                mutation=LegacyProjectionMutation.CONTAINER_REVIEW_PRESERVED,
             )
             skipped.append(relation_id)
             continue
@@ -190,7 +198,6 @@ def project_match_graph_onto_page(
                 relation=relation,
                 page_side=page_side,
                 mutation=LegacyProjectionMutation.CROSS_LINE_FRAGMENTS_PRESERVED,
-                first_word_ground_truth_text=None,
             )
             skipped.append(relation_id)
             continue
@@ -296,6 +303,16 @@ def _has_protected_word_state(locations: tuple[_WordLocation, ...]) -> bool:
     )
 
 
+def _has_container_review(
+    page: Page,
+    locations: tuple[_WordLocation, ...],
+) -> bool:
+    """Return whether page or involved-line review protects physical topology."""
+    return page.review is not None or any(
+        page.lines[location.line_index].review is not None for location in locations
+    )
+
+
 def _contiguous_line(
     page: Page,
     locations: tuple[_WordLocation, ...],
@@ -367,21 +384,9 @@ def _record_skipped_relation(
     relation: MatchRelation,
     page_side: LegacyDocumentSide,
     mutation: LegacyProjectionMutation,
-    first_word_ground_truth_text: str | None,
 ) -> None:
     """Write non-destructive provenance for a relation retained in the graph."""
-    for index, location in enumerate(locations):
-        if index == 0 and first_word_ground_truth_text is not None:
-            location.word.ground_truth_text = first_word_ground_truth_text
-            _write_evidence(
-                location.word,
-                graph=graph,
-                relation=relation,
-                page_side=page_side,
-                mutation=mutation,
-                ground_truth_text=first_word_ground_truth_text,
-            )
-            continue
+    for location in locations:
         _write_evidence(
             location.word,
             graph=graph,
@@ -417,7 +422,7 @@ def _write_evidence(
         match_target_token_ids=relation.target_token_ids,
         match_projection_mutation=mutation.value,
     )
-    word.ground_truth_match_keys = dict(evidence)
+    word.ground_truth_match_keys.update(evidence)
 
 
 def _match_score(page_text: str, ground_truth_text: str) -> int:
