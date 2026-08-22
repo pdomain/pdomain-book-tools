@@ -6,6 +6,7 @@ import hashlib
 import json
 
 import pytest
+from pydantic import ValidationError
 
 from pdomain_book_tools.matching import (
     ArtifactRange,
@@ -16,6 +17,7 @@ from pdomain_book_tools.matching import (
     PgdpContinuationBoundary,
     PgdpContinuationDecision,
     PgdpContinuationQuarantineReason,
+    PgdpMarkerEvidence,
     PgdpRound,
     PgdpUnmappedMarkerEvidence,
     decode_pgdp_continuations,
@@ -492,3 +494,61 @@ def test_json_page_payload_ranges_are_immutable_and_slice_exact_graphemes() -> N
                 ]
                 == b"*"
             )
+
+
+def test_continuation_rejects_round_fragments_that_disagree_with_primary() -> None:
+    result, _f2_bytes, _p3_bytes = _decode((("001", ("bread-*winners",)),))
+    continuation = result.continuations[0]
+    contradictory_round = continuation.round_evidence[0].model_copy(
+        update={
+            "left_fragment": continuation.left_fragment.model_copy(
+                update={"text": "broad-"}
+            )
+        }
+    )
+
+    with pytest.raises(ValidationError, match="authoritative fragments"):
+        type(continuation).model_validate(
+            {
+                **continuation.model_dump(mode="python"),
+                "continuation_id": None,
+                "round_evidence": (contradictory_round, continuation.round_evidence[1]),
+            }
+        )
+
+
+def test_continuation_rejects_marker_evidence_that_disagrees_with_round_record() -> (
+    None
+):
+    result, _f2_bytes, _p3_bytes = _decode((("001", ("bread-*winners",)),))
+    continuation = result.continuations[0]
+    contradictory_marker = PgdpMarkerEvidence(
+        round=PgdpRound.F2,
+        marker_ranges=continuation.marker_evidence[1].marker_ranges,
+    )
+
+    with pytest.raises(ValidationError, match="marker evidence must exactly match"):
+        type(continuation).model_validate(
+            {
+                **continuation.model_dump(mode="python"),
+                "continuation_id": None,
+                "marker_evidence": (
+                    contradictory_marker,
+                    continuation.marker_evidence[1],
+                ),
+            }
+        )
+
+
+def test_continuation_rejects_round_evidence_out_of_marker_order() -> None:
+    result, _f2_bytes, _p3_bytes = _decode((("001", ("bread-*winners",)),))
+    continuation = result.continuations[0]
+
+    with pytest.raises(ValidationError, match="round evidence order"):
+        type(continuation).model_validate(
+            {
+                **continuation.model_dump(mode="python"),
+                "continuation_id": None,
+                "round_evidence": tuple(reversed(continuation.round_evidence)),
+            }
+        )

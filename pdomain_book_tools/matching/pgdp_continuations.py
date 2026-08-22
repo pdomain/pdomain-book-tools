@@ -177,6 +177,24 @@ class PgdpContinuation(CanonicalModel):
         """Return a revalidated copy that recomputes its continuation identity."""
         del deep
         payload = {**self.model_dump(), **(update or {}), "continuation_id": None}
+        if update is not None and "round_evidence" not in update:
+            updated_left = update.get("left_fragment")
+            updated_right = update.get("right_fragment")
+            if isinstance(updated_left, PgdpPhysicalFragment) or isinstance(
+                updated_right, PgdpPhysicalFragment
+            ):
+                authoritative_payload = self.round_evidence[0].model_dump()
+                if isinstance(updated_left, PgdpPhysicalFragment):
+                    authoritative_payload["left_fragment"] = updated_left
+                if isinstance(updated_right, PgdpPhysicalFragment):
+                    authoritative_payload["right_fragment"] = updated_right
+                authoritative = PgdpRoundContinuationEvidence.model_validate(
+                    authoritative_payload
+                )
+                payload["round_evidence"] = (
+                    authoritative,
+                    *self.round_evidence[1:],
+                )
         return type(self).model_validate(payload)
 
     @model_validator(mode="after")
@@ -195,9 +213,22 @@ class PgdpContinuation(CanonicalModel):
         if len(set(evidence_rounds)) != len(evidence_rounds):
             msg = "continuations allow one complete evidence record per round"
             raise ValueError(msg)
-        if set(evidence_rounds) != set(rounds):
-            msg = "continuation marker and complete evidence rounds must agree"
+        if evidence_rounds != rounds:
+            msg = "round evidence order must exactly match marker evidence order"
             raise ValueError(msg)
+        authoritative_evidence = self.round_evidence[0]
+        if (
+            authoritative_evidence.left_fragment != self.left_fragment
+            or authoritative_evidence.right_fragment != self.right_fragment
+        ):
+            msg = "authoritative fragments must exactly match primary fragments"
+            raise ValueError(msg)
+        for marker, round_record in zip(
+            self.marker_evidence, self.round_evidence, strict=True
+        ):
+            if marker != round_record.marker_evidence:
+                msg = "marker evidence must exactly match its same-round record"
+                raise ValueError(msg)
         if not self.logical_candidates:
             msg = "continuations require at least one logical candidate"
             raise ValueError(msg)
