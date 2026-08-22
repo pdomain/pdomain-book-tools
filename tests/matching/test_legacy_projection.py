@@ -19,8 +19,11 @@ from pdomain_book_tools.matching import (
     project_match_graph_onto_page,
 )
 from pdomain_book_tools.ocr.block import Block, BlockCategory, BlockChildType
+from pdomain_book_tools.ocr.glyph_annotations import GlyphAnnotations
 from pdomain_book_tools.ocr.page import Page
+from pdomain_book_tools.ocr.review import ReviewMetadata
 from pdomain_book_tools.ocr.word import Word
+from pdomain_book_tools.typography.annotations import TypographyAnnotations
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -141,6 +144,109 @@ def test_projection_combines_target_fragments_with_typed_physical_evidence() -> 
     assert word.typography_annotations is None
 
 
+def test_projection_combines_two_relations_using_live_word_identity() -> None:
+    """Earlier merges must not invalidate later physical word references."""
+    page = _page((("hel", "lo", "wor", "ld"),))
+    target = legacy_page_to_match_document(page, document_id="ocr-page")
+    graph = match_documents(
+        _source_document("hello", "world"),
+        target,
+        policy=_policy(),
+    )
+
+    result = project_match_graph_onto_page(
+        page,
+        graph,
+        document_id="ocr-page",
+        page_side=LegacyDocumentSide.TARGET,
+    )
+
+    assert [word.text for word in page.lines[0].words] == ["hello", "world"]
+    assert result.mutated_relation_ids == tuple(
+        relation.relation_id for relation in graph.best_alternative.relations
+    )
+
+
+def test_projection_preserves_later_fragment_review_state() -> None:
+    """A reviewed later fragment prevents a destructive topology merge."""
+    page = _page((("hel", "lo"),))
+    protected_word = page.lines[0].words[1]
+    protected_word.review = ReviewMetadata(validated=True)
+    target = legacy_page_to_match_document(page, document_id="ocr-page")
+    graph = match_documents(_source_document("hello"), target, policy=_policy())
+
+    result = project_match_graph_onto_page(
+        page,
+        graph,
+        document_id="ocr-page",
+        page_side=LegacyDocumentSide.TARGET,
+    )
+
+    assert [word.text for word in page.lines[0].words] == ["hel", "lo"]
+    assert protected_word.review == ReviewMetadata(validated=True)
+    assert result.mutated_relation_ids == ()
+    assert result.skipped_relation_ids == (
+        graph.best_alternative.relations[0].relation_id,
+    )
+    assert protected_word.ground_truth_match_keys["match_projection_mutation"] == (
+        "protected_word_state_preserved"
+    )
+
+
+def test_projection_preserves_later_fragment_typography_annotations() -> None:
+    """Typography state on a later fragment prevents a destructive merge."""
+    page = _page((("hel", "lo"),))
+    protected_word = page.lines[0].words[1]
+    annotations = TypographyAnnotations(spans=[])
+    protected_word.typography_annotations = annotations
+    target = legacy_page_to_match_document(page, document_id="ocr-page")
+    graph = match_documents(_source_document("hello"), target, policy=_policy())
+
+    result = project_match_graph_onto_page(
+        page,
+        graph,
+        document_id="ocr-page",
+        page_side=LegacyDocumentSide.TARGET,
+    )
+
+    assert [word.text for word in page.lines[0].words] == ["hel", "lo"]
+    assert protected_word.typography_annotations == annotations
+    assert result.mutated_relation_ids == ()
+    assert result.skipped_relation_ids == (
+        graph.best_alternative.relations[0].relation_id,
+    )
+    assert protected_word.ground_truth_match_keys["match_projection_mutation"] == (
+        "protected_word_state_preserved"
+    )
+
+
+def test_projection_preserves_later_fragment_glyph_annotation_state() -> None:
+    """Even reviewed-empty glyph state prevents a destructive merge."""
+    page = _page((("hel", "lo"),))
+    protected_word = page.lines[0].words[1]
+    annotations = GlyphAnnotations()
+    protected_word.glyph_annotations = annotations
+    target = legacy_page_to_match_document(page, document_id="ocr-page")
+    graph = match_documents(_source_document("hello"), target, policy=_policy())
+
+    result = project_match_graph_onto_page(
+        page,
+        graph,
+        document_id="ocr-page",
+        page_side=LegacyDocumentSide.TARGET,
+    )
+
+    assert [word.text for word in page.lines[0].words] == ["hel", "lo"]
+    assert protected_word.glyph_annotations == annotations
+    assert result.mutated_relation_ids == ()
+    assert result.skipped_relation_ids == (
+        graph.best_alternative.relations[0].relation_id,
+    )
+    assert protected_word.ground_truth_match_keys["match_projection_mutation"] == (
+        "protected_word_state_preserved"
+    )
+
+
 def test_projection_does_not_combine_manual_split_words() -> None:
     """A manual legacy split remains physical even when the graph joins it."""
     page = _page((("hel", "lo"),))
@@ -234,6 +340,56 @@ def test_projection_uses_stable_ids_for_multiple_page_lines() -> None:
     )
     assert second.ground_truth_match_keys["match_target_token_ids"] == (
         "ocr-page:page:7:line:1:word:0",
+    )
+
+
+def test_graph_bridge_skips_visible_hyphen_fragments_across_lines() -> None:
+    """A cross-line visible-hyphen relation remains immutable graph evidence."""
+    page = _page((("op-",), ("posed",)))
+    target = legacy_page_to_match_document(page, document_id="ocr-page")
+    graph = match_documents(_source_document("opposed"), target, policy=_policy())
+
+    result = project_match_graph_onto_page(
+        page,
+        graph,
+        document_id="ocr-page",
+        page_side=LegacyDocumentSide.TARGET,
+    )
+
+    relation = graph.best_alternative.relations[0]
+    assert [line.words[0].text for line in page.lines] == ["op-", "posed"]
+    assert result.mutated_relation_ids == ()
+    assert result.skipped_relation_ids == (relation.relation_id,)
+    assert all(
+        word.ground_truth_match_keys["match_projection_mutation"]
+        == "cross_line_fragments_preserved"
+        for line in page.lines
+        for word in line.words
+    )
+
+
+def test_graph_bridge_skips_missing_hyphen_fragments_across_lines() -> None:
+    """A cross-line missing-hyphen relation remains immutable graph evidence."""
+    page = _page((("op",), ("posed",)))
+    target = legacy_page_to_match_document(page, document_id="ocr-page")
+    graph = match_documents(_source_document("opposed"), target, policy=_policy())
+
+    result = project_match_graph_onto_page(
+        page,
+        graph,
+        document_id="ocr-page",
+        page_side=LegacyDocumentSide.TARGET,
+    )
+
+    relation = graph.best_alternative.relations[0]
+    assert [line.words[0].text for line in page.lines] == ["op", "posed"]
+    assert result.mutated_relation_ids == ()
+    assert result.skipped_relation_ids == (relation.relation_id,)
+    assert all(
+        word.ground_truth_match_keys["match_projection_mutation"]
+        == "cross_line_fragments_preserved"
+        for line in page.lines
+        for word in line.words
     )
 
 

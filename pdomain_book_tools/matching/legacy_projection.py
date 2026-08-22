@@ -43,6 +43,8 @@ class LegacyProjectionMutation(StrEnum):
     NONE = "none"
     COMBINED_PAGE_FRAGMENTS = "combined_page_fragments"
     MANUAL_SPLIT_PRESERVED = "manual_split_preserved"
+    PROTECTED_WORD_STATE_PRESERVED = "protected_word_state_preserved"
+    CROSS_LINE_FRAGMENTS_PRESERVED = "cross_line_fragments_preserved"
 
 
 class LegacyMatchEvidence(TypedDict):
@@ -72,7 +74,6 @@ class _WordLocation:
     """One pre-projection physical-word location in a legacy page."""
 
     line_index: int
-    word_index: int
     word: Word
 
 
@@ -113,11 +114,12 @@ def project_match_graph_onto_page(
     """Write accepted graph suggestions onto a legacy page, only on request.
 
     A one-to-one relation writes ground-truth text in place. When one logical
-    token maps to adjacent physical words on the page, this compatibility
-    adapter merges those page words deterministically. The evidence retains
-    every pre-mutation token ID. A manually split word prevents that merge and
-    instead receives the legacy first-word suggestion. This function never
-    writes review metadata or typography annotations.
+    token maps to adjacent physical words on one unreviewed page line, this
+    compatibility adapter merges those page words deterministically. The
+    evidence retains every pre-mutation token ID. Manual splits, protected
+    word state, and cross-line fragments remain physical and receive typed
+    skipped evidence. This function never writes review metadata or typography
+    annotations.
     """
     if not graph.accepted:
         msg = "cannot project a quarantined match graph"
@@ -159,20 +161,39 @@ def project_match_graph_onto_page(
             projected.append(relation_id)
             continue
         if _has_manual_split(relation_locations):
-            _apply_in_place(
-                relation_locations[0].word,
+            _record_skipped_relation(
+                relation_locations,
                 graph=graph,
                 relation=relation,
                 page_side=page_side,
-                ground_truth_text=other_text,
                 mutation=LegacyProjectionMutation.MANUAL_SPLIT_PRESERVED,
+                first_word_ground_truth_text=other_text,
+            )
+            skipped.append(relation_id)
+            continue
+        if _has_protected_word_state(relation_locations):
+            _record_skipped_relation(
+                relation_locations,
+                graph=graph,
+                relation=relation,
+                page_side=page_side,
+                mutation=LegacyProjectionMutation.PROTECTED_WORD_STATE_PRESERVED,
+                first_word_ground_truth_text=None,
             )
             skipped.append(relation_id)
             continue
         line = _contiguous_line(page, relation_locations)
         if line is None:
-            msg = "a multi-token legacy projection requires one contiguous page line"
-            raise ValueError(msg)
+            _record_skipped_relation(
+                relation_locations,
+                graph=graph,
+                relation=relation,
+                page_side=page_side,
+                mutation=LegacyProjectionMutation.CROSS_LINE_FRAGMENTS_PRESERVED,
+                first_word_ground_truth_text=None,
+            )
+            skipped.append(relation_id)
+            continue
         merged_word = _combine_page_words(line, relation_locations)
         _apply_in_place(
             merged_word,
@@ -211,7 +232,6 @@ def _word_locations(page: Page, *, document_id: str) -> dict[str, _WordLocation]
     return {
         f"{page_id}:line:{line_index}:word:{word_index}": _WordLocation(
             line_index=line_index,
-            word_index=word_index,
             word=word,
         )
         for line_index, line in enumerate(page.lines)
@@ -266,6 +286,16 @@ def _has_manual_split(locations: tuple[_WordLocation, ...]) -> bool:
     )
 
 
+def _has_protected_word_state(locations: tuple[_WordLocation, ...]) -> bool:
+    """Return whether a topology merge would discard protected word state."""
+    return any(
+        location.word.review is not None
+        or location.word.typography_annotations is not None
+        or location.word.glyph_annotations is not None
+        for location in locations
+    )
+
+
 def _contiguous_line(
     page: Page,
     locations: tuple[_WordLocation, ...],
@@ -274,18 +304,34 @@ def _contiguous_line(
     line_indexes = {location.line_index for location in locations}
     if len(line_indexes) != 1:
         return None
-    word_indexes = tuple(location.word_index for location in locations)
-    expected_indexes = tuple(
-        range(word_indexes[0], word_indexes[0] + len(word_indexes))
+    line = page.lines[locations[0].line_index]
+    word_indexes = tuple(
+        _current_word_index(line, location.word) for location in locations
     )
-    if word_indexes != expected_indexes:
+    if any(word_index is None for word_index in word_indexes):
         return None
-    return page.lines[locations[0].line_index]
+    current_indexes = tuple(
+        word_index for word_index in word_indexes if word_index is not None
+    )
+    expected_indexes = tuple(
+        range(current_indexes[0], current_indexes[0] + len(current_indexes))
+    )
+    if current_indexes != expected_indexes:
+        return None
+    return line
+
+
+def _current_word_index(line: Block, word: Word) -> int | None:
+    """Return a word's current index by identity after earlier page mutation."""
+    for index, candidate in enumerate(line.words):
+        if candidate is word:
+            return index
+    return None
 
 
 def _combine_page_words(line: Block, locations: tuple[_WordLocation, ...]) -> Word:
     """Merge one contiguous physical page-word run into its first word."""
-    words = tuple(line.words[location.word_index] for location in locations)
+    words = tuple(location.word for location in locations)
     anchor = words[0]
     for word in words[1:]:
         anchor.merge(word)
@@ -303,12 +349,64 @@ def _apply_in_place(
     mutation: LegacyProjectionMutation,
 ) -> None:
     """Write one legacy suggestion and its typed graph provenance onto a word."""
+    word.ground_truth_text = ground_truth_text
+    _write_evidence(
+        word,
+        graph=graph,
+        relation=relation,
+        page_side=page_side,
+        mutation=mutation,
+        ground_truth_text=ground_truth_text,
+    )
+
+
+def _record_skipped_relation(
+    locations: tuple[_WordLocation, ...],
+    *,
+    graph: MatchGraph,
+    relation: MatchRelation,
+    page_side: LegacyDocumentSide,
+    mutation: LegacyProjectionMutation,
+    first_word_ground_truth_text: str | None,
+) -> None:
+    """Write non-destructive provenance for a relation retained in the graph."""
+    for index, location in enumerate(locations):
+        if index == 0 and first_word_ground_truth_text is not None:
+            location.word.ground_truth_text = first_word_ground_truth_text
+            _write_evidence(
+                location.word,
+                graph=graph,
+                relation=relation,
+                page_side=page_side,
+                mutation=mutation,
+                ground_truth_text=first_word_ground_truth_text,
+            )
+            continue
+        _write_evidence(
+            location.word,
+            graph=graph,
+            relation=relation,
+            page_side=page_side,
+            mutation=mutation,
+            ground_truth_text=location.word.ground_truth_text,
+        )
+
+
+def _write_evidence(
+    word: Word,
+    *,
+    graph: MatchGraph,
+    relation: MatchRelation,
+    page_side: LegacyDocumentSide,
+    mutation: LegacyProjectionMutation,
+    ground_truth_text: str,
+) -> None:
+    """Write typed graph provenance without changing other word state."""
     graph_id = graph.graph_id
     relation_id = relation.relation_id
     if graph_id is None or relation_id is None:
         msg = "validated match graphs and relations require content IDs"
         raise ValueError(msg)
-    word.ground_truth_text = ground_truth_text
     evidence = LegacyMatchEvidence(
         match_type=_legacy_match_type(mutation),
         match_score=_match_score(word.text, ground_truth_text),
