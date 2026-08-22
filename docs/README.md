@@ -47,4 +47,6 @@ This layout follows the workspace standard. See
 - [Completed GitHub issue migration ledger](context/github-issues-migration-ledger.md)
 - [Roadmap](plans/roadmap.md)
 - [Specifications](specs/_index.md)
+- [PGDP-aware matcher design](specs/2026-08-22-pgdp-aware-matcher.md)
+- [PGDP-aware matcher plan](plans/2026-08-22-pgdp-aware-matcher.md)
 - [Geometry correction usage](usage/geometry-correction.md)
