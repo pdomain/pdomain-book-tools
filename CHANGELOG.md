@@ -14,6 +14,11 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+- **fix(typography): page-global correction chains** — review contract 0.25.0
+  validates page, image, and page-head bases in bundle order while preserving
+  per-word revision, supersedes, text, and word-revision lineage. This permits
+  interleaved review such as A1 → B1 → A2 without weakening immutable bindings.
+
 - **feat(image): composable grayscale pipeline subpackage** — new
   `pdomain_book_tools.image_processing.grayscale_pipeline` exposes
   `run_grayscale_pipeline(img, config, *, use_gpu)` plus `GrayscaleConfig`,
