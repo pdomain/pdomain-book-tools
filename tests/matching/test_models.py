@@ -100,6 +100,22 @@ def _relation() -> MatchRelation:
     )
 
 
+def _substitution_relation() -> MatchRelation:
+    return MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-001-line-1-token-1",),
+        target_token_ids=("ocr-001-line-1-token-1",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.SUBSTITUTION,
+                source_grapheme_range=(0, 5),
+                target_grapheme_range=(0, 5),
+            ),
+        ),
+    )
+
+
 def _graph() -> MatchGraph:
     return MatchGraph(
         graph_id=None,
@@ -404,16 +420,16 @@ def test_graph_rejects_operations_that_overlap_or_exceed_token_graphemes() -> No
 
 def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
     graph = _graph()
+    distinct_path_relation = _substitution_relation()
     tie_runner_up = MatchAlternative(
         alternative_id=None,
         total_cost=0.0,
-        relations=graph.best_alternative.relations,
-        warnings=("different canonical path",),
+        relations=(distinct_path_relation,),
     )
     low_margin_runner_up = MatchAlternative(
         alternative_id=None,
         total_cost=0.5,
-        relations=graph.best_alternative.relations,
+        relations=(distinct_path_relation,),
     )
     with pytest.raises(ValidationError, match="tie"):
         MatchGraph(
@@ -462,6 +478,32 @@ def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
             runner_up_margin=0.5,
             accepted=False,
             quarantine_reasons=(MatchQuarantineReason.TIE,),
+        )
+
+
+def test_graph_rejects_runner_up_that_differs_only_by_alternative_metadata() -> None:
+    graph = _graph()
+    metadata_only_runner_up = MatchAlternative(
+        alternative_id=None,
+        total_cost=0.0,
+        relations=graph.best_alternative.relations,
+        warnings=("different metadata",),
+    )
+
+    with pytest.raises(ValidationError, match="runner-up path must differ"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=metadata_only_runner_up,
+            runner_up_margin=0.0,
+            accepted=False,
+            quarantine_reasons=(
+                MatchQuarantineReason.TIE,
+                MatchQuarantineReason.LOW_MARGIN,
+            ),
         )
 
 
@@ -661,7 +703,7 @@ def test_graph_enforces_runner_up_identity_cost_and_exact_margin() -> None:
     runner_up = MatchAlternative(
         alternative_id=None,
         total_cost=1.0,
-        relations=graph.best_alternative.relations,
+        relations=(_substitution_relation(),),
     )
     accepted_graph = MatchGraph(
         graph_id=None,
@@ -676,7 +718,7 @@ def test_graph_enforces_runner_up_identity_cost_and_exact_margin() -> None:
     )
     assert accepted_graph.accepted is True
 
-    with pytest.raises(ValidationError, match="runner-up alternative must differ"):
+    with pytest.raises(ValidationError, match="runner-up path must differ"):
         MatchGraph(
             graph_id=None,
             source_document=graph.source_document,

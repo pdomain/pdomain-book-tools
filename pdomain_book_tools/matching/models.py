@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 _StrictIndex = Annotated[int, Field(strict=True, ge=0)]
 
 
-def _content_id(payload: dict[str, object], *, excluded_field: str) -> str:
+def _content_id(payload: Mapping[str, object], *, excluded_field: str) -> str:
     """Return a SHA-256 ID for a canonical model payload without its own ID."""
     content = {key: value for key, value in payload.items() if key != excluded_field}
     canonical = json.dumps(
@@ -30,6 +30,18 @@ def _content_id(payload: dict[str, object], *, excluded_field: str) -> str:
         sort_keys=True,
     ).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
+
+
+def _canonical_relation_path_bytes(relations: tuple[MatchRelation, ...]) -> bytes:
+    """Serialize only an alternative's ordered relation path for comparison."""
+    payload = tuple(relation.model_dump(mode="json") for relation in relations)
+    return json.dumps(
+        payload,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
 
 
 def _validate_identifier(value: str, *, field_name: str) -> str:
@@ -516,8 +528,10 @@ class MatchGraph(CanonicalModel):
         margin = self.runner_up_margin
         if runner_up is None or margin is None:
             return
-        if runner_up.alternative_id == self.best_alternative.alternative_id:
-            msg = "runner-up alternative must differ from the best alternative"
+        if _canonical_relation_path_bytes(
+            runner_up.relations
+        ) == _canonical_relation_path_bytes(self.best_alternative.relations):
+            msg = "runner-up path must differ from the best path"
             raise ValueError(msg)
         if runner_up.total_cost < self.best_alternative.total_cost:
             msg = "runner-up cost cannot be lower than best cost"
