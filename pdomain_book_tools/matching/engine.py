@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -51,7 +52,11 @@ class _ContinuationInput:
     """Validated PGDP adapter data kept outside the source-neutral graph model."""
 
     continuation_id: str
+    evidence_artifact_id: str
+    evidence_artifact_path: str
+    evidence_sha256: str
     decision: str
+    logical_text: str
     left_fragment_token_id: str
     right_fragment_token_id: str
     left_fragment_text: str
@@ -80,6 +85,7 @@ def match_documents(
     )
     cells: dict[tuple[int, int], list[_Path]] = {(0, 0): [_Path(0.0, ())]}
     state_count = 1
+    state_iteration_count = 0
     transition_count = 0
     state_exhausted = False
     transition_exhausted = False
@@ -89,6 +95,9 @@ def match_documents(
     for source_index in range(source_count + 1):
         for target_index in range(target_count + 1):
             current = tuple(cells.get((source_index, target_index), ()))
+            if not current:
+                continue
+            state_iteration_count += 1
             for path in current:
                 for relation, cost, next_state in _transitions(
                     source_tokens,
@@ -105,7 +114,7 @@ def match_documents(
                     if next_state not in cells:
                         if state_count >= policy.max_state_count:
                             state_exhausted = True
-                            continue
+                            break
                         cells[next_state] = []
                         state_count += 1
                     _retain_path(
@@ -116,11 +125,11 @@ def match_documents(
                         ),
                         policy=policy,
                     )
-                if transition_exhausted:
+                if state_exhausted or transition_exhausted:
                     break
-            if transition_exhausted:
+            if state_exhausted or transition_exhausted:
                 break
-        if transition_exhausted:
+        if state_exhausted or transition_exhausted:
             break
 
     complete = tuple(cells.get((source_count, target_count), ()))
@@ -129,6 +138,7 @@ def match_documents(
         source_token_count=source_count,
         target_token_count=target_count,
         state_count=state_count,
+        state_iteration_count=state_iteration_count,
         transition_count=transition_count,
         policy=policy,
     )
@@ -254,7 +264,7 @@ def _transitions(
         transitions.append(
             (
                 _source_only_relation(token),
-                policy.source_only_cost,
+                len(split_graphemes(token.text)) * policy.source_only_cost,
                 (source_index + 1, target_index),
             )
         )
@@ -263,7 +273,7 @@ def _transitions(
         transitions.append(
             (
                 _target_only_relation(token),
-                policy.target_only_cost,
+                len(split_graphemes(token.text)) * policy.target_only_cost,
                 (source_index, target_index + 1),
             )
         )
@@ -282,21 +292,32 @@ def _paired_relation(
     target_text = "".join(token.text for token in target_tokens)
     source_view = _comparison_view(source_text, policy=policy)
     target_view = _comparison_view(target_text, policy=policy)
-    exact = source_view.graphemes == target_view.graphemes
+    source_scoring_text, source_continuation = _logical_text_for_tokens(
+        source_tokens, source_text, continuation_inputs=continuation_inputs
+    )
+    target_scoring_text, target_continuation = _logical_text_for_tokens(
+        target_tokens, target_text, continuation_inputs=continuation_inputs
+    )
+    source_scoring_view = _comparison_view(source_scoring_text, policy=policy)
+    target_scoring_view = _comparison_view(target_scoring_text, policy=policy)
     relation_kind = _paired_kind(source_tokens, target_tokens)
-    source_grapheme_count = len(split_graphemes(source_text))
-    target_grapheme_count = len(split_graphemes(target_text))
-    operation = MatchOperation(
-        kind=(MatchOperationKind.MATCH if exact else MatchOperationKind.SUBSTITUTION),
-        source_grapheme_range=(0, source_grapheme_count),
-        target_grapheme_range=(0, target_grapheme_count),
+    operations, _physical_cost = _grapheme_alignment_operations(
+        source_view, target_view, policy=policy
+    )
+    _scoring_operations, cost = _grapheme_alignment_operations(
+        source_scoring_view, target_scoring_view, policy=policy
+    )
+    continuation_warnings = tuple(
+        f"PGDP logical candidate {continuation.continuation_id} ({continuation.decision})"
+        for continuation in (source_continuation, target_continuation)
+        if continuation is not None
     )
     return (
         MatchRelation(
             kind=relation_kind,
             source_token_ids=tuple(token.token_id for token in source_tokens),
             target_token_ids=tuple(token.token_id for token in target_tokens),
-            operations=(operation,),
+            operations=operations,
             source_comparison=source_view,
             target_comparison=target_view,
             continuation_references=_relation_continuation_references(
@@ -304,9 +325,12 @@ def _paired_relation(
                 target_tokens,
                 continuation_inputs=continuation_inputs,
             ),
-            warnings=(f"comparison normalization {policy.comparison_normalization}",),
+            warnings=(
+                f"comparison normalization {policy.comparison_normalization}",
+                *continuation_warnings,
+            ),
         ),
-        policy.exact_match_cost if exact else policy.substitution_cost,
+        cost,
     )
 
 
@@ -401,8 +425,10 @@ def _quarantined_fallback(
         _target_only_relation(token) for token in target_tokens
     )
     total_cost = (
-        len(source_tokens) * policy.source_only_cost
-        + len(target_tokens) * policy.target_only_cost
+        sum(len(split_graphemes(token.text)) for token in source_tokens)
+        * policy.source_only_cost
+        + sum(len(split_graphemes(token.text)) for token in target_tokens)
+        * policy.target_only_cost
     )
     return MatchGraph(
         source_document=source_document,
@@ -551,7 +577,13 @@ def _continuation_inputs(
         inputs.append(
             _ContinuationInput(
                 continuation_id=continuation_id,
+                evidence_artifact_id="pgdp-continuations",
+                evidence_artifact_path=f"continuations/{continuation_id}.json",
+                evidence_sha256=hashlib.sha256(
+                    continuation.to_json_bytes()
+                ).hexdigest(),
                 decision=continuation.decision.value,
+                logical_text=continuation.logical_candidates[0].text,
                 left_fragment_token_id=continuation.left_fragment.token_id,
                 right_fragment_token_id=continuation.right_fragment.token_id,
                 left_fragment_text=continuation.left_fragment.text,
@@ -565,6 +597,30 @@ def _continuation_inputs(
             )
         )
     return tuple(inputs), _unique_reasons(tuple(reasons)), tuple(warnings)
+
+
+def _logical_text_for_tokens(
+    tokens: tuple[MatchToken, ...],
+    physical_text: str,
+    *,
+    continuation_inputs: tuple[_ContinuationInput, ...],
+) -> tuple[str, _ContinuationInput | None]:
+    """Select a resolved continuation candidate without changing physical tokens."""
+    token_ids = frozenset(token.token_id for token in tokens)
+    matching = tuple(
+        continuation
+        for continuation in continuation_inputs
+        if {
+            continuation.left_fragment_token_id,
+            continuation.right_fragment_token_id,
+        }.issubset(token_ids)
+        and physical_text
+        == continuation.left_fragment_text + continuation.right_fragment_text
+    )
+    if not matching:
+        return physical_text, None
+    selected = min(matching, key=lambda continuation: continuation.continuation_id)
+    return selected.logical_text, selected
 
 
 def _relation_continuation_references(
@@ -590,6 +646,9 @@ def _relation_continuation_references(
         )
         reference = MatchContinuationReference(
             continuation_id=continuation.continuation_id,
+            evidence_artifact_id=continuation.evidence_artifact_id,
+            evidence_artifact_path=continuation.evidence_artifact_path,
+            evidence_sha256=continuation.evidence_sha256,
             decision=continuation.decision,
             left_fragment_token_id=continuation.left_fragment_token_id,
             right_fragment_token_id=continuation.right_fragment_token_id,
@@ -617,6 +676,7 @@ def _search_evidence(
     source_token_count: int,
     target_token_count: int,
     state_count: int,
+    state_iteration_count: int,
     transition_count: int,
     policy: MatchPolicy,
 ) -> MatchSearchEvidence:
@@ -636,6 +696,7 @@ def _search_evidence(
         source_token_count=source_token_count,
         target_token_count=target_token_count,
         state_count=state_count,
+        state_iteration_count=state_iteration_count,
         transition_count=transition_count,
         max_state_count=policy.max_state_count,
         max_transition_count=policy.max_transition_count,
@@ -696,3 +757,253 @@ def _unique_reasons(
 ) -> tuple[MatchQuarantineReason, ...]:
     """Preserve first occurrence while returning canonical immutable reasons."""
     return tuple(dict.fromkeys(reasons))
+
+
+def _grapheme_alignment_operations(
+    source_view: ComparisonView,
+    target_view: ComparisonView,
+    *,
+    policy: MatchPolicy,
+) -> tuple[tuple[MatchOperation, ...], float]:
+    """Derive deterministic raw edit partitions from typography comparison views."""
+    source_count = len(source_view.graphemes)
+    target_count = len(target_view.graphemes)
+    cells: list[list[tuple[float, tuple[MatchOperation, ...]] | None]] = [
+        [None] * (target_count + 1) for _ in range(source_count + 1)
+    ]
+    cells[0][0] = (0.0, ())
+    for source_index in range(source_count + 1):
+        for target_index in range(target_count + 1):
+            current = cells[source_index][target_index]
+            if current is None:
+                continue
+            cost, operations = current
+            if source_index < source_count and target_index < target_count:
+                kind = (
+                    MatchOperationKind.MATCH
+                    if source_view.graphemes[source_index]
+                    == target_view.graphemes[target_index]
+                    else MatchOperationKind.SUBSTITUTION
+                )
+                _retain_local_alignment(
+                    cells,
+                    source_index + 1,
+                    target_index + 1,
+                    cost
+                    + (
+                        policy.exact_match_cost
+                        if kind is MatchOperationKind.MATCH
+                        else policy.substitution_cost
+                    ),
+                    (
+                        *operations,
+                        MatchOperation(
+                            kind=kind,
+                            source_grapheme_range=(source_index, source_index + 1),
+                            target_grapheme_range=(target_index, target_index + 1),
+                        ),
+                    ),
+                )
+            if source_index < source_count:
+                _retain_local_alignment(
+                    cells,
+                    source_index + 1,
+                    target_index,
+                    cost + policy.source_only_cost,
+                    (
+                        *operations,
+                        MatchOperation(
+                            kind=MatchOperationKind.SOURCE_ONLY_DELETION,
+                            source_grapheme_range=(source_index, source_index + 1),
+                            target_grapheme_range=(target_index, target_index),
+                        ),
+                    ),
+                )
+            if target_index < target_count:
+                _retain_local_alignment(
+                    cells,
+                    source_index,
+                    target_index + 1,
+                    cost + policy.target_only_cost,
+                    (
+                        *operations,
+                        MatchOperation(
+                            kind=MatchOperationKind.TARGET_ONLY_INSERTION,
+                            source_grapheme_range=(source_index, source_index),
+                            target_grapheme_range=(target_index, target_index + 1),
+                        ),
+                    ),
+                )
+    result = cells[source_count][target_count]
+    if result is None:
+        msg = "grapheme alignment could not produce an operation path"
+        raise RuntimeError(msg)
+    return (
+        _project_comparison_operations(
+            result[1], source_view=source_view, target_view=target_view
+        ),
+        result[0],
+    )
+
+
+def _project_comparison_operations(
+    operations: tuple[MatchOperation, ...],
+    *,
+    source_view: ComparisonView,
+    target_view: ComparisonView,
+) -> tuple[MatchOperation, ...]:
+    """Project normalized edit steps to complete, non-overlapping raw ranges."""
+    projected: list[tuple[MatchOperation, tuple[int, int], tuple[int, int]]] = []
+    for operation in operations:
+        source_range = _raw_range_for_comparison_range(
+            source_view, operation.source_grapheme_range
+        )
+        target_range = _raw_range_for_comparison_range(
+            target_view, operation.target_grapheme_range
+        )
+        if projected and (
+            source_range[0] < projected[-1][1][1]
+            or target_range[0] < projected[-1][2][1]
+        ):
+            previous, previous_source, previous_target = projected.pop()
+            projected.append(
+                (
+                    MatchOperation(
+                        kind=MatchOperationKind.SUBSTITUTION,
+                        source_grapheme_range=(
+                            previous.source_grapheme_range[0],
+                            operation.source_grapheme_range[1],
+                        ),
+                        target_grapheme_range=(
+                            previous.target_grapheme_range[0],
+                            operation.target_grapheme_range[1],
+                        ),
+                    ),
+                    (previous_source[0], max(previous_source[1], source_range[1])),
+                    (previous_target[0], max(previous_target[1], target_range[1])),
+                )
+            )
+            continue
+        projected.append((operation, source_range, target_range))
+
+    raw_operations: list[MatchOperation] = []
+    source_cursor = 0
+    target_cursor = 0
+    for comparison_operation, source_range, target_range in projected:
+        source_start, source_end = source_range
+        target_start, target_end = target_range
+        if source_cursor < source_start:
+            raw_operations.append(
+                MatchOperation(
+                    kind=MatchOperationKind.SOURCE_ONLY_DELETION,
+                    source_grapheme_range=(source_cursor, source_start),
+                    target_grapheme_range=(target_cursor, target_cursor),
+                )
+            )
+        if target_cursor < target_start:
+            raw_operations.append(
+                MatchOperation(
+                    kind=MatchOperationKind.TARGET_ONLY_INSERTION,
+                    source_grapheme_range=(source_start, source_start),
+                    target_grapheme_range=(target_cursor, target_start),
+                )
+            )
+        raw_operations.append(
+            MatchOperation(
+                kind=_projected_operation_kind(
+                    comparison_operation,
+                    source_range=source_range,
+                    target_range=target_range,
+                    source_view=source_view,
+                    target_view=target_view,
+                ),
+                source_grapheme_range=source_range,
+                target_grapheme_range=target_range,
+            )
+        )
+        source_cursor = source_end
+        target_cursor = target_end
+    source_count = len(split_graphemes(source_view.source_text))
+    target_count = len(split_graphemes(target_view.source_text))
+    if source_cursor < source_count:
+        raw_operations.append(
+            MatchOperation(
+                kind=MatchOperationKind.SOURCE_ONLY_DELETION,
+                source_grapheme_range=(source_cursor, source_count),
+                target_grapheme_range=(target_cursor, target_cursor),
+            )
+        )
+    if target_cursor < target_count:
+        raw_operations.append(
+            MatchOperation(
+                kind=MatchOperationKind.TARGET_ONLY_INSERTION,
+                source_grapheme_range=(source_count, source_count),
+                target_grapheme_range=(target_cursor, target_count),
+            )
+        )
+    return tuple(raw_operations)
+
+
+def _raw_range_for_comparison_range(
+    view: ComparisonView, comparison_range: tuple[int, int]
+) -> tuple[int, int]:
+    """Map a comparison range to a raw grapheme range or its raw boundary."""
+    start, end = comparison_range
+    if start == end:
+        if start == 0:
+            return 0, 0
+        previous = view.source_grapheme_map[start - 1]
+        boundary = max(previous) + 1
+        return boundary, boundary
+    mapped = tuple(
+        source_index
+        for indices in view.source_grapheme_map[start:end]
+        for source_index in indices
+    )
+    if not mapped:
+        boundary = _raw_range_for_comparison_range(view, (start, start))[0]
+        return boundary, boundary
+    return min(mapped), max(mapped) + 1
+
+
+def _projected_operation_kind(
+    comparison_operation: MatchOperation,
+    *,
+    source_range: tuple[int, int],
+    target_range: tuple[int, int],
+    source_view: ComparisonView,
+    target_view: ComparisonView,
+) -> MatchOperationKind:
+    """Choose a raw edit kind after normalized coordinates have been projected."""
+    source_consumed = source_range[0] < source_range[1]
+    target_consumed = target_range[0] < target_range[1]
+    if not source_consumed:
+        return MatchOperationKind.TARGET_ONLY_INSERTION
+    if not target_consumed:
+        return MatchOperationKind.SOURCE_ONLY_DELETION
+    source_start, source_end = comparison_operation.source_grapheme_range
+    target_start, target_end = comparison_operation.target_grapheme_range
+    if (
+        source_view.graphemes[source_start:source_end]
+        == target_view.graphemes[target_start:target_end]
+    ):
+        return MatchOperationKind.MATCH
+    return MatchOperationKind.SUBSTITUTION
+
+
+def _retain_local_alignment(
+    cells: list[list[tuple[float, tuple[MatchOperation, ...]] | None]],
+    source_index: int,
+    target_index: int,
+    cost: float,
+    operations: tuple[MatchOperation, ...],
+) -> None:
+    """Keep a deterministic cost-then-edit-kind candidate for a local state."""
+    current = cells[source_index][target_index]
+    candidate_key = (cost, tuple(operation.kind.value for operation in operations))
+    if current is None:
+        cells[source_index][target_index] = (cost, operations)
+        return
+    current_key = (current[0], tuple(operation.kind.value for operation in current[1]))
+    if candidate_key < current_key:
+        cells[source_index][target_index] = (cost, operations)

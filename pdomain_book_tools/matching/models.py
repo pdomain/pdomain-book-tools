@@ -283,6 +283,9 @@ class MatchContinuationReference(CanonicalModel):
     """Source-neutral immutable provenance projected from a continuation adapter."""
 
     continuation_id: str
+    evidence_artifact_id: str
+    evidence_artifact_path: str
+    evidence_sha256: str
     decision: str
     left_fragment_token_id: str
     right_fragment_token_id: str
@@ -295,6 +298,7 @@ class MatchContinuationReference(CanonicalModel):
 
     @field_validator(
         "continuation_id",
+        "evidence_artifact_id",
         "decision",
         "left_fragment_token_id",
         "right_fragment_token_id",
@@ -305,6 +309,19 @@ class MatchContinuationReference(CanonicalModel):
     def _validate_identifiers(cls, value: str, info: object) -> str:
         field_name = getattr(info, "field_name", "continuation field")
         return _validate_identifier(value, field_name=str(field_name))
+
+    @field_validator("evidence_sha256")
+    @classmethod
+    def _validate_evidence_hash(cls, value: str) -> str:
+        return _validate_sha256(value, field_name="evidence_sha256")
+
+    @field_validator("evidence_artifact_path")
+    @classmethod
+    def _validate_evidence_path(cls, value: str) -> str:
+        if not value or value.startswith("/") or ".." in value.split("/"):
+            msg = "evidence_artifact_path must be a confined relative path"
+            raise ValueError(msg)
+        return value
 
     @model_validator(mode="after")
     def _validate_reference(self) -> Self:
@@ -554,6 +571,7 @@ class MatchSearchEvidence(CanonicalModel):
     source_token_count: _StrictIndex
     target_token_count: _StrictIndex
     state_count: _StrictIndex
+    state_iteration_count: _StrictIndex
     transition_count: _StrictIndex
     max_state_count: _StrictIndex
     max_transition_count: _StrictIndex
@@ -565,6 +583,9 @@ class MatchSearchEvidence(CanonicalModel):
     def _validate_search_evidence(self) -> Self:
         if self.state_count < 1:
             msg = "search evidence state_count must be at least one"
+            raise ValueError(msg)
+        if self.state_iteration_count < 1:
+            msg = "search evidence state_iteration_count must be at least one"
             raise ValueError(msg)
         if self.max_state_count < 1 or self.max_transition_count < 1:
             msg = "search evidence bounds must be positive"

@@ -206,6 +206,9 @@ def _continuation_provenance_graph(*, right_fragment_text: str) -> MatchGraph:
         continuation_references=(
             MatchContinuationReference(
                 continuation_id="continuation-1",
+                evidence_artifact_id="pgdp-continuations",
+                evidence_artifact_path="continuations/continuation-1.json",
+                evidence_sha256="b" * 64,
                 decision="join_without_hyphen",
                 left_fragment_token_id="source-token",
                 right_fragment_token_id="source-token",
@@ -246,6 +249,18 @@ def test_graph_accepts_ordered_continuation_provenance_against_document_tokens()
 def test_graph_rejects_continuation_text_not_present_at_declared_token_range() -> None:
     with pytest.raises(ValidationError, match="continuation provenance"):
         _continuation_provenance_graph(right_fragment_text="b")
+
+
+def test_graph_content_id_rejects_tampered_continuation_evidence_pin() -> None:
+    graph = _continuation_provenance_graph(right_fragment_text="a")
+    payload = graph.model_dump(mode="json")
+    relation = payload["best_alternative"]["relations"][0]
+    relation["relation_id"] = None
+    relation["continuation_references"][0]["evidence_sha256"] = "c" * 64
+    payload["best_alternative"]["alternative_id"] = None
+
+    with pytest.raises(ValidationError, match="graph_id"):
+        MatchGraph.model_validate(payload)
 
 
 def test_search_evidence_requires_at_least_one_state() -> None:

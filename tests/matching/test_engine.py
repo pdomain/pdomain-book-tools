@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.matching import (
     ArtifactRange,
     MatchDocument,
@@ -23,6 +24,11 @@ from pdomain_book_tools.matching import (
     PgdpRoundContinuationEvidence,
     canonical_relation_path_bytes,
     match_documents,
+)
+from pdomain_book_tools.typography import (
+    OcrTokenRef,
+    align_tokens,
+    build_comparison_view,
 )
 
 
@@ -349,6 +355,24 @@ def test_quarantines_when_state_bound_is_exhausted() -> None:
     assert graph.search_evidence.partial_paths[0].target_tokens_consumed == 0
 
 
+def test_stops_state_search_at_the_configured_bound() -> None:
+    """A state cap must stop traversal instead of scanning the entire grid."""
+    token_texts = tuple("a" for _ in range(80))
+    graph = match_documents(
+        _document("source", *token_texts),
+        _document("target", *token_texts),
+        policy=_policy(max_state_count=2, max_transition_count=10_000),
+    )
+
+    assert not graph.accepted
+    assert MatchQuarantineReason.STATE_LIMIT_EXHAUSTED in graph.quarantine_reasons
+    assert graph.search_evidence is not None
+    assert graph.search_evidence.state_count == 2
+    assert graph.search_evidence.state_iteration_count <= 2
+    assert graph.search_evidence.transition_count <= 3
+    assert graph.search_evidence.partial_paths
+
+
 def test_quarantines_when_transition_bound_is_exhausted() -> None:
     graph = match_documents(
         _document("source", "a"),
@@ -374,9 +398,19 @@ def test_preserves_punctuation_and_unicode_grapheme_ranges() -> None:
 
     assert graph.accepted
     second_relation = graph.best_alternative.relations[1]
-    operation = second_relation.operations[0]
-    assert operation.source_grapheme_range == (0, 4)
-    assert operation.target_grapheme_range == (0, 4)
+    assert tuple(
+        (
+            operation.kind.value,
+            operation.source_grapheme_range,
+            operation.target_grapheme_range,
+        )
+        for operation in second_relation.operations
+    ) == (
+        ("match", (0, 1), (0, 1)),
+        ("match", (1, 2), (1, 2)),
+        ("match", (2, 3), (2, 3)),
+        ("match", (3, 4), (3, 4)),
+    )
     assert second_relation.source_comparison is not None
     assert second_relation.target_comparison is not None
     assert second_relation.source_comparison.source_grapheme_map == (
@@ -391,6 +425,64 @@ def test_preserves_punctuation_and_unicode_grapheme_ranges() -> None:
         (2,),
         (3,),
     )
+
+
+def test_emits_deterministic_grapheme_edits_and_ranks_minor_differences() -> None:
+    minor = match_documents(
+        _document("source", "cat"), _document("target", "cut"), policy=_policy()
+    )
+    unrelated = match_documents(
+        _document("source", "cat"), _document("target", "dog"), policy=_policy()
+    )
+
+    minor_relation = minor.best_alternative.relations[0]
+    assert tuple(operation.kind.value for operation in minor_relation.operations) == (
+        "match",
+        "substitution",
+        "match",
+    )
+    assert minor.best_alternative.total_cost == 1
+    assert unrelated.best_alternative.total_cost == 3
+    assert minor.best_alternative.total_cost < unrelated.best_alternative.total_cost
+
+
+def test_grapheme_edit_kinds_match_typography_alignment_for_a_simple_token() -> None:
+    graph = match_documents(
+        _document("source", "cat"), _document("target", "cut"), policy=_policy()
+    )
+    typography_alignment = align_tokens(
+        build_comparison_view("cat", casefold_all=True),
+        (
+            OcrTokenRef(
+                token_id="target-token",
+                text="cut",
+                confidence=0.99,
+                bbox=BoundingBox.from_ltrb(0, 0, 1, 1, is_normalized=False),
+                line_id="target-line",
+                grapheme_start=0,
+                grapheme_end=3,
+                alignment_id="unbound",
+            ),
+        ),
+    )
+
+    assert tuple(
+        operation.kind.value
+        for operation in graph.best_alternative.relations[0].operations
+    ) == tuple(edit.kind.value for edit in typography_alignment.best_path)
+
+
+def test_projects_casefold_expansions_to_raw_grapheme_ranges() -> None:
+    graph = match_documents(
+        _document("source", "ß"), _document("target", "ss"), policy=_policy()
+    )
+
+    relation = graph.best_alternative.relations[0]
+    assert graph.accepted
+    assert len(relation.operations) == 1
+    assert relation.operations[0].kind.value == "match"
+    assert relation.operations[0].source_grapheme_range == (0, 1)
+    assert relation.operations[0].target_grapheme_range == (0, 2)
 
 
 def test_attaches_resolved_pgdp_continuation_to_its_physical_relation() -> None:
@@ -414,7 +506,51 @@ def test_attaches_resolved_pgdp_continuation_to_its_physical_relation() -> None:
         "source-0",
         "source-1",
     )
+    reference = relation.continuation_references[0]
+    assert reference.evidence_artifact_id == "pgdp-continuations"
+    assert reference.evidence_artifact_path == (
+        f"continuations/{continuation.continuation_id}.json"
+    )
+    assert len(reference.evidence_sha256) == 64
     assert continuation.model_dump(mode="json") == original
+
+
+@pytest.mark.parametrize(
+    ("decision", "logical_text"),
+    [
+        (PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN, "Tamfar"),
+        (PgdpContinuationDecision.KEEP_HYPHEN, "Tam--far"),
+        (PgdpContinuationDecision.LEAVE_SEPARATE, "Tam-- far"),
+        (PgdpContinuationDecision.PRESERVE_PUNCTUATION, "Tam--far"),
+    ],
+)
+def test_resolved_pgdp_decision_selects_its_declared_logical_candidate(
+    decision: PgdpContinuationDecision, logical_text: str
+) -> None:
+    continuation = _resolved_continuation().model_copy(
+        update={
+            "logical_candidates": (
+                PgdpLogicalCandidate(text=logical_text, decision=decision),
+            ),
+            "decision": decision,
+        }
+    )
+
+    graph = match_documents(
+        _pgdp_source_document(),
+        _document("target", logical_text),
+        policy=_policy(),
+        pgdp_continuations=(continuation,),
+    )
+
+    relation = graph.best_alternative.relations[0]
+    assert graph.accepted
+    assert relation.continuation_references[0].decision == decision.value
+    assert graph.best_alternative.total_cost == 0
+    assert any(
+        warning.startswith(f"PGDP logical candidate {continuation.continuation_id}")
+        for warning in relation.warnings
+    )
 
 
 def test_quarantines_incompatible_pgdp_continuation_evidence() -> None:
