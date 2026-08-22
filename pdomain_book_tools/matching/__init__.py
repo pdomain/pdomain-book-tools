@@ -45,6 +45,7 @@ from pdomain_book_tools.matching.pgdp_continuations import (
     PgdpRound,
     PgdpRoundContinuationEvidence,
     PgdpUnmappedMarkerEvidence,
+    build_pgdp_surface_document,
     decode_pgdp_continuations,
 )
 
@@ -83,6 +84,7 @@ __all__ = [
     "PgdpRound",
     "PgdpRoundContinuationEvidence",
     "PgdpUnmappedMarkerEvidence",
+    "build_pgdp_surface_document",
     "canonical_relation_path_bytes",
     "decode_pgdp_continuations",
     "legacy_page_to_match_document",

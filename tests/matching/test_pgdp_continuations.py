@@ -14,12 +14,14 @@ from pdomain_book_tools.matching import (
     MatchLine,
     MatchPage,
     MatchToken,
+    PgdpContinuation,
     PgdpContinuationBoundary,
     PgdpContinuationDecision,
     PgdpContinuationQuarantineReason,
     PgdpMarkerEvidence,
     PgdpRound,
     PgdpUnmappedMarkerEvidence,
+    build_pgdp_surface_document,
     decode_pgdp_continuations,
 )
 from pdomain_book_tools.typography.spans import split_graphemes
@@ -552,3 +554,154 @@ def test_continuation_rejects_round_evidence_out_of_marker_order() -> None:
                 "round_evidence": tuple(reversed(continuation.round_evidence)),
             }
         )
+
+
+def _resolved_keep_hyphen_continuation() -> PgdpContinuation:
+    f2, p3 = (
+        _round_document(PgdpRound.F2, (("001.png", ("bread-*winners",)),))[0],
+        _round_document(PgdpRound.P3, (("001.png", ("bread-*winners",)),))[0],
+    )
+    continuation = decode_pgdp_continuations(f2, p3).continuations[0]
+    return continuation.model_copy(
+        update={
+            "logical_candidates": (continuation.logical_candidates[1],),
+            "decision": PgdpContinuationDecision.KEEP_HYPHEN,
+        }
+    )
+
+
+def test_continuation_rejects_resolved_candidate_with_a_different_decision() -> None:
+    continuation = _resolved_keep_hyphen_continuation()
+
+    with pytest.raises(ValidationError, match="resolved candidate decision"):
+        type(continuation).model_validate(
+            {
+                **continuation.model_dump(mode="python"),
+                "continuation_id": None,
+                "decision": PgdpContinuationDecision.PRESERVE_PUNCTUATION,
+            }
+        )
+
+
+def test_surface_document_removes_inline_marker_without_changing_input() -> None:
+    f2, _f2_bytes = _round_document(PgdpRound.F2, (("001.png", ("bread-*winners",)),))
+    continuation = _resolved_keep_hyphen_continuation()
+    document_before = f2.model_dump(mode="json")
+    continuation_before = continuation.model_dump(mode="json")
+
+    surface = build_pgdp_surface_document(f2, (continuation,))
+
+    token = surface.pages[0].lines[0].tokens[0]
+    assert token.token_id == f2.pages[0].lines[0].tokens[0].token_id
+    assert token.text == "bread-winners"
+    assert tuple(source_range.byte_start for source_range in token.artifact_ranges) == (
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+    )
+    assert f2.model_dump(mode="json") == document_before
+    assert continuation.model_dump(mode="json") == continuation_before
+
+
+def test_surface_document_removes_cross_page_markers_and_preserves_topology() -> None:
+    f2, _f2_bytes = _round_document(
+        PgdpRound.F2,
+        (("058.png", ("sim-*",)), ("059.png", ("*plicity",))),
+    )
+    p3, _p3_bytes = _round_document(
+        PgdpRound.P3,
+        (("058.png", ("sim-*",)), ("059.png", ("*plicity",))),
+    )
+    continuation = (
+        decode_pgdp_continuations(f2, p3)
+        .continuations[0]
+        .model_copy(
+            update={
+                "logical_candidates": (
+                    decode_pgdp_continuations(f2, p3)
+                    .continuations[0]
+                    .logical_candidates[1],
+                ),
+                "decision": PgdpContinuationDecision.KEEP_HYPHEN,
+            }
+        )
+    )
+
+    surface = build_pgdp_surface_document(f2, (continuation,))
+
+    assert tuple(page.page_id for page in surface.pages) == ("058.png", "059.png")
+    assert (
+        frozenset(
+            token.token_id
+            for page in surface.pages
+            for line in page.lines
+            for token in line.tokens
+        )
+        == f2.token_ids()
+    )
+    assert surface.pages[0].lines[0].tokens[0].text == "sim-"
+    assert surface.pages[1].lines[0].tokens[0].text == "plicity"
+    assert tuple(
+        source_range.byte_start
+        for source_range in surface.pages[0].lines[0].tokens[0].artifact_ranges
+    ) == (0, 1, 2, 3)
+    assert tuple(
+        source_range.byte_start
+        for source_range in surface.pages[1].lines[0].tokens[0].artifact_ranges
+    ) == (7, 8, 9, 10, 11, 12, 13)
+
+
+def test_surface_document_rejects_ambiguous_and_tampered_evidence() -> None:
+    f2, _f2_bytes = _round_document(PgdpRound.F2, (("001.png", ("bread-*winners",)),))
+    ambiguous = decode_pgdp_continuations(
+        f2,
+        _round_document(PgdpRound.P3, (("001.png", ("bread-*winners",)),))[0],
+    ).continuations[0]
+
+    with pytest.raises(ValueError, match="ambiguous"):
+        build_pgdp_surface_document(f2, (ambiguous,))
+
+    tampered = f2.model_copy(
+        update={
+            "pages": (
+                f2.pages[0].model_copy(
+                    update={
+                        "lines": (
+                            f2.pages[0]
+                            .lines[0]
+                            .model_copy(
+                                update={
+                                    "tokens": (
+                                        MatchToken(
+                                            token_id=f2.pages[0]
+                                            .lines[0]
+                                            .tokens[0]
+                                            .token_id,
+                                            text="bread-?winners",
+                                            artifact_ranges=f2.pages[0]
+                                            .lines[0]
+                                            .tokens[0]
+                                            .artifact_ranges,
+                                        ),
+                                    )
+                                }
+                            ),
+                        )
+                    }
+                ),
+            )
+        }
+    )
+
+    with pytest.raises(ValueError, match="does not match"):
+        build_pgdp_surface_document(tampered, (_resolved_keep_hyphen_continuation(),))

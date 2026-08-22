@@ -10,7 +10,13 @@ from typing import TYPE_CHECKING, Self, override
 
 from pydantic import Field, field_validator, model_validator
 
-from pdomain_book_tools.matching.models import ArtifactRange, MatchDocument, MatchToken
+from pdomain_book_tools.matching.models import (
+    ArtifactRange,
+    MatchDocument,
+    MatchLine,
+    MatchPage,
+    MatchToken,
+)
 from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
 
 if TYPE_CHECKING:
@@ -243,6 +249,9 @@ class PgdpContinuation(CanonicalModel):
         elif len(self.logical_candidates) != 1:
             msg = "resolved continuations require exactly one logical candidate"
             raise ValueError(msg)
+        elif self.logical_candidates[0].decision is not self.decision:
+            msg = "resolved candidate decision must equal the continuation decision"
+            raise ValueError(msg)
         expected = _continuation_id(self.model_dump(mode="json"))
         if self.continuation_id is not None and self.continuation_id != expected:
             msg = "continuation_id does not match the canonical payload"
@@ -359,6 +368,195 @@ def decode_pgdp_continuations(
         continuations=continuations,
         quarantined_markers=f2_quarantine + p3_quarantine,
     )
+
+
+def build_pgdp_surface_document(
+    document: MatchDocument,
+    continuations: tuple[PgdpContinuation, ...],
+) -> MatchDocument:
+    """Return a source-preserving matching surface with PGDP markers removed.
+
+    The adapter selects one round record for each continuation from stable token
+    IDs. It changes neither physical token topology nor source ranges other
+    than removing exact ranges whose source grapheme is a PGDP ``*`` marker.
+    """
+    token_locations = _token_locations(document)
+    marker_ranges_by_token: dict[str, set[bytes]] = {}
+    for continuation in continuations:
+        if continuation.decision is PgdpContinuationDecision.AMBIGUOUS:
+            msg = "cannot build a matching surface from an ambiguous continuation"
+            raise ValueError(msg)
+        evidence = _select_round_evidence(continuation, token_locations)
+        if evidence is None:
+            continue
+        _validate_round_evidence_against_document(evidence, token_locations)
+        _record_marker_ranges(
+            evidence,
+            token_locations,
+            marker_ranges_by_token,
+        )
+    pages = tuple(
+        MatchPage(
+            page_id=page.page_id,
+            lines=tuple(
+                MatchLine(
+                    line_id=line.line_id,
+                    tokens=tuple(
+                        _surface_token(
+                            token,
+                            marker_ranges_by_token.get(token.token_id, set()),
+                        )
+                        for token in line.tokens
+                    ),
+                )
+                for line in page.lines
+            ),
+        )
+        for page in document.pages
+    )
+    return MatchDocument(
+        document_id=document.document_id,
+        pages=pages,
+        warnings=document.warnings,
+    )
+
+
+def _token_locations(document: MatchDocument) -> dict[str, MatchToken]:
+    """Return stable document tokens and reject duplicate source ranges."""
+    locations: dict[str, MatchToken] = {}
+    source_ranges: set[bytes] = set()
+    for page in document.pages:
+        for line in page.lines:
+            for token in line.tokens:
+                _validated_token_graphemes(token)
+                for source_range in token.artifact_ranges:
+                    range_key = _range_key(source_range)
+                    if range_key in source_ranges:
+                        msg = "surface document source ranges must be globally unique"
+                        raise ValueError(msg)
+                    source_ranges.add(range_key)
+                locations[token.token_id] = token
+    return locations
+
+
+def _select_round_evidence(
+    continuation: PgdpContinuation,
+    token_locations: Mapping[str, MatchToken],
+) -> PgdpRoundContinuationEvidence | None:
+    """Select exactly one evidence record whose physical token IDs are present."""
+    selected: list[PgdpRoundContinuationEvidence] = []
+    for evidence in continuation.round_evidence:
+        evidence_token_ids = {
+            evidence.left_fragment.token_id,
+            evidence.right_fragment.token_id,
+        }
+        present_ids = evidence_token_ids & set(token_locations)
+        if present_ids and present_ids != evidence_token_ids:
+            msg = "continuation evidence only partially matches the surface document"
+            raise ValueError(msg)
+        if present_ids == evidence_token_ids:
+            selected.append(evidence)
+    if len(selected) > 1:
+        msg = "continuation evidence matches multiple rounds in one surface document"
+        raise ValueError(msg)
+    return selected[0] if selected else None
+
+
+def _validate_round_evidence_against_document(
+    evidence: PgdpRoundContinuationEvidence,
+    token_locations: Mapping[str, MatchToken],
+) -> None:
+    """Require retained fragments to be exact contiguous document graphemes."""
+    for fragment in (evidence.left_fragment, evidence.right_fragment):
+        token = token_locations[fragment.token_id]
+        token_graphemes = _validated_token_graphemes(token)
+        fragment_graphemes = split_graphemes(fragment.text)
+        if not _contains_fragment(
+            token_graphemes,
+            token.artifact_ranges,
+            fragment_graphemes,
+            fragment.grapheme_ranges,
+        ):
+            msg = "continuation fragment does not match the surface document"
+            raise ValueError(msg)
+
+
+def _record_marker_ranges(
+    evidence: PgdpRoundContinuationEvidence,
+    token_locations: Mapping[str, MatchToken],
+    marker_ranges_by_token: dict[str, set[bytes]],
+) -> None:
+    """Record exact marker ranges after proving that each source grapheme is ``*``."""
+    range_locations: dict[bytes, tuple[str, str]] = {}
+    for token_id, token in token_locations.items():
+        for grapheme, source_range in zip(
+            _validated_token_graphemes(token), token.artifact_ranges, strict=True
+        ):
+            range_locations[_range_key(source_range)] = (token_id, grapheme)
+    for marker_range in evidence.marker_evidence.marker_ranges:
+        marker_key = _range_key(marker_range)
+        location = range_locations.get(marker_key)
+        if location is None or location[1] != "*":
+            msg = "continuation marker does not match the surface document"
+            raise ValueError(msg)
+        token_id = location[0]
+        token_markers = marker_ranges_by_token.setdefault(token_id, set())
+        if marker_key in token_markers:
+            msg = "surface document has conflicting continuation marker evidence"
+            raise ValueError(msg)
+        token_markers.add(marker_key)
+
+
+def _surface_token(token: MatchToken, marker_ranges: set[bytes]) -> MatchToken:
+    """Remove selected marker graphemes while preserving token ID and range order."""
+    graphemes = _validated_token_graphemes(token)
+    retained = tuple(
+        (grapheme, source_range)
+        for grapheme, source_range in zip(graphemes, token.artifact_ranges, strict=True)
+        if _range_key(source_range) not in marker_ranges
+    )
+    if not retained:
+        msg = "surface marker removal would leave an empty physical token"
+        raise ValueError(msg)
+    return MatchToken(
+        token_id=token.token_id,
+        text="".join(grapheme for grapheme, _source_range in retained),
+        artifact_ranges=tuple(source_range for _grapheme, source_range in retained),
+    )
+
+
+def _validated_token_graphemes(token: MatchToken) -> tuple[str, ...]:
+    """Return token graphemes only when every one has an exact source range."""
+    graphemes = split_graphemes(token.text)
+    if len(graphemes) != len(token.artifact_ranges):
+        msg = "surface document tokens require one source range per grapheme"
+        raise ValueError(msg)
+    return graphemes
+
+
+def _contains_fragment(
+    token_graphemes: tuple[str, ...],
+    token_ranges: tuple[ArtifactRange, ...],
+    fragment_graphemes: tuple[str, ...],
+    fragment_ranges: tuple[ArtifactRange, ...],
+) -> bool:
+    """Return whether one fragment is an exact contiguous token subsequence."""
+    fragment_length = len(fragment_graphemes)
+    if fragment_length == 0 or fragment_length != len(fragment_ranges):
+        return False
+    for start in range(len(token_graphemes) - fragment_length + 1):
+        end = start + fragment_length
+        if (
+            token_graphemes[start:end] == fragment_graphemes
+            and token_ranges[start:end] == fragment_ranges
+        ):
+            return True
+    return False
+
+
+def _range_key(source_range: ArtifactRange) -> bytes:
+    """Return a collision-free immutable key for one exact source range."""
+    return source_range.to_json_bytes()
 
 
 def _decode_round(
