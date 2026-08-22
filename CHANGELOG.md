@@ -14,6 +14,15 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+- **feat(matching): immutable PGDP-aware match graph and book manifests** — the
+  public `pdomain_book_tools.matching` API now exposes immutable,
+  source-neutral documents, bounded deterministic match graphs, reversible PGDP
+  continuation evidence, and an opt-in legacy projection. Continuations retain
+  F2/P3 marker locations and exact source ranges, keep ambiguous hyphen choices
+  in review, and preserve punctuation such as `Tam--*` / `*far`. The public
+  `BookLabelingManifest` contract now pins ordered page bundles, confined
+  materialization paths, taxonomy identity, and cross-page match references.
+
 - **fix(typography): page-global correction chains** — review contract 0.25.0
   validates page, image, and page-head bases in bundle order while preserving
   per-word revision, supersedes, text, and word-revision lineage. This permits
