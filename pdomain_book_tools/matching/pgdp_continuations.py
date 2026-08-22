@@ -123,6 +123,22 @@ class PgdpLogicalCandidate(CanonicalModel):
         return value
 
 
+class PgdpRoundContinuationEvidence(CanonicalModel):
+    """One round's complete physical fragment and marker evidence."""
+
+    round: PgdpRound
+    left_fragment: PgdpPhysicalFragment
+    right_fragment: PgdpPhysicalFragment
+    marker_evidence: PgdpMarkerEvidence
+
+    @model_validator(mode="after")
+    def _validate_round(self) -> PgdpRoundContinuationEvidence:
+        if self.marker_evidence.round is not self.round:
+            msg = "round continuation marker evidence must use the declared round"
+            raise ValueError(msg)
+        return self
+
+
 class PgdpContinuation(CanonicalModel):
     """One reversible PGDP physical-continuation edge."""
 
@@ -130,6 +146,7 @@ class PgdpContinuation(CanonicalModel):
     right_fragment: PgdpPhysicalFragment
     boundary: PgdpContinuationBoundary
     marker_evidence: tuple[PgdpMarkerEvidence, ...]
+    round_evidence: tuple[PgdpRoundContinuationEvidence, ...]
     logical_candidates: tuple[PgdpLogicalCandidate, ...]
     decision: PgdpContinuationDecision
     quarantine_reasons: tuple[PgdpContinuationQuarantineReason, ...] = ()
@@ -142,6 +159,16 @@ class PgdpContinuation(CanonicalModel):
             raise ValueError(msg)
         if len(set(rounds)) != len(rounds):
             msg = "continuations allow one marker evidence record per round"
+            raise ValueError(msg)
+        evidence_rounds = tuple(evidence.round for evidence in self.round_evidence)
+        if not evidence_rounds:
+            msg = "continuations require complete per-round evidence"
+            raise ValueError(msg)
+        if len(set(evidence_rounds)) != len(evidence_rounds):
+            msg = "continuations allow one complete evidence record per round"
+            raise ValueError(msg)
+        if set(evidence_rounds) != set(rounds):
+            msg = "continuation marker and complete evidence rounds must agree"
             raise ValueError(msg)
         if not self.logical_candidates:
             msg = "continuations require at least one logical candidate"
@@ -215,6 +242,7 @@ class _LocatedToken:
     token_index: int
     document_index: int
     grapheme_ranges: tuple[ArtifactRange, ...] | None
+    page_marker_ordinals: tuple[int | None, ...]
 
 
 @dataclass(frozen=True)
@@ -230,13 +258,10 @@ class _EdgeAnchor:
     """Round-independent physical location for F2/P3 edge reconciliation."""
 
     left_page_id: str
-    left_line_id: str
-    left_token_index: int
     right_page_id: str
-    right_line_id: str
-    right_token_index: int
     boundary: PgdpContinuationBoundary
-    marker_index: int
+    marker_page_id: str
+    marker_page_ordinal: int
 
 
 def decode_pgdp_continuations(
@@ -324,8 +349,16 @@ def _located_tokens(
     tokens: list[_LocatedToken] = []
     document_index = 0
     for page_index, page in enumerate(document.pages):
+        page_marker_ordinal = 0
         for line_index, line in enumerate(page.lines):
             for token_index, token in enumerate(line.tokens):
+                marker_ordinals: list[int | None] = []
+                for grapheme in split_graphemes(token.text):
+                    if grapheme == "*":
+                        marker_ordinals.append(page_marker_ordinal)
+                        page_marker_ordinal += 1
+                    else:
+                        marker_ordinals.append(None)
                 tokens.append(
                     _LocatedToken(
                         round=round_,
@@ -337,6 +370,7 @@ def _located_tokens(
                         token_index=token_index,
                         document_index=document_index,
                         grapheme_ranges=_token_grapheme_ranges(token),
+                        page_marker_ordinals=tuple(marker_ordinals),
                     )
                 )
                 document_index += 1
@@ -380,7 +414,7 @@ def _inline_edge(
         right,
         boundary,
         marker,
-        _edge_anchor(located, located, boundary, marker_index),
+        _edge_anchor(located, located, located, boundary, marker_index),
     )
 
 
@@ -472,7 +506,7 @@ def _trailing_edge(
             right,
             boundary,
             marker_evidence,
-            _edge_anchor(located, next_token, boundary, marker_index),
+            _edge_anchor(located, located, next_token, boundary, marker_index),
         ),
         None,
         consumed_leading,
@@ -526,7 +560,7 @@ def _leading_edge(
             right,
             boundary,
             marker,
-            _edge_anchor(previous, located, boundary, marker_index),
+            _edge_anchor(located, previous, located, boundary, marker_index),
         ),
         None,
     )
@@ -565,6 +599,14 @@ def _round_edge(
         right_fragment=right,
         boundary=boundary,
         marker_evidence=(marker,),
+        round_evidence=(
+            PgdpRoundContinuationEvidence(
+                round=marker.round,
+                left_fragment=left,
+                right_fragment=right,
+                marker_evidence=marker,
+            ),
+        ),
         logical_candidates=candidates,
         decision=decision,
     )
@@ -572,20 +614,22 @@ def _round_edge(
 
 
 def _edge_anchor(
+    marker: _LocatedToken,
     left: _LocatedToken,
     right: _LocatedToken,
     boundary: PgdpContinuationBoundary,
     marker_index: int,
 ) -> _EdgeAnchor:
+    marker_page_ordinal = marker.page_marker_ordinals[marker_index]
+    if marker_page_ordinal is None:
+        msg = "continuation anchor requires a marker grapheme"
+        raise ValueError(msg)
     return _EdgeAnchor(
         left_page_id=left.page_id,
-        left_line_id=left.line_id,
-        left_token_index=left.token_index,
         right_page_id=right.page_id,
-        right_line_id=right.line_id,
-        right_token_index=right.token_index,
         boundary=boundary,
-        marker_index=marker_index,
+        marker_page_id=marker.page_id,
+        marker_page_ordinal=marker_page_ordinal,
     )
 
 
@@ -602,6 +646,10 @@ def _logical_candidates(
                 PgdpLogicalCandidate(
                     text=left + right,
                     decision=PgdpContinuationDecision.KEEP_HYPHEN,
+                ),
+                PgdpLogicalCandidate(
+                    text=f"{left} {right}",
+                    decision=PgdpContinuationDecision.LEAVE_SEPARATE,
                 ),
             ),
             PgdpContinuationDecision.AMBIGUOUS,
@@ -625,6 +673,8 @@ def _boundary_between(
     if left.page_id == right.page_id:
         if left.line_id == right.line_id:
             return PgdpContinuationBoundary.SAME_LINE
+        if right.line_index != left.line_index + 1:
+            return None
         return PgdpContinuationBoundary.LINE
     if right.page_index != left.page_index + 1:
         return None
@@ -696,8 +746,10 @@ def _reconcile_rounds(
                 _merge_round_edges(f2_edge.continuation, p3_edge.continuation)
             )
         elif conflicting_index is not None:
-            unmatched_p3.pop(conflicting_index)
-            continuations.append(_with_quarantine(f2_edge.continuation))
+            p3_edge = unmatched_p3.pop(conflicting_index)
+            continuations.append(
+                _with_quarantine(f2_edge.continuation, p3_edge.continuation)
+            )
         else:
             continuations.append(f2_edge.continuation)
     continuations.extend(edge.continuation for edge in unmatched_p3)
@@ -738,19 +790,21 @@ def _merge_round_edges(f2: PgdpContinuation, p3: PgdpContinuation) -> PgdpContin
         right_fragment=f2.right_fragment,
         boundary=f2.boundary,
         marker_evidence=f2.marker_evidence + p3.marker_evidence,
+        round_evidence=f2.round_evidence + p3.round_evidence,
         logical_candidates=f2.logical_candidates,
         decision=f2.decision,
         quarantine_reasons=f2.quarantine_reasons + p3.quarantine_reasons,
     )
 
 
-def _with_quarantine(continuation: PgdpContinuation) -> PgdpContinuation:
+def _with_quarantine(f2: PgdpContinuation, p3: PgdpContinuation) -> PgdpContinuation:
     return PgdpContinuation(
-        left_fragment=continuation.left_fragment,
-        right_fragment=continuation.right_fragment,
-        boundary=continuation.boundary,
-        marker_evidence=continuation.marker_evidence,
-        logical_candidates=continuation.logical_candidates,
-        decision=continuation.decision,
+        left_fragment=f2.left_fragment,
+        right_fragment=f2.right_fragment,
+        boundary=f2.boundary,
+        marker_evidence=f2.marker_evidence + p3.marker_evidence,
+        round_evidence=f2.round_evidence + p3.round_evidence,
+        logical_candidates=f2.logical_candidates,
+        decision=f2.decision,
         quarantine_reasons=(PgdpContinuationQuarantineReason.ROUND_CONFLICT,),
     )

@@ -28,6 +28,7 @@ from pdomain_book_tools.matching.pgdp_continuations import (
     PgdpPhysicalFragment,
     PgdpQuarantinedMarker,
     PgdpRound,
+    PgdpRoundContinuationEvidence,
     PgdpUnmappedMarkerEvidence,
     decode_pgdp_continuations,
 )
@@ -56,6 +57,7 @@ __all__ = [
     "PgdpPhysicalFragment",
     "PgdpQuarantinedMarker",
     "PgdpRound",
+    "PgdpRoundContinuationEvidence",
     "PgdpUnmappedMarkerEvidence",
     "decode_pgdp_continuations",
 ]

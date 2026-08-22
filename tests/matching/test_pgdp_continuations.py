@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 import pytest
 
@@ -52,16 +53,21 @@ def _round_document(
                     )
                 )
                 grapheme_byte_offset += len(grapheme_bytes)
+            tokens = (
+                (
+                    MatchToken(
+                        token_id=f"{artifact_id}-{page_id}-line-{line_index + 1}",
+                        text=text,
+                        artifact_ranges=tuple(artifact_ranges),
+                    ),
+                )
+                if text
+                else ()
+            )
             match_lines.append(
                 MatchLine(
                     line_id=f"{page_id}-line-{line_index + 1}",
-                    tokens=(
-                        MatchToken(
-                            token_id=(f"{artifact_id}-{page_id}-line-{line_index + 1}"),
-                            text=text,
-                            artifact_ranges=tuple(artifact_ranges),
-                        ),
-                    ),
+                    tokens=tokens,
                 )
             )
             byte_offset += len(text_bytes) + 1
@@ -93,7 +99,7 @@ def _decode(
             (("001", ("bread-*winners",)),),
             "bread-",
             "winners",
-            ("breadwinners", "bread-winners"),
+            ("breadwinners", "bread-winners", "bread- winners"),
             PgdpContinuationBoundary.SAME_LINE,
             PgdpContinuationDecision.AMBIGUOUS,
         ),
@@ -101,7 +107,7 @@ def _decode(
             (("058", ("sim-*",)), ("059", ("*plicity",))),
             "sim-",
             "plicity",
-            ("simplicity", "sim-plicity"),
+            ("simplicity", "sim-plicity", "sim- plicity"),
             PgdpContinuationBoundary.PAGE,
             PgdpContinuationDecision.AMBIGUOUS,
         ),
@@ -109,7 +115,7 @@ def _decode(
             (("062", ("ad-*",)), ("063", ("*vantages",))),
             "ad-",
             "vantages",
-            ("advantages", "ad-vantages"),
+            ("advantages", "ad-vantages", "ad- vantages"),
             PgdpContinuationBoundary.PAGE,
             PgdpContinuationDecision.AMBIGUOUS,
         ),
@@ -212,6 +218,14 @@ def test_decoder_quarantines_round_conflicts() -> None:
     assert result.continuations[0].quarantine_reasons == (
         PgdpContinuationQuarantineReason.ROUND_CONFLICT,
     )
+    assert result.continuations[0].round_evidence[0].right_fragment.text == "winners"
+    assert result.continuations[0].round_evidence[1].right_fragment.text == "losers"
+    assert tuple(
+        evidence.round for evidence in result.continuations[0].marker_evidence
+    ) == (
+        PgdpRound.F2,
+        PgdpRound.P3,
+    )
 
 
 def test_decoder_quarantines_empty_fragments() -> None:
@@ -294,3 +308,158 @@ def test_decoder_reconciles_repeated_text_by_physical_structure() -> None:
     assert result.continuations[1].marker_evidence[1].marker_ranges == (
         page_two_marker,
     )
+
+
+def test_decoder_reconciles_tokenized_rounds_by_page_local_marker_ordinal() -> None:
+    f2, _f2_bytes = _round_document(PgdpRound.F2, (("001", ("bread-*winners",)),))
+    p3, _p3_bytes = _round_document(PgdpRound.P3, (("001", ("bread-*winners",)),))
+    p3_token = p3.pages[0].lines[0].tokens[0]
+    split_p3 = p3.model_copy(
+        update={
+            "pages": (
+                p3.pages[0].model_copy(
+                    update={
+                        "lines": (
+                            p3.pages[0]
+                            .lines[0]
+                            .model_copy(
+                                update={
+                                    "tokens": (
+                                        MatchToken(
+                                            token_id="p3-left",
+                                            text="bread-",
+                                            artifact_ranges=p3_token.artifact_ranges[
+                                                :6
+                                            ],
+                                        ),
+                                        MatchToken(
+                                            token_id="p3-right",
+                                            text="*winners",
+                                            artifact_ranges=p3_token.artifact_ranges[
+                                                6:
+                                            ],
+                                        ),
+                                    )
+                                }
+                            ),
+                        )
+                    }
+                ),
+            )
+        }
+    )
+
+    result = decode_pgdp_continuations(f2, split_p3)
+
+    assert len(result.continuations) == 1
+    assert tuple(
+        evidence.round for evidence in result.continuations[0].round_evidence
+    ) == (
+        PgdpRound.F2,
+        PgdpRound.P3,
+    )
+
+
+def test_decoder_quarantines_a_marker_separated_by_a_blank_line() -> None:
+    result, _f2_bytes, _p3_bytes = _decode((("001", ("alpha-*", "", "*omega")),))
+
+    assert result.continuations == ()
+    assert {marker.reason for marker in result.quarantined_markers} == {
+        PgdpContinuationQuarantineReason.NONADJACENT_MARKERS
+    }
+
+
+def test_visible_hyphen_has_a_leave_separate_candidate() -> None:
+    result, _f2_bytes, _p3_bytes = _decode((("001", ("bread-*winners",)),))
+
+    assert tuple(
+        candidate.decision for candidate in result.continuations[0].logical_candidates
+    ) == (
+        PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN,
+        PgdpContinuationDecision.KEEP_HYPHEN,
+        PgdpContinuationDecision.LEAVE_SEPARATE,
+    )
+    assert result.continuations[0].logical_candidates[2].text == "bread- winners"
+
+
+def _json_round_document(round_: PgdpRound, payload: bytes) -> MatchDocument:
+    """Build a page document whose ranges point into a raw JSON payload."""
+    decoded = json.loads(payload)
+    pages: list[MatchPage] = []
+    grapheme_offset = 0
+    for page_key, text in decoded.items():
+        encoded_text = text.encode("utf-8")
+        encoded_value = b'"' + encoded_text + b'"'
+        value_start = payload.index(encoded_value) + 1
+        ranges: list[ArtifactRange] = []
+        byte_offset = value_start
+        for grapheme_index, grapheme in enumerate(split_graphemes(text)):
+            encoded_grapheme = grapheme.encode("utf-8")
+            ranges.append(
+                ArtifactRange(
+                    artifact_id=round_.value,
+                    artifact_sha256=hashlib.sha256(payload).hexdigest(),
+                    byte_start=byte_offset,
+                    byte_end=byte_offset + len(encoded_grapheme),
+                    grapheme_start=grapheme_offset + grapheme_index,
+                    grapheme_end=grapheme_offset + grapheme_index + 1,
+                )
+            )
+            byte_offset += len(encoded_grapheme)
+        pages.append(
+            MatchPage(
+                page_id=page_key,
+                lines=(
+                    MatchLine(
+                        line_id=f"{page_key}-line-1",
+                        tokens=(
+                            MatchToken(
+                                token_id=f"{round_.value}-{page_key}-token-1",
+                                text=text,
+                                artifact_ranges=tuple(ranges),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        )
+        grapheme_offset += len(split_graphemes(text))
+    return MatchDocument(document_id=f"{round_.value}-json", pages=tuple(pages))
+
+
+def test_json_page_payload_ranges_are_immutable_and_slice_exact_graphemes() -> None:
+    f2_payload = b'{"058.png":"sim-*","059.png":"*plicity"}'
+    p3_payload = b'{"058.png":"sim-*","059.png":"*plicity"}'
+    f2 = _json_round_document(PgdpRound.F2, f2_payload)
+    p3 = _json_round_document(PgdpRound.P3, p3_payload)
+    f2_before = f2.model_dump(mode="json")
+    p3_before = p3.model_dump(mode="json")
+    f2_bytes_before = bytes(f2_payload)
+    p3_bytes_before = bytes(p3_payload)
+
+    result = decode_pgdp_continuations(f2, p3)
+
+    assert f2.model_dump(mode="json") == f2_before
+    assert p3.model_dump(mode="json") == p3_before
+    assert f2_payload == f2_bytes_before
+    assert p3_payload == p3_bytes_before
+    continuation = result.continuations[0]
+    source_payloads = {PgdpRound.F2: f2_payload, PgdpRound.P3: p3_payload}
+    for evidence in continuation.round_evidence:
+        for fragment in (evidence.left_fragment, evidence.right_fragment):
+            for grapheme, source_range in zip(
+                split_graphemes(fragment.text), fragment.grapheme_ranges, strict=True
+            ):
+                assert (
+                    source_payloads[evidence.round][
+                        source_range.byte_start : source_range.byte_end
+                    ].decode("utf-8")
+                    == grapheme
+                )
+        for source_range in evidence.marker_evidence.marker_ranges:
+            assert (
+                source_payloads[evidence.round][
+                    source_range.byte_start : source_range.byte_end
+                ]
+                == b"*"
+            )
