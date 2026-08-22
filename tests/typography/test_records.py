@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 from datetime import UTC, datetime
 
 import pytest
@@ -9,8 +10,11 @@ from pydantic import ValidationError
 
 from pdomain_book_tools.geometry import BoundingBox, Point
 from pdomain_book_tools.typography import (
+    TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION,
+    TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION,
     AlignmentEvidence,
     ArtifactRef,
+    ArtifactReference,
     ArtifactSource,
     ConfidenceTier,
     Grapheme,
@@ -148,6 +152,170 @@ def test_page_record_preserves_full_f2_artifact_bytes() -> None:
     assert decoded.to_json_bytes() == encoded
 
 
+def test_legacy_embedded_f2_wire_omits_external_reference_field() -> None:
+    payload = json.loads(_record().to_json_bytes())
+
+    assert payload["schema_version"] == TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION
+    assert "external_f2_artifact" not in payload
+
+
+def test_page_record_accepts_external_f2_artifact_without_embedded_bytes() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+        media_type="application/json",
+    ).model_dump(mode="json")
+
+    record = TypographyPageRecord.model_validate(data)
+
+    assert record.original_f2_artifact_base64 is None
+    assert record.external_f2_artifact is not None
+    assert record.external_f2_artifact.sha256 == _F2_SHA256
+    assert record.revalidate_external_f2_artifact(_F2_BYTES) is None
+    assert (
+        json.loads(record.to_json_bytes())["external_f2_artifact"]["sha256"]
+        == _F2_SHA256
+    )
+
+
+def test_legacy_schema_rejects_an_external_f2_artifact() -> None:
+    data = _record().model_dump(mode="json")
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match=r"schema_version 1\.0"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_external_schema_requires_an_external_f2_artifact() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+
+    with pytest.raises(ValidationError, match=r"schema_version 1\.1"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_external_f2_record_model_copy_revalidates_artifact_reference() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+    record = TypographyPageRecord.model_validate(data)
+    corrupted_reference = ArtifactReference.model_construct(
+        artifact_id="",
+        relative_path="../F2.json",
+        sha256=_F2_SHA256,
+        media_type=None,
+    )
+
+    with pytest.raises(ValidationError, match="artifact_id"):
+        record.model_copy(update={"external_f2_artifact": corrupted_reference})
+
+
+def test_external_f2_revalidation_reconstructs_corrupted_record() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+    record = TypographyPageRecord.model_validate(data)
+    corrupted_reference = ArtifactReference.model_construct(
+        artifact_id="",
+        relative_path="../F2.json",
+        sha256=_F2_SHA256,
+        media_type=None,
+    )
+    object.__setattr__(record, "external_f2_artifact", corrupted_reference)
+
+    with pytest.raises(ValidationError, match="artifact_id"):
+        record.revalidate_external_f2_artifact(_F2_BYTES)
+
+
+def test_external_f2_record_rejects_reference_hash_drift() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256="0" * 64,
+    ).model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match=r"external_f2_artifact\.sha256"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_external_f2_record_revalidates_its_lexical_range_against_supplied_bytes() -> (
+    None
+):
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+    data["f2_page_value_lexical_byte_range"] = [12, 20]
+
+    record = TypographyPageRecord.model_validate(data)
+
+    with pytest.raises(ValueError, match="lexical"):
+        record.revalidate_external_f2_artifact(_F2_BYTES)
+
+
+def test_page_record_rejects_embedded_and_external_f2_artifacts_together() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match="mutually exclusive"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_page_record_rejects_f2_page_evidence_without_an_artifact_representation() -> (
+    None
+):
+    data = _record().model_dump(mode="json")
+    data["original_f2_artifact_base64"] = None
+
+    with pytest.raises(ValidationError, match="embedded or external"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_external_f2_record_rejects_grapheme_outside_declared_lexical_range() -> None:
+    data = _record().model_dump(mode="json")
+    data["schema_version"] = TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+    data["graphemes"][0]["source_slices"][0]["byte_start"] = 0
+
+    with pytest.raises(ValidationError, match="lexical byte range"):
+        TypographyPageRecord.model_validate(data)
+
+
 def test_page_record_rejects_forged_grapheme_f2_provenance() -> None:
     record = _record()
     forged_grapheme = record.graphemes[0].model_copy(
@@ -161,10 +329,8 @@ def test_page_record_rejects_forged_grapheme_f2_provenance() -> None:
             )
         }
     )
-    forged = record.model_copy(update={"graphemes": (forged_grapheme,)})
-
     with pytest.raises(ValidationError, match="F2-backed grapheme"):
-        TypographyPageRecord.model_validate(forged.model_dump())
+        record.model_copy(update={"graphemes": (forged_grapheme,)})
 
 
 def test_page_record_rejects_forged_style_f2_bounds() -> None:
@@ -180,10 +346,8 @@ def test_page_record_rejects_forged_style_f2_bounds() -> None:
             )
         }
     )
-    forged = record.model_copy(update={"style_spans": (forged_span,)})
-
     with pytest.raises(ValidationError, match="F2-backed style"):
-        TypographyPageRecord.model_validate(forged.model_dump())
+        record.model_copy(update={"style_spans": (forged_span,)})
 
 
 def test_page_record_rejects_forged_alignment_artifact_hashes() -> None:
@@ -217,17 +381,15 @@ def test_page_record_rejects_ocr_token_ranges_beyond_the_token_count() -> None:
             "target_range": (0, 2),
         }
     )
-    forged = record.model_copy(
-        update={
-            "parsed_text": "xx",
-            "graphemes": (record.graphemes[0], second_grapheme),
-            "ocr_tokens": (expanded_token,),
-            "alignments": (token_alignment,),
-        }
-    )
-
     with pytest.raises(ValidationError, match="OCR token count"):
-        TypographyPageRecord.model_validate(forged.model_dump())
+        record.model_copy(
+            update={
+                "parsed_text": "xx",
+                "graphemes": (record.graphemes[0], second_grapheme),
+                "ocr_tokens": (expanded_token,),
+                "alignments": (token_alignment,),
+            }
+        )
 
 
 @pytest.mark.parametrize(
