@@ -809,30 +809,36 @@ class CorrectionBundle(CanonicalModel):
         corrections_by_word: dict[str, list[TypographyCorrection]] = {}
         for correction in self.corrections:
             corrections_by_word.setdefault(correction.word_id, []).append(correction)
+        if any(
+            current.base_page_sha256 != previous.effective_page_sha256
+            or current.base_image_sha256 != previous.effective_image_sha256
+            or current.page_head_sha256 != previous.effective_page_head_sha256
+            for previous, current in pairwise(self.corrections)
+        ):
+            msg = "correction page bases must follow the preceding global page revision"
+            raise ValueError(msg)
         latest_by_word: dict[str, TypographyCorrection] = {}
         for word_id, revisions in corrections_by_word.items():
-            ordered = sorted(revisions, key=lambda item: item.revision)
-            expected_revisions = tuple(range(1, len(ordered) + 1))
-            if tuple(item.revision for item in ordered) != expected_revisions:
-                msg = "correction revisions must be contiguous from 1 for each word"
+            expected_revisions = tuple(range(1, len(revisions) + 1))
+            if tuple(item.revision for item in revisions) != expected_revisions:
+                msg = (
+                    "correction revision order must be contiguous from 1 for each word"
+                )
                 raise ValueError(msg)
             if any(
                 current.supersedes_id != previous.correction_id
-                for previous, current in pairwise(ordered)
+                for previous, current in pairwise(revisions)
             ):
                 msg = "correction supersedes_id must reference the preceding word revision"
                 raise ValueError(msg)
             if any(
-                current.base_page_sha256 != previous.effective_page_sha256
-                or current.base_image_sha256 != previous.effective_image_sha256
-                or current.base_text_sha256 != previous.effective_text_sha256
+                current.base_text_sha256 != previous.effective_text_sha256
                 or current.base_word_revision != previous.effective_word_revision
-                or current.page_head_sha256 != previous.effective_page_head_sha256
-                for previous, current in pairwise(ordered)
+                for previous, current in pairwise(revisions)
             ):
-                msg = "successor correction bases must equal predecessor replacements"
+                msg = "successor word bases must equal predecessor word replacements"
                 raise ValueError(msg)
-            latest_by_word[word_id] = ordered[-1]
+            latest_by_word[word_id] = revisions[-1]
         artifact_hashes = {artifact.sha256 for artifact in self.replacement_artifacts}
         model_runs = _model_runs_by_id(
             self.model_runs,
@@ -852,13 +858,31 @@ class CorrectionBundle(CanonicalModel):
             if not set(latest_by_word).issubset(geometry_by_word):
                 msg = "returned geometry must include every corrected word"
                 raise ValueError(msg)
+            final_correction = self.corrections[-1] if self.corrections else None
+            if final_correction is not None and (
+                self.page_geometry.page_sha256 != final_correction.effective_page_sha256
+                or self.page_geometry.page_head_sha256
+                != final_correction.effective_page_head_sha256
+                or self.page_geometry.image_artifact_sha256
+                != final_correction.effective_image_sha256
+            ):
+                msg = "returned page geometry must match the final correction page"
+                raise ValueError(msg)
             for word_id, correction in latest_by_word.items():
                 item = geometry_by_word[word_id]
                 if (
+                    final_correction is None
+                ):  # pragma: no cover - latest_by_word is empty
+                    raise AssertionError(
+                        "corrected word geometry requires a correction"
+                    )
+                if (
                     item.word_revision != correction.effective_word_revision
-                    or item.page_sha256 != correction.effective_page_sha256
-                    or item.page_head_sha256 != correction.effective_page_head_sha256
-                    or item.image_artifact_sha256 != correction.effective_image_sha256
+                    or item.page_sha256 != final_correction.effective_page_sha256
+                    or item.page_head_sha256
+                    != final_correction.effective_page_head_sha256
+                    or item.image_artifact_sha256
+                    != final_correction.effective_image_sha256
                 ):
                     msg = (
                         "returned geometry must match the latest correction provenance"
@@ -896,22 +920,26 @@ class CorrectionBundle(CanonicalModel):
             msg = "geometry-only return must match the labeling bundle provenance"
             raise ValueError(msg)
         words = {word.word_id: word for word in labeling_bundle.words}
-        for correction in self.corrections:
+        for index, correction in enumerate(self.corrections):
             word = words.get(correction.word_id)
             if word is None:
                 msg = "correction word_id is absent from labeling bundle"
                 raise ValueError(msg)
-            if correction.revision == 1 and (
+            if index == 0 and (
                 correction.base_page_sha256 != labeling_bundle.page_sha256
                 or correction.base_image_sha256 != labeling_bundle.image_sha256
-                or correction.base_text_sha256 != word.text_sha256
+                or correction.page_head_sha256 != labeling_bundle.page_head_sha256
+            ):
+                msg = "first correction page bases do not match the labeling bundle"
+                raise ValueError(msg)
+            if correction.revision == 1 and (
+                correction.base_text_sha256 != word.text_sha256
                 or correction.base_word_revision != word.word_revision
                 or correction.taxonomy_version != labeling_bundle.taxonomy.version
                 or correction.taxonomy_hash != labeling_bundle.taxonomy.taxonomy_hash
                 or correction.grapheme_map_version != word.grapheme_map_version
-                or correction.page_head_sha256 != labeling_bundle.page_head_sha256
             ):
-                msg = "correction base hashes do not match labeling bundle and word"
+                msg = "initial word correction does not match the labeling bundle word"
                 raise ValueError(msg)
             if correction.replacement is not None:
                 correction.replacement.validate_taxonomy(labeling_bundle.taxonomy)

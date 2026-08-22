@@ -271,7 +271,7 @@ def _inbound_geometry_bundle(orientation: SourceOrientation) -> LabelingBundle:
     )
     return LabelingBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -445,7 +445,7 @@ def test_bundles_verify_paths_hashes_optional_geometry_and_canonical_ids() -> No
     )
     bundle = LabelingBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -572,7 +572,7 @@ def test_bundles_verify_paths_hashes_optional_geometry_and_canonical_ids() -> No
         )
     correction_bundle = CorrectionBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         labeling_bundle_id=bundle.bundle_id,
         corrections=(
@@ -638,7 +638,7 @@ def test_declared_replacement_hashes_can_differ_from_inbound_page_and_image() ->
     )
     inbound = LabelingBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -689,7 +689,7 @@ def test_declared_replacement_hashes_can_differ_from_inbound_page_and_image() ->
     )
     correction_bundle = CorrectionBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         labeling_bundle_id=inbound.bundle_id or "",
         corrections=(correction,),
@@ -723,12 +723,196 @@ def test_declared_replacement_hashes_can_differ_from_inbound_page_and_image() ->
     with pytest.raises(ValueError, match="replacement does not match"):
         CorrectionBundle(
             bundle_id=None,
-            schema_version="0.24.0",
+            schema_version="0.25.0",
             configuration_hash="e" * 64,
             labeling_bundle_id=inbound.bundle_id or "",
             corrections=(mismatched,),
             replacement_artifacts=correction_bundle.replacement_artifacts,
         ).validate_against(inbound)
+
+
+def test_correction_bundle_allows_page_global_interleaving_with_per_word_lineage() -> (
+    None
+):
+    first_word = _word(text="alpha")
+    second_word = _word(text="beta")
+
+    def correction(
+        *,
+        correction_id: str,
+        word: WordTypography,
+        revision: int,
+        supersedes_id: str | None,
+        base_page: str,
+        base_image: str,
+        base_head: str,
+        base_text: str,
+        base_word_revision: int,
+        effective_page: str,
+        effective_image: str,
+        effective_head: str,
+    ) -> TypographyCorrection:
+        replacement = word.model_copy(
+            update={
+                "page_content_sha256": effective_page,
+                "image_artifact_sha256": effective_image,
+                "word_revision": revision,
+            }
+        )
+        return TypographyCorrection(
+            correction_id=correction_id,
+            word_id=word.word_id,
+            revision=revision,
+            supersedes_id=supersedes_id,
+            base_page_sha256=base_page,
+            base_image_sha256=base_image,
+            base_text_sha256=base_text,
+            base_word_revision=base_word_revision,
+            replacement_text_sha256=word.text_sha256,
+            replacement_page_sha256=effective_page,
+            replacement_image_sha256=effective_image,
+            replacement_page_head_sha256=effective_head,
+            replacement_word_revision=revision,
+            taxonomy_version=word.taxonomy_version,
+            taxonomy_hash=word.taxonomy_hash,
+            grapheme_map_version=word.grapheme_map_version,
+            page_head_sha256=base_head,
+            labeler_id="reviewer-1",
+            decision=CorrectionDecision.APPROVED_EDIT,
+            replacement=replacement,
+        )
+
+    a1 = correction(
+        correction_id="a1",
+        word=first_word,
+        revision=1,
+        supersedes_id=None,
+        base_page="a" * 64,
+        base_image="b" * 64,
+        base_head="c" * 64,
+        base_text=first_word.text_sha256,
+        base_word_revision=0,
+        effective_page="1" * 64,
+        effective_image="2" * 64,
+        effective_head="3" * 64,
+    )
+    b1 = correction(
+        correction_id="b1",
+        word=second_word,
+        revision=1,
+        supersedes_id=None,
+        base_page=a1.effective_page_sha256,
+        base_image=a1.effective_image_sha256,
+        base_head=a1.effective_page_head_sha256,
+        base_text=second_word.text_sha256,
+        base_word_revision=0,
+        effective_page="4" * 64,
+        effective_image="5" * 64,
+        effective_head="6" * 64,
+    )
+    a2 = correction(
+        correction_id="a2",
+        word=first_word,
+        revision=2,
+        supersedes_id=a1.correction_id,
+        base_page=b1.effective_page_sha256,
+        base_image=b1.effective_image_sha256,
+        base_head=b1.effective_page_head_sha256,
+        base_text=a1.effective_text_sha256,
+        base_word_revision=a1.effective_word_revision,
+        effective_page="7" * 64,
+        effective_image="8" * 64,
+        effective_head="9" * 64,
+    )
+    artifacts = tuple(
+        ReplacementArtifact(
+            artifact_id=f"artifact-{index}",
+            relative_path=f"out/{index}",
+            sha256=value * 64,
+            byte_size=1,
+            media_type="application/octet-stream",
+        )
+        for index, value in enumerate("123456789", start=1)
+    )
+
+    inbound = LabelingBundle(
+        schema_version="0.25.0",
+        configuration_hash="e" * 64,
+        taxonomy=_taxonomy(),
+        page_id="page-1",
+        page_sha256="a" * 64,
+        image_sha256="b" * 64,
+        text_sha256="f" * 64,
+        page_head_sha256="c" * 64,
+        artifacts=(
+            ArtifactReference(
+                artifact_id="inbound-image",
+                relative_path="inbound/page.png",
+                sha256="b" * 64,
+                media_type="image/png",
+            ),
+        ),
+        words=(first_word, second_word),
+        evidence=(
+            Evidence(
+                evidence_id="evidence-1",
+                artifact_id="inbound-image",
+                artifact_sha256="b" * 64,
+                byte_start=0,
+                byte_end=1,
+            ),
+        ),
+    )
+    bundle = CorrectionBundle(
+        schema_version="0.25.0",
+        configuration_hash="e" * 64,
+        labeling_bundle_id=inbound.bundle_id or "",
+        corrections=(a1, b1, a2),
+        replacement_artifacts=artifacts,
+    )
+
+    assert bundle.corrections == (a1, b1, a2)
+    bundle.validate_against(inbound)
+    for field, value, message in (
+        ("base_page_sha256", "0" * 64, "global page revision"),
+        ("base_image_sha256", "0" * 64, "global page revision"),
+        ("page_head_sha256", "0" * 64, "global page revision"),
+        ("base_text_sha256", "0" * 64, "predecessor word replacements"),
+        ("base_word_revision", 0, "predecessor word replacements"),
+        ("supersedes_id", "b1", "preceding word revision"),
+    ):
+        tampered = a2.model_copy(update={field: value})
+        with pytest.raises(ValidationError, match=message):
+            CorrectionBundle(
+                schema_version="0.25.0",
+                configuration_hash="e" * 64,
+                labeling_bundle_id=inbound.bundle_id or "",
+                corrections=(a1, b1, tampered),
+                replacement_artifacts=artifacts,
+            )
+
+    reversed_a2 = a2.model_copy(
+        update={
+            "base_page_sha256": "a" * 64,
+            "base_image_sha256": "b" * 64,
+            "page_head_sha256": "c" * 64,
+        }
+    )
+    reversed_a1 = a1.model_copy(
+        update={
+            "base_page_sha256": reversed_a2.effective_page_sha256,
+            "base_image_sha256": reversed_a2.effective_image_sha256,
+            "page_head_sha256": reversed_a2.effective_page_head_sha256,
+        }
+    )
+    with pytest.raises(ValidationError, match="revision order"):
+        CorrectionBundle(
+            schema_version="0.25.0",
+            configuration_hash="e" * 64,
+            labeling_bundle_id=inbound.bundle_id or "",
+            corrections=(reversed_a2, reversed_a1),
+            replacement_artifacts=artifacts,
+        )
 
 
 def test_geometry_rejects_nonfinite_coordinates() -> None:
@@ -815,7 +999,7 @@ def test_bundle_requires_schema_configuration_and_reproducible_geometry_chain() 
     )
     bundle = LabelingBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -840,7 +1024,7 @@ def test_bundle_requires_schema_configuration_and_reproducible_geometry_chain() 
         coordinate_transforms=_transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE),
     )
 
-    assert bundle.schema_version == "0.24.0"
+    assert bundle.schema_version == "0.25.0"
     assert bundle.configuration_hash == "e" * 64
     assert geometry.source_orientation is SourceOrientation.ROTATE_90_CLOCKWISE
     with pytest.raises(ValidationError, match="orientation-stage affine"):
@@ -970,7 +1154,7 @@ def test_correction_bundles_require_contiguous_word_revisions() -> None:
     with pytest.raises(ValidationError, match="contiguous"):
         CorrectionBundle(
             bundle_id=None,
-            schema_version="0.24.0",
+            schema_version="0.25.0",
             configuration_hash="e" * 64,
             labeling_bundle_id="d" * 64,
             corrections=(first, second),
@@ -1203,7 +1387,7 @@ def test_returned_geometry_requires_bound_models_artifacts_and_current_correctio
 
     bundle = CorrectionBundle(
         bundle_id=None,
-        schema_version="0.24.0",
+        schema_version="0.25.0",
         configuration_hash="e" * 64,
         labeling_bundle_id="d" * 64,
         corrections=(correction,),
@@ -1220,6 +1404,61 @@ def test_returned_geometry_requires_bound_models_artifacts_and_current_correctio
     assert bundle.model_runs[0].input_artifact_sha256 == "2" * 64
     restored = CorrectionBundle.model_validate(bundle.model_dump(mode="json"))
     assert restored.bundle_id == bundle.bundle_id
+
+    second_word = _word(text="second")
+    second_replacement = second_word.model_copy(
+        update={
+            "page_content_sha256": "1" * 64,
+            "image_artifact_sha256": "2" * 64,
+            "word_revision": 1,
+        }
+    )
+    second_correction = TypographyCorrection(
+        correction_id="geometry-correction-2",
+        word_id=second_word.word_id,
+        revision=1,
+        supersedes_id=None,
+        base_page_sha256=correction.effective_page_sha256,
+        base_image_sha256=correction.effective_image_sha256,
+        base_text_sha256=second_word.text_sha256,
+        base_word_revision=0,
+        replacement_text_sha256=second_word.text_sha256,
+        replacement_page_sha256="1" * 64,
+        replacement_image_sha256="2" * 64,
+        replacement_page_head_sha256="4" * 64,
+        replacement_word_revision=1,
+        taxonomy_version=second_word.taxonomy_version,
+        taxonomy_hash=second_word.taxonomy_hash,
+        grapheme_map_version=second_word.grapheme_map_version,
+        page_head_sha256=correction.effective_page_head_sha256,
+        labeler_id="reviewer-1",
+        decision=CorrectionDecision.APPROVED_EDIT,
+        replacement=second_replacement,
+    )
+    final_page_geometry = page_geometry.model_copy(
+        update={"page_head_sha256": "4" * 64}
+    )
+    final_geometry = (
+        geometry.model_copy(update={"page_head_sha256": "4" * 64}),
+        geometry.model_copy(
+            update={
+                "word_id": second_word.word_id,
+                "page_head_sha256": "4" * 64,
+            }
+        ),
+    )
+    interleaved_geometry_bundle = CorrectionBundle(
+        schema_version="0.25.0",
+        configuration_hash="e" * 64,
+        labeling_bundle_id="d" * 64,
+        corrections=(correction, second_correction),
+        replacement_artifacts=artifacts,
+        page_geometry=final_page_geometry,
+        geometry=final_geometry,
+        model_runs=model_runs,
+        coordinate_transforms=transforms,
+    )
+    assert interleaved_geometry_bundle.geometry == final_geometry
 
     with pytest.raises(ValidationError, match="model run hashes"):
         CorrectionBundle.model_validate(
