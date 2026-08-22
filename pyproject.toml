@@ -144,6 +144,12 @@ output = "coverage.xml"
 # under review, with no effect on shipped code.
 extend-exclude = ["*.md"]
 
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+    "pdomain_book_tools.typography.spans.CanonicalModel",
+    "pydantic.BaseModel",
+]
+
 [tool.ruff.lint]
 select = [
     # Current baseline
