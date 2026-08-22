@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import subprocess
 import sys
 from typing import TYPE_CHECKING, cast
 
-from pdomain_book_tools.schemas.emit import PUBLIC_MODELS, emit_schemas, main
+from pdomain_book_tools.schemas.emit import (
+    PUBLIC_MODELS,
+    emit_schema_manifest,
+    emit_schemas,
+    main,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -89,7 +95,49 @@ def test_public_models_includes_full_set():
         "Word",
         "Block",
         "Page",
+        "TypographyTaxonomyLabel",
+        "TypographyTaxonomy",
+        "TypographySpan",
+        "TypographyReviewMetadata",
+        "WordTypography",
+        "TypographyCorrection",
+        "ArtifactReference",
+        "ModelRun",
+        "ReplacementArtifact",
+        "SourceOrientation",
+        "CoordinateTransform",
+        "Evidence",
+        "WordGeometry",
+        "LabelingBundle",
+        "CorrectionBundle",
     }
+
+
+def test_emit_includes_portable_typography_review_exchange_models():
+    schemas = emit_schemas()
+
+    for name in (
+        "TypographyTaxonomy",
+        "WordTypography",
+        "TypographyCorrection",
+        "LabelingBundle",
+        "CorrectionBundle",
+    ):
+        assert name in schemas
+        assert schemas[name].get("type") == "object"
+
+
+def test_schema_manifest_hashes_the_canonical_emitted_schema() -> None:
+    schemas = emit_schemas()
+    manifest = emit_schema_manifest()
+    expected = hashlib.sha256(
+        json.dumps(
+            schemas, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        ).encode()
+    ).hexdigest()
+
+    assert manifest["schema_version"] == "0.23.0"
+    assert manifest["schema_sha256"] == expected
 
 
 def test_emit_schemas_returns_dict_keyed_by_class_name():

@@ -12,6 +12,9 @@ in the same commit.
 
 from __future__ import annotations
 
+import subprocess
+import sys
+
 
 def test_top_level_reexports():
     from pdomain_book_tools import (
@@ -23,7 +26,10 @@ def test_top_level_reexports():
         PGDPResults,
         Point,
         RegionType,
+        TypographyCorrection,
+        TypographyTaxonomy,
         Word,
+        WordTypography,
     )
 
     # Identity check: the top-level name must be the same object as the
@@ -39,6 +45,13 @@ def test_top_level_reexports():
     from pdomain_book_tools.ocr.word import Word as _Word
     from pdomain_book_tools.pgdp.pgdp_results import PGDPExport as _PGDPExport
     from pdomain_book_tools.pgdp.pgdp_results import PGDPResults as _PGDPResults
+    from pdomain_book_tools.typography.review import (
+        TypographyCorrection as _TypographyCorrection,
+    )
+    from pdomain_book_tools.typography.review import (
+        TypographyTaxonomy as _TypographyTaxonomy,
+    )
+    from pdomain_book_tools.typography.review import WordTypography as _WordTypography
 
     assert BoundingBox is _BB
     assert Point is _Point
@@ -49,6 +62,25 @@ def test_top_level_reexports():
     assert BlockCategory is _BlockCategory
     assert PGDPResults is _PGDPResults
     assert PGDPExport is _PGDPExport
+    assert TypographyTaxonomy is _TypographyTaxonomy
+    assert WordTypography is _WordTypography
+    assert TypographyCorrection is _TypographyCorrection
+
+
+def test_typography_review_contract_reexports_are_torch_free() -> None:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import pdomain_book_tools.typography; "
+            "assert 'torch' not in sys.modules",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert proc.returncode == 0, proc.stderr
 
 
 def test_geometry_reexports():

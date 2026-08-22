@@ -42,6 +42,11 @@ from pdomain_book_tools.ocr.block import Block, BlockCategory
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.word import Word
 from pdomain_book_tools.pgdp.pgdp_results import PGDPExport, PGDPResults
+from pdomain_book_tools.typography.review import (
+    TypographyCorrection,
+    TypographyTaxonomy,
+    WordTypography,
+)
 
 __all__ = [
     "Block",
@@ -52,7 +57,10 @@ __all__ = [
     "Page",
     "Point",
     "RegionType",
+    "TypographyCorrection",
+    "TypographyTaxonomy",
     "Word",
+    "WordTypography",
     "__version__",
     "version",
 ]
