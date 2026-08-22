@@ -3,6 +3,14 @@
 from __future__ import annotations
 
 from pdomain_book_tools.matching.engine import match_documents
+from pdomain_book_tools.matching.legacy_projection import (
+    LegacyDocumentSide,
+    LegacyMatchEvidence,
+    LegacyProjectionMutation,
+    LegacyProjectionResult,
+    legacy_page_to_match_document,
+    project_match_graph_onto_page,
+)
 from pdomain_book_tools.matching.models import (
     ArtifactRange,
     MatchAlternative,
@@ -42,6 +50,10 @@ from pdomain_book_tools.matching.pgdp_continuations import (
 
 __all__ = [
     "ArtifactRange",
+    "LegacyDocumentSide",
+    "LegacyMatchEvidence",
+    "LegacyProjectionMutation",
+    "LegacyProjectionResult",
     "MatchAlternative",
     "MatchComparisonNormalization",
     "MatchContinuationReference",
@@ -73,5 +85,7 @@ __all__ = [
     "PgdpUnmappedMarkerEvidence",
     "canonical_relation_path_bytes",
     "decode_pgdp_continuations",
+    "legacy_page_to_match_document",
     "match_documents",
+    "project_match_graph_onto_page",
 ]

@@ -14,6 +14,8 @@ from pdomain_book_tools.ocr.word import Word
 
 if TYPE_CHECKING:
     # Import only for type hints to prevent circular references
+    from pdomain_book_tools.matching.legacy_projection import LegacyProjectionResult
+    from pdomain_book_tools.matching.models import MatchGraph
     from pdomain_book_tools.ocr.page import Page
 
 from pdomain_book_tools.ocr.ground_truth_matching_helpers.character_groups import (
@@ -193,6 +195,31 @@ def update_page_with_ground_truth_text(
     # Recover strongly matching lines that were displaced and surfaced as
     # unmatched GT insertions (e.g. inline caption/name lines moved in OCR).
     update_page_match_unmatched_lines_best_effort(page)
+
+
+def update_page_with_match_graph(
+    page: Page,
+    graph: MatchGraph,
+    *,
+    document_id: str,
+) -> LegacyProjectionResult:
+    """Opt in to projecting an immutable match graph onto a legacy OCR page.
+
+    New matcher callers should retain the graph. This compatibility entrypoint
+    exists only for callers that still require mutable ``Word`` ground-truth
+    fields and legacy combined-word topology.
+    """
+    from pdomain_book_tools.matching.legacy_projection import (
+        LegacyDocumentSide,
+        project_match_graph_onto_page,
+    )
+
+    return project_match_graph_onto_page(
+        page,
+        graph,
+        document_id=document_id,
+        page_side=LegacyDocumentSide.TARGET,
+    )
 
 
 def update_page_match_unmatched_lines_best_effort(page: Page) -> None:
