@@ -187,6 +187,35 @@ def test_decoder_retains_asymmetric_marker_evidence_without_inventing_conflict()
     ]
 
 
+@pytest.mark.parametrize(
+    "p3_pages",
+    [
+        (("058", ("sim-",)), ("059", ("*plicity",))),
+        (("058", ("sim-*",)), ("059", ("plicity",))),
+    ],
+    ids=("p3-leading-only", "p3-trailing-only"),
+)
+def test_decoder_reconciles_asymmetric_marker_locations(
+    p3_pages: tuple[tuple[str, tuple[str, ...]], ...],
+) -> None:
+    result, _f2_bytes, _p3_bytes = _decode(
+        (("058", ("sim-*",)), ("059", ("*plicity",))),
+        p3_pages=p3_pages,
+    )
+
+    assert len(result.continuations) == 1
+    continuation = result.continuations[0]
+    assert continuation.quarantine_reasons == ()
+    assert tuple(evidence.round for evidence in continuation.round_evidence) == (
+        PgdpRound.F2,
+        PgdpRound.P3,
+    )
+    assert [evidence.marker_count for evidence in continuation.marker_evidence] == [
+        2,
+        1,
+    ]
+
+
 def test_decoder_quarantines_nonadjacent_page_markers() -> None:
     result, _f2_bytes, _p3_bytes = _decode(
         (("001", ("alpha-*",)), ("003", ("*omega",)))

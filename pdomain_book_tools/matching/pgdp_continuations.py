@@ -242,26 +242,41 @@ class _LocatedToken:
     token_index: int
     document_index: int
     grapheme_ranges: tuple[ArtifactRange, ...] | None
-    page_marker_ordinals: tuple[int | None, ...]
 
 
 @dataclass(frozen=True)
 class _RoundEdge:
-    """A round-local decoded edge before F2/P3 reconciliation."""
+    """A round-local edge with a tokenization-independent identity."""
 
     continuation: PgdpContinuation
     anchor: _EdgeAnchor
 
 
 @dataclass(frozen=True)
-class _EdgeAnchor:
-    """Round-independent physical location for F2/P3 edge reconciliation."""
+class _UnanchoredRoundEdge:
+    """A decoded edge before its boundary-local ordinal is assigned."""
+
+    continuation: PgdpContinuation
+    locus: _BoundaryLocus
+
+
+@dataclass(frozen=True)
+class _BoundaryLocus:
+    """A tokenization-independent physical continuation boundary."""
 
     left_page_id: str
+    left_line_id: str
     right_page_id: str
+    right_line_id: str
     boundary: PgdpContinuationBoundary
-    marker_page_id: str
-    marker_page_ordinal: int
+
+
+@dataclass(frozen=True)
+class _EdgeAnchor:
+    """A boundary locus plus its physical reading-order continuation ordinal."""
+
+    locus: _BoundaryLocus
+    continuation_ordinal: int
 
 
 def decode_pgdp_continuations(
@@ -286,7 +301,7 @@ def _decode_round(
     round_: PgdpRound, document: MatchDocument
 ) -> tuple[tuple[_RoundEdge, ...], tuple[PgdpQuarantinedMarker, ...]]:
     tokens = _located_tokens(round_, document)
-    edges: list[_RoundEdge] = []
+    edges: list[_UnanchoredRoundEdge] = []
     quarantined: list[PgdpQuarantinedMarker] = []
     consumed_leading_locations: set[tuple[int, int]] = set()
     for token_position, located in enumerate(tokens):
@@ -340,7 +355,7 @@ def _decode_round(
                 edges.append(edge)
             if marker_quarantine is not None:
                 quarantined.append(marker_quarantine)
-    return tuple(edges), tuple(quarantined)
+    return _assign_boundary_ordinals(edges), tuple(quarantined)
 
 
 def _located_tokens(
@@ -349,16 +364,8 @@ def _located_tokens(
     tokens: list[_LocatedToken] = []
     document_index = 0
     for page_index, page in enumerate(document.pages):
-        page_marker_ordinal = 0
         for line_index, line in enumerate(page.lines):
             for token_index, token in enumerate(line.tokens):
-                marker_ordinals: list[int | None] = []
-                for grapheme in split_graphemes(token.text):
-                    if grapheme == "*":
-                        marker_ordinals.append(page_marker_ordinal)
-                        page_marker_ordinal += 1
-                    else:
-                        marker_ordinals.append(None)
                 tokens.append(
                     _LocatedToken(
                         round=round_,
@@ -370,7 +377,6 @@ def _located_tokens(
                         token_index=token_index,
                         document_index=document_index,
                         grapheme_ranges=_token_grapheme_ranges(token),
-                        page_marker_ordinals=tuple(marker_ordinals),
                     )
                 )
                 document_index += 1
@@ -403,7 +409,7 @@ def _marker_evidence(
 
 def _inline_edge(
     located: _LocatedToken, marker_index: int, marker: PgdpMarkerEvidence
-) -> _RoundEdge | None:
+) -> _UnanchoredRoundEdge | None:
     left = _fragment(located, 0, marker_index)
     right = _fragment(located, marker_index + 1, None)
     if left is None or right is None:
@@ -414,7 +420,6 @@ def _inline_edge(
         right,
         boundary,
         marker,
-        _edge_anchor(located, located, located, boundary, marker_index),
     )
 
 
@@ -425,7 +430,7 @@ def _trailing_edge(
     marker_index: int,
     marker: PgdpMarkerEvidence,
 ) -> tuple[
-    _RoundEdge | None,
+    _UnanchoredRoundEdge | None,
     PgdpQuarantinedMarker | None,
     tuple[int, int] | None,
 ]:
@@ -506,7 +511,6 @@ def _trailing_edge(
             right,
             boundary,
             marker_evidence,
-            _edge_anchor(located, located, next_token, boundary, marker_index),
         ),
         None,
         consumed_leading,
@@ -519,7 +523,7 @@ def _leading_edge(
     located: _LocatedToken,
     marker_index: int,
     marker: PgdpMarkerEvidence,
-) -> tuple[_RoundEdge | None, PgdpQuarantinedMarker | None]:
+) -> tuple[_UnanchoredRoundEdge | None, PgdpQuarantinedMarker | None]:
     if token_position == 0:
         return (
             None,
@@ -560,7 +564,6 @@ def _leading_edge(
             right,
             boundary,
             marker,
-            _edge_anchor(located, previous, located, boundary, marker_index),
         ),
         None,
     )
@@ -591,8 +594,7 @@ def _round_edge(
     right: PgdpPhysicalFragment,
     boundary: PgdpContinuationBoundary,
     marker: PgdpMarkerEvidence,
-    anchor: _EdgeAnchor,
-) -> _RoundEdge:
+) -> _UnanchoredRoundEdge:
     candidates, decision = _logical_candidates(left.text, right.text)
     continuation = PgdpContinuation(
         left_fragment=left,
@@ -610,27 +612,44 @@ def _round_edge(
         logical_candidates=candidates,
         decision=decision,
     )
-    return _RoundEdge(continuation=continuation, anchor=anchor)
-
-
-def _edge_anchor(
-    marker: _LocatedToken,
-    left: _LocatedToken,
-    right: _LocatedToken,
-    boundary: PgdpContinuationBoundary,
-    marker_index: int,
-) -> _EdgeAnchor:
-    marker_page_ordinal = marker.page_marker_ordinals[marker_index]
-    if marker_page_ordinal is None:
-        msg = "continuation anchor requires a marker grapheme"
-        raise ValueError(msg)
-    return _EdgeAnchor(
-        left_page_id=left.page_id,
-        right_page_id=right.page_id,
-        boundary=boundary,
-        marker_page_id=marker.page_id,
-        marker_page_ordinal=marker_page_ordinal,
+    return _UnanchoredRoundEdge(
+        continuation=continuation,
+        locus=_boundary_locus(left, right, boundary),
     )
+
+
+def _boundary_locus(
+    left: PgdpPhysicalFragment,
+    right: PgdpPhysicalFragment,
+    boundary: PgdpContinuationBoundary,
+) -> _BoundaryLocus:
+    return _BoundaryLocus(
+        left_page_id=left.page_id,
+        left_line_id=left.line_id,
+        right_page_id=right.page_id,
+        right_line_id=right.line_id,
+        boundary=boundary,
+    )
+
+
+def _assign_boundary_ordinals(
+    edges: list[_UnanchoredRoundEdge],
+) -> tuple[_RoundEdge, ...]:
+    ordinals: dict[_BoundaryLocus, int] = {}
+    anchored_edges: list[_RoundEdge] = []
+    for edge in edges:
+        ordinal = ordinals.get(edge.locus, 0)
+        anchored_edges.append(
+            _RoundEdge(
+                continuation=edge.continuation,
+                anchor=_EdgeAnchor(
+                    locus=edge.locus,
+                    continuation_ordinal=ordinal,
+                ),
+            )
+        )
+        ordinals[edge.locus] = ordinal + 1
+    return tuple(anchored_edges)
 
 
 def _logical_candidates(
