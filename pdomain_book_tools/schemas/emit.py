@@ -16,6 +16,7 @@ the canonical pattern.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from typing import cast
@@ -31,6 +32,26 @@ from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pdomain_book_tools.ocr.review import ReviewMetadata
 from pdomain_book_tools.ocr.word import Word
+from pdomain_book_tools.typography.exchange import (
+    ArtifactReference,
+    CoordinateTransform,
+    CorrectionBundle,
+    Evidence,
+    LabelingBundle,
+    ModelRun,
+    ReplacementArtifact,
+    SourceOrientation,
+    WordGeometry,
+)
+from pdomain_book_tools.typography.review import (
+    REVIEW_CONTRACT_VERSION,
+    TypographyCorrection,
+    TypographyReviewMetadata,
+    TypographySpan,
+    TypographyTaxonomy,
+    TypographyTaxonomyLabel,
+    WordTypography,
+)
 
 # The single source of truth for what counts as a "public" model.
 # Order is intentional: leaf geometry types first, layout wire types next,
@@ -47,6 +68,21 @@ PUBLIC_MODELS: tuple[type, ...] = (
     Word,
     Block,
     Page,
+    TypographyTaxonomyLabel,
+    TypographyTaxonomy,
+    TypographySpan,
+    TypographyReviewMetadata,
+    WordTypography,
+    TypographyCorrection,
+    ArtifactReference,
+    ModelRun,
+    ReplacementArtifact,
+    SourceOrientation,
+    CoordinateTransform,
+    Evidence,
+    WordGeometry,
+    LabelingBundle,
+    CorrectionBundle,
 )
 
 
@@ -56,6 +92,20 @@ def emit_schemas() -> dict[str, dict[str, object]]:
     for cls in PUBLIC_MODELS:
         out[cls.__name__] = cast("dict[str, object]", TypeAdapter(cls).json_schema())
     return out
+
+
+def emit_schema_manifest() -> dict[str, str]:
+    """Return the review-contract schema version and canonical schema hash."""
+    encoded = json.dumps(
+        emit_schemas(),
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return {
+        "schema_version": REVIEW_CONTRACT_VERSION,
+        "schema_sha256": hashlib.sha256(encoded).hexdigest(),
+    }
 
 
 def main(_argv: list[str] | None = None) -> int:
