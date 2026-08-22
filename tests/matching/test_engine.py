@@ -132,6 +132,35 @@ def _resolved_continuation(
     )
 
 
+def _pgdp_source_document() -> MatchDocument:
+    """Return physical source tokens with the exact continuation fragment ranges."""
+    return MatchDocument(
+        document_id="source",
+        pages=(
+            MatchPage(
+                page_id="source-page",
+                lines=(
+                    MatchLine(
+                        line_id="source-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="source-0",
+                                text="Tam--",
+                                artifact_ranges=_ranges("Tam--", offset=0),
+                            ),
+                            MatchToken(
+                                token_id="source-1",
+                                text="far",
+                                artifact_ranges=_ranges("far", offset=6),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
 def test_matches_exact_tokens_without_mutating_documents() -> None:
     source = _document("source", "Saint")
     target = _document("target", "SAINT")
@@ -301,7 +330,7 @@ def test_attaches_resolved_pgdp_continuation_to_its_physical_relation() -> None:
     original = continuation.model_dump(mode="json")
 
     graph = match_documents(
-        _document("source", "Tam--", "far"),
+        _pgdp_source_document(),
         _document("target", "Tam--far"),
         policy=_policy(),
         pgdp_continuations=(continuation,),
@@ -322,7 +351,7 @@ def test_attaches_resolved_pgdp_continuation_to_its_physical_relation() -> None:
 
 def test_quarantines_incompatible_pgdp_continuation_evidence() -> None:
     graph = match_documents(
-        _document("source", "Tam--", "far"),
+        _pgdp_source_document(),
         _document("target", "Tam--far"),
         policy=_policy(),
         pgdp_continuations=(
@@ -332,6 +361,56 @@ def test_quarantines_incompatible_pgdp_continuation_evidence() -> None:
 
     assert not graph.accepted
     assert MatchQuarantineReason.INCOMPATIBLE_CONTINUATION in graph.quarantine_reasons
+
+
+def test_quarantines_pgdp_continuation_with_fragment_text_mismatch() -> None:
+    continuation = _resolved_continuation().model_copy(
+        update={
+            "left_fragment": PgdpPhysicalFragment(
+                text="Tum--",
+                token_id="source-0",
+                page_id="source-page",
+                line_id="source-line",
+                grapheme_ranges=_ranges("Tum--", offset=0),
+            )
+        }
+    )
+
+    graph = match_documents(
+        _pgdp_source_document(),
+        _document("target", "Tam--far"),
+        policy=_policy(),
+        pgdp_continuations=(continuation,),
+    )
+
+    assert not graph.accepted
+    assert MatchQuarantineReason.INCOMPATIBLE_CONTINUATION in graph.quarantine_reasons
+    assert graph.best_alternative.relations[0].continuation_references == ()
+
+
+def test_quarantines_pgdp_continuation_with_fragment_range_mismatch() -> None:
+    continuation = _resolved_continuation().model_copy(
+        update={
+            "right_fragment": PgdpPhysicalFragment(
+                text="far",
+                token_id="source-1",
+                page_id="source-page",
+                line_id="source-line",
+                grapheme_ranges=_ranges("far", offset=20),
+            )
+        }
+    )
+
+    graph = match_documents(
+        _pgdp_source_document(),
+        _document("target", "Tam--far"),
+        policy=_policy(),
+        pgdp_continuations=(continuation,),
+    )
+
+    assert not graph.accepted
+    assert MatchQuarantineReason.INCOMPATIBLE_CONTINUATION in graph.quarantine_reasons
+    assert graph.best_alternative.relations[0].continuation_references == ()
 
 
 def test_quarantines_ambiguous_pgdp_continuation_evidence() -> None:

@@ -50,6 +50,8 @@ class _ContinuationInput:
     decision: str
     left_fragment_token_id: str
     right_fragment_token_id: str
+    left_fragment_text: str
+    right_fragment_text: str
     left_fragment_grapheme_ranges: tuple[ArtifactRange, ...]
     right_fragment_grapheme_ranges: tuple[ArtifactRange, ...]
 
@@ -548,6 +550,8 @@ def _continuation_inputs(
                 decision=continuation.decision.value,
                 left_fragment_token_id=continuation.left_fragment.token_id,
                 right_fragment_token_id=continuation.right_fragment.token_id,
+                left_fragment_text=continuation.left_fragment.text,
+                right_fragment_text=continuation.right_fragment.text,
                 left_fragment_grapheme_ranges=(
                     continuation.left_fragment.grapheme_ranges
                 ),
@@ -578,9 +582,13 @@ def _relation_continuation_references(
                 continuation.right_fragment_token_id,
             )
         )
-        if not fragment_ids.issubset(source_id_set) and not fragment_ids.issubset(
-            target_id_set
-        ):
+        source_matches = fragment_ids.issubset(source_id_set) and (
+            _continuation_matches_tokens(continuation, source_tokens)
+        )
+        target_matches = fragment_ids.issubset(target_id_set) and (
+            _continuation_matches_tokens(continuation, target_tokens)
+        )
+        if not source_matches and not target_matches:
             continue
         references.append(
             MatchContinuationReference(
@@ -599,6 +607,52 @@ def _relation_continuation_references(
             )
         )
     return tuple(references)
+
+
+def _continuation_matches_tokens(
+    continuation: _ContinuationInput, tokens: tuple[MatchToken, ...]
+) -> bool:
+    """Validate both physical fragments against exact token text and ranges."""
+    tokens_by_id = {token.token_id: token for token in tokens}
+    left_token = tokens_by_id.get(continuation.left_fragment_token_id)
+    right_token = tokens_by_id.get(continuation.right_fragment_token_id)
+    if left_token is None or right_token is None:
+        return False
+    return _fragment_matches_token(
+        continuation.left_fragment_text,
+        continuation.left_fragment_grapheme_ranges,
+        left_token,
+    ) and _fragment_matches_token(
+        continuation.right_fragment_text,
+        continuation.right_fragment_grapheme_ranges,
+        right_token,
+    )
+
+
+def _fragment_matches_token(
+    fragment_text: str,
+    fragment_ranges: tuple[ArtifactRange, ...],
+    token: MatchToken,
+) -> bool:
+    """Return whether a continuation fragment exactly projects onto one token."""
+    fragment_graphemes = split_graphemes(fragment_text)
+    token_graphemes = split_graphemes(token.text)
+    if len(fragment_graphemes) != len(fragment_ranges):
+        return False
+    if len(token_graphemes) != len(token.artifact_ranges):
+        return False
+    token_graphemes_by_range = {
+        artifact_range: grapheme
+        for grapheme, artifact_range in zip(
+            token_graphemes, token.artifact_ranges, strict=True
+        )
+    }
+    return all(
+        token_graphemes_by_range.get(artifact_range) == grapheme
+        for grapheme, artifact_range in zip(
+            fragment_graphemes, fragment_ranges, strict=True
+        )
+    )
 
 
 def _search_evidence(
