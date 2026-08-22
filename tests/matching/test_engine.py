@@ -161,6 +161,74 @@ def _pgdp_source_document() -> MatchDocument:
     )
 
 
+def _inline_repeated_continuation(*, reverse_left_ranges: bool) -> PgdpContinuation:
+    """Return an inline repeated-character continuation with exact fragment ranges."""
+    token_ranges = _ranges("aaaa*", offset=0)
+    left_ranges = token_ranges[:2]
+    if reverse_left_ranges:
+        left_ranges = tuple(reversed(left_ranges))
+    left = PgdpPhysicalFragment(
+        text="aa",
+        token_id="source-0",
+        page_id="source-page",
+        line_id="source-line",
+        grapheme_ranges=left_ranges,
+    )
+    right = PgdpPhysicalFragment(
+        text="aa",
+        token_id="source-0",
+        page_id="source-page",
+        line_id="source-line",
+        grapheme_ranges=token_ranges[2:4],
+    )
+    markers = PgdpMarkerEvidence(round=PgdpRound.F2, marker_ranges=(token_ranges[4],))
+    return PgdpContinuation(
+        left_fragment=left,
+        right_fragment=right,
+        boundary=PgdpContinuationBoundary.SAME_LINE,
+        marker_evidence=(markers,),
+        round_evidence=(
+            PgdpRoundContinuationEvidence(
+                round=PgdpRound.F2,
+                left_fragment=left,
+                right_fragment=right,
+                marker_evidence=markers,
+            ),
+        ),
+        logical_candidates=(
+            PgdpLogicalCandidate(
+                text="aaaa",
+                decision=PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN,
+            ),
+        ),
+        decision=PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN,
+    )
+
+
+def _inline_repeated_source_document() -> MatchDocument:
+    """Return one physical token retaining both inline continuation fragments."""
+    return MatchDocument(
+        document_id="source",
+        pages=(
+            MatchPage(
+                page_id="source-page",
+                lines=(
+                    MatchLine(
+                        line_id="source-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="source-0",
+                                text="aaaa*",
+                                artifact_ranges=_ranges("aaaa*", offset=0),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
 def test_matches_exact_tokens_without_mutating_documents() -> None:
     source = _document("source", "Saint")
     target = _document("target", "SAINT")
@@ -406,6 +474,31 @@ def test_quarantines_pgdp_continuation_with_fragment_range_mismatch() -> None:
         _document("target", "Tam--far"),
         policy=_policy(),
         pgdp_continuations=(continuation,),
+    )
+
+    assert not graph.accepted
+    assert MatchQuarantineReason.INCOMPATIBLE_CONTINUATION in graph.quarantine_reasons
+    assert graph.best_alternative.relations[0].continuation_references == ()
+
+
+def test_attaches_contiguous_inline_fragment_range_slices() -> None:
+    graph = match_documents(
+        _inline_repeated_source_document(),
+        _document("target", "aaaa"),
+        policy=_policy(),
+        pgdp_continuations=(_inline_repeated_continuation(reverse_left_ranges=False),),
+    )
+
+    assert graph.accepted
+    assert len(graph.best_alternative.relations[0].continuation_references) == 1
+
+
+def test_quarantines_reversed_repeated_character_fragment_ranges() -> None:
+    graph = match_documents(
+        _inline_repeated_source_document(),
+        _document("target", "aaaa"),
+        policy=_policy(),
+        pgdp_continuations=(_inline_repeated_continuation(reverse_left_ranges=True),),
     )
 
     assert not graph.accepted

@@ -641,17 +641,11 @@ def _fragment_matches_token(
         return False
     if len(token_graphemes) != len(token.artifact_ranges):
         return False
-    token_graphemes_by_range = {
-        artifact_range: grapheme
-        for grapheme, artifact_range in zip(
-            token_graphemes, token.artifact_ranges, strict=True
-        )
-    }
-    return all(
-        token_graphemes_by_range.get(artifact_range) == grapheme
-        for grapheme, artifact_range in zip(
-            fragment_graphemes, fragment_ranges, strict=True
-        )
+    fragment_length = len(fragment_graphemes)
+    return any(
+        token.artifact_ranges[index : index + fragment_length] == fragment_ranges
+        and token_graphemes[index : index + fragment_length] == fragment_graphemes
+        for index in range(len(token_graphemes) - fragment_length + 1)
     )
 
 
