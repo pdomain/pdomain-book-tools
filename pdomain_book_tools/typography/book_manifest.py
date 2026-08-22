@@ -34,11 +34,39 @@ def _manifest_content_id(payload: Mapping[str, object]) -> str:
     return hashlib.sha256(canonical_json_bytes(payload_without_id)).hexdigest()
 
 
+def _validate_confined_relative_path(value: str) -> str:
+    """Validate a raw, confined POSIX path without touching the filesystem."""
+    if any(segment in {".", ".."} for segment in value.split("/")):
+        msg = "relative_path must be a nonempty safe relative POSIX path"
+        raise ValueError(msg)
+    ArtifactReference(
+        artifact_id="book-manifest-path-validation",
+        relative_path=value,
+        sha256="0" * 64,
+    )
+    return value
+
+
 class BookMatchRelationReference(CanonicalModel):
     """A cross-page match relation and the pages it affects in reading order."""
 
     relation_id: str
     page_ids: tuple[str, ...]
+    match_graph_id: str
+    match_graph_relative_path: str
+    match_graph_sha256: str
+
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a revalidated relation reference."""
+        del deep
+        payload = {**self.model_dump(), **(update or {})}
+        return type(self).model_validate(payload)
 
     @field_validator("relation_id")
     @classmethod
@@ -59,6 +87,16 @@ class BookMatchRelationReference(CanonicalModel):
             raise ValueError(msg)
         return value
 
+    @field_validator("match_graph_id", "match_graph_sha256")
+    @classmethod
+    def _validate_graph_hashes(cls, value: str, info: ValidationInfo) -> str:
+        return validate_sha256(value, str(info.field_name))
+
+    @field_validator("match_graph_relative_path")
+    @classmethod
+    def _validate_match_graph_relative_path(cls, value: str) -> str:
+        return _validate_confined_relative_path(value)
+
 
 class BookLabelingPage(CanonicalModel):
     """One page bundle pin and the book-level relations that touch that page."""
@@ -72,6 +110,18 @@ class BookLabelingPage(CanonicalModel):
     taxonomy_version: str
     taxonomy_hash: str
     relation_ids: tuple[str, ...] = ()
+
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a revalidated page bundle pin."""
+        del deep
+        payload = {**self.model_dump(), **(update or {})}
+        return type(self).model_validate(payload)
 
     @field_validator("page_id", "taxonomy_version")
     @classmethod
@@ -91,15 +141,7 @@ class BookLabelingPage(CanonicalModel):
     @field_validator("materialization_relative_path")
     @classmethod
     def _validate_materialization_relative_path(cls, value: str) -> str:
-        if any(segment in {".", ".."} for segment in value.split("/")):
-            msg = "relative_path must be a nonempty safe relative POSIX path"
-            raise ValueError(msg)
-        ArtifactReference(
-            artifact_id="book-manifest-path-validation",
-            relative_path=value,
-            sha256="0" * 64,
-        )
-        return value
+        return _validate_confined_relative_path(value)
 
     @field_validator("relation_ids")
     @classmethod
@@ -140,42 +182,52 @@ class BookLabelingManifest(CanonicalModel):
 
     @model_validator(mode="after")
     def _validate_manifest(self) -> Self:
-        if not self.pages:
+        pages = tuple(
+            BookLabelingPage.model_validate(page.model_dump(mode="json"))
+            for page in self.pages
+        )
+        match_relations = tuple(
+            BookMatchRelationReference.model_validate(relation.model_dump(mode="json"))
+            for relation in self.match_relations
+        )
+        object.__setattr__(self, "pages", pages)
+        object.__setattr__(self, "match_relations", match_relations)
+        if not pages:
             msg = "book labeling manifests require at least one page"
             raise ValueError(msg)
-        page_indexes = tuple(page.page_index for page in self.pages)
-        if page_indexes != tuple(range(len(self.pages))):
+        page_indexes = tuple(page.page_index for page in pages)
+        if page_indexes != tuple(range(len(pages))):
             msg = "page indexes must be contiguous and ordered from zero"
             raise ValueError(msg)
-        page_ids = tuple(page.page_id for page in self.pages)
+        page_ids = tuple(page.page_id for page in pages)
         if len(set(page_ids)) != len(page_ids):
             msg = "page IDs must be unique"
             raise ValueError(msg)
-        bundle_ids = tuple(page.labeling_bundle_id for page in self.pages)
+        bundle_ids = tuple(page.labeling_bundle_id for page in pages)
         if len(set(bundle_ids)) != len(bundle_ids):
             msg = "labeling bundle IDs must be unique"
             raise ValueError(msg)
         taxonomy_identities = {
-            (page.taxonomy_version, page.taxonomy_hash) for page in self.pages
+            (page.taxonomy_version, page.taxonomy_hash) for page in pages
         }
         if len(taxonomy_identities) != 1:
             msg = "all pages must use one taxonomy identity"
             raise ValueError(msg)
 
         relation_by_id = {
-            relation.relation_id: relation for relation in self.match_relations
+            relation.relation_id: relation for relation in match_relations
         }
-        if len(relation_by_id) != len(self.match_relations):
+        if len(relation_by_id) != len(match_relations):
             msg = "relation IDs must be unique"
             raise ValueError(msg)
         known_page_ids = set(page_ids)
-        for relation in self.match_relations:
+        for relation in match_relations:
             if not set(relation.page_ids).issubset(known_page_ids):
                 msg = "match relation page IDs must reference declared pages"
                 raise ValueError(msg)
             referencing_page_ids = tuple(
                 page.page_id
-                for page in self.pages
+                for page in pages
                 if relation.relation_id in page.relation_ids
             )
             if relation.page_ids != referencing_page_ids:
@@ -183,7 +235,7 @@ class BookLabelingManifest(CanonicalModel):
                 raise ValueError(msg)
         if any(
             relation_id not in relation_by_id
-            for page in self.pages
+            for page in pages
             for relation_id in page.relation_ids
         ):
             msg = "page relation IDs must reference declared match relations"

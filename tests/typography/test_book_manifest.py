@@ -56,6 +56,23 @@ def _manifest(
     )
 
 
+def _relation(
+    *,
+    relation_id: str = "join-001-002",
+    page_ids: tuple[str, ...] = ("page-000", "page-001"),
+    match_graph_id: str | None = None,
+    match_graph_relative_path: str = "match-graphs/book-graph.json",
+    match_graph_sha256: str | None = None,
+) -> BookMatchRelationReference:
+    return BookMatchRelationReference(
+        relation_id=relation_id,
+        page_ids=page_ids,
+        match_graph_id=match_graph_id or _sha256("graph-id:book-graph"),
+        match_graph_relative_path=match_graph_relative_path,
+        match_graph_sha256=match_graph_sha256 or _sha256("graph-bytes:book-graph"),
+    )
+
+
 def test_manifest_has_stable_book_id_and_content_addressed_identity() -> None:
     manifest = _manifest()
 
@@ -102,10 +119,7 @@ def test_page_rejects_unsafe_materialization_path(relative_path: str) -> None:
 
 
 def test_manifest_requires_relation_references_to_match_the_affected_pages() -> None:
-    relation = BookMatchRelationReference(
-        relation_id="join-001-002",
-        page_ids=("page-000", "page-001"),
-    )
+    relation = _relation()
     pages = (
         _page(page_index=0, relation_ids=(relation.relation_id,)),
         _page(page_index=1),
@@ -141,12 +155,8 @@ def test_manifest_requires_page_relation_ids_to_exist() -> None:
         (
             (_page(page_index=0),),
             (
-                BookMatchRelationReference(
-                    relation_id="relation-1", page_ids=("page-000", "page-001")
-                ),
-                BookMatchRelationReference(
-                    relation_id="relation-1", page_ids=("page-000", "page-001")
-                ),
+                _relation(relation_id="relation-1"),
+                _relation(relation_id="relation-1"),
             ),
             "relation IDs must be unique",
         ),
@@ -163,10 +173,7 @@ def test_manifest_rejects_duplicate_identity_values(
 
 def test_manifest_allows_page_configuration_hashes_to_differ() -> None:
     taxonomy_hash = _sha256("taxonomy:typography-v1")
-    relation = BookMatchRelationReference(
-        relation_id="join-001-002",
-        page_ids=("page-000", "page-001"),
-    )
+    relation = _relation()
     pages = (
         _page(
             page_index=0,
@@ -204,3 +211,89 @@ def test_manifest_and_nested_pages_are_immutable() -> None:
         manifest.book_id = "gutenberg:123"
     with pytest.raises(ValidationError, match="frozen"):
         manifest.pages[0].page_id = "other-page"
+
+
+def test_page_model_copy_revalidates_an_unsafe_materialization_path() -> None:
+    page = _page(page_index=0)
+
+    with pytest.raises(ValidationError, match="safe relative POSIX path"):
+        page.model_copy(update={"materialization_relative_path": "../outside.json"})
+
+
+def test_relation_model_copy_revalidates_a_one_page_relation() -> None:
+    relation = _relation()
+
+    with pytest.raises(ValidationError, match="at least two pages"):
+        relation.model_copy(update={"page_ids": ("page-000",)})
+
+
+def test_manifest_revalidates_tampered_nested_page_instances_in_constructor() -> None:
+    page = _page(page_index=0)
+    object.__setattr__(page, "materialization_relative_path", "../outside.json")
+
+    with pytest.raises(ValidationError, match="safe relative POSIX path"):
+        _manifest(pages=(page,))
+
+
+def test_manifest_model_copy_revalidates_tampered_nested_page_instances() -> None:
+    manifest = _manifest()
+    page = _page(page_index=0)
+    object.__setattr__(page, "materialization_relative_path", "../outside.json")
+
+    with pytest.raises(ValidationError, match="safe relative POSIX path"):
+        manifest.model_copy(update={"pages": (page,)})
+
+
+def test_manifest_revalidates_tampered_nested_relation_instances() -> None:
+    relation = _relation()
+    pages = (
+        _page(page_index=0, relation_ids=(relation.relation_id,)),
+        _page(page_index=1, relation_ids=(relation.relation_id,)),
+    )
+    object.__setattr__(relation, "match_graph_relative_path", "../outside.json")
+
+    with pytest.raises(ValidationError, match="safe relative POSIX path"):
+        _manifest(pages=pages, relations=(relation,))
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value", "error"),
+    [
+        ("match_graph_id", "not-a-sha256", "match_graph_id"),
+        ("match_graph_sha256", "not-a-sha256", "match_graph_sha256"),
+        (
+            "match_graph_relative_path",
+            "../match-graphs/book-graph.json",
+            "safe relative POSIX path",
+        ),
+    ],
+)
+def test_relation_rejects_unpinned_or_unsafe_match_graph_metadata(
+    field_name: str,
+    value: str,
+    error: str,
+) -> None:
+    payload = _relation().model_dump(mode="json")
+    payload[field_name] = value
+
+    with pytest.raises(ValidationError, match=error):
+        BookMatchRelationReference.model_validate(payload)
+
+
+def test_relation_pins_the_graph_and_relation_id_for_lazy_resolution() -> None:
+    graph_id = _sha256("canonical-match-graph-content")
+    graph_bytes = (
+        b'{"graph_id":"'
+        + graph_id.encode("ascii")
+        + b'","relations":[{"relation_id":"join-001-002"}]}'
+    )
+    relation = _relation(
+        match_graph_id=graph_id,
+        match_graph_relative_path="match-graphs/003.json",
+        match_graph_sha256=hashlib.sha256(graph_bytes).hexdigest(),
+    )
+
+    assert relation.match_graph_id == graph_id
+    assert relation.match_graph_relative_path == "match-graphs/003.json"
+    assert relation.match_graph_sha256 == hashlib.sha256(graph_bytes).hexdigest()
+    assert relation.relation_id == "join-001-002"
