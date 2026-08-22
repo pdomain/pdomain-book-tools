@@ -1,0 +1,756 @@
+"""Lossless decoding of PGDP ``*`` physical-continuation controls."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import TYPE_CHECKING
+
+from pydantic import Field, field_validator, model_validator
+
+from pdomain_book_tools.matching.models import ArtifactRange, MatchDocument, MatchToken
+from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+
+class PgdpRound(StrEnum):
+    """A PGDP text round that may record physical continuation controls."""
+
+    F2 = "f2"
+    P3 = "p3"
+
+
+class PgdpContinuationBoundary(StrEnum):
+    """The physical boundary removed by a PGDP continuation control."""
+
+    SAME_LINE = "same_line"
+    LINE = "line"
+    PAGE = "page"
+
+
+class PgdpContinuationDecision(StrEnum):
+    """A later lexical decision about one already-proven physical join."""
+
+    JOIN_WITHOUT_HYPHEN = "join_without_hyphen"
+    KEEP_HYPHEN = "keep_hyphen"
+    LEAVE_SEPARATE = "leave_separate"
+    PRESERVE_PUNCTUATION = "preserve_punctuation"
+    AMBIGUOUS = "ambiguous"
+
+
+class PgdpContinuationQuarantineReason(StrEnum):
+    """Reasons PGDP marker evidence cannot safely become a continuation edge."""
+
+    EMPTY_FRAGMENT = "empty_fragment"
+    NONADJACENT_MARKERS = "nonadjacent_markers"
+    ORPHAN_LEADING_MARKER = "orphan_leading_marker"
+    ORPHAN_TRAILING_MARKER = "orphan_trailing_marker"
+    ROUND_CONFLICT = "round_conflict"
+    SOURCE_RANGE_MISMATCH = "source_range_mismatch"
+
+
+class PgdpPhysicalFragment(CanonicalModel):
+    """One unchanged physical text fragment with a source range per grapheme."""
+
+    text: str
+    token_id: str
+    page_id: str
+    line_id: str
+    grapheme_ranges: tuple[ArtifactRange, ...]
+
+    @field_validator("text", "token_id", "page_id", "line_id")
+    @classmethod
+    def _validate_nonempty_text(cls, value: str) -> str:
+        if not value:
+            msg = "physical fragment fields must not be empty"
+            raise ValueError(msg)
+        return value
+
+    @model_validator(mode="after")
+    def _validate_grapheme_ranges(self) -> PgdpPhysicalFragment:
+        graphemes = split_graphemes(self.text)
+        if len(graphemes) != len(self.grapheme_ranges):
+            msg = "physical fragments require one source range per grapheme"
+            raise ValueError(msg)
+        if any(
+            source_range.grapheme_end - source_range.grapheme_start != 1
+            for source_range in self.grapheme_ranges
+        ):
+            msg = "physical fragment grapheme ranges must each cover one grapheme"
+            raise ValueError(msg)
+        return self
+
+
+class PgdpMarkerEvidence(CanonicalModel):
+    """Exact source ranges for one round's continuation markers."""
+
+    round: PgdpRound
+    marker_ranges: tuple[ArtifactRange, ...]
+
+    @model_validator(mode="after")
+    def _validate_markers(self) -> PgdpMarkerEvidence:
+        if not self.marker_ranges:
+            msg = "marker evidence requires at least one marker range"
+            raise ValueError(msg)
+        if any(
+            source_range.grapheme_end - source_range.grapheme_start != 1
+            for source_range in self.marker_ranges
+        ):
+            msg = "marker ranges must each cover one grapheme"
+            raise ValueError(msg)
+        return self
+
+    @property
+    def marker_count(self) -> int:
+        """Return the number of raw ``*`` controls retained as evidence."""
+        return len(self.marker_ranges)
+
+
+class PgdpLogicalCandidate(CanonicalModel):
+    """One logical text form that preserves the physical fragments separately."""
+
+    text: str
+    decision: PgdpContinuationDecision
+
+    @field_validator("text")
+    @classmethod
+    def _validate_text(cls, value: str) -> str:
+        if not value:
+            msg = "logical candidate text must not be empty"
+            raise ValueError(msg)
+        return value
+
+
+class PgdpContinuation(CanonicalModel):
+    """One reversible PGDP physical-continuation edge."""
+
+    left_fragment: PgdpPhysicalFragment
+    right_fragment: PgdpPhysicalFragment
+    boundary: PgdpContinuationBoundary
+    marker_evidence: tuple[PgdpMarkerEvidence, ...]
+    logical_candidates: tuple[PgdpLogicalCandidate, ...]
+    decision: PgdpContinuationDecision
+    quarantine_reasons: tuple[PgdpContinuationQuarantineReason, ...] = ()
+
+    @model_validator(mode="after")
+    def _validate_continuation(self) -> PgdpContinuation:
+        rounds = tuple(evidence.round for evidence in self.marker_evidence)
+        if not rounds:
+            msg = "continuations require marker evidence"
+            raise ValueError(msg)
+        if len(set(rounds)) != len(rounds):
+            msg = "continuations allow one marker evidence record per round"
+            raise ValueError(msg)
+        if not self.logical_candidates:
+            msg = "continuations require at least one logical candidate"
+            raise ValueError(msg)
+        candidate_texts = tuple(candidate.text for candidate in self.logical_candidates)
+        if len(set(candidate_texts)) != len(candidate_texts):
+            msg = "logical candidates must be distinct"
+            raise ValueError(msg)
+        if self.decision is PgdpContinuationDecision.AMBIGUOUS:
+            if len(self.logical_candidates) < 2:
+                msg = "ambiguous continuations require multiple logical candidates"
+                raise ValueError(msg)
+        elif len(self.logical_candidates) != 1:
+            msg = "resolved continuations require exactly one logical candidate"
+            raise ValueError(msg)
+        return self
+
+
+class PgdpQuarantinedMarker(CanonicalModel):
+    """Marker source evidence retained when no safe continuation edge exists."""
+
+    marker_evidence: PgdpMarkerEvidence | None
+    unmapped_marker_evidence: PgdpUnmappedMarkerEvidence | None
+    reason: PgdpContinuationQuarantineReason
+
+    @model_validator(mode="after")
+    def _validate_marker_evidence(self) -> PgdpQuarantinedMarker:
+        if (self.marker_evidence is None) == (self.unmapped_marker_evidence is None):
+            msg = "quarantined markers require exactly one evidence representation"
+            raise ValueError(msg)
+        return self
+
+
+class PgdpUnmappedMarkerEvidence(CanonicalModel):
+    """A marker location retained when input ranges cannot map its grapheme."""
+
+    round: PgdpRound
+    token_id: str
+    page_id: str
+    line_id: str
+    marker_grapheme_index: int = Field(ge=0, strict=True)
+    token_artifact_ranges: tuple[ArtifactRange, ...]
+
+    @field_validator("token_id", "page_id", "line_id")
+    @classmethod
+    def _validate_nonempty_identifier(cls, value: str) -> str:
+        if not value:
+            msg = "unmapped marker identifiers must not be empty"
+            raise ValueError(msg)
+        return value
+
+
+class PgdpContinuationDecode(CanonicalModel):
+    """All decoded PGDP continuation edges and explicit unresolved evidence."""
+
+    continuations: tuple[PgdpContinuation, ...]
+    quarantined_markers: tuple[PgdpQuarantinedMarker, ...]
+    warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _LocatedToken:
+    """One physical token with its round and reading-order location."""
+
+    round: PgdpRound
+    token: MatchToken
+    page_id: str
+    page_index: int
+    line_id: str
+    line_index: int
+    token_index: int
+    document_index: int
+    grapheme_ranges: tuple[ArtifactRange, ...] | None
+
+
+@dataclass(frozen=True)
+class _RoundEdge:
+    """A round-local decoded edge before F2/P3 reconciliation."""
+
+    continuation: PgdpContinuation
+    anchor: _EdgeAnchor
+
+
+@dataclass(frozen=True)
+class _EdgeAnchor:
+    """Round-independent physical location for F2/P3 edge reconciliation."""
+
+    left_page_id: str
+    left_line_id: str
+    left_token_index: int
+    right_page_id: str
+    right_line_id: str
+    right_token_index: int
+    boundary: PgdpContinuationBoundary
+    marker_index: int
+
+
+def decode_pgdp_continuations(
+    f2_document: MatchDocument, p3_document: MatchDocument
+) -> PgdpContinuationDecode:
+    """Decode F2 and P3 ``*`` controls without altering either input document.
+
+    Inputs must give every token grapheme an exact ``ArtifactRange``. This keeps
+    the decoder independent of PGDP JSON parsing while making every emitted
+    fragment and marker traceable to the original artifact bytes.
+    """
+    f2_edges, f2_quarantine = _decode_round(PgdpRound.F2, f2_document)
+    p3_edges, p3_quarantine = _decode_round(PgdpRound.P3, p3_document)
+    continuations = _reconcile_rounds(f2_edges, p3_edges)
+    return PgdpContinuationDecode(
+        continuations=continuations,
+        quarantined_markers=f2_quarantine + p3_quarantine,
+    )
+
+
+def _decode_round(
+    round_: PgdpRound, document: MatchDocument
+) -> tuple[tuple[_RoundEdge, ...], tuple[PgdpQuarantinedMarker, ...]]:
+    tokens = _located_tokens(round_, document)
+    edges: list[_RoundEdge] = []
+    quarantined: list[PgdpQuarantinedMarker] = []
+    consumed_leading_locations: set[tuple[int, int]] = set()
+    for token_position, located in enumerate(tokens):
+        graphemes = split_graphemes(located.token.text)
+        for marker_index, grapheme in enumerate(graphemes):
+            if grapheme != "*":
+                continue
+            marker = _marker_evidence(located, marker_index)
+            if marker is None:
+                quarantined.append(
+                    _quarantined_marker(
+                        round_,
+                        located,
+                        marker_index,
+                        PgdpContinuationQuarantineReason.SOURCE_RANGE_MISMATCH,
+                    )
+                )
+                continue
+            if 0 < marker_index < len(graphemes) - 1:
+                edge = _inline_edge(located, marker_index, marker)
+                if edge is None:
+                    quarantined.append(
+                        _quarantined_marker(
+                            round_,
+                            located,
+                            marker_index,
+                            PgdpContinuationQuarantineReason.EMPTY_FRAGMENT,
+                        )
+                    )
+                else:
+                    edges.append(edge)
+                continue
+            if marker_index == len(graphemes) - 1:
+                edge, marker_quarantine, consumed_leading = _trailing_edge(
+                    tokens, token_position, located, marker_index, marker
+                )
+                if edge is not None:
+                    edges.append(edge)
+                if marker_quarantine is not None:
+                    quarantined.append(marker_quarantine)
+                if consumed_leading is not None:
+                    consumed_leading_locations.add(consumed_leading)
+                continue
+            marker_location = (token_position, marker_index)
+            if marker_location in consumed_leading_locations:
+                continue
+            edge, marker_quarantine = _leading_edge(
+                tokens, token_position, located, marker_index, marker
+            )
+            if edge is not None:
+                edges.append(edge)
+            if marker_quarantine is not None:
+                quarantined.append(marker_quarantine)
+    return tuple(edges), tuple(quarantined)
+
+
+def _located_tokens(
+    round_: PgdpRound, document: MatchDocument
+) -> tuple[_LocatedToken, ...]:
+    tokens: list[_LocatedToken] = []
+    document_index = 0
+    for page_index, page in enumerate(document.pages):
+        for line_index, line in enumerate(page.lines):
+            for token_index, token in enumerate(line.tokens):
+                tokens.append(
+                    _LocatedToken(
+                        round=round_,
+                        token=token,
+                        page_id=page.page_id,
+                        page_index=page_index,
+                        line_id=line.line_id,
+                        line_index=line_index,
+                        token_index=token_index,
+                        document_index=document_index,
+                        grapheme_ranges=_token_grapheme_ranges(token),
+                    )
+                )
+                document_index += 1
+    return tuple(tokens)
+
+
+def _token_grapheme_ranges(token: MatchToken) -> tuple[ArtifactRange, ...] | None:
+    graphemes = split_graphemes(token.text)
+    if len(token.artifact_ranges) != len(graphemes):
+        return None
+    if any(
+        source_range.grapheme_end - source_range.grapheme_start != 1
+        for source_range in token.artifact_ranges
+    ):
+        return None
+    return token.artifact_ranges
+
+
+def _marker_evidence(
+    located: _LocatedToken, marker_index: int
+) -> PgdpMarkerEvidence | None:
+    ranges = located.grapheme_ranges
+    if ranges is None:
+        return None
+    return PgdpMarkerEvidence(
+        round=located.round,
+        marker_ranges=(ranges[marker_index],),
+    )
+
+
+def _inline_edge(
+    located: _LocatedToken, marker_index: int, marker: PgdpMarkerEvidence
+) -> _RoundEdge | None:
+    left = _fragment(located, 0, marker_index)
+    right = _fragment(located, marker_index + 1, None)
+    if left is None or right is None:
+        return None
+    boundary = PgdpContinuationBoundary.SAME_LINE
+    return _round_edge(
+        left,
+        right,
+        boundary,
+        marker,
+        _edge_anchor(located, located, boundary, marker_index),
+    )
+
+
+def _trailing_edge(
+    tokens: tuple[_LocatedToken, ...],
+    token_position: int,
+    located: _LocatedToken,
+    marker_index: int,
+    marker: PgdpMarkerEvidence,
+) -> tuple[
+    _RoundEdge | None,
+    PgdpQuarantinedMarker | None,
+    tuple[int, int] | None,
+]:
+    left = _fragment(located, 0, marker_index)
+    if left is None:
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.EMPTY_FRAGMENT,
+            ),
+            None,
+        )
+    if token_position + 1 == len(tokens):
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.ORPHAN_TRAILING_MARKER,
+            ),
+            None,
+        )
+    next_token = tokens[token_position + 1]
+    boundary = _boundary_between(located, next_token)
+    if boundary is None:
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.NONADJACENT_MARKERS,
+            ),
+            None,
+        )
+    next_graphemes = split_graphemes(next_token.token.text)
+    next_starts_marker = bool(next_graphemes) and next_graphemes[0] == "*"
+    right_start = 1 if next_starts_marker else 0
+    right = _fragment(next_token, right_start, None)
+    if right is None:
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.EMPTY_FRAGMENT,
+            ),
+            None,
+        )
+    marker_evidence = marker
+    consumed_leading: tuple[int, int] | None = None
+    if next_starts_marker:
+        next_marker = _marker_evidence(next_token, 0)
+        if next_marker is None:
+            return (
+                None,
+                _quarantined_marker(
+                    located.round,
+                    next_token,
+                    0,
+                    PgdpContinuationQuarantineReason.SOURCE_RANGE_MISMATCH,
+                ),
+                None,
+            )
+        marker_evidence = PgdpMarkerEvidence(
+            round=located.round,
+            marker_ranges=marker.marker_ranges + next_marker.marker_ranges,
+        )
+        consumed_leading = (token_position + 1, 0)
+    return (
+        _round_edge(
+            left,
+            right,
+            boundary,
+            marker_evidence,
+            _edge_anchor(located, next_token, boundary, marker_index),
+        ),
+        None,
+        consumed_leading,
+    )
+
+
+def _leading_edge(
+    tokens: tuple[_LocatedToken, ...],
+    token_position: int,
+    located: _LocatedToken,
+    marker_index: int,
+    marker: PgdpMarkerEvidence,
+) -> tuple[_RoundEdge | None, PgdpQuarantinedMarker | None]:
+    if token_position == 0:
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.ORPHAN_LEADING_MARKER,
+            ),
+        )
+    previous = tokens[token_position - 1]
+    boundary = _boundary_between(previous, located)
+    if boundary is None:
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.NONADJACENT_MARKERS,
+            ),
+        )
+    left = _fragment(previous, 0, None)
+    right = _fragment(located, marker_index + 1, None)
+    if left is None or right is None:
+        return (
+            None,
+            _quarantined_marker(
+                located.round,
+                located,
+                marker_index,
+                PgdpContinuationQuarantineReason.EMPTY_FRAGMENT,
+            ),
+        )
+    return (
+        _round_edge(
+            left,
+            right,
+            boundary,
+            marker,
+            _edge_anchor(previous, located, boundary, marker_index),
+        ),
+        None,
+    )
+
+
+def _fragment(
+    located: _LocatedToken, start: int, end: int | None
+) -> PgdpPhysicalFragment | None:
+    ranges = located.grapheme_ranges
+    if ranges is None:
+        return None
+    graphemes = split_graphemes(located.token.text)
+    selected_graphemes = graphemes[start:end]
+    selected_ranges = ranges[start:end]
+    if not selected_graphemes:
+        return None
+    return PgdpPhysicalFragment(
+        text="".join(selected_graphemes),
+        token_id=located.token.token_id,
+        page_id=located.page_id,
+        line_id=located.line_id,
+        grapheme_ranges=selected_ranges,
+    )
+
+
+def _round_edge(
+    left: PgdpPhysicalFragment,
+    right: PgdpPhysicalFragment,
+    boundary: PgdpContinuationBoundary,
+    marker: PgdpMarkerEvidence,
+    anchor: _EdgeAnchor,
+) -> _RoundEdge:
+    candidates, decision = _logical_candidates(left.text, right.text)
+    continuation = PgdpContinuation(
+        left_fragment=left,
+        right_fragment=right,
+        boundary=boundary,
+        marker_evidence=(marker,),
+        logical_candidates=candidates,
+        decision=decision,
+    )
+    return _RoundEdge(continuation=continuation, anchor=anchor)
+
+
+def _edge_anchor(
+    left: _LocatedToken,
+    right: _LocatedToken,
+    boundary: PgdpContinuationBoundary,
+    marker_index: int,
+) -> _EdgeAnchor:
+    return _EdgeAnchor(
+        left_page_id=left.page_id,
+        left_line_id=left.line_id,
+        left_token_index=left.token_index,
+        right_page_id=right.page_id,
+        right_line_id=right.line_id,
+        right_token_index=right.token_index,
+        boundary=boundary,
+        marker_index=marker_index,
+    )
+
+
+def _logical_candidates(
+    left: str, right: str
+) -> tuple[tuple[PgdpLogicalCandidate, ...], PgdpContinuationDecision]:
+    if left.endswith("-") and not left.endswith("--"):
+        return (
+            (
+                PgdpLogicalCandidate(
+                    text=left[:-1] + right,
+                    decision=PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN,
+                ),
+                PgdpLogicalCandidate(
+                    text=left + right,
+                    decision=PgdpContinuationDecision.KEEP_HYPHEN,
+                ),
+            ),
+            PgdpContinuationDecision.AMBIGUOUS,
+        )
+    return (
+        (
+            PgdpLogicalCandidate(
+                text=left + right,
+                decision=PgdpContinuationDecision.PRESERVE_PUNCTUATION,
+            ),
+        ),
+        PgdpContinuationDecision.PRESERVE_PUNCTUATION,
+    )
+
+
+def _boundary_between(
+    left: _LocatedToken, right: _LocatedToken
+) -> PgdpContinuationBoundary | None:
+    if right.document_index != left.document_index + 1:
+        return None
+    if left.page_id == right.page_id:
+        if left.line_id == right.line_id:
+            return PgdpContinuationBoundary.SAME_LINE
+        return PgdpContinuationBoundary.LINE
+    if right.page_index != left.page_index + 1:
+        return None
+    if not _pages_are_consecutive(left.page_id, right.page_id):
+        return None
+    return PgdpContinuationBoundary.PAGE
+
+
+def _pages_are_consecutive(left_page_id: str, right_page_id: str) -> bool:
+    left_number = _trailing_page_number(left_page_id)
+    right_number = _trailing_page_number(right_page_id)
+    if left_number is None or right_number is None:
+        return True
+    return right_number == left_number + 1
+
+
+def _trailing_page_number(page_id: str) -> int | None:
+    digits: list[str] = []
+    found_digit = False
+    for character in reversed(page_id):
+        if character.isdecimal():
+            digits.append(character)
+            found_digit = True
+        elif found_digit:
+            break
+    if not digits:
+        return None
+    return int("".join(reversed(digits)))
+
+
+def _quarantined_marker(
+    round_: PgdpRound,
+    located: _LocatedToken,
+    marker_index: int,
+    reason: PgdpContinuationQuarantineReason,
+) -> PgdpQuarantinedMarker:
+    marker = _marker_evidence(located, marker_index)
+    if marker is None:
+        return PgdpQuarantinedMarker(
+            marker_evidence=None,
+            unmapped_marker_evidence=PgdpUnmappedMarkerEvidence(
+                round=round_,
+                token_id=located.token.token_id,
+                page_id=located.page_id,
+                line_id=located.line_id,
+                marker_grapheme_index=marker_index,
+                token_artifact_ranges=located.token.artifact_ranges,
+            ),
+            reason=reason,
+        )
+    return PgdpQuarantinedMarker(
+        marker_evidence=marker,
+        unmapped_marker_evidence=None,
+        reason=reason,
+    )
+
+
+def _reconcile_rounds(
+    f2_edges: tuple[_RoundEdge, ...], p3_edges: tuple[_RoundEdge, ...]
+) -> tuple[PgdpContinuation, ...]:
+    unmatched_p3 = list(p3_edges)
+    continuations: list[PgdpContinuation] = []
+    for f2_edge in f2_edges:
+        matching_index = _matching_round_edge_index(f2_edge, unmatched_p3)
+        conflicting_index = _conflicting_round_edge_index(f2_edge, unmatched_p3)
+        if matching_index is not None:
+            p3_edge = unmatched_p3.pop(matching_index)
+            continuations.append(
+                _merge_round_edges(f2_edge.continuation, p3_edge.continuation)
+            )
+        elif conflicting_index is not None:
+            unmatched_p3.pop(conflicting_index)
+            continuations.append(_with_quarantine(f2_edge.continuation))
+        else:
+            continuations.append(f2_edge.continuation)
+    continuations.extend(edge.continuation for edge in unmatched_p3)
+    return tuple(continuations)
+
+
+def _matching_round_edge_index(
+    expected: _RoundEdge, candidates: Iterable[_RoundEdge]
+) -> int | None:
+    for index, candidate in enumerate(candidates):
+        if expected.anchor == candidate.anchor and _same_edge(
+            expected.continuation, candidate.continuation
+        ):
+            return index
+    return None
+
+
+def _conflicting_round_edge_index(
+    expected: _RoundEdge, candidates: Iterable[_RoundEdge]
+) -> int | None:
+    for index, candidate in enumerate(candidates):
+        if expected.anchor == candidate.anchor:
+            return index
+    return None
+
+
+def _same_edge(left: PgdpContinuation, right: PgdpContinuation) -> bool:
+    return (
+        left.left_fragment.text == right.left_fragment.text
+        and left.right_fragment.text == right.right_fragment.text
+        and left.boundary is right.boundary
+    )
+
+
+def _merge_round_edges(f2: PgdpContinuation, p3: PgdpContinuation) -> PgdpContinuation:
+    return PgdpContinuation(
+        left_fragment=f2.left_fragment,
+        right_fragment=f2.right_fragment,
+        boundary=f2.boundary,
+        marker_evidence=f2.marker_evidence + p3.marker_evidence,
+        logical_candidates=f2.logical_candidates,
+        decision=f2.decision,
+        quarantine_reasons=f2.quarantine_reasons + p3.quarantine_reasons,
+    )
+
+
+def _with_quarantine(continuation: PgdpContinuation) -> PgdpContinuation:
+    return PgdpContinuation(
+        left_fragment=continuation.left_fragment,
+        right_fragment=continuation.right_fragment,
+        boundary=continuation.boundary,
+        marker_evidence=continuation.marker_evidence,
+        logical_candidates=continuation.logical_candidates,
+        decision=continuation.decision,
+        quarantine_reasons=(PgdpContinuationQuarantineReason.ROUND_CONFLICT,),
+    )

@@ -17,6 +17,20 @@ from pdomain_book_tools.matching.models import (
     MatchRelationKind,
     MatchToken,
 )
+from pdomain_book_tools.matching.pgdp_continuations import (
+    PgdpContinuation,
+    PgdpContinuationBoundary,
+    PgdpContinuationDecision,
+    PgdpContinuationDecode,
+    PgdpContinuationQuarantineReason,
+    PgdpLogicalCandidate,
+    PgdpMarkerEvidence,
+    PgdpPhysicalFragment,
+    PgdpQuarantinedMarker,
+    PgdpRound,
+    PgdpUnmappedMarkerEvidence,
+    decode_pgdp_continuations,
+)
 
 __all__ = [
     "ArtifactRange",
@@ -32,4 +46,16 @@ __all__ = [
     "MatchRelation",
     "MatchRelationKind",
     "MatchToken",
+    "PgdpContinuation",
+    "PgdpContinuationBoundary",
+    "PgdpContinuationDecision",
+    "PgdpContinuationDecode",
+    "PgdpContinuationQuarantineReason",
+    "PgdpLogicalCandidate",
+    "PgdpMarkerEvidence",
+    "PgdpPhysicalFragment",
+    "PgdpQuarantinedMarker",
+    "PgdpRound",
+    "PgdpUnmappedMarkerEvidence",
+    "decode_pgdp_continuations",
 ]
