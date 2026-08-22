@@ -235,6 +235,88 @@ def _inline_repeated_source_document() -> MatchDocument:
     )
 
 
+def _raw_cross_page_target_document() -> MatchDocument:
+    """Return raw cross-page PGDP fragments with both physical markers intact."""
+    return MatchDocument(
+        document_id="target",
+        pages=(
+            MatchPage(
+                page_id="target-page-0",
+                lines=(
+                    MatchLine(
+                        line_id="target-line-0",
+                        tokens=(
+                            MatchToken(
+                                token_id="target-0",
+                                text="sim-*",
+                                artifact_ranges=_ranges("sim-*", offset=0),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            MatchPage(
+                page_id="target-page-1",
+                lines=(
+                    MatchLine(
+                        line_id="target-line-1",
+                        tokens=(
+                            MatchToken(
+                                token_id="target-1",
+                                text="*plicity",
+                                artifact_ranges=_ranges("*plicity", offset=5),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+
+def _resolved_cross_page_join_continuation() -> PgdpContinuation:
+    """Return one resolved cross-page join with both exact marker ranges retained."""
+    left = PgdpPhysicalFragment(
+        text="sim-",
+        token_id="target-0",
+        page_id="target-page-0",
+        line_id="target-line-0",
+        grapheme_ranges=_ranges("sim-", offset=0),
+    )
+    right = PgdpPhysicalFragment(
+        text="plicity",
+        token_id="target-1",
+        page_id="target-page-1",
+        line_id="target-line-1",
+        grapheme_ranges=_ranges("plicity", offset=6),
+    )
+    markers = PgdpMarkerEvidence(
+        round=PgdpRound.F2,
+        marker_ranges=(_ranges("*", offset=4)[0], _ranges("*", offset=5)[0]),
+    )
+    return PgdpContinuation(
+        left_fragment=left,
+        right_fragment=right,
+        boundary=PgdpContinuationBoundary.PAGE,
+        marker_evidence=(markers,),
+        round_evidence=(
+            PgdpRoundContinuationEvidence(
+                round=PgdpRound.F2,
+                left_fragment=left,
+                right_fragment=right,
+                marker_evidence=markers,
+            ),
+        ),
+        logical_candidates=(
+            PgdpLogicalCandidate(
+                text="simplicity",
+                decision=PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN,
+            ),
+        ),
+        decision=PgdpContinuationDecision.JOIN_WITHOUT_HYPHEN,
+    )
+
+
 def test_matches_exact_tokens_without_mutating_documents() -> None:
     source = _document("source", "Saint")
     target = _document("target", "SAINT")
@@ -370,6 +452,23 @@ def test_stops_state_search_at_the_configured_bound() -> None:
     assert graph.search_evidence.state_count == 2
     assert graph.search_evidence.state_iteration_count <= 2
     assert graph.search_evidence.transition_count <= 3
+    assert graph.search_evidence.partial_paths
+
+
+def test_quarantines_before_allocating_an_unbounded_grapheme_dp() -> None:
+    graph = match_documents(
+        _document("source", "a" * 1_000),
+        _document("target", "a" * 1_000),
+        policy=_policy(max_grapheme_state_count=100),
+    )
+
+    assert not graph.accepted
+    assert (
+        MatchQuarantineReason.GRAPHEME_STATE_LIMIT_EXHAUSTED in graph.quarantine_reasons
+    )
+    assert graph.search_evidence is not None
+    assert graph.search_evidence.grapheme_state_count == 1_002_001
+    assert graph.search_evidence.max_grapheme_state_count == 100
     assert graph.search_evidence.partial_paths
 
 
@@ -627,6 +726,58 @@ def test_attaches_contiguous_inline_fragment_range_slices() -> None:
 
     assert graph.accepted
     assert len(graph.best_alternative.relations[0].continuation_references) == 1
+
+
+def test_matches_a_raw_pgdp_marker_document_through_the_public_surface_adapter() -> (
+    None
+):
+    raw_source = _inline_repeated_source_document()
+    graph = match_documents(
+        raw_source,
+        _document("target", "aaaa"),
+        policy=_policy(),
+        pgdp_continuations=(_inline_repeated_continuation(reverse_left_ranges=False),),
+    )
+
+    surface_token = graph.source_document.pages[0].lines[0].tokens[0]
+    raw_token = raw_source.pages[0].lines[0].tokens[0]
+    assert graph.accepted
+    assert surface_token.token_id == raw_token.token_id
+    assert surface_token.text == "aaaa"
+    assert surface_token.artifact_ranges == raw_token.artifact_ranges[:4]
+    assert raw_token.text == "aaaa*"
+
+
+def test_matches_raw_cross_page_pgdp_fragments_as_one_source_to_fragments_relation() -> (
+    None
+):
+    raw_target = _raw_cross_page_target_document()
+    graph = match_documents(
+        _document("source", "simplicity"),
+        raw_target,
+        policy=_policy(),
+        pgdp_continuations=(_resolved_cross_page_join_continuation(),),
+    )
+
+    relation = graph.best_alternative.relations[0]
+    surface_tokens = tuple(
+        token
+        for page in graph.target_document.pages
+        for line in page.lines
+        for token in line.tokens
+    )
+    assert graph.accepted
+    assert graph.best_alternative.total_cost == 0
+    assert relation.kind.value == "source_to_fragments"
+    assert relation.target_token_ids == ("target-0", "target-1")
+    assert tuple(token.token_id for token in surface_tokens) == ("target-0", "target-1")
+    assert tuple(token.text for token in surface_tokens) == ("sim-", "plicity")
+    assert tuple(
+        tuple(source_range.byte_start for source_range in token.artifact_ranges)
+        for token in surface_tokens
+    ) == ((0, 1, 2, 3), (6, 7, 8, 9, 10, 11, 12))
+    assert raw_target.pages[0].lines[0].tokens[0].text == "sim-*"
+    assert raw_target.pages[1].lines[0].tokens[0].text == "*plicity"
 
 
 def test_quarantines_reversed_repeated_character_fragment_ranges() -> None:

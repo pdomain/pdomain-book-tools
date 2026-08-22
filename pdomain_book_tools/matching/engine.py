@@ -28,6 +28,7 @@ from pdomain_book_tools.matching.models import (
 from pdomain_book_tools.matching.pgdp_continuations import (
     PgdpContinuation,
     PgdpContinuationDecision,
+    build_pgdp_surface_document,
 )
 from pdomain_book_tools.typography.normalization import (
     ComparisonView,
@@ -45,6 +46,17 @@ class _Path:
 
     total_cost: float
     relations: tuple[MatchRelation, ...]
+
+
+@dataclass
+class _GraphemeSearchUsage:
+    """Mutable local-DP accounting scoped to one document-match invocation."""
+
+    largest_state_need: int = 0
+
+
+class _GraphemeStateLimitExceededError(Exception):
+    """Signal that a relation-local grapheme DP would exceed its policy bound."""
 
 
 @dataclass(frozen=True)
@@ -78,17 +90,33 @@ def match_documents(
     A resource cap returns a complete but quarantined fallback, rather than a
     partially searched result or an accepted greedy path.
     """
-    source_tokens = _ordered_tokens(source_document)
-    target_tokens = _ordered_tokens(target_document)
     continuation_inputs, continuation_reasons, continuation_warnings = (
         _continuation_inputs(pgdp_continuations)
     )
+    source_document, source_surface_reasons, source_surface_warnings = (
+        _surface_document_for_continuations(source_document, pgdp_continuations)
+    )
+    target_document, target_surface_reasons, target_surface_warnings = (
+        _surface_document_for_continuations(target_document, pgdp_continuations)
+    )
+    continuation_reasons = _unique_reasons(
+        (*continuation_reasons, *source_surface_reasons, *target_surface_reasons)
+    )
+    continuation_warnings = (
+        *continuation_warnings,
+        *source_surface_warnings,
+        *target_surface_warnings,
+    )
+    source_tokens = _ordered_tokens(source_document)
+    target_tokens = _ordered_tokens(target_document)
     cells: dict[tuple[int, int], list[_Path]] = {(0, 0): [_Path(0.0, ())]}
     state_count = 1
     state_iteration_count = 0
     transition_count = 0
     state_exhausted = False
     transition_exhausted = False
+    grapheme_state_exhausted = False
+    grapheme_usage = _GraphemeSearchUsage()
     source_count = len(source_tokens)
     target_count = len(target_tokens)
 
@@ -99,14 +127,20 @@ def match_documents(
                 continue
             state_iteration_count += 1
             for path in current:
-                for relation, cost, next_state in _transitions(
-                    source_tokens,
-                    target_tokens,
-                    source_index=source_index,
-                    target_index=target_index,
-                    policy=policy,
-                    continuation_inputs=continuation_inputs,
-                ):
+                try:
+                    transitions = _transitions(
+                        source_tokens,
+                        target_tokens,
+                        source_index=source_index,
+                        target_index=target_index,
+                        policy=policy,
+                        continuation_inputs=continuation_inputs,
+                        grapheme_usage=grapheme_usage,
+                    )
+                except _GraphemeStateLimitExceededError:
+                    grapheme_state_exhausted = True
+                    break
+                for relation, cost, next_state in transitions:
                     if transition_count >= policy.max_transition_count:
                         transition_exhausted = True
                         break
@@ -125,11 +159,11 @@ def match_documents(
                         ),
                         policy=policy,
                     )
-                if state_exhausted or transition_exhausted:
+                if state_exhausted or transition_exhausted or grapheme_state_exhausted:
                     break
-            if state_exhausted or transition_exhausted:
+            if state_exhausted or transition_exhausted or grapheme_state_exhausted:
                 break
-        if state_exhausted or transition_exhausted:
+        if state_exhausted or transition_exhausted or grapheme_state_exhausted:
             break
 
     complete = tuple(cells.get((source_count, target_count), ()))
@@ -140,12 +174,14 @@ def match_documents(
         state_count=state_count,
         state_iteration_count=state_iteration_count,
         transition_count=transition_count,
+        grapheme_state_count=grapheme_usage.largest_state_need,
         policy=policy,
     )
-    if state_exhausted or transition_exhausted:
+    if state_exhausted or transition_exhausted or grapheme_state_exhausted:
         reasons = _exhaustion_reasons(
             state_exhausted=state_exhausted,
             transition_exhausted=transition_exhausted,
+            grapheme_state_exhausted=grapheme_state_exhausted,
         )
         if complete:
             return _graph_from_paths(
@@ -226,6 +262,7 @@ def _transitions(
     target_index: int,
     policy: MatchPolicy,
     continuation_inputs: tuple[_ContinuationInput, ...],
+    grapheme_usage: _GraphemeSearchUsage,
 ) -> tuple[tuple[MatchRelation, float, tuple[int, int]], ...]:
     """Return every bounded monotonic relation from one token-index state."""
     transitions: list[tuple[MatchRelation, float, tuple[int, int]]] = []
@@ -237,6 +274,7 @@ def _transitions(
             (target_tokens[target_index],),
             policy=policy,
             continuation_inputs=continuation_inputs,
+            grapheme_usage=grapheme_usage,
         )
         transitions.append((relation, cost, (source_index + 1, target_index + 1)))
         for target_size in range(2, min(policy.max_merge_size, target_remaining) + 1):
@@ -245,6 +283,7 @@ def _transitions(
                 target_tokens[target_index : target_index + target_size],
                 policy=policy,
                 continuation_inputs=continuation_inputs,
+                grapheme_usage=grapheme_usage,
             )
             transitions.append(
                 (relation, cost, (source_index + 1, target_index + target_size))
@@ -255,6 +294,7 @@ def _transitions(
                 (target_tokens[target_index],),
                 policy=policy,
                 continuation_inputs=continuation_inputs,
+                grapheme_usage=grapheme_usage,
             )
             transitions.append(
                 (relation, cost, (source_index + source_size, target_index + 1))
@@ -286,6 +326,7 @@ def _paired_relation(
     *,
     policy: MatchPolicy,
     continuation_inputs: tuple[_ContinuationInput, ...],
+    grapheme_usage: _GraphemeSearchUsage,
 ) -> tuple[MatchRelation, float]:
     """Create one bounded paired relation and its deterministic local cost."""
     source_text = "".join(token.text for token in source_tokens)
@@ -302,10 +343,16 @@ def _paired_relation(
     target_scoring_view = _comparison_view(target_scoring_text, policy=policy)
     relation_kind = _paired_kind(source_tokens, target_tokens)
     operations, _physical_cost = _grapheme_alignment_operations(
-        source_view, target_view, policy=policy
+        source_view,
+        target_view,
+        policy=policy,
+        grapheme_usage=grapheme_usage,
     )
     _scoring_operations, cost = _grapheme_alignment_operations(
-        source_scoring_view, target_scoring_view, policy=policy
+        source_scoring_view,
+        target_scoring_view,
+        policy=policy,
+        grapheme_usage=grapheme_usage,
     )
     continuation_warnings = tuple(
         f"PGDP logical candidate {continuation.continuation_id} ({continuation.decision})"
@@ -395,6 +442,7 @@ def _exhaustion_reasons(
     *,
     state_exhausted: bool,
     transition_exhausted: bool,
+    grapheme_state_exhausted: bool,
 ) -> tuple[MatchQuarantineReason, ...]:
     """Return explicit reasons why bounded search cannot be accepted."""
     reasons: list[MatchQuarantineReason] = []
@@ -402,6 +450,8 @@ def _exhaustion_reasons(
         reasons.append(MatchQuarantineReason.STATE_LIMIT_EXHAUSTED)
     if transition_exhausted:
         reasons.append(MatchQuarantineReason.TRANSITION_LIMIT_EXHAUSTED)
+    if grapheme_state_exhausted:
+        reasons.append(MatchQuarantineReason.GRAPHEME_STATE_LIMIT_EXHAUSTED)
     return tuple(reasons)
 
 
@@ -599,6 +649,63 @@ def _continuation_inputs(
     return tuple(inputs), _unique_reasons(tuple(reasons)), tuple(warnings)
 
 
+def _surface_document_for_continuations(
+    document: MatchDocument,
+    continuations: tuple[PgdpContinuation, ...],
+) -> tuple[
+    MatchDocument,
+    tuple[MatchQuarantineReason, ...],
+    tuple[str, ...],
+]:
+    """Build an adapter surface only for resolved evidence present in one document."""
+    document_tokens = _ordered_tokens(document)
+    document_token_ids = frozenset(token.token_id for token in document_tokens)
+    document_range_keys = frozenset(
+        source_range.to_json_bytes()
+        for token in document_tokens
+        for source_range in token.artifact_ranges
+    )
+    surface = document
+    reasons: list[MatchQuarantineReason] = []
+    warnings: list[str] = []
+    for continuation in continuations:
+        if (
+            continuation.decision is PgdpContinuationDecision.AMBIGUOUS
+            or continuation.quarantine_reasons
+            or not _continuation_has_document_round(
+                continuation, document_token_ids, document_range_keys
+            )
+        ):
+            continue
+        try:
+            surface = build_pgdp_surface_document(surface, (continuation,))
+        except ValueError as error:
+            reasons.append(MatchQuarantineReason.INCOMPATIBLE_CONTINUATION)
+            warnings.append(
+                f"could not build PGDP matching surface for {continuation.continuation_id}: {error}"
+            )
+    return surface, _unique_reasons(tuple(reasons)), tuple(warnings)
+
+
+def _continuation_has_document_round(
+    continuation: PgdpContinuation,
+    document_token_ids: frozenset[str],
+    document_range_keys: frozenset[bytes],
+) -> bool:
+    """Return whether a continuation has one complete evidence round in a document."""
+    return any(
+        {
+            evidence.left_fragment.token_id,
+            evidence.right_fragment.token_id,
+        }.issubset(document_token_ids)
+        and {
+            marker_range.to_json_bytes()
+            for marker_range in evidence.marker_evidence.marker_ranges
+        }.issubset(document_range_keys)
+        for evidence in continuation.round_evidence
+    )
+
+
 def _logical_text_for_tokens(
     tokens: tuple[MatchToken, ...],
     physical_text: str,
@@ -678,6 +785,7 @@ def _search_evidence(
     state_count: int,
     state_iteration_count: int,
     transition_count: int,
+    grapheme_state_count: int,
     policy: MatchPolicy,
 ) -> MatchSearchEvidence:
     """Preserve the best complete and partial dynamic-program paths."""
@@ -698,8 +806,10 @@ def _search_evidence(
         state_count=state_count,
         state_iteration_count=state_iteration_count,
         transition_count=transition_count,
+        grapheme_state_count=grapheme_state_count,
         max_state_count=policy.max_state_count,
         max_transition_count=policy.max_transition_count,
+        max_grapheme_state_count=policy.max_grapheme_state_count,
         best_complete_path=(
             None
             if not complete
@@ -764,10 +874,17 @@ def _grapheme_alignment_operations(
     target_view: ComparisonView,
     *,
     policy: MatchPolicy,
+    grapheme_usage: _GraphemeSearchUsage,
 ) -> tuple[tuple[MatchOperation, ...], float]:
     """Derive deterministic raw edit partitions from typography comparison views."""
     source_count = len(source_view.graphemes)
     target_count = len(target_view.graphemes)
+    state_need = (source_count + 1) * (target_count + 1)
+    grapheme_usage.largest_state_need = max(
+        grapheme_usage.largest_state_need, state_need
+    )
+    if state_need > policy.max_grapheme_state_count:
+        raise _GraphemeStateLimitExceededError
     cells: list[list[tuple[float, tuple[MatchOperation, ...]] | None]] = [
         [None] * (target_count + 1) for _ in range(source_count + 1)
     ]

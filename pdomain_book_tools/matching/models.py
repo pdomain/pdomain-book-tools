@@ -99,6 +99,7 @@ class MatchQuarantineReason(StrEnum):
     LOW_MARGIN = "low_margin"
     STATE_LIMIT_EXHAUSTED = "state_limit_exhausted"
     TRANSITION_LIMIT_EXHAUSTED = "transition_limit_exhausted"
+    GRAPHEME_STATE_LIMIT_EXHAUSTED = "grapheme_state_limit_exhausted"
     UNRESOLVED_CONTINUATION = "unresolved_continuation"
     INCOMPATIBLE_CONTINUATION = "incompatible_continuation"
 
@@ -573,8 +574,10 @@ class MatchSearchEvidence(CanonicalModel):
     state_count: _StrictIndex
     state_iteration_count: _StrictIndex
     transition_count: _StrictIndex
+    grapheme_state_count: _StrictIndex
     max_state_count: _StrictIndex
     max_transition_count: _StrictIndex
+    max_grapheme_state_count: _StrictIndex
     best_complete_path: MatchSearchPathEvidence | None
     runner_up_complete_path: MatchSearchPathEvidence | None
     partial_paths: tuple[MatchSearchPathEvidence, ...]
@@ -587,7 +590,11 @@ class MatchSearchEvidence(CanonicalModel):
         if self.state_iteration_count < 1:
             msg = "search evidence state_iteration_count must be at least one"
             raise ValueError(msg)
-        if self.max_state_count < 1 or self.max_transition_count < 1:
+        if (
+            self.max_state_count < 1
+            or self.max_transition_count < 1
+            or self.max_grapheme_state_count < 1
+        ):
             msg = "search evidence bounds must be positive"
             raise ValueError(msg)
         complete_paths = (self.best_complete_path, self.runner_up_complete_path)
@@ -645,6 +652,7 @@ class MatchPolicy(CanonicalModel):
     max_merge_size: Annotated[int, Field(strict=True, ge=1)]
     max_state_count: Annotated[int, Field(strict=True, ge=1)]
     max_transition_count: Annotated[int, Field(strict=True, ge=1)]
+    max_grapheme_state_count: Annotated[int, Field(strict=True, ge=1)] = 100_000
     exact_match_cost: Annotated[float, Field(ge=0.0)] = 0.0
     substitution_cost: Annotated[float, Field(ge=0.0)] = 1.0
     source_only_cost: Annotated[float, Field(ge=0.0)] = 1.0
@@ -794,6 +802,7 @@ class MatchGraph(CanonicalModel):
             exhausted = {
                 MatchQuarantineReason.STATE_LIMIT_EXHAUSTED,
                 MatchQuarantineReason.TRANSITION_LIMIT_EXHAUSTED,
+                MatchQuarantineReason.GRAPHEME_STATE_LIMIT_EXHAUSTED,
             }
             if not exhausted.intersection(self.quarantine_reasons):
                 msg = "search evidence without a best complete path requires exhaustion"
