@@ -45,6 +45,8 @@ from pdomain_book_tools.typography.normalization import (
     small_caps_ranges_from_spans,
 )
 from pdomain_book_tools.typography.records import (
+    TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION,
+    TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION,
     AlignmentEvidence,
     AlignmentPathOperation,
     ArtifactRef,
@@ -90,6 +92,8 @@ from pdomain_book_tools.typography.spans import (
 __all__ = [
     "GRAPHEME_SEGMENTATION_VERSION",
     "REVIEW_CONTRACT_VERSION",
+    "TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION",
+    "TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION",
     "WORD_ID_NAMESPACE",
     "AlignmentConfig",
     "AlignmentEdit",

@@ -10,7 +10,7 @@ import string
 from collections.abc import Mapping
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Annotated, Literal, Self, cast
+from typing import Annotated, Literal, Self, cast, override
 
 from pydantic import Field, field_serializer, field_validator, model_validator
 from pydantic_core import PydanticCustomError
@@ -27,6 +27,8 @@ from pdomain_book_tools.typography.spans import (
 
 _StrictIndex = Annotated[int, Field(strict=True)]
 _Probability = Annotated[float, Field(ge=0.0, le=1.0)]
+TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION: Literal["1.0"] = "1.0"
+TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION: Literal["1.1"] = "1.1"
 
 
 def _validate_sha256(value: str, field_name: str) -> str:
@@ -72,6 +74,18 @@ def _thaw_json(value: object) -> object:
 
 def _thaw_mapping(value: Mapping[str, object]) -> dict[str, object]:
     return {str(key): _thaw_json(item) for key, item in value.items()}
+
+
+def _model_input(value: object) -> object:
+    if isinstance(value, CanonicalModel):
+        return value.model_dump(mode="json", warnings="none")
+    if isinstance(value, Mapping):
+        mapping = cast("Mapping[object, object]", value)
+        return {str(key): _model_input(item) for key, item in mapping.items()}
+    if isinstance(value, (list, tuple)):
+        items = cast("list[object] | tuple[object, ...]", value)
+        return [_model_input(item) for item in items]
+    return value
 
 
 def _parse_json_object_member_ranges(
@@ -544,9 +558,9 @@ class AlignmentEvidence(CanonicalModel):
 
 
 class TypographyPageRecord(CanonicalModel):
-    """Canonical version 1.0 typography record for one source page."""
+    """Canonical typography record for one source page."""
 
-    schema_version: Literal["1.0"]
+    schema_version: Literal["1.0", "1.1"]
     identity: TextIdentity
     original_f2_artifact_base64: str | None
     original_f2_artifact_sha256: str | None
@@ -568,6 +582,34 @@ class TypographyPageRecord(CanonicalModel):
     project_comments_artifact: ArtifactRef | None
     guideline_version: str
 
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a fully revalidated page record copy."""
+        del deep
+        payload = self.model_dump(mode="json", warnings="none")
+        if update is not None:
+            payload.update({key: _model_input(value) for key, value in update.items()})
+        return type(self).model_validate(payload)
+
+    @override
+    def to_json_bytes(self) -> bytes:
+        """Serialize a record without changing the 1.0 wire shape."""
+        payload = self.model_dump(mode="json")
+        if self.schema_version == TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION:
+            payload.pop("external_f2_artifact", None)
+        return json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode()
+
     @field_validator("original_f2_artifact_sha256", "f2_decoded_page_utf8_sha256")
     @classmethod
     def _validate_optional_hashes(cls, value: str | None, info: object) -> str | None:
@@ -578,6 +620,18 @@ class TypographyPageRecord(CanonicalModel):
 
     @model_validator(mode="after")
     def _validate_record(self) -> Self:
+        if (
+            self.schema_version == TYPOGRAPHY_PAGE_RECORD_LEGACY_SCHEMA_VERSION
+            and self.external_f2_artifact is not None
+        ):
+            msg = "schema_version 1.0 cannot include external_f2_artifact"
+            raise ValueError(msg)
+        if (
+            self.schema_version == TYPOGRAPHY_PAGE_RECORD_EXTERNAL_F2_SCHEMA_VERSION
+            and self.external_f2_artifact is None
+        ):
+            msg = "schema_version 1.1 requires external_f2_artifact"
+            raise ValueError(msg)
         if self.f2_page_value_lexical_byte_range is not None:
             _validate_half_open_range(
                 self.f2_page_value_lexical_byte_range,
@@ -620,12 +674,15 @@ class TypographyPageRecord(CanonicalModel):
 
     def revalidate_external_f2_artifact(self, artifact_bytes: bytes) -> None:
         """Revalidate an external F2 reference against supplied exact bytes."""
-        if self.external_f2_artifact is None:
+        record = type(self).model_validate(
+            self.model_dump(mode="json", warnings="none")
+        )
+        if record.external_f2_artifact is None:
             msg = "external F2 artifact bytes require external_f2_artifact"
             raise ValueError(msg)
-        self._validate_supplied_f2_artifact_bytes(artifact_bytes)
-        self._validate_page_source_slices(artifact_bytes)
-        self._validate_parser_evidence(artifact_bytes)
+        record._validate_supplied_f2_artifact_bytes(artifact_bytes)
+        record._validate_page_source_slices(artifact_bytes)
+        record._validate_parser_evidence(artifact_bytes)
 
     def _validate_page_source_slices(self, artifact_bytes: bytes | None) -> None:
         expected_hash = self.original_f2_artifact_sha256
