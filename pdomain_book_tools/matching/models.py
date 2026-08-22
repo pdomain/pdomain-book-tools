@@ -575,9 +575,11 @@ class MatchSearchEvidence(CanonicalModel):
     state_iteration_count: _StrictIndex
     transition_count: _StrictIndex
     grapheme_state_count: _StrictIndex
+    grapheme_work_count: _StrictIndex
     max_state_count: _StrictIndex
     max_transition_count: _StrictIndex
     max_grapheme_state_count: _StrictIndex
+    max_grapheme_work_count: _StrictIndex
     best_complete_path: MatchSearchPathEvidence | None
     runner_up_complete_path: MatchSearchPathEvidence | None
     partial_paths: tuple[MatchSearchPathEvidence, ...]
@@ -594,6 +596,7 @@ class MatchSearchEvidence(CanonicalModel):
             self.max_state_count < 1
             or self.max_transition_count < 1
             or self.max_grapheme_state_count < 1
+            or self.max_grapheme_work_count < 1
         ):
             msg = "search evidence bounds must be positive"
             raise ValueError(msg)
@@ -653,6 +656,7 @@ class MatchPolicy(CanonicalModel):
     max_state_count: Annotated[int, Field(strict=True, ge=1)]
     max_transition_count: Annotated[int, Field(strict=True, ge=1)]
     max_grapheme_state_count: Annotated[int, Field(strict=True, ge=1)] = 100_000
+    max_grapheme_work_count: Annotated[int, Field(strict=True, ge=1)] = 10_000_000
     exact_match_cost: Annotated[float, Field(ge=0.0)] = 0.0
     substitution_cost: Annotated[float, Field(ge=0.0)] = 1.0
     source_only_cost: Annotated[float, Field(ge=0.0)] = 1.0

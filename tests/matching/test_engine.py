@@ -472,6 +472,39 @@ def test_quarantines_before_allocating_an_unbounded_grapheme_dp() -> None:
     assert graph.search_evidence.partial_paths
 
 
+def test_quarantines_unbalanced_grapheme_alignment_before_tuple_copy_work() -> None:
+    target_text = "a" * 1_000
+    graph = match_documents(
+        _document("source", "a"),
+        _document("target", target_text),
+        policy=_policy(
+            max_grapheme_state_count=10_000,
+            max_grapheme_work_count=1_000,
+        ),
+    )
+
+    assert not graph.accepted
+    assert (
+        MatchQuarantineReason.GRAPHEME_STATE_LIMIT_EXHAUSTED in graph.quarantine_reasons
+    )
+    assert graph.search_evidence is not None
+    assert graph.search_evidence.grapheme_state_count == 2 * (len(target_text) + 1)
+    assert graph.search_evidence.grapheme_work_count > 1_000
+    assert graph.search_evidence.max_grapheme_work_count == 1_000
+
+
+def test_matches_normal_words_within_the_grapheme_work_bound() -> None:
+    graph = match_documents(
+        _document("source", "cat"),
+        _document("target", "cut"),
+        policy=_policy(max_grapheme_work_count=1_000),
+    )
+
+    assert graph.accepted
+    assert graph.search_evidence is not None
+    assert graph.search_evidence.grapheme_work_count <= 1_000
+
+
 def test_quarantines_when_transition_bound_is_exhausted() -> None:
     graph = match_documents(
         _document("source", "a"),

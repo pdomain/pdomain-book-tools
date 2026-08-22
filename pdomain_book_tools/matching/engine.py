@@ -53,6 +53,7 @@ class _GraphemeSearchUsage:
     """Mutable local-DP accounting scoped to one document-match invocation."""
 
     largest_state_need: int = 0
+    required_work_count: int = 0
 
 
 class _GraphemeStateLimitExceededError(Exception):
@@ -175,6 +176,7 @@ def match_documents(
         state_iteration_count=state_iteration_count,
         transition_count=transition_count,
         grapheme_state_count=grapheme_usage.largest_state_need,
+        grapheme_work_count=grapheme_usage.required_work_count,
         policy=policy,
     )
     if state_exhausted or transition_exhausted or grapheme_state_exhausted:
@@ -786,6 +788,7 @@ def _search_evidence(
     state_iteration_count: int,
     transition_count: int,
     grapheme_state_count: int,
+    grapheme_work_count: int,
     policy: MatchPolicy,
 ) -> MatchSearchEvidence:
     """Preserve the best complete and partial dynamic-program paths."""
@@ -807,9 +810,11 @@ def _search_evidence(
         state_iteration_count=state_iteration_count,
         transition_count=transition_count,
         grapheme_state_count=grapheme_state_count,
+        grapheme_work_count=grapheme_work_count,
         max_state_count=policy.max_state_count,
         max_transition_count=policy.max_transition_count,
         max_grapheme_state_count=policy.max_grapheme_state_count,
+        max_grapheme_work_count=policy.max_grapheme_work_count,
         best_complete_path=(
             None
             if not complete
@@ -880,10 +885,15 @@ def _grapheme_alignment_operations(
     source_count = len(source_view.graphemes)
     target_count = len(target_view.graphemes)
     state_need = (source_count + 1) * (target_count + 1)
+    work_need = state_need * (1 + 3 * (source_count + target_count + 1))
     grapheme_usage.largest_state_need = max(
         grapheme_usage.largest_state_need, state_need
     )
-    if state_need > policy.max_grapheme_state_count:
+    grapheme_usage.required_work_count += work_need
+    if (
+        state_need > policy.max_grapheme_state_count
+        or grapheme_usage.required_work_count > policy.max_grapheme_work_count
+    ):
         raise _GraphemeStateLimitExceededError
     cells: list[list[tuple[float, tuple[MatchOperation, ...]] | None]] = [
         [None] * (target_count + 1) for _ in range(source_count + 1)
