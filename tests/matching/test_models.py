@@ -332,3 +332,298 @@ def test_unaccepted_graph_requires_a_explicit_quarantine_reason() -> None:
         }
     )
     assert quarantined.accepted is False
+
+
+def test_graph_rejects_operations_that_overlap_or_exceed_token_graphemes() -> None:
+    graph = _graph()
+    overlapping_relation = MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-001-line-1-token-1",),
+        target_token_ids=("ocr-001-line-1-token-1",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(0, 3),
+                target_grapheme_range=(0, 3),
+            ),
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(2, 5),
+                target_grapheme_range=(3, 5),
+            ),
+        ),
+    )
+    with pytest.raises(ValidationError, match="monotonic"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=MatchAlternative(
+                alternative_id=None,
+                total_cost=0.0,
+                relations=(overlapping_relation,),
+            ),
+            runner_up_alternative=None,
+            runner_up_margin=None,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+
+    out_of_bounds_relation = MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-001-line-1-token-1",),
+        target_token_ids=("ocr-001-line-1-token-1",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(0, 6),
+                target_grapheme_range=(0, 5),
+            ),
+        ),
+    )
+    with pytest.raises(ValidationError, match="source grapheme range"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=MatchAlternative(
+                alternative_id=None,
+                total_cost=0.0,
+                relations=(out_of_bounds_relation,),
+            ),
+            runner_up_alternative=None,
+            runner_up_margin=None,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+
+
+def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
+    graph = _graph()
+    runner_up = MatchAlternative(
+        alternative_id=None,
+        total_cost=1.0,
+        relations=graph.best_alternative.relations,
+    )
+    with pytest.raises(ValidationError, match="tie"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=runner_up,
+            runner_up_margin=0.0,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+    with pytest.raises(ValidationError, match="low margin"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=runner_up,
+            runner_up_margin=0.5,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+    with pytest.raises(ValidationError, match="tie"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=runner_up,
+            runner_up_margin=0.0,
+            accepted=False,
+            quarantine_reasons=(MatchQuarantineReason.LOW_MARGIN,),
+        )
+    with pytest.raises(ValidationError, match="low margin"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=runner_up,
+            runner_up_margin=0.5,
+            accepted=False,
+            quarantine_reasons=(MatchQuarantineReason.TIE,),
+        )
+
+
+def test_alternatives_reject_source_or_target_token_reuse() -> None:
+    source = MatchDocument(
+        document_id="source",
+        pages=(
+            MatchPage(
+                page_id="source-page",
+                lines=(
+                    MatchLine(
+                        line_id="source-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="source-1", text="abc", artifact_ranges=()
+                            ),
+                            MatchToken(
+                                token_id="source-2", text="def", artifact_ranges=()
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    target = MatchDocument(
+        document_id="target",
+        pages=(
+            MatchPage(
+                page_id="target-page",
+                lines=(
+                    MatchLine(
+                        line_id="target-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="target-1", text="abc", artifact_ranges=()
+                            ),
+                            MatchToken(
+                                token_id="target-2", text="def", artifact_ranges=()
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    source_reused = (
+        MatchRelation(
+            relation_id=None,
+            kind=MatchRelationKind.ONE_TO_ONE,
+            source_token_ids=("source-1",),
+            target_token_ids=("target-1",),
+            operations=(
+                MatchOperation(
+                    kind=MatchOperationKind.MATCH,
+                    source_grapheme_range=(0, 3),
+                    target_grapheme_range=(0, 3),
+                ),
+            ),
+        ),
+        MatchRelation(
+            relation_id=None,
+            kind=MatchRelationKind.ONE_TO_ONE,
+            source_token_ids=("source-1",),
+            target_token_ids=("target-2",),
+            operations=(
+                MatchOperation(
+                    kind=MatchOperationKind.MATCH,
+                    source_grapheme_range=(0, 3),
+                    target_grapheme_range=(0, 3),
+                ),
+            ),
+        ),
+    )
+    with pytest.raises(ValidationError, match="source tokens can appear only once"):
+        MatchAlternative(alternative_id=None, total_cost=0.0, relations=source_reused)
+
+    target_reused = (
+        source_reused[0],
+        MatchRelation(
+            relation_id=None,
+            kind=MatchRelationKind.ONE_TO_ONE,
+            source_token_ids=("source-2",),
+            target_token_ids=("target-1",),
+            operations=(
+                MatchOperation(
+                    kind=MatchOperationKind.MATCH,
+                    source_grapheme_range=(0, 3),
+                    target_grapheme_range=(0, 3),
+                ),
+            ),
+        ),
+    )
+    with pytest.raises(ValidationError, match="target tokens can appear only once"):
+        MatchAlternative(alternative_id=None, total_cost=0.0, relations=target_reused)
+
+    assert source.token_ids() == {"source-1", "source-2"}
+    assert target.token_ids() == {"target-1", "target-2"}
+
+
+def test_every_match_contract_is_deeply_immutable_after_mutable_input_conversion() -> (
+    None
+):
+    source_range = [0, 5]
+    target_range = [0, 5]
+    operation = MatchOperation.model_validate(
+        {
+            "kind": MatchOperationKind.MATCH,
+            "source_grapheme_range": source_range,
+            "target_grapheme_range": target_range,
+        }
+    )
+    source_range[0] = 4
+    target_range[0] = 4
+    operations = [operation]
+    relation = MatchRelation.model_validate(
+        {
+            "relation_id": None,
+            "kind": MatchRelationKind.ONE_TO_ONE,
+            "source_token_ids": ["source-001-line-1-token-1"],
+            "target_token_ids": ["ocr-001-line-1-token-1"],
+            "operations": operations,
+        }
+    )
+    operations.clear()
+    relations = [relation]
+    alternative = MatchAlternative.model_validate(
+        {
+            "alternative_id": None,
+            "total_cost": 0.0,
+            "relations": relations,
+        }
+    )
+    relations.clear()
+    source_pages = [_source_document().pages[0]]
+    document = MatchDocument.model_validate(
+        {"document_id": "immutable-source", "pages": source_pages}
+    )
+    source_pages.clear()
+    graph_warnings = ["review later"]
+    graph = MatchGraph.model_validate(
+        {
+            "graph_id": None,
+            "source_document": _source_document(),
+            "target_document": _target_document(),
+            "policy": _graph().policy,
+            "best_alternative": alternative,
+            "runner_up_alternative": None,
+            "runner_up_margin": None,
+            "accepted": True,
+            "quarantine_reasons": [],
+            "warnings": graph_warnings,
+        }
+    )
+    graph_warnings.clear()
+
+    assert operation.source_grapheme_range == (0, 5)
+    assert relation.operations == (operation,)
+    assert alternative.relations == (relation,)
+    assert document.pages[0].page_id == "source-001"
+    assert graph.warnings == ("review later",)
+    for model, field_name, replacement in (
+        (operation, "kind", MatchOperationKind.SUBSTITUTION),
+        (relation, "warnings", ("changed",)),
+        (alternative, "total_cost", 1.0),
+        (_graph().policy, "version", "changed"),
+        (document, "warnings", ("changed",)),
+        (graph, "accepted", False),
+    ):
+        with pytest.raises(ValidationError):
+            setattr(model, field_name, replacement)

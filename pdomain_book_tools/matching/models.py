@@ -11,7 +11,7 @@ from typing import Annotated, Self
 
 from pydantic import Field, field_validator, model_validator
 
-from pdomain_book_tools.typography.spans import CanonicalModel
+from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
 
 _StrictIndex = Annotated[int, Field(strict=True, ge=0)]
 
@@ -319,6 +319,22 @@ class MatchAlternative(CanonicalModel):
         if len(set(relation_ids)) != len(relation_ids):
             msg = "relation IDs must be unique within an alternative"
             raise ValueError(msg)
+        source_token_ids = tuple(
+            token_id
+            for relation in self.relations
+            for token_id in relation.source_token_ids
+        )
+        if len(set(source_token_ids)) != len(source_token_ids):
+            msg = "source tokens can appear only once within an alternative"
+            raise ValueError(msg)
+        target_token_ids = tuple(
+            token_id
+            for relation in self.relations
+            for token_id in relation.target_token_ids
+        )
+        if len(set(target_token_ids)) != len(target_token_ids):
+            msg = "target tokens can appear only once within an alternative"
+            raise ValueError(msg)
         expected = _content_id(
             self.model_dump(mode="json"), excluded_field="alternative_id"
         )
@@ -410,6 +426,7 @@ class MatchGraph(CanonicalModel):
         if not self.accepted and not self.quarantine_reasons:
             msg = "unaccepted graphs require at least one quarantine reason"
             raise ValueError(msg)
+        self._validate_margin_acceptance()
         self._validate_relation_references(self.best_alternative)
         if self.runner_up_alternative is not None:
             self._validate_relation_references(self.runner_up_alternative)
@@ -426,8 +443,10 @@ class MatchGraph(CanonicalModel):
         return self
 
     def _validate_relation_references(self, alternative: MatchAlternative) -> None:
-        source_ids = self.source_document.token_ids()
-        target_ids = self.target_document.token_ids()
+        source_tokens = _tokens_by_id(self.source_document)
+        target_tokens = _tokens_by_id(self.target_document)
+        source_ids = frozenset(source_tokens)
+        target_ids = frozenset(target_tokens)
         for relation in alternative.relations:
             unknown_source = set(relation.source_token_ids) - source_ids
             if unknown_source:
@@ -437,3 +456,72 @@ class MatchGraph(CanonicalModel):
             if unknown_target:
                 msg = "relation references an unknown target token"
                 raise ValueError(msg)
+            self._validate_relation_operations(
+                relation,
+                source_grapheme_count=_relation_grapheme_count(
+                    relation.source_token_ids, source_tokens
+                ),
+                target_grapheme_count=_relation_grapheme_count(
+                    relation.target_token_ids, target_tokens
+                ),
+            )
+
+    def _validate_margin_acceptance(self) -> None:
+        margin = self.runner_up_margin
+        if margin is None:
+            return
+        required_reasons: list[MatchQuarantineReason] = []
+        if margin == 0:
+            required_reasons.append(MatchQuarantineReason.TIE)
+        if margin < self.policy.low_margin_threshold:
+            required_reasons.append(MatchQuarantineReason.LOW_MARGIN)
+        for reason in required_reasons:
+            if self.accepted:
+                msg = f"accepted graph must quarantine {reason.value.replace('_', ' ')}"
+                raise ValueError(msg)
+            if reason not in self.quarantine_reasons:
+                msg = f"graph quarantine reasons must include {reason.value.replace('_', ' ')}"
+                raise ValueError(msg)
+
+    @staticmethod
+    def _validate_relation_operations(
+        relation: MatchRelation,
+        *,
+        source_grapheme_count: int,
+        target_grapheme_count: int,
+    ) -> None:
+        previous_source_end = 0
+        previous_target_end = 0
+        for operation in relation.operations:
+            source_start, source_end = operation.source_grapheme_range
+            target_start, target_end = operation.target_grapheme_range
+            if source_start < previous_source_end or target_start < previous_target_end:
+                msg = "relation operations must be monotonic and non-overlapping"
+                raise ValueError(msg)
+            if source_end > source_grapheme_count:
+                msg = "relation operation source grapheme range exceeds its tokens"
+                raise ValueError(msg)
+            if target_end > target_grapheme_count:
+                msg = "relation operation target grapheme range exceeds its tokens"
+                raise ValueError(msg)
+            previous_source_end = source_end
+            previous_target_end = target_end
+
+
+def _tokens_by_id(document: MatchDocument) -> dict[str, MatchToken]:
+    """Return the document's stable tokens keyed by ID for graph validation."""
+    return {
+        token.token_id: token
+        for page in document.pages
+        for line in page.lines
+        for token in line.tokens
+    }
+
+
+def _relation_grapheme_count(
+    token_ids: tuple[str, ...], tokens_by_id: dict[str, MatchToken]
+) -> int:
+    """Count Unicode graphemes in the relation's declared physical-token order."""
+    return sum(
+        len(split_graphemes(tokens_by_id[token_id].text)) for token_id in token_ids
+    )
