@@ -102,12 +102,15 @@ def test_public_models_includes_full_set():
         "WordTypography",
         "TypographyCorrection",
         "ArtifactReference",
+        "CoordinateTransformStage",
         "ModelRun",
+        "ModelRunPurpose",
         "ReplacementArtifact",
         "SourceOrientation",
         "CoordinateTransform",
         "Evidence",
         "WordGeometry",
+        "PageGeometry",
         "LabelingBundle",
         "CorrectionBundle",
     }
@@ -136,7 +139,7 @@ def test_schema_manifest_hashes_the_canonical_emitted_schema() -> None:
         ).encode()
     ).hexdigest()
 
-    assert manifest["schema_version"] == "0.23.0"
+    assert manifest["schema_version"] == "0.24.0"
     assert manifest["schema_sha256"] == expected
 
 

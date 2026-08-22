@@ -10,9 +10,13 @@ from pydantic import ValidationError
 from pdomain_book_tools.typography.exchange import (
     ArtifactReference,
     CoordinateTransform,
+    CoordinateTransformStage,
     CorrectionBundle,
     Evidence,
     LabelingBundle,
+    ModelRun,
+    ModelRunPurpose,
+    PageGeometry,
     ReplacementArtifact,
     SourceOrientation,
     WordGeometry,
@@ -96,25 +100,200 @@ def _word(*, text: str = "e\u0301\U0001f469\u200d\U0001f4bb") -> WordTypography:
     )
 
 
-def _transform(
+def _transform_chain(
     orientation: SourceOrientation = SourceOrientation.UPRIGHT,
-) -> CoordinateTransform:
-    return CoordinateTransform(
-        transform_id="transform-1",
-        source_space="scan_pixels",
-        target_space="image_pixels",
-        source_coordinate_space_id="scan-v1",
-        target_coordinate_space_id="image-v1",
+) -> tuple[CoordinateTransform, CoordinateTransform]:
+    orientation_target_sizes = {
+        SourceOrientation.UPRIGHT: (100, 200),
+        SourceOrientation.ROTATE_90_CLOCKWISE: (200, 100),
+        SourceOrientation.ROTATE_180: (100, 200),
+        SourceOrientation.ROTATE_90_COUNTERCLOCKWISE: (200, 100),
+    }
+    orientation_affines = {
+        SourceOrientation.UPRIGHT: (1, 0, 0, 0, 1, 0),
+        SourceOrientation.ROTATE_90_CLOCKWISE: (0, -1, 200, 1, 0, 0),
+        SourceOrientation.ROTATE_180: (-1, 0, 100, 0, -1, 200),
+        SourceOrientation.ROTATE_90_COUNTERCLOCKWISE: (0, 1, 0, -1, 0, 100),
+    }
+    orientation_target_width, orientation_target_height = orientation_target_sizes[
+        orientation
+    ]
+    crop_is_identity = (orientation_target_width, orientation_target_height) == (
+        100,
+        200,
+    )
+    return (
+        CoordinateTransform(
+            transform_id="orientation-transform",
+            stage=CoordinateTransformStage.ORIENTATION,
+            source_space="scan_pixels",
+            target_space="oriented_pixels",
+            source_coordinate_space_id="scan-v1",
+            target_coordinate_space_id="oriented-v1",
+            source_orientation=orientation,
+            source_artifact_sha256="b" * 64,
+            target_artifact_sha256="b" * 64,
+            source_width=100,
+            source_height=200,
+            target_width=orientation_target_width,
+            target_height=orientation_target_height,
+            crop_recipe="identity",
+            crop_recipe_version="1",
+            padding_px=0,
+            resampling="nearest",
+            preprocessing_sha256="b" * 64,
+            transform_version="1",
+            affine=orientation_affines[orientation],
+        ),
+        CoordinateTransform(
+            transform_id="crop-transform",
+            stage=CoordinateTransformStage.CROP,
+            source_space="oriented_pixels",
+            target_space="image_pixels",
+            source_coordinate_space_id="oriented-v1",
+            target_coordinate_space_id="image-v1",
+            source_orientation=SourceOrientation.UPRIGHT,
+            source_artifact_sha256="b" * 64,
+            target_artifact_sha256="b" * 64,
+            source_width=orientation_target_width,
+            source_height=orientation_target_height,
+            target_width=100,
+            target_height=200,
+            crop_recipe="identity" if crop_is_identity else "resize",
+            crop_recipe_version="1",
+            padding_px=0,
+            resampling="nearest",
+            preprocessing_sha256="b" * 64,
+            transform_version="1",
+            affine=(1, 0, 0, 0, 1, 0) if crop_is_identity else (0.5, 0, 0, 0, 2, 0),
+        ),
+    )
+
+
+def _apply_affine(
+    affine: tuple[float, float, float, float, float, float],
+    point: tuple[float, float],
+) -> tuple[float, float]:
+    x, y = point
+    a, b, c, d, e, f = affine
+    return (a * x + b * y + c, d * x + e * y + f)
+
+
+def _inbound_artifacts() -> tuple[ArtifactReference, ...]:
+    return tuple(
+        ArtifactReference(
+            artifact_id=artifact_id,
+            relative_path=f"inbound/{artifact_id}.json",
+            sha256=digest * 64,
+            media_type="application/json",
+        )
+        for artifact_id, digest in (
+            ("page", "a"),
+            ("page-image", "b"),
+            ("ocr-model", "1"),
+            ("ocr-config", "2"),
+            ("region-model", "3"),
+            ("region-config", "4"),
+            ("region-preprocessing", "5"),
+            ("ocr-result", "d"),
+            ("region-result", "e"),
+            ("page-head", "f"),
+        )
+    )
+
+
+def _inbound_model_runs() -> tuple[ModelRun, ModelRun]:
+    return (
+        ModelRun(
+            run_id="ocr-run",
+            purpose=ModelRunPurpose.OCR,
+            model_name="ocr",
+            model_version="1",
+            input_artifact_sha256="b" * 64,
+            output_artifact_sha256="d" * 64,
+            model_artifact_sha256="1" * 64,
+            config_sha256="2" * 64,
+            preprocessing_sha256="b" * 64,
+        ),
+        ModelRun(
+            run_id="region-run",
+            purpose=ModelRunPurpose.PAGE_REGION,
+            model_name="region",
+            model_version="1",
+            input_artifact_sha256="b" * 64,
+            output_artifact_sha256="e" * 64,
+            model_artifact_sha256="3" * 64,
+            config_sha256="4" * 64,
+            preprocessing_sha256="5" * 64,
+        ),
+    )
+
+
+def _inbound_page_geometry(
+    orientation: SourceOrientation = SourceOrientation.UPRIGHT,
+) -> PageGeometry:
+    return PageGeometry(
+        page_id="page-1",
+        page_sha256="a" * 64,
+        source_image_artifact_sha256="b" * 64,
+        image_artifact_sha256="b" * 64,
+        page_head_sha256="f" * 64,
+        ocr_artifact_sha256="d" * 64,
+        page_region_artifact_sha256="e" * 64,
+        coordinate_space="image_pixels",
+        coordinate_space_id="image-v1",
         source_orientation=orientation,
-        source_artifact_sha256="b" * 64,
-        target_artifact_sha256="b" * 64,
-        crop_recipe="full_page",
-        crop_recipe_version="1",
-        padding_px=0,
-        resampling="nearest",
-        preprocessing_sha256="c" * 64,
-        transform_version="1",
-        affine=(1, 0, 0, 0, 1, 0),
+        source_image_width=100,
+        source_image_height=200,
+        transform_ids=("orientation-transform", "crop-transform"),
+        ocr_model_run_id="ocr-run",
+        page_region_model_run_id="region-run",
+        image_width=100,
+        image_height=200,
+    )
+
+
+def _inbound_geometry_bundle(orientation: SourceOrientation) -> LabelingBundle:
+    word = _word()
+    geometry = WordGeometry(
+        word_id=word.word_id,
+        word_revision=word.word_revision,
+        page_sha256="a" * 64,
+        page_head_sha256="f" * 64,
+        image_artifact_sha256="b" * 64,
+        x0=0,
+        y0=0,
+        x1=1,
+        y1=1,
+        transform_id="crop-transform",
+        coordinate_space_id="image-v1",
+        source_orientation=orientation,
+    )
+    return LabelingBundle(
+        bundle_id=None,
+        schema_version="0.24.0",
+        configuration_hash="e" * 64,
+        taxonomy=_taxonomy(),
+        page_id="page-1",
+        page_sha256="a" * 64,
+        image_sha256="b" * 64,
+        text_sha256="c" * 64,
+        page_head_sha256="f" * 64,
+        artifacts=_inbound_artifacts(),
+        words=(word,),
+        page_geometry=_inbound_page_geometry(orientation),
+        geometry=(geometry,),
+        evidence=(
+            Evidence(
+                evidence_id="evidence-1",
+                artifact_id="page-image",
+                artifact_sha256="b" * 64,
+                byte_start=0,
+                byte_end=1,
+            ),
+        ),
+        model_runs=_inbound_model_runs(),
+        coordinate_transforms=_transform_chain(orientation),
     )
 
 
@@ -266,7 +445,7 @@ def test_bundles_verify_paths_hashes_optional_geometry_and_canonical_ids() -> No
     )
     bundle = LabelingBundle(
         bundle_id=None,
-        schema_version="0.23.0",
+        schema_version="0.24.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -308,21 +487,92 @@ def test_bundles_verify_paths_hashes_optional_geometry_and_canonical_ids() -> No
         geometry=(
             WordGeometry(
                 word_id=word.word_id,
+                word_revision=word.word_revision,
+                page_sha256="a" * 64,
+                page_head_sha256="f" * 64,
+                image_artifact_sha256="b" * 64,
                 x0=0,
                 y0=0,
                 x1=1,
                 y1=1,
-                transform_id="transform-1",
+                transform_id="crop-transform",
+                coordinate_space_id="image-v1",
                 source_orientation=SourceOrientation.UPRIGHT,
             ),
         ),
-        coordinate_transforms=(_transform(),),
+        artifacts=_inbound_artifacts(),
+        page_geometry=_inbound_page_geometry(),
+        model_runs=_inbound_model_runs(),
+        coordinate_transforms=_transform_chain(),
     )
     assert with_geometry.geometry is not None
     assert bundle.bundle_id is not None
+    with pytest.raises(
+        ValidationError, match="inbound page geometry must match bundle"
+    ):
+        LabelingBundle.model_validate(
+            {
+                **with_geometry.model_dump(),
+                "page_geometry": {
+                    **_inbound_page_geometry().model_dump(),
+                    "page_sha256": "b" * 64,
+                    "image_artifact_sha256": "a" * 64,
+                    "page_head_sha256": "b" * 64,
+                },
+                "geometry": (),
+                "bundle_id": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="inbound page and word geometry"):
+        LabelingBundle.model_validate(
+            {
+                **with_geometry.model_dump(),
+                "page_geometry": None,
+                "bundle_id": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="model run hashes"):
+        LabelingBundle.model_validate(
+            {
+                **with_geometry.model_dump(),
+                "model_runs": (
+                    {
+                        **_inbound_model_runs()[0].model_dump(),
+                        "output_artifact_sha256": "0" * 64,
+                    },
+                    _inbound_model_runs()[1].model_dump(),
+                ),
+                "bundle_id": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="orientation and crop"):
+        LabelingBundle.model_validate(
+            {
+                **with_geometry.model_dump(),
+                "page_geometry": {
+                    **_inbound_page_geometry().model_dump(),
+                    "transform_ids": ("crop-transform", "orientation-transform"),
+                },
+                "bundle_id": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="identity crop"):
+        LabelingBundle.model_validate(
+            {
+                **with_geometry.model_dump(),
+                "coordinate_transforms": (
+                    _transform_chain()[0].model_dump(),
+                    {
+                        **_transform_chain()[1].model_dump(),
+                        "affine": (0.5, 0, 0, 0, 1, 0),
+                    },
+                ),
+                "bundle_id": None,
+            }
+        )
     correction_bundle = CorrectionBundle(
         bundle_id=None,
-        schema_version="0.23.0",
+        schema_version="0.24.0",
         configuration_hash="e" * 64,
         labeling_bundle_id=bundle.bundle_id,
         corrections=(
@@ -355,6 +605,13 @@ def test_bundles_verify_paths_hashes_optional_geometry_and_canonical_ids() -> No
         corrections=correction_bundle.corrections
     )
     assert rebuilt_correction_bundle.bundle_id == correction_bundle.bundle_id
+    geometry_absent_roundtrip = CorrectionBundle.model_validate(
+        correction_bundle.model_dump(mode="json")
+    )
+    assert geometry_absent_roundtrip.page_geometry is None
+    assert geometry_absent_roundtrip.geometry is None
+    assert geometry_absent_roundtrip.model_runs == ()
+    assert geometry_absent_roundtrip.coordinate_transforms == ()
     assert correction_bundle.bundle_id
     assert ReviewDecision.APPROVED.value == "approved"
 
@@ -381,7 +638,7 @@ def test_declared_replacement_hashes_can_differ_from_inbound_page_and_image() ->
     )
     inbound = LabelingBundle(
         bundle_id=None,
-        schema_version="0.23.0",
+        schema_version="0.24.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -432,7 +689,7 @@ def test_declared_replacement_hashes_can_differ_from_inbound_page_and_image() ->
     )
     correction_bundle = CorrectionBundle(
         bundle_id=None,
-        schema_version="0.23.0",
+        schema_version="0.24.0",
         configuration_hash="e" * 64,
         labeling_bundle_id=inbound.bundle_id or "",
         corrections=(correction,),
@@ -466,7 +723,7 @@ def test_declared_replacement_hashes_can_differ_from_inbound_page_and_image() ->
     with pytest.raises(ValueError, match="replacement does not match"):
         CorrectionBundle(
             bundle_id=None,
-            schema_version="0.23.0",
+            schema_version="0.24.0",
             configuration_hash="e" * 64,
             labeling_bundle_id=inbound.bundle_id or "",
             corrections=(mismatched,),
@@ -480,11 +737,16 @@ def test_geometry_rejects_nonfinite_coordinates() -> None:
     with pytest.raises(ValidationError, match="finite"):
         WordGeometry(
             word_id=word.word_id,
+            word_revision=word.word_revision,
+            page_sha256="a" * 64,
+            page_head_sha256="f" * 64,
+            image_artifact_sha256="b" * 64,
             x0=float("nan"),
             y0=0,
             x1=1,
             y1=1,
             transform_id="transform-1",
+            coordinate_space_id="image-v1",
             source_orientation=SourceOrientation.UPRIGHT,
         )
 
@@ -539,16 +801,21 @@ def test_bundle_requires_schema_configuration_and_reproducible_geometry_chain() 
     word = _word()
     geometry = WordGeometry(
         word_id=word.word_id,
+        word_revision=word.word_revision,
+        page_sha256="a" * 64,
+        page_head_sha256="f" * 64,
+        image_artifact_sha256="b" * 64,
         x0=0,
         y0=0,
         x1=1,
         y1=1,
-        transform_id="transform-1",
+        transform_id="crop-transform",
+        coordinate_space_id="image-v1",
         source_orientation=SourceOrientation.ROTATE_90_CLOCKWISE,
     )
     bundle = LabelingBundle(
         bundle_id=None,
-        schema_version="0.23.0",
+        schema_version="0.24.0",
         configuration_hash="e" * 64,
         taxonomy=_taxonomy(),
         page_id="page-1",
@@ -556,15 +823,9 @@ def test_bundle_requires_schema_configuration_and_reproducible_geometry_chain() 
         image_sha256="b" * 64,
         text_sha256="c" * 64,
         page_head_sha256="f" * 64,
-        artifacts=(
-            ArtifactReference(
-                artifact_id="page-image",
-                relative_path="projects/project-1/page-1.png",
-                sha256="b" * 64,
-                media_type="image/png",
-            ),
-        ),
+        artifacts=_inbound_artifacts(),
         words=(word,),
+        page_geometry=_inbound_page_geometry(SourceOrientation.ROTATE_90_CLOCKWISE),
         geometry=(geometry,),
         evidence=(
             Evidence(
@@ -575,13 +836,103 @@ def test_bundle_requires_schema_configuration_and_reproducible_geometry_chain() 
                 byte_end=1,
             ),
         ),
-        model_runs=(),
-        coordinate_transforms=(_transform(SourceOrientation.ROTATE_90_CLOCKWISE),),
+        model_runs=_inbound_model_runs(),
+        coordinate_transforms=_transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE),
     )
 
-    assert bundle.schema_version == "0.23.0"
+    assert bundle.schema_version == "0.24.0"
     assert bundle.configuration_hash == "e" * 64
     assert geometry.source_orientation is SourceOrientation.ROTATE_90_CLOCKWISE
+    with pytest.raises(ValidationError, match="orientation-stage affine"):
+        LabelingBundle.model_validate(
+            {
+                **bundle.model_dump(),
+                "coordinate_transforms": (
+                    {
+                        **_transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE)[
+                            0
+                        ].model_dump(),
+                        "affine": (1, 0, 0, 0, 1, 0),
+                    },
+                    _transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE)[
+                        1
+                    ].model_dump(),
+                ),
+                "bundle_id": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="transform bounds"):
+        LabelingBundle.model_validate(
+            {
+                **bundle.model_dump(),
+                "coordinate_transforms": (
+                    _transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE)[
+                        0
+                    ].model_dump(),
+                    {
+                        **_transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE)[
+                            1
+                        ].model_dump(),
+                        "source_width": 100,
+                    },
+                ),
+                "bundle_id": None,
+            }
+        )
+    with pytest.raises(ValidationError, match="orientation-stage affine"):
+        LabelingBundle.model_validate(
+            {
+                **bundle.model_dump(),
+                "coordinate_transforms": (
+                    {
+                        **_transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE)[
+                            0
+                        ].model_dump(),
+                        "affine": (0, 1, 0, -1, 0, 0),
+                    },
+                    _transform_chain(SourceOrientation.ROTATE_90_CLOCKWISE)[
+                        1
+                    ].model_dump(),
+                ),
+                "bundle_id": None,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("orientation", "expected_corners"),
+    [
+        (
+            SourceOrientation.ROTATE_90_CLOCKWISE,
+            ((200, 0), (200, 100), (0, 0), (0, 100)),
+        ),
+        (
+            SourceOrientation.ROTATE_90_COUNTERCLOCKWISE,
+            ((0, 100), (0, 0), (200, 100), (200, 0)),
+        ),
+    ],
+)
+def test_quarter_turn_orientation_affines_map_image_corners_and_validate_chain(
+    orientation: SourceOrientation,
+    expected_corners: tuple[
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+        tuple[float, float],
+    ],
+) -> None:
+    bundle = _inbound_geometry_bundle(orientation)
+    transform = bundle.coordinate_transforms[0]
+    corners = ((0.0, 0.0), (100.0, 0.0), (0.0, 200.0), (100.0, 200.0))
+
+    mapped_corners = tuple(
+        _apply_affine(transform.affine, corner) for corner in corners
+    )
+
+    assert mapped_corners == expected_corners
+    assert all(0 <= x <= 200 and 0 <= y <= 100 for x, y in mapped_corners)
+    assert bundle.page_geometry is not None
+    assert bundle.page_geometry.source_orientation is orientation
 
 
 def test_correction_bundles_require_contiguous_word_revisions() -> None:
@@ -619,8 +970,331 @@ def test_correction_bundles_require_contiguous_word_revisions() -> None:
     with pytest.raises(ValidationError, match="contiguous"):
         CorrectionBundle(
             bundle_id=None,
-            schema_version="0.23.0",
+            schema_version="0.24.0",
             configuration_hash="e" * 64,
             labeling_bundle_id="d" * 64,
             corrections=(first, second),
         )
+
+
+def test_returned_geometry_requires_bound_models_artifacts_and_current_correction() -> (
+    None
+):
+    word = _word()
+    replacement = word.model_copy(
+        update={
+            "page_content_sha256": "1" * 64,
+            "image_artifact_sha256": "2" * 64,
+            "word_revision": 1,
+        }
+    )
+    correction = TypographyCorrection(
+        correction_id="geometry-correction-1",
+        word_id=word.word_id,
+        revision=1,
+        supersedes_id=None,
+        base_page_sha256="a" * 64,
+        base_image_sha256="b" * 64,
+        base_text_sha256=word.text_sha256,
+        base_word_revision=0,
+        replacement_text_sha256=word.text_sha256,
+        replacement_page_sha256="1" * 64,
+        replacement_image_sha256="2" * 64,
+        replacement_page_head_sha256="3" * 64,
+        replacement_word_revision=1,
+        taxonomy_version=word.taxonomy_version,
+        taxonomy_hash=word.taxonomy_hash,
+        grapheme_map_version=word.grapheme_map_version,
+        page_head_sha256="f" * 64,
+        labeler_id="reviewer-1",
+        decision=CorrectionDecision.APPROVED_EDIT,
+        replacement=replacement,
+    )
+    artifacts = (
+        ReplacementArtifact(
+            artifact_id="returned-page",
+            relative_path="returned/page.json",
+            sha256="1" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="returned-image",
+            relative_path="returned/page.png",
+            sha256="2" * 64,
+            byte_size=1,
+            media_type="image/png",
+        ),
+        ReplacementArtifact(
+            artifact_id="returned-head",
+            relative_path="returned/head.json",
+            sha256="3" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="ocr-model",
+            relative_path="models/ocr.onnx",
+            sha256="4" * 64,
+            byte_size=1,
+            media_type="application/onnx",
+        ),
+        ReplacementArtifact(
+            artifact_id="ocr-config",
+            relative_path="models/ocr-config.json",
+            sha256="5" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="ocr-preprocessing",
+            relative_path="models/ocr-preprocessing.json",
+            sha256="6" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="region-model",
+            relative_path="models/region.onnx",
+            sha256="7" * 64,
+            byte_size=1,
+            media_type="application/onnx",
+        ),
+        ReplacementArtifact(
+            artifact_id="region-config",
+            relative_path="models/region-config.json",
+            sha256="8" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="region-preprocessing",
+            relative_path="models/region-preprocessing.json",
+            sha256="9" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="source-image",
+            relative_path="source/page.png",
+            sha256="a" * 64,
+            byte_size=1,
+            media_type="image/png",
+        ),
+        ReplacementArtifact(
+            artifact_id="ocr-result",
+            relative_path="returned/ocr.json",
+            sha256="d" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+        ReplacementArtifact(
+            artifact_id="page-region-result",
+            relative_path="returned/page-regions.json",
+            sha256="e" * 64,
+            byte_size=1,
+            media_type="application/json",
+        ),
+    )
+    transforms = (
+        CoordinateTransform(
+            transform_id="returned-orientation",
+            stage=CoordinateTransformStage.ORIENTATION,
+            source_space="scan_pixels",
+            target_space="oriented_pixels",
+            source_coordinate_space_id="scan-v1",
+            target_coordinate_space_id="oriented-v1",
+            source_orientation=SourceOrientation.UPRIGHT,
+            source_artifact_sha256="a" * 64,
+            target_artifact_sha256="a" * 64,
+            source_width=100,
+            source_height=200,
+            target_width=100,
+            target_height=200,
+            crop_recipe="identity",
+            crop_recipe_version="1",
+            padding_px=0,
+            resampling="nearest",
+            preprocessing_sha256="6" * 64,
+            transform_version="1",
+            affine=(1, 0, 0, 0, 1, 0),
+        ),
+        CoordinateTransform(
+            transform_id="returned-crop",
+            stage=CoordinateTransformStage.CROP,
+            source_space="oriented_pixels",
+            target_space="image_pixels",
+            source_coordinate_space_id="oriented-v1",
+            target_coordinate_space_id="image-v1",
+            source_orientation=SourceOrientation.UPRIGHT,
+            source_artifact_sha256="a" * 64,
+            target_artifact_sha256="2" * 64,
+            source_width=100,
+            source_height=200,
+            target_width=100,
+            target_height=200,
+            crop_recipe="identity",
+            crop_recipe_version="1",
+            padding_px=0,
+            resampling="nearest",
+            preprocessing_sha256="6" * 64,
+            transform_version="1",
+            affine=(1, 0, 0, 0, 1, 0),
+        ),
+    )
+    model_runs = (
+        ModelRun(
+            run_id="ocr-run",
+            purpose=ModelRunPurpose.OCR,
+            model_name="ocr",
+            model_version="1",
+            input_artifact_sha256="2" * 64,
+            output_artifact_sha256="d" * 64,
+            model_artifact_sha256="4" * 64,
+            config_sha256="5" * 64,
+            preprocessing_sha256="6" * 64,
+        ),
+        ModelRun(
+            run_id="region-run",
+            purpose=ModelRunPurpose.PAGE_REGION,
+            model_name="region",
+            model_version="1",
+            input_artifact_sha256="2" * 64,
+            output_artifact_sha256="e" * 64,
+            model_artifact_sha256="7" * 64,
+            config_sha256="8" * 64,
+            preprocessing_sha256="9" * 64,
+        ),
+    )
+    page_geometry = PageGeometry(
+        page_id="page-1",
+        page_sha256="1" * 64,
+        source_image_artifact_sha256="a" * 64,
+        source_image_width=100,
+        source_image_height=200,
+        image_artifact_sha256="2" * 64,
+        page_head_sha256="3" * 64,
+        ocr_artifact_sha256="d" * 64,
+        page_region_artifact_sha256="e" * 64,
+        coordinate_space="image_pixels",
+        coordinate_space_id="image-v1",
+        source_orientation=SourceOrientation.UPRIGHT,
+        transform_ids=("returned-orientation", "returned-crop"),
+        ocr_model_run_id="ocr-run",
+        page_region_model_run_id="region-run",
+        image_width=100,
+        image_height=200,
+    )
+    geometry = WordGeometry(
+        word_id=word.word_id,
+        word_revision=1,
+        page_sha256="1" * 64,
+        page_head_sha256="3" * 64,
+        image_artifact_sha256="2" * 64,
+        x0=0,
+        y0=0,
+        x1=10,
+        y1=10,
+        coordinate_space="image_pixels",
+        coordinate_space_id="image-v1",
+        transform_id="returned-crop",
+        source_orientation=SourceOrientation.UPRIGHT,
+    )
+
+    bundle = CorrectionBundle(
+        bundle_id=None,
+        schema_version="0.24.0",
+        configuration_hash="e" * 64,
+        labeling_bundle_id="d" * 64,
+        corrections=(correction,),
+        replacement_artifacts=artifacts,
+        page_geometry=page_geometry,
+        geometry=(geometry,),
+        model_runs=model_runs,
+        coordinate_transforms=transforms,
+    )
+
+    assert bundle.page_geometry == page_geometry
+    assert bundle.geometry == (geometry,)
+    assert bundle.model_runs == model_runs
+    assert bundle.model_runs[0].input_artifact_sha256 == "2" * 64
+    restored = CorrectionBundle.model_validate(bundle.model_dump(mode="json"))
+    assert restored.bundle_id == bundle.bundle_id
+
+    with pytest.raises(ValidationError, match="model run hashes"):
+        CorrectionBundle.model_validate(
+            {
+                **bundle.model_dump(),
+                "model_runs": (
+                    {
+                        **model_runs[0].model_dump(),
+                        "config_sha256": "0" * 64,
+                    },
+                    model_runs[1].model_dump(),
+                ),
+                "bundle_id": None,
+            }
+        )
+
+    with pytest.raises(ValidationError, match="page geometry hashes"):
+        CorrectionBundle.model_validate(
+            {
+                **bundle.model_dump(),
+                "page_geometry": {
+                    **page_geometry.model_dump(),
+                    "page_head_sha256": "0" * 64,
+                },
+                "geometry": (
+                    {
+                        **geometry.model_dump(),
+                        "page_head_sha256": "0" * 64,
+                    },
+                ),
+                "bundle_id": None,
+            }
+        )
+
+    with pytest.raises(ValidationError, match="within the returned image"):
+        CorrectionBundle.model_validate(
+            {
+                **bundle.model_dump(),
+                "geometry": ({**geometry.model_dump(), "x1": 101},),
+                "bundle_id": None,
+            }
+        )
+
+
+def test_returned_geometry_rejects_stale_page_head_and_incomplete_chain() -> None:
+    with pytest.raises(ValidationError, match="transform IDs"):
+        PageGeometry(
+            page_id="page-1",
+            page_sha256="1" * 64,
+            source_image_artifact_sha256="2" * 64,
+            source_image_width=100,
+            source_image_height=200,
+            image_artifact_sha256="2" * 64,
+            page_head_sha256="3" * 64,
+            ocr_artifact_sha256="4" * 64,
+            page_region_artifact_sha256="5" * 64,
+            coordinate_space="image_pixels",
+            coordinate_space_id="image-v1",
+            source_orientation=SourceOrientation.UPRIGHT,
+            transform_ids=(),
+            ocr_model_run_id="ocr-run",
+            page_region_model_run_id="region-run",
+            image_width=100,
+            image_height=200,
+        )
+
+
+def test_coordinate_transforms_require_explicit_stages() -> None:
+    assert "stage" in CoordinateTransform.model_fields
+
+
+def test_geometry_free_transforms_allow_legacy_missing_stage() -> None:
+    legacy_payload = _transform_chain()[0].model_dump()
+    del legacy_payload["stage"]
+
+    transform = CoordinateTransform.model_validate(legacy_payload)
+
+    assert transform.stage is None

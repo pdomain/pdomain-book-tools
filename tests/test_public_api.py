@@ -83,6 +83,27 @@ def test_typography_review_contract_reexports_are_torch_free() -> None:
     assert proc.returncode == 0, proc.stderr
 
 
+def test_typography_return_geometry_contract_is_public() -> None:
+    from pdomain_book_tools.typography import (
+        ModelRun,
+        ModelRunPurpose,
+        PageGeometry,
+    )
+    from pdomain_book_tools.typography.exchange import (
+        ModelRun as _ModelRun,
+    )
+    from pdomain_book_tools.typography.exchange import (
+        ModelRunPurpose as _ModelRunPurpose,
+    )
+    from pdomain_book_tools.typography.exchange import (
+        PageGeometry as _PageGeometry,
+    )
+
+    assert ModelRun is _ModelRun
+    assert ModelRunPurpose is _ModelRunPurpose
+    assert PageGeometry is _PageGeometry
+
+
 def test_geometry_reexports():
     from pdomain_book_tools.geometry import BoundingBox, Point
     from pdomain_book_tools.geometry.bounding_box import (

@@ -26,7 +26,7 @@ from pdomain_book_tools.typography.spans import (
     split_graphemes,
 )
 
-REVIEW_CONTRACT_VERSION = "0.23.0"
+REVIEW_CONTRACT_VERSION = "0.24.0"
 """Version of this portable review/exchange contract."""
 
 WORD_ID_NAMESPACE = uuid.UUID("6f2d7ad0-6e7f-5a2d-b29b-4d6e6bb7cd90")
