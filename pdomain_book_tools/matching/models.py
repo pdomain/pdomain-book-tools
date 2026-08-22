@@ -286,6 +286,8 @@ class MatchContinuationReference(CanonicalModel):
     decision: str
     left_fragment_token_id: str
     right_fragment_token_id: str
+    left_fragment_text: str
+    right_fragment_text: str
     left_fragment_grapheme_ranges: tuple[ArtifactRange, ...]
     right_fragment_grapheme_ranges: tuple[ArtifactRange, ...]
     relation_source_token_ids: tuple[str, ...]
@@ -296,6 +298,8 @@ class MatchContinuationReference(CanonicalModel):
         "decision",
         "left_fragment_token_id",
         "right_fragment_token_id",
+        "left_fragment_text",
+        "right_fragment_text",
     )
     @classmethod
     def _validate_identifiers(cls, value: str, info: object) -> str:
@@ -310,10 +314,60 @@ class MatchContinuationReference(CanonicalModel):
         if not self.right_fragment_grapheme_ranges:
             msg = "continuation references require right fragment grapheme ranges"
             raise ValueError(msg)
+        if len(split_graphemes(self.left_fragment_text)) != len(
+            self.left_fragment_grapheme_ranges
+        ):
+            msg = "left continuation fragment text must match its grapheme ranges"
+            raise ValueError(msg)
+        if len(split_graphemes(self.right_fragment_text)) != len(
+            self.right_fragment_grapheme_ranges
+        ):
+            msg = "right continuation fragment text must match its grapheme ranges"
+            raise ValueError(msg)
         if not self.relation_source_token_ids and not self.relation_target_token_ids:
             msg = "continuation references require relation token IDs"
             raise ValueError(msg)
         return self
+
+
+def continuation_fragment_matches_token(
+    fragment_text: str,
+    fragment_ranges: tuple[ArtifactRange, ...],
+    token: MatchToken,
+) -> bool:
+    """Return whether a fragment is an ordered contiguous slice of one token."""
+    fragment_graphemes = split_graphemes(fragment_text)
+    token_graphemes = split_graphemes(token.text)
+    if len(fragment_graphemes) != len(fragment_ranges):
+        return False
+    if len(token_graphemes) != len(token.artifact_ranges):
+        return False
+    fragment_length = len(fragment_graphemes)
+    return any(
+        token.artifact_ranges[index : index + fragment_length] == fragment_ranges
+        and token_graphemes[index : index + fragment_length] == fragment_graphemes
+        for index in range(len(token_graphemes) - fragment_length + 1)
+    )
+
+
+def continuation_reference_matches_document_side(
+    reference: MatchContinuationReference,
+    tokens_by_id: Mapping[str, MatchToken],
+) -> bool:
+    """Return whether both declared continuation fragments match this document side."""
+    left_token = tokens_by_id.get(reference.left_fragment_token_id)
+    right_token = tokens_by_id.get(reference.right_fragment_token_id)
+    if left_token is None or right_token is None:
+        return False
+    return continuation_fragment_matches_token(
+        reference.left_fragment_text,
+        reference.left_fragment_grapheme_ranges,
+        left_token,
+    ) and continuation_fragment_matches_token(
+        reference.right_fragment_text,
+        reference.right_fragment_grapheme_ranges,
+        right_token,
+    )
 
 
 class MatchRelation(CanonicalModel):
@@ -509,6 +563,9 @@ class MatchSearchEvidence(CanonicalModel):
 
     @model_validator(mode="after")
     def _validate_search_evidence(self) -> Self:
+        if self.state_count < 1:
+            msg = "search evidence state_count must be at least one"
+            raise ValueError(msg)
         if self.max_state_count < 1 or self.max_transition_count < 1:
             msg = "search evidence bounds must be positive"
             raise ValueError(msg)
@@ -644,6 +701,7 @@ class MatchGraph(CanonicalModel):
             msg = "runner-up alternative and margin must be present together"
             raise ValueError(msg)
         self._validate_runner_up_integrity()
+        self._validate_search_evidence()
         if self.accepted and self.quarantine_reasons:
             msg = "accepted graphs cannot contain quarantine reasons"
             raise ValueError(msg)
@@ -689,11 +747,51 @@ class MatchGraph(CanonicalModel):
                     relation.target_token_ids, target_tokens
                 ),
             )
+            for reference in relation.continuation_references:
+                source_matches = continuation_reference_matches_document_side(
+                    reference, source_tokens
+                )
+                target_matches = continuation_reference_matches_document_side(
+                    reference, target_tokens
+                )
+                if not source_matches and not target_matches:
+                    msg = "continuation provenance does not match document tokens"
+                    raise ValueError(msg)
         self._validate_alternative_coverage_and_order(
             alternative,
             source_token_order=_token_order(self.source_document),
             target_token_order=_token_order(self.target_document),
         )
+
+    def _validate_search_evidence(self) -> None:
+        evidence = self.search_evidence
+        if evidence is None:
+            return
+        best_path = evidence.best_complete_path
+        runner_path = evidence.runner_up_complete_path
+        if best_path is None:
+            exhausted = {
+                MatchQuarantineReason.STATE_LIMIT_EXHAUSTED,
+                MatchQuarantineReason.TRANSITION_LIMIT_EXHAUSTED,
+            }
+            if not exhausted.intersection(self.quarantine_reasons):
+                msg = "search evidence without a best complete path requires exhaustion"
+                raise ValueError(msg)
+        elif not _search_path_matches_alternative(best_path, self.best_alternative):
+            msg = "best complete search path must match the graph best alternative"
+            raise ValueError(msg)
+        if (runner_path is None) != (self.runner_up_alternative is None):
+            msg = "runner complete search path presence must match the graph runner"
+            raise ValueError(msg)
+        if (
+            runner_path is not None
+            and self.runner_up_alternative is not None
+            and not _search_path_matches_alternative(
+                runner_path, self.runner_up_alternative
+            )
+        ):
+            msg = "runner complete search path must match the graph runner"
+            raise ValueError(msg)
 
     def _validate_runner_up_integrity(self) -> None:
         runner_up = self.runner_up_alternative
@@ -830,4 +928,14 @@ def _token_order(document: MatchDocument) -> tuple[str, ...]:
         for page in document.pages
         for line in page.lines
         for token in line.tokens
+    )
+
+
+def _search_path_matches_alternative(
+    path: MatchSearchPathEvidence, alternative: MatchAlternative
+) -> bool:
+    """Return whether persisted complete search evidence equals one graph path."""
+    return (
+        path.total_cost == alternative.total_cost
+        and path.relations == alternative.relations
     )

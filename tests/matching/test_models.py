@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from pdomain_book_tools.matching import (
     ArtifactRange,
     MatchAlternative,
+    MatchContinuationReference,
     MatchDocument,
     MatchGraph,
     MatchLine,
@@ -16,8 +17,11 @@ from pdomain_book_tools.matching import (
     MatchQuarantineReason,
     MatchRelation,
     MatchRelationKind,
+    MatchSearchEvidence,
+    MatchSearchPathEvidence,
     MatchToken,
     canonical_relation_path_bytes,
+    match_documents,
 )
 
 
@@ -140,6 +144,185 @@ def _graph() -> MatchGraph:
         accepted=True,
         quarantine_reasons=(),
     )
+
+
+def _continuation_provenance_graph(*, right_fragment_text: str) -> MatchGraph:
+    source_ranges = tuple(
+        ArtifactRange(
+            artifact_id="f2",
+            artifact_sha256="a" * 64,
+            byte_start=index,
+            byte_end=index + 1,
+            grapheme_start=index,
+            grapheme_end=index + 1,
+        )
+        for index in range(3)
+    )
+    source = MatchDocument(
+        document_id="source",
+        pages=(
+            MatchPage(
+                page_id="source-page",
+                lines=(
+                    MatchLine(
+                        line_id="source-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="source-token",
+                                text="aa*",
+                                artifact_ranges=source_ranges,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    target = MatchDocument(
+        document_id="target",
+        pages=(
+            MatchPage(
+                page_id="target-page",
+                lines=(
+                    MatchLine(
+                        line_id="target-line",
+                        tokens=(MatchToken(token_id="target-token", text="aa"),),
+                    ),
+                ),
+            ),
+        ),
+    )
+    relation = MatchRelation(
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-token",),
+        target_token_ids=("target-token",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.SUBSTITUTION,
+                source_grapheme_range=(0, 3),
+                target_grapheme_range=(0, 2),
+            ),
+        ),
+        continuation_references=(
+            MatchContinuationReference(
+                continuation_id="continuation-1",
+                decision="join_without_hyphen",
+                left_fragment_token_id="source-token",
+                right_fragment_token_id="source-token",
+                left_fragment_text="a",
+                right_fragment_text=right_fragment_text,
+                left_fragment_grapheme_ranges=(source_ranges[0],),
+                right_fragment_grapheme_ranges=(source_ranges[1],),
+                relation_source_token_ids=("source-token",),
+                relation_target_token_ids=("target-token",),
+            ),
+        ),
+    )
+    return MatchGraph(
+        source_document=source,
+        target_document=target,
+        policy=MatchPolicy(
+            policy_id="matcher-v1",
+            version="1",
+            low_margin_threshold=0.5,
+            max_merge_size=2,
+            max_state_count=10,
+            max_transition_count=10,
+        ),
+        best_alternative=MatchAlternative(total_cost=1.0, relations=(relation,)),
+        runner_up_alternative=None,
+        runner_up_margin=None,
+        accepted=True,
+        quarantine_reasons=(),
+    )
+
+
+def test_graph_accepts_ordered_continuation_provenance_against_document_tokens() -> (
+    None
+):
+    assert _continuation_provenance_graph(right_fragment_text="a").accepted
+
+
+def test_graph_rejects_continuation_text_not_present_at_declared_token_range() -> None:
+    with pytest.raises(ValidationError, match="continuation provenance"):
+        _continuation_provenance_graph(right_fragment_text="b")
+
+
+def test_search_evidence_requires_at_least_one_state() -> None:
+    graph = match_documents(
+        _source_document(),
+        _target_document(),
+        policy=MatchPolicy(
+            policy_id="matcher-v1",
+            version="1",
+            low_margin_threshold=0.5,
+            max_merge_size=2,
+            max_state_count=10,
+            max_transition_count=10,
+        ),
+    )
+    assert graph.search_evidence is not None
+    with pytest.raises(ValidationError, match="state_count"):
+        MatchSearchEvidence.model_validate(
+            {**graph.search_evidence.model_dump(), "state_count": 0}
+        )
+
+
+def test_graph_rejects_search_evidence_that_disagrees_with_best_path() -> None:
+    graph = match_documents(
+        _source_document(),
+        _target_document(),
+        policy=MatchPolicy(
+            policy_id="matcher-v1",
+            version="1",
+            low_margin_threshold=0.5,
+            max_merge_size=2,
+            max_state_count=10,
+            max_transition_count=10,
+        ),
+    )
+    assert graph.search_evidence is not None
+    assert graph.search_evidence.best_complete_path is not None
+    contradictory_path = MatchSearchPathEvidence.model_validate(
+        {
+            **graph.search_evidence.best_complete_path.model_dump(),
+            "total_cost": 1.0,
+        }
+    )
+    contradictory_evidence = MatchSearchEvidence.model_validate(
+        {
+            **graph.search_evidence.model_dump(),
+            "best_complete_path": contradictory_path.model_dump(),
+        }
+    )
+
+    with pytest.raises(ValidationError, match="best complete search path"):
+        MatchGraph.model_validate(
+            {
+                **graph.model_dump(),
+                "search_evidence": contradictory_evidence.model_dump(),
+            }
+        )
+
+
+def test_graph_accepts_exhausted_search_without_a_complete_path() -> None:
+    graph = match_documents(
+        _source_document(),
+        _target_document(),
+        policy=MatchPolicy(
+            policy_id="matcher-v1",
+            version="1",
+            low_margin_threshold=0.5,
+            max_merge_size=2,
+            max_state_count=1,
+            max_transition_count=10,
+        ),
+    )
+
+    assert not graph.accepted
+    assert graph.search_evidence is not None
+    assert graph.search_evidence.best_complete_path is None
+    assert MatchGraph.model_validate(graph.model_dump()).graph_id == graph.graph_id
 
 
 def test_graph_rejects_equal_cost_runner_up_before_canonical_best_path() -> None:
