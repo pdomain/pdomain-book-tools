@@ -32,7 +32,7 @@ def _content_id(payload: Mapping[str, object], *, excluded_field: str) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
-def _canonical_relation_path_bytes(relations: tuple[MatchRelation, ...]) -> bytes:
+def canonical_relation_path_bytes(relations: tuple[MatchRelation, ...]) -> bytes:
     """Serialize only an alternative's ordered relation path for comparison."""
     payload = tuple(relation.model_dump(mode="json") for relation in relations)
     return json.dumps(
@@ -528,9 +528,9 @@ class MatchGraph(CanonicalModel):
         margin = self.runner_up_margin
         if runner_up is None or margin is None:
             return
-        if _canonical_relation_path_bytes(
+        if canonical_relation_path_bytes(
             runner_up.relations
-        ) == _canonical_relation_path_bytes(self.best_alternative.relations):
+        ) == canonical_relation_path_bytes(self.best_alternative.relations):
             msg = "runner-up path must differ from the best path"
             raise ValueError(msg)
         if runner_up.total_cost < self.best_alternative.total_cost:

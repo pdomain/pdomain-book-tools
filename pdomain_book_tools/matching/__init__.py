@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pdomain_book_tools.matching.engine import match_documents
 from pdomain_book_tools.matching.models import (
     ArtifactRange,
     MatchAlternative,
@@ -16,6 +17,7 @@ from pdomain_book_tools.matching.models import (
     MatchRelation,
     MatchRelationKind,
     MatchToken,
+    canonical_relation_path_bytes,
 )
 from pdomain_book_tools.matching.pgdp_continuations import (
     PgdpContinuation,
@@ -59,5 +61,7 @@ __all__ = [
     "PgdpRound",
     "PgdpRoundContinuationEvidence",
     "PgdpUnmappedMarkerEvidence",
+    "canonical_relation_path_bytes",
     "decode_pgdp_continuations",
+    "match_documents",
 ]
