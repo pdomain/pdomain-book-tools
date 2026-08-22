@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: implemented
 Owner: CT
 Created: 2026-08-22
 Last verified: 2026-08-22
@@ -29,6 +29,11 @@ Python 3.13, Pydantic v2, existing typography grapheme alignment, pytest, ruff, 
 - Quarantine ties, low margins, exhausted search bounds, and unresolved continuations.
 - Keep PGDP decoding source-specific and the matcher source-neutral.
 - Keep corpus bytes and generated book artifacts outside Git.
+
+## Completion
+
+Implemented on `feature/pgdp-book-manifest`. The release gate passed with the
+real metadata-only PGDP evidence fixture, and raw corpus bytes remained local.
 
 ---
 
