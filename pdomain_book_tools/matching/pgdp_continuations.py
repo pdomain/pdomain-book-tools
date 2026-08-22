@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self, override
 
 from pydantic import Field, field_validator, model_validator
 
@@ -12,7 +14,20 @@ from pdomain_book_tools.matching.models import ArtifactRange, MatchDocument, Mat
 from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
+
+
+def _continuation_id(payload: Mapping[str, object]) -> str:
+    """Return the canonical content ID for one continuation payload."""
+    content = {key: value for key, value in payload.items() if key != "continuation_id"}
+    canonical = json.dumps(
+        content,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 class PgdpRound(StrEnum):
@@ -142,6 +157,7 @@ class PgdpRoundContinuationEvidence(CanonicalModel):
 class PgdpContinuation(CanonicalModel):
     """One reversible PGDP physical-continuation edge."""
 
+    continuation_id: str | None = None
     left_fragment: PgdpPhysicalFragment
     right_fragment: PgdpPhysicalFragment
     boundary: PgdpContinuationBoundary
@@ -150,6 +166,18 @@ class PgdpContinuation(CanonicalModel):
     logical_candidates: tuple[PgdpLogicalCandidate, ...]
     decision: PgdpContinuationDecision
     quarantine_reasons: tuple[PgdpContinuationQuarantineReason, ...] = ()
+
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a revalidated copy that recomputes its continuation identity."""
+        del deep
+        payload = {**self.model_dump(), **(update or {}), "continuation_id": None}
+        return type(self).model_validate(payload)
 
     @model_validator(mode="after")
     def _validate_continuation(self) -> PgdpContinuation:
@@ -184,6 +212,11 @@ class PgdpContinuation(CanonicalModel):
         elif len(self.logical_candidates) != 1:
             msg = "resolved continuations require exactly one logical candidate"
             raise ValueError(msg)
+        expected = _continuation_id(self.model_dump(mode="json"))
+        if self.continuation_id is not None and self.continuation_id != expected:
+            msg = "continuation_id does not match the canonical payload"
+            raise ValueError(msg)
+        object.__setattr__(self, "continuation_id", expected)
         return self
 
 

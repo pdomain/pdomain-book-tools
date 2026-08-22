@@ -17,6 +17,7 @@ from pdomain_book_tools.matching import (
     MatchRelation,
     MatchRelationKind,
     MatchToken,
+    canonical_relation_path_bytes,
 )
 
 
@@ -139,6 +140,38 @@ def _graph() -> MatchGraph:
         accepted=True,
         quarantine_reasons=(),
     )
+
+
+def test_graph_rejects_equal_cost_runner_up_before_canonical_best_path() -> None:
+    first = MatchAlternative(total_cost=0.0, relations=(_relation(),))
+    second = MatchAlternative(total_cost=0.0, relations=(_substitution_relation(),))
+    ordered = tuple(
+        sorted(
+            (first, second),
+            key=lambda alternative: canonical_relation_path_bytes(
+                alternative.relations
+            ),
+        )
+    )
+
+    with pytest.raises(ValidationError, match="canonical ordering"):
+        MatchGraph(
+            source_document=_source_document(),
+            target_document=_target_document(),
+            policy=MatchPolicy(
+                policy_id="pgdp-aware-v1",
+                version="1.0.0",
+                low_margin_threshold=0.0,
+                max_merge_size=2,
+                max_state_count=100,
+                max_transition_count=200,
+            ),
+            best_alternative=ordered[1],
+            runner_up_alternative=ordered[0],
+            runner_up_margin=0.0,
+            accepted=False,
+            quarantine_reasons=(MatchQuarantineReason.TIE,),
+        )
 
 
 def test_documents_preserve_order_and_require_globally_stable_token_ids() -> None:

@@ -6,6 +6,8 @@ from pdomain_book_tools.matching.engine import match_documents
 from pdomain_book_tools.matching.models import (
     ArtifactRange,
     MatchAlternative,
+    MatchComparisonNormalization,
+    MatchContinuationReference,
     MatchDocument,
     MatchGraph,
     MatchLine,
@@ -16,6 +18,9 @@ from pdomain_book_tools.matching.models import (
     MatchQuarantineReason,
     MatchRelation,
     MatchRelationKind,
+    MatchSearchEvidence,
+    MatchSearchPathEvidence,
+    MatchTieBreakRule,
     MatchToken,
     canonical_relation_path_bytes,
 )
@@ -38,6 +43,8 @@ from pdomain_book_tools.matching.pgdp_continuations import (
 __all__ = [
     "ArtifactRange",
     "MatchAlternative",
+    "MatchComparisonNormalization",
+    "MatchContinuationReference",
     "MatchDocument",
     "MatchGraph",
     "MatchLine",
@@ -48,6 +55,9 @@ __all__ = [
     "MatchQuarantineReason",
     "MatchRelation",
     "MatchRelationKind",
+    "MatchSearchEvidence",
+    "MatchSearchPathEvidence",
+    "MatchTieBreakRule",
     "MatchToken",
     "PgdpContinuation",
     "PgdpContinuationBoundary",

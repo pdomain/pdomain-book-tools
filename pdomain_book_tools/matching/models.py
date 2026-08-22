@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Annotated, Self, override
 
 from pydantic import Field, field_validator, model_validator
 
+from pdomain_book_tools.typography.normalization import ComparisonView
 from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
 
 if TYPE_CHECKING:
@@ -42,6 +43,11 @@ def canonical_relation_path_bytes(relations: tuple[MatchRelation, ...]) -> bytes
         separators=(",", ":"),
         sort_keys=True,
     ).encode("utf-8")
+
+
+def _search_path_key(path: MatchSearchPathEvidence) -> tuple[float, bytes]:
+    """Return the policy ordering key for retained search paths."""
+    return path.total_cost, path.canonical_path_bytes
 
 
 def _validate_identifier(value: str, *, field_name: str) -> str:
@@ -94,6 +100,19 @@ class MatchQuarantineReason(StrEnum):
     STATE_LIMIT_EXHAUSTED = "state_limit_exhausted"
     TRANSITION_LIMIT_EXHAUSTED = "transition_limit_exhausted"
     UNRESOLVED_CONTINUATION = "unresolved_continuation"
+    INCOMPATIBLE_CONTINUATION = "incompatible_continuation"
+
+
+class MatchComparisonNormalization(StrEnum):
+    """Validated comparison views the source-neutral matcher may build."""
+
+    UNICODE_CASEFOLD_V1 = "unicode_casefold_v1"
+
+
+class MatchTieBreakRule(StrEnum):
+    """Validated deterministic ordering for paths with equal total cost."""
+
+    CANONICAL_RELATION_PATH_BYTES_V1 = "canonical_relation_path_bytes_v1"
 
 
 class ArtifactRange(CanonicalModel):
@@ -260,6 +279,43 @@ class MatchOperation(CanonicalModel):
         return self
 
 
+class MatchContinuationReference(CanonicalModel):
+    """Source-neutral immutable provenance projected from a continuation adapter."""
+
+    continuation_id: str
+    decision: str
+    left_fragment_token_id: str
+    right_fragment_token_id: str
+    left_fragment_grapheme_ranges: tuple[ArtifactRange, ...]
+    right_fragment_grapheme_ranges: tuple[ArtifactRange, ...]
+    relation_source_token_ids: tuple[str, ...]
+    relation_target_token_ids: tuple[str, ...]
+
+    @field_validator(
+        "continuation_id",
+        "decision",
+        "left_fragment_token_id",
+        "right_fragment_token_id",
+    )
+    @classmethod
+    def _validate_identifiers(cls, value: str, info: object) -> str:
+        field_name = getattr(info, "field_name", "continuation field")
+        return _validate_identifier(value, field_name=str(field_name))
+
+    @model_validator(mode="after")
+    def _validate_reference(self) -> Self:
+        if not self.left_fragment_grapheme_ranges:
+            msg = "continuation references require left fragment grapheme ranges"
+            raise ValueError(msg)
+        if not self.right_fragment_grapheme_ranges:
+            msg = "continuation references require right fragment grapheme ranges"
+            raise ValueError(msg)
+        if not self.relation_source_token_ids and not self.relation_target_token_ids:
+            msg = "continuation references require relation token IDs"
+            raise ValueError(msg)
+        return self
+
+
 class MatchRelation(CanonicalModel):
     """An immutable relation between physical source and target token IDs."""
 
@@ -268,6 +324,9 @@ class MatchRelation(CanonicalModel):
     source_token_ids: tuple[str, ...]
     target_token_ids: tuple[str, ...]
     operations: tuple[MatchOperation, ...]
+    source_comparison: ComparisonView | None = None
+    target_comparison: ComparisonView | None = None
+    continuation_references: tuple[MatchContinuationReference, ...] = ()
     warnings: tuple[str, ...] = ()
 
     @override
@@ -286,6 +345,7 @@ class MatchRelation(CanonicalModel):
     def _validate_relation(self) -> Self:
         self._validate_token_ids()
         self._validate_cardinality()
+        self._validate_provenance()
         expected = _content_id(
             self.model_dump(mode="json"), excluded_field="relation_id"
         )
@@ -299,6 +359,29 @@ class MatchRelation(CanonicalModel):
             ),
         )
         return self
+
+    def _validate_provenance(self) -> None:
+        if (self.source_comparison is None) != (self.target_comparison is None):
+            msg = "relation comparison provenance requires both source and target views"
+            raise ValueError(msg)
+        for reference in self.continuation_references:
+            if reference.relation_source_token_ids != self.source_token_ids:
+                msg = "continuation reference source token IDs must match its relation"
+                raise ValueError(msg)
+            if reference.relation_target_token_ids != self.target_token_ids:
+                msg = "continuation reference target token IDs must match its relation"
+                raise ValueError(msg)
+            fragment_ids = {
+                reference.left_fragment_token_id,
+                reference.right_fragment_token_id,
+            }
+            source_ids = set(self.source_token_ids)
+            target_ids = set(self.target_token_ids)
+            if not fragment_ids.issubset(source_ids) and not fragment_ids.issubset(
+                target_ids
+            ):
+                msg = "continuation fragments must occur on one relation side"
+                raise ValueError(msg)
 
     def _validate_token_ids(self) -> None:
         identifiers = self.source_token_ids + self.target_token_ids
@@ -389,6 +472,92 @@ class MatchAlternative(CanonicalModel):
         return self
 
 
+class MatchSearchPathEvidence(CanonicalModel):
+    """One retained complete or partial dynamic-program search path."""
+
+    source_tokens_consumed: _StrictIndex
+    target_tokens_consumed: _StrictIndex
+    total_cost: float
+    relations: tuple[MatchRelation, ...]
+
+    @field_validator("total_cost")
+    @classmethod
+    def _validate_cost(cls, value: float) -> float:
+        if not math.isfinite(value) or value < 0:
+            msg = "search path total_cost must be finite and nonnegative"
+            raise ValueError(msg)
+        return value
+
+    @property
+    def canonical_path_bytes(self) -> bytes:
+        """Return the stable tie-break bytes for this retained path."""
+        return canonical_relation_path_bytes(self.relations)
+
+
+class MatchSearchEvidence(CanonicalModel):
+    """Immutable bounded-search evidence, including retained partial paths."""
+
+    source_token_count: _StrictIndex
+    target_token_count: _StrictIndex
+    state_count: _StrictIndex
+    transition_count: _StrictIndex
+    max_state_count: _StrictIndex
+    max_transition_count: _StrictIndex
+    best_complete_path: MatchSearchPathEvidence | None
+    runner_up_complete_path: MatchSearchPathEvidence | None
+    partial_paths: tuple[MatchSearchPathEvidence, ...]
+
+    @model_validator(mode="after")
+    def _validate_search_evidence(self) -> Self:
+        if self.max_state_count < 1 or self.max_transition_count < 1:
+            msg = "search evidence bounds must be positive"
+            raise ValueError(msg)
+        complete_paths = (self.best_complete_path, self.runner_up_complete_path)
+        for path in complete_paths:
+            if path is None:
+                continue
+            if (
+                path.source_tokens_consumed != self.source_token_count
+                or path.target_tokens_consumed != self.target_token_count
+            ):
+                msg = "complete search paths must consume both complete documents"
+                raise ValueError(msg)
+        if self.runner_up_complete_path is not None and self.best_complete_path is None:
+            msg = "runner-up search path requires a best complete path"
+            raise ValueError(msg)
+        if (
+            self.best_complete_path is not None
+            and self.runner_up_complete_path is not None
+            and _search_path_key(self.runner_up_complete_path)
+            < _search_path_key(self.best_complete_path)
+        ):
+            msg = "complete search paths must use deterministic order"
+            raise ValueError(msg)
+        if len(self.partial_paths) > 2:
+            msg = "search evidence retains at most two partial paths"
+            raise ValueError(msg)
+        if (
+            tuple(sorted(self.partial_paths, key=_search_path_key))
+            != self.partial_paths
+        ):
+            msg = "partial search paths must use deterministic order"
+            raise ValueError(msg)
+        for path in self.partial_paths:
+            if (
+                path.source_tokens_consumed > self.source_token_count
+                or path.target_tokens_consumed > self.target_token_count
+            ):
+                msg = "partial search path consumption exceeds document token count"
+                raise ValueError(msg)
+            if (
+                path.source_tokens_consumed == self.source_token_count
+                and path.target_tokens_consumed == self.target_token_count
+            ):
+                msg = "partial search paths cannot be complete"
+                raise ValueError(msg)
+        return self
+
+
 class MatchPolicy(CanonicalModel):
     """Versioned deterministic costs, bounds, and acceptance settings."""
 
@@ -402,14 +571,16 @@ class MatchPolicy(CanonicalModel):
     substitution_cost: Annotated[float, Field(ge=0.0)] = 1.0
     source_only_cost: Annotated[float, Field(ge=0.0)] = 1.0
     target_only_cost: Annotated[float, Field(ge=0.0)] = 1.0
-    comparison_normalization_version: str = "1"
-    tie_break_rule: str = "canonical_relation_bytes"
+    comparison_normalization: MatchComparisonNormalization = (
+        MatchComparisonNormalization.UNICODE_CASEFOLD_V1
+    )
+    tie_break_rule: MatchTieBreakRule = (
+        MatchTieBreakRule.CANONICAL_RELATION_PATH_BYTES_V1
+    )
 
     @field_validator(
         "policy_id",
         "version",
-        "comparison_normalization_version",
-        "tie_break_rule",
     )
     @classmethod
     def _validate_strings(cls, value: str, info: object) -> str:
@@ -444,6 +615,7 @@ class MatchGraph(CanonicalModel):
     runner_up_margin: float | None
     accepted: bool
     quarantine_reasons: tuple[MatchQuarantineReason, ...]
+    search_evidence: MatchSearchEvidence | None = None
     warnings: tuple[str, ...] = ()
 
     @override
@@ -535,6 +707,13 @@ class MatchGraph(CanonicalModel):
             raise ValueError(msg)
         if runner_up.total_cost < self.best_alternative.total_cost:
             msg = "runner-up cost cannot be lower than best cost"
+            raise ValueError(msg)
+        if (
+            runner_up.total_cost == self.best_alternative.total_cost
+            and canonical_relation_path_bytes(runner_up.relations)
+            < canonical_relation_path_bytes(self.best_alternative.relations)
+        ):
+            msg = "runner-up must follow the best path's canonical ordering"
             raise ValueError(msg)
         expected_margin = runner_up.total_cost - self.best_alternative.total_cost
         if margin != expected_margin:
