@@ -11,6 +11,7 @@ from pdomain_book_tools.geometry import BoundingBox, Point
 from pdomain_book_tools.typography import (
     AlignmentEvidence,
     ArtifactRef,
+    ArtifactReference,
     ArtifactSource,
     ConfidenceTier,
     Grapheme,
@@ -146,6 +147,91 @@ def test_page_record_preserves_full_f2_artifact_bytes() -> None:
 
     assert base64.b64decode(decoded.original_f2_artifact_base64 or "") == _F2_BYTES
     assert decoded.to_json_bytes() == encoded
+
+
+def test_page_record_accepts_external_f2_artifact_without_embedded_bytes() -> None:
+    data = _record().model_dump(mode="json")
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+        media_type="application/json",
+    ).model_dump(mode="json")
+
+    record = TypographyPageRecord.model_validate(data)
+
+    assert record.original_f2_artifact_base64 is None
+    assert record.external_f2_artifact is not None
+    assert record.external_f2_artifact.sha256 == _F2_SHA256
+    assert record.revalidate_external_f2_artifact(_F2_BYTES) is None
+
+
+def test_external_f2_record_rejects_reference_hash_drift() -> None:
+    data = _record().model_dump(mode="json")
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256="0" * 64,
+    ).model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match=r"external_f2_artifact\.sha256"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_external_f2_record_revalidates_its_lexical_range_against_supplied_bytes() -> (
+    None
+):
+    data = _record().model_dump(mode="json")
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+    data["f2_page_value_lexical_byte_range"] = [12, 20]
+
+    record = TypographyPageRecord.model_validate(data)
+
+    with pytest.raises(ValueError, match="lexical"):
+        record.revalidate_external_f2_artifact(_F2_BYTES)
+
+
+def test_page_record_rejects_embedded_and_external_f2_artifacts_together() -> None:
+    data = _record().model_dump(mode="json")
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+
+    with pytest.raises(ValidationError, match="mutually exclusive"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_page_record_rejects_f2_page_evidence_without_an_artifact_representation() -> (
+    None
+):
+    data = _record().model_dump(mode="json")
+    data["original_f2_artifact_base64"] = None
+
+    with pytest.raises(ValidationError, match="embedded or external"):
+        TypographyPageRecord.model_validate(data)
+
+
+def test_external_f2_record_rejects_grapheme_outside_declared_lexical_range() -> None:
+    data = _record().model_dump(mode="json")
+    data["original_f2_artifact_base64"] = None
+    data["external_f2_artifact"] = ArtifactReference(
+        artifact_id="pgdp-f2",
+        relative_path="artifacts/F2.json",
+        sha256=_F2_SHA256,
+    ).model_dump(mode="json")
+    data["graphemes"][0]["source_slices"][0]["byte_start"] = 0
+
+    with pytest.raises(ValidationError, match="lexical byte range"):
+        TypographyPageRecord.model_validate(data)
 
 
 def test_page_record_rejects_forged_grapheme_f2_provenance() -> None:

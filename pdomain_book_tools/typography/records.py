@@ -16,6 +16,7 @@ from pydantic import Field, field_serializer, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
+from pdomain_book_tools.typography.exchange import ArtifactReference
 from pdomain_book_tools.typography.normalization import ComparisonOperation
 from pdomain_book_tools.typography.spans import (
     CanonicalModel,
@@ -549,6 +550,7 @@ class TypographyPageRecord(CanonicalModel):
     identity: TextIdentity
     original_f2_artifact_base64: str | None
     original_f2_artifact_sha256: str | None
+    external_f2_artifact: ArtifactReference | None = None
     f2_page_key: str | None
     f2_page_value_lexical_byte_range: tuple[_StrictIndex, _StrictIndex] | None
     f2_decoded_page_utf8_sha256: str | None
@@ -581,8 +583,8 @@ class TypographyPageRecord(CanonicalModel):
                 self.f2_page_value_lexical_byte_range,
                 "f2_page_value_lexical_byte_range",
             )
-        self._validate_f2_artifact()
-        self._validate_page_source_slices()
+        artifact_bytes = self._validate_f2_artifact()
+        self._validate_page_source_slices(artifact_bytes)
         expected_indices = tuple(range(len(self.graphemes)))
         actual_indices = tuple(grapheme.index for grapheme in self.graphemes)
         if actual_indices != expected_indices:
@@ -601,7 +603,7 @@ class TypographyPageRecord(CanonicalModel):
         ):
             msg = "normalization grapheme indices cannot exceed the page grapheme count"
             raise ValueError(msg)
-        self._validate_parser_evidence()
+        self._validate_parser_evidence(artifact_bytes)
         alignment_ids = {alignment.alignment_id for alignment in self.alignments}
         if len(alignment_ids) != len(self.alignments):
             msg = "alignment_id values must be unique within a page record"
@@ -616,18 +618,34 @@ class TypographyPageRecord(CanonicalModel):
         self._validate_alignment_artifacts()
         return self
 
-    def _validate_page_source_slices(self) -> None:
+    def revalidate_external_f2_artifact(self, artifact_bytes: bytes) -> None:
+        """Revalidate an external F2 reference against supplied exact bytes."""
+        if self.external_f2_artifact is None:
+            msg = "external F2 artifact bytes require external_f2_artifact"
+            raise ValueError(msg)
+        self._validate_supplied_f2_artifact_bytes(artifact_bytes)
+        self._validate_page_source_slices(artifact_bytes)
+        self._validate_parser_evidence(artifact_bytes)
+
+    def _validate_page_source_slices(self, artifact_bytes: bytes | None) -> None:
         expected_hash = self.original_f2_artifact_sha256
-        encoded = self.original_f2_artifact_base64
-        if expected_hash is None or encoded is None:
+        if expected_hash is None:
             return
-        artifact_bytes = base64.b64decode(encoded, validate=True)
+        lexical_range = self.f2_page_value_lexical_byte_range
         for grapheme in self.graphemes:
             for source_slice in grapheme.source_slices:
                 if source_slice.artifact_sha256 != expected_hash:
                     msg = "F2-backed grapheme source slices must use the original F2 SHA-256"
                     raise ValueError(msg)
-                if source_slice.byte_end > len(artifact_bytes):
+                if lexical_range is not None and (
+                    source_slice.byte_start < lexical_range[0]
+                    or source_slice.byte_end > lexical_range[1]
+                ):
+                    msg = "F2-backed grapheme source slices must lie within the F2 lexical byte range"
+                    raise ValueError(msg)
+                if artifact_bytes is not None and source_slice.byte_end > len(
+                    artifact_bytes
+                ):
                     msg = "F2-backed grapheme source slices must lie within the F2 artifact"
                     raise ValueError(msg)
         for span in self.style_spans:
@@ -635,7 +653,15 @@ class TypographyPageRecord(CanonicalModel):
                 if source_slice.artifact_sha256 != expected_hash:
                     msg = "F2-backed style span source slices must use the original F2 SHA-256"
                     raise ValueError(msg)
-                if source_slice.byte_end > len(artifact_bytes):
+                if lexical_range is not None and (
+                    source_slice.byte_start < lexical_range[0]
+                    or source_slice.byte_end > lexical_range[1]
+                ):
+                    msg = "F2-backed style span source slices must lie within the F2 lexical byte range"
+                    raise ValueError(msg)
+                if artifact_bytes is not None and source_slice.byte_end > len(
+                    artifact_bytes
+                ):
                     msg = "F2-backed style span source slices must lie within the F2 artifact"
                     raise ValueError(msg)
 
@@ -696,15 +722,22 @@ class TypographyPageRecord(CanonicalModel):
                 )
                 raise ValueError(msg)
 
-    def _validate_f2_artifact(self) -> None:
-        values = (
-            self.original_f2_artifact_base64,
+    def _validate_f2_artifact(self) -> bytes | None:
+        page_evidence = (
             self.original_f2_artifact_sha256,
             self.f2_page_key,
             self.f2_page_value_lexical_byte_range,
             self.f2_decoded_page_utf8_sha256,
         )
-        if all(value is None for value in values):
+        has_embedded_artifact = self.original_f2_artifact_base64 is not None
+        has_external_artifact = self.external_f2_artifact is not None
+        if has_embedded_artifact and has_external_artifact:
+            msg = "embedded and external F2 artifact references are mutually exclusive"
+            raise ValueError(msg)
+        if all(value is None for value in page_evidence):
+            if has_embedded_artifact or has_external_artifact:
+                msg = "F2 artifact references require complete F2 page evidence"
+                raise ValueError(msg)
             if (
                 self.parser_notes
                 or self.normalization_operations
@@ -712,28 +745,56 @@ class TypographyPageRecord(CanonicalModel):
             ):
                 msg = "parser evidence requires complete F2 artifact fields"
                 raise ValueError(msg)
-            return
-        if any(value is None for value in values):
+            return None
+        if any(value is None for value in page_evidence):
             msg = "F2 artifact fields must be either all present or all absent"
             raise ValueError(msg)
-        encoded = self.original_f2_artifact_base64
         expected_hash = self.original_f2_artifact_sha256
-        if encoded is None or expected_hash is None:
+        if expected_hash is None:
             msg = "F2 artifact identity is incomplete"
+            raise ValueError(msg)
+        if not has_embedded_artifact and not has_external_artifact:
+            msg = "F2 page evidence requires an embedded or external F2 artifact"
+            raise ValueError(msg)
+        external_artifact = self.external_f2_artifact
+        if external_artifact is not None:
+            if external_artifact.sha256 != expected_hash:
+                msg = (
+                    "external_f2_artifact.sha256 must match original_f2_artifact_sha256"
+                )
+                raise ValueError(msg)
+            if not any(
+                artifact.sha256 == expected_hash
+                for artifact in self.identity.text_artifacts
+            ):
+                msg = "original F2 artifact must appear in identity.text_artifacts"
+                raise ValueError(msg)
+            return None
+        encoded = self.original_f2_artifact_base64
+        if encoded is None:
+            msg = "embedded F2 artifact identity is incomplete"
             raise ValueError(msg)
         try:
             artifact_bytes = base64.b64decode(encoded, validate=True)
         except (binascii.Error, ValueError) as error:
             msg = "original_f2_artifact_base64 must be valid base64"
             raise ValueError(msg) from error
-        if hashlib.sha256(artifact_bytes).hexdigest() != expected_hash:
-            msg = "original_f2_artifact_sha256 does not match the decoded artifact"
-            raise ValueError(msg)
+        self._validate_supplied_f2_artifact_bytes(artifact_bytes)
         if not any(
             artifact.sha256 == expected_hash
             for artifact in self.identity.text_artifacts
         ):
             msg = "original F2 artifact must appear in identity.text_artifacts"
+            raise ValueError(msg)
+        return artifact_bytes
+
+    def _validate_supplied_f2_artifact_bytes(self, artifact_bytes: bytes) -> None:
+        expected_hash = self.original_f2_artifact_sha256
+        if expected_hash is None:
+            msg = "F2 artifact identity is incomplete"
+            raise ValueError(msg)
+        if hashlib.sha256(artifact_bytes).hexdigest() != expected_hash:
+            msg = "original_f2_artifact_sha256 does not match the supplied artifact"
             raise ValueError(msg)
         lexical_range = self.f2_page_value_lexical_byte_range
         page_key = self.f2_page_key
@@ -769,12 +830,11 @@ class TypographyPageRecord(CanonicalModel):
             msg = "decoded page hash does not match the F2 lexical value"
             raise ValueError(msg)
 
-    def _validate_parser_evidence(self) -> None:
+    def _validate_parser_evidence(self, artifact_bytes: bytes | None) -> None:
         expected_hash = self.original_f2_artifact_sha256
-        encoded = self.original_f2_artifact_base64
-        if expected_hash is None or encoded is None:
+        if expected_hash is None:
             return
-        artifact_bytes = base64.b64decode(encoded, validate=True)
+        lexical_range = self.f2_page_value_lexical_byte_range
         evidence = (
             *self.parser_notes,
             *self.normalization_operations,
@@ -787,7 +847,18 @@ class TypographyPageRecord(CanonicalModel):
                         "parser evidence source slices must use the original F2 SHA-256"
                     )
                     raise ValueError(msg)
-                if source_slice.byte_end > len(artifact_bytes):
+                if lexical_range is not None and (
+                    source_slice.byte_start < lexical_range[0]
+                    or source_slice.byte_end > lexical_range[1]
+                ):
+                    msg = (
+                        "parser evidence source slices must lie within the F2 lexical "
+                        "byte range"
+                    )
+                    raise ValueError(msg)
+                if artifact_bytes is not None and source_slice.byte_end > len(
+                    artifact_bytes
+                ):
                     msg = (
                         "parser evidence source slices must lie within the F2 artifact"
                     )
