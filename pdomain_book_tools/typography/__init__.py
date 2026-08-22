@@ -12,6 +12,11 @@ from pdomain_book_tools.typography.alignment import (
     project_token_ranges,
 )
 from pdomain_book_tools.typography.annotations import TypographyAnnotations
+from pdomain_book_tools.typography.book_manifest import (
+    BookLabelingManifest,
+    BookLabelingPage,
+    BookMatchRelationReference,
+)
 from pdomain_book_tools.typography.exchange import (
     ArtifactReference,
     CoordinateTransform,
@@ -94,6 +99,9 @@ __all__ = [
     "ArtifactRef",
     "ArtifactReference",
     "ArtifactSource",
+    "BookLabelingManifest",
+    "BookLabelingPage",
+    "BookMatchRelationReference",
     "ComparisonOperation",
     "ComparisonOperationKind",
     "ComparisonView",
