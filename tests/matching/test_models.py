@@ -404,9 +404,15 @@ def test_graph_rejects_operations_that_overlap_or_exceed_token_graphemes() -> No
 
 def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
     graph = _graph()
-    runner_up = MatchAlternative(
+    tie_runner_up = MatchAlternative(
         alternative_id=None,
-        total_cost=1.0,
+        total_cost=0.0,
+        relations=graph.best_alternative.relations,
+        warnings=("different canonical path",),
+    )
+    low_margin_runner_up = MatchAlternative(
+        alternative_id=None,
+        total_cost=0.5,
         relations=graph.best_alternative.relations,
     )
     with pytest.raises(ValidationError, match="tie"):
@@ -416,7 +422,7 @@ def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
             target_document=graph.target_document,
             policy=graph.policy,
             best_alternative=graph.best_alternative,
-            runner_up_alternative=runner_up,
+            runner_up_alternative=tie_runner_up,
             runner_up_margin=0.0,
             accepted=True,
             quarantine_reasons=(),
@@ -428,7 +434,7 @@ def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
             target_document=graph.target_document,
             policy=graph.policy,
             best_alternative=graph.best_alternative,
-            runner_up_alternative=runner_up,
+            runner_up_alternative=low_margin_runner_up,
             runner_up_margin=0.5,
             accepted=True,
             quarantine_reasons=(),
@@ -440,7 +446,7 @@ def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
             target_document=graph.target_document,
             policy=graph.policy,
             best_alternative=graph.best_alternative,
-            runner_up_alternative=runner_up,
+            runner_up_alternative=tie_runner_up,
             runner_up_margin=0.0,
             accepted=False,
             quarantine_reasons=(MatchQuarantineReason.LOW_MARGIN,),
@@ -452,7 +458,7 @@ def test_graph_rejects_accepted_ties_and_below_policy_margins() -> None:
             target_document=graph.target_document,
             policy=graph.policy,
             best_alternative=graph.best_alternative,
-            runner_up_alternative=runner_up,
+            runner_up_alternative=low_margin_runner_up,
             runner_up_margin=0.5,
             accepted=False,
             quarantine_reasons=(MatchQuarantineReason.TIE,),
@@ -627,3 +633,278 @@ def test_every_match_contract_is_deeply_immutable_after_mutable_input_conversion
     ):
         with pytest.raises(ValidationError):
             setattr(model, field_name, replacement)
+
+
+def test_content_addressed_model_copies_recompute_all_ids() -> None:
+    graph = _graph()
+    relation = graph.best_alternative.relations[0]
+    copied_relation = relation.model_copy(
+        update={"relation_id": relation.relation_id, "warnings": ("changed",)}
+    )
+    copied_alternative = graph.best_alternative.model_copy(
+        update={
+            "alternative_id": graph.best_alternative.alternative_id,
+            "total_cost": 1.0,
+        }
+    )
+    copied_graph = graph.model_copy(
+        update={"graph_id": graph.graph_id, "warnings": ("changed",)}
+    )
+
+    assert copied_relation.relation_id != relation.relation_id
+    assert copied_alternative.alternative_id != graph.best_alternative.alternative_id
+    assert copied_graph.graph_id != graph.graph_id
+
+
+def test_graph_enforces_runner_up_identity_cost_and_exact_margin() -> None:
+    graph = _graph()
+    runner_up = MatchAlternative(
+        alternative_id=None,
+        total_cost=1.0,
+        relations=graph.best_alternative.relations,
+    )
+    accepted_graph = MatchGraph(
+        graph_id=None,
+        source_document=graph.source_document,
+        target_document=graph.target_document,
+        policy=graph.policy,
+        best_alternative=graph.best_alternative,
+        runner_up_alternative=runner_up,
+        runner_up_margin=1.0,
+        accepted=True,
+        quarantine_reasons=(),
+    )
+    assert accepted_graph.accepted is True
+
+    with pytest.raises(ValidationError, match="runner-up alternative must differ"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=graph.best_alternative,
+            runner_up_margin=1.0,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+    with pytest.raises(ValidationError, match="runner-up cost cannot be lower"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=runner_up,
+            runner_up_alternative=graph.best_alternative,
+            runner_up_margin=0.0,
+            accepted=False,
+            quarantine_reasons=(MatchQuarantineReason.TIE,),
+        )
+    with pytest.raises(ValidationError, match="runner-up margin must equal"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=graph.best_alternative,
+            runner_up_alternative=runner_up,
+            runner_up_margin=0.5,
+            accepted=False,
+            quarantine_reasons=(MatchQuarantineReason.LOW_MARGIN,),
+        )
+
+
+def test_graph_requires_operations_to_partition_relation_graphemes_exactly() -> None:
+    graph = _graph()
+    gapped_relation = MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-001-line-1-token-1",),
+        target_token_ids=("ocr-001-line-1-token-1",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(0, 2),
+                target_grapheme_range=(0, 2),
+            ),
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(3, 5),
+                target_grapheme_range=(3, 5),
+            ),
+        ),
+    )
+    with pytest.raises(ValidationError, match="partition source graphemes"):
+        MatchGraph(
+            graph_id=None,
+            source_document=graph.source_document,
+            target_document=graph.target_document,
+            policy=graph.policy,
+            best_alternative=MatchAlternative(
+                alternative_id=None,
+                total_cost=0.0,
+                relations=(gapped_relation,),
+            ),
+            runner_up_alternative=None,
+            runner_up_margin=None,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+
+    source_only_document = MatchDocument(
+        document_id="source-only",
+        pages=(
+            MatchPage(
+                page_id="source-only-page",
+                lines=(
+                    MatchLine(
+                        line_id="source-only-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="source-only-token",
+                                text="e\u0301",
+                                artifact_ranges=(),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    empty_target_document = MatchDocument(
+        document_id="empty-target",
+        pages=(MatchPage(page_id="empty-target-page", lines=()),),
+    )
+    source_only_relation = MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.SOURCE_ONLY,
+        source_token_ids=("source-only-token",),
+        target_token_ids=(),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.SOURCE_ONLY_DELETION,
+                source_grapheme_range=(0, 1),
+                target_grapheme_range=(0, 0),
+            ),
+        ),
+    )
+    source_only_graph = MatchGraph(
+        graph_id=None,
+        source_document=source_only_document,
+        target_document=empty_target_document,
+        policy=graph.policy,
+        best_alternative=MatchAlternative(
+            alternative_id=None,
+            total_cost=1.0,
+            relations=(source_only_relation,),
+        ),
+        runner_up_alternative=None,
+        runner_up_margin=None,
+        accepted=True,
+        quarantine_reasons=(),
+    )
+    assert source_only_graph.accepted is True
+
+
+def test_graph_requires_complete_ordered_document_token_coverage() -> None:
+    source_document = MatchDocument(
+        document_id="source",
+        pages=(
+            MatchPage(
+                page_id="source-page",
+                lines=(
+                    MatchLine(
+                        line_id="source-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="source-1", text="one", artifact_ranges=()
+                            ),
+                            MatchToken(
+                                token_id="source-2", text="two", artifact_ranges=()
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    target_document = MatchDocument(
+        document_id="target",
+        pages=(
+            MatchPage(
+                page_id="target-page",
+                lines=(
+                    MatchLine(
+                        line_id="target-line",
+                        tokens=(
+                            MatchToken(
+                                token_id="target-1", text="one", artifact_ranges=()
+                            ),
+                            MatchToken(
+                                token_id="target-2", text="two", artifact_ranges=()
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+    relation_one = MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-1",),
+        target_token_ids=("target-1",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(0, 3),
+                target_grapheme_range=(0, 3),
+            ),
+        ),
+    )
+    relation_two = MatchRelation(
+        relation_id=None,
+        kind=MatchRelationKind.ONE_TO_ONE,
+        source_token_ids=("source-2",),
+        target_token_ids=("target-2",),
+        operations=(
+            MatchOperation(
+                kind=MatchOperationKind.MATCH,
+                source_grapheme_range=(0, 3),
+                target_grapheme_range=(0, 3),
+            ),
+        ),
+    )
+    policy = _graph().policy
+    with pytest.raises(ValidationError, match="cover every source token"):
+        MatchGraph(
+            graph_id=None,
+            source_document=source_document,
+            target_document=target_document,
+            policy=policy,
+            best_alternative=MatchAlternative(
+                alternative_id=None,
+                total_cost=0.0,
+                relations=(relation_one,),
+            ),
+            runner_up_alternative=None,
+            runner_up_margin=None,
+            accepted=True,
+            quarantine_reasons=(),
+        )
+    with pytest.raises(ValidationError, match="physical source document order"):
+        MatchGraph(
+            graph_id=None,
+            source_document=source_document,
+            target_document=target_document,
+            policy=policy,
+            best_alternative=MatchAlternative(
+                alternative_id=None,
+                total_cost=0.0,
+                relations=(relation_two, relation_one),
+            ),
+            runner_up_alternative=None,
+            runner_up_margin=None,
+            accepted=True,
+            quarantine_reasons=(),
+        )

@@ -7,11 +7,14 @@ import json
 import math
 import string
 from enum import StrEnum
-from typing import Annotated, Self
+from typing import TYPE_CHECKING, Annotated, Self, override
 
 from pydantic import Field, field_validator, model_validator
 
 from pdomain_book_tools.typography.spans import CanonicalModel, split_graphemes
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _StrictIndex = Annotated[int, Field(strict=True, ge=0)]
 
@@ -255,6 +258,18 @@ class MatchRelation(CanonicalModel):
     operations: tuple[MatchOperation, ...]
     warnings: tuple[str, ...] = ()
 
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a revalidated copy that always recomputes its content ID."""
+        del deep
+        payload = {**self.model_dump(), **(update or {}), "relation_id": None}
+        return type(self).model_validate(payload)
+
     @model_validator(mode="after")
     def _validate_relation(self) -> Self:
         self._validate_token_ids()
@@ -309,6 +324,18 @@ class MatchAlternative(CanonicalModel):
     total_cost: float
     relations: tuple[MatchRelation, ...]
     warnings: tuple[str, ...] = ()
+
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a revalidated copy that always recomputes its content ID."""
+        del deep
+        payload = {**self.model_dump(), **(update or {}), "alternative_id": None}
+        return type(self).model_validate(payload)
 
     @model_validator(mode="after")
     def _validate_alternative(self) -> Self:
@@ -407,6 +434,18 @@ class MatchGraph(CanonicalModel):
     quarantine_reasons: tuple[MatchQuarantineReason, ...]
     warnings: tuple[str, ...] = ()
 
+    @override
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, object] | None = None,
+        deep: bool = False,
+    ) -> Self:
+        """Return a revalidated copy that always recomputes its content ID."""
+        del deep
+        payload = {**self.model_dump(), **(update or {}), "graph_id": None}
+        return type(self).model_validate(payload)
+
     @field_validator("runner_up_margin")
     @classmethod
     def _validate_margin(cls, value: float | None) -> float | None:
@@ -420,6 +459,7 @@ class MatchGraph(CanonicalModel):
         if (self.runner_up_alternative is None) != (self.runner_up_margin is None):
             msg = "runner-up alternative and margin must be present together"
             raise ValueError(msg)
+        self._validate_runner_up_integrity()
         if self.accepted and self.quarantine_reasons:
             msg = "accepted graphs cannot contain quarantine reasons"
             raise ValueError(msg)
@@ -465,6 +505,27 @@ class MatchGraph(CanonicalModel):
                     relation.target_token_ids, target_tokens
                 ),
             )
+        self._validate_alternative_coverage_and_order(
+            alternative,
+            source_token_order=_token_order(self.source_document),
+            target_token_order=_token_order(self.target_document),
+        )
+
+    def _validate_runner_up_integrity(self) -> None:
+        runner_up = self.runner_up_alternative
+        margin = self.runner_up_margin
+        if runner_up is None or margin is None:
+            return
+        if runner_up.alternative_id == self.best_alternative.alternative_id:
+            msg = "runner-up alternative must differ from the best alternative"
+            raise ValueError(msg)
+        if runner_up.total_cost < self.best_alternative.total_cost:
+            msg = "runner-up cost cannot be lower than best cost"
+            raise ValueError(msg)
+        expected_margin = runner_up.total_cost - self.best_alternative.total_cost
+        if margin != expected_margin:
+            msg = "runner-up margin must equal runner-up cost minus best cost"
+            raise ValueError(msg)
 
     def _validate_margin_acceptance(self) -> None:
         margin = self.runner_up_margin
@@ -484,6 +545,36 @@ class MatchGraph(CanonicalModel):
                 raise ValueError(msg)
 
     @staticmethod
+    def _validate_alternative_coverage_and_order(
+        alternative: MatchAlternative,
+        *,
+        source_token_order: tuple[str, ...],
+        target_token_order: tuple[str, ...],
+    ) -> None:
+        relation_source_tokens = tuple(
+            token_id
+            for relation in alternative.relations
+            for token_id in relation.source_token_ids
+        )
+        relation_target_tokens = tuple(
+            token_id
+            for relation in alternative.relations
+            for token_id in relation.target_token_ids
+        )
+        if set(relation_source_tokens) != set(source_token_order):
+            msg = "complete alternative must cover every source token exactly once"
+            raise ValueError(msg)
+        if set(relation_target_tokens) != set(target_token_order):
+            msg = "complete alternative must cover every target token exactly once"
+            raise ValueError(msg)
+        if relation_source_tokens != source_token_order:
+            msg = "relations must follow physical source document order"
+            raise ValueError(msg)
+        if relation_target_tokens != target_token_order:
+            msg = "relations must follow physical target document order"
+            raise ValueError(msg)
+
+    @staticmethod
     def _validate_relation_operations(
         relation: MatchRelation,
         *,
@@ -498,6 +589,12 @@ class MatchGraph(CanonicalModel):
             if source_start < previous_source_end or target_start < previous_target_end:
                 msg = "relation operations must be monotonic and non-overlapping"
                 raise ValueError(msg)
+            if source_start > previous_source_end:
+                msg = "relation operations must partition source graphemes without gaps"
+                raise ValueError(msg)
+            if target_start > previous_target_end:
+                msg = "relation operations must partition target graphemes without gaps"
+                raise ValueError(msg)
             if source_end > source_grapheme_count:
                 msg = "relation operation source grapheme range exceeds its tokens"
                 raise ValueError(msg)
@@ -506,6 +603,12 @@ class MatchGraph(CanonicalModel):
                 raise ValueError(msg)
             previous_source_end = source_end
             previous_target_end = target_end
+        if previous_source_end != source_grapheme_count:
+            msg = "relation operations must partition source graphemes exactly"
+            raise ValueError(msg)
+        if previous_target_end != target_grapheme_count:
+            msg = "relation operations must partition target graphemes exactly"
+            raise ValueError(msg)
 
 
 def _tokens_by_id(document: MatchDocument) -> dict[str, MatchToken]:
@@ -519,9 +622,19 @@ def _tokens_by_id(document: MatchDocument) -> dict[str, MatchToken]:
 
 
 def _relation_grapheme_count(
-    token_ids: tuple[str, ...], tokens_by_id: dict[str, MatchToken]
+    token_ids: tuple[str, ...], tokens_by_id: Mapping[str, MatchToken]
 ) -> int:
     """Count Unicode graphemes in the relation's declared physical-token order."""
     return sum(
         len(split_graphemes(tokens_by_id[token_id].text)) for token_id in token_ids
+    )
+
+
+def _token_order(document: MatchDocument) -> tuple[str, ...]:
+    """Return stable token IDs in the document's physical reading order."""
+    return tuple(
+        token.token_id
+        for page in document.pages
+        for line in page.lines
+        for token in line.tokens
     )
