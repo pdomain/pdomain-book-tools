@@ -136,6 +136,15 @@ def test_manifest_requires_page_relation_ids_to_exist() -> None:
         _manifest(pages=pages)
 
 
+def test_manifest_allows_one_page_match_relation() -> None:
+    relation = _relation(page_ids=("page-000",), relation_id="joined-word:001")
+    pages = (_page(page_index=0, relation_ids=(relation.relation_id,)),)
+
+    manifest = _manifest(pages=pages, relations=(relation,))
+
+    assert manifest.match_relations == (relation,)
+
+
 @pytest.mark.parametrize(
     ("pages", "relations", "error"),
     [
@@ -220,11 +229,11 @@ def test_page_model_copy_revalidates_an_unsafe_materialization_path() -> None:
         page.model_copy(update={"materialization_relative_path": "../outside.json"})
 
 
-def test_relation_model_copy_revalidates_a_one_page_relation() -> None:
+def test_relation_model_copy_revalidates_an_empty_page_relation() -> None:
     relation = _relation()
 
-    with pytest.raises(ValidationError, match="at least two pages"):
-        relation.model_copy(update={"page_ids": ("page-000",)})
+    with pytest.raises(ValidationError, match="at least one page"):
+        relation.model_copy(update={"page_ids": ()})
 
 
 def test_manifest_revalidates_tampered_nested_page_instances_in_constructor() -> None:

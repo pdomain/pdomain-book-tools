@@ -48,7 +48,7 @@ def _validate_confined_relative_path(value: str) -> str:
 
 
 class BookMatchRelationReference(CanonicalModel):
-    """A cross-page match relation and the pages it affects in reading order."""
+    """A match relation and the pages it affects in reading order."""
 
     relation_id: str
     page_ids: tuple[str, ...]
@@ -76,8 +76,8 @@ class BookMatchRelationReference(CanonicalModel):
     @field_validator("page_ids")
     @classmethod
     def _validate_page_ids(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        if len(value) < 2:
-            msg = "cross-page relations must affect at least two pages"
+        if not value:
+            msg = "relations must affect at least one page"
             raise ValueError(msg)
         if any(not page_id.strip() for page_id in value):
             msg = "relation page IDs must not be empty"
