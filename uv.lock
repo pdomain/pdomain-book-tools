@@ -1422,7 +1422,7 @@ wheels = [
 [[package]]
 name = "pdomain-book-contracts"
 version = "0.1.0"
-source = { editable = "../pdomain-book-contracts" }
+source = { registry = "https://pdomain.github.io/pdomain-index-pip/simple/" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-core" },
@@ -1430,21 +1430,9 @@ dependencies = [
     { name = "shapely" },
     { name = "typing-extensions" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "pydantic", specifier = ">=2.11,<3" },
-    { name = "pydantic-core", specifier = ">=2.27,<3" },
-    { name = "regex", specifier = ">=2024.11.6,<2025.0.0" },
-    { name = "shapely", specifier = ">=2.0,<3" },
-    { name = "typing-extensions", specifier = ">=4.12,<5" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "basedpyright", specifier = ">=1.36,<2" },
-    { name = "pytest", specifier = ">=8.4,<9" },
-    { name = "ruff", specifier = ">=0.14,<1" },
+sdist = { url = "https://github.com/pdomain/pdomain-book-contracts/releases/download/v0.1.0/pdomain_book_contracts-0.1.0.tar.gz", hash = "sha256:efc3184dd92b4ceee244dc0023c0941cf94b9608bd4bcd9f510f0bfb427d206b" }
+wheels = [
+    { url = "https://github.com/pdomain/pdomain-book-contracts/releases/download/v0.1.0/pdomain_book_contracts-0.1.0-py3-none-any.whl", hash = "sha256:2deb2646cd98f3be6e69d802c603fceda2cb7a4599305c5dbfaad7b58ed0d6ed" },
 ]
 
 [[package]]
@@ -1509,7 +1497,7 @@ requires-dist = [
     { name = "opencv-contrib-python", specifier = ">=4.12.0.88" },
     { name = "opencv-cuda", marker = "extra == 'gpu'", specifier = ">=0.0.2" },
     { name = "pandas", specifier = ">=2.2.3" },
-    { name = "pdomain-book-contracts", editable = "../pdomain-book-contracts" },
+    { name = "pdomain-book-contracts", specifier = ">=0.1.0", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "pillow-avif-plugin", specifier = ">=1.4" },
     { name = "pillow-heif", specifier = ">=0.18" },
