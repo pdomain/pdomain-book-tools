@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-07
-Last verified: 2026-07-13
+Last verified: 2026-09-02
 Kind: usage
 ---
 
@@ -29,9 +29,17 @@ from pdomain_book_tools import (
 )
 ```
 
-Importing the top-level package eagerly imports the OCR, layout, and geometry
-stack: `cv2`, `numpy`, DocTR, and transformers. For a lighter import surface,
-import the specific subpackage below.
+`BoundingBox`, `Point`, `RegionType`, `PGDPResults`, and `PGDPExport` are
+pure-Python contracts that now live in `pdomain-book-contracts`; importing
+the top-level package or any of these five names costs no more than that
+package. (`BoundingBox` and `Point` pull in `numpy` as shapely's own
+transitive dependency, not this package's — `pdomain-book-contracts`
+documents that as a declared exception, not a defect.) `Page`, `Block`,
+`BlockCategory`, and `Word` still reach cv2 directly and are resolved
+lazily on first access through the package's `__getattr__` — importing
+`pdomain_book_tools` does not by itself load cv2. Consumers who want the
+pure-Python contracts without cv2 can depend on `pdomain-book-contracts`
+directly.
 
 ## Geometry — `pdomain_book_tools.geometry`
 

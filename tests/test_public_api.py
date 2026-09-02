@@ -15,6 +15,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
+
 
 def test_top_level_reexports():
     from pdomain_book_tools import (
@@ -81,6 +83,66 @@ def test_typography_review_contract_reexports_are_torch_free() -> None:
     )
 
     assert proc.returncode == 0, proc.stderr
+
+
+def test_root_package_import_does_not_load_cv2() -> None:
+    """``import pdomain_book_tools`` alone must not pull in cv2.
+
+    ``Block``, ``BlockCategory``, ``Page``, and ``Word`` are the only
+    top-level re-exports that reach cv2; the package's ``__getattr__`` must
+    defer them so a bare package import stays cv2-free.
+
+    Numpy is not asserted here: ``BoundingBox`` and ``Point`` (eager,
+    pure-Python re-exports from ``pdomain-book-contracts``) depend on
+    shapely, which imports numpy at its own import time regardless of
+    cv2. ``pdomain-book-contracts`` documents that as a deliberate
+    exception in its own ``tests/test_torch_free_import.py`` — it is not
+    something this package's ``__getattr__`` can or should suppress.
+    """
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import pdomain_book_tools; "
+            "assert 'cv2' not in sys.modules, 'cv2 was imported by the root package'",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+
+
+def test_lazy_ocr_names_resolve_and_load_imaging_stack_on_access() -> None:
+    """``pdomain_book_tools.Page`` still resolves, loading cv2 only then."""
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; import pdomain_book_tools; "
+            "assert 'cv2' not in sys.modules; "
+            "from pdomain_book_tools import Page, Block, BlockCategory, Word; "
+            "assert 'cv2' in sys.modules, 'cv2 should load once Page/Block/Word are accessed'; "
+            "assert Page is not None and Block is not None; "
+            "assert BlockCategory is not None and Word is not None",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert proc.returncode == 0, proc.stderr
+
+
+def test_unknown_root_attribute_raises_attribute_error() -> None:
+    import pdomain_book_tools
+
+    with pytest.raises(
+        AttributeError,
+        match=r"module 'pdomain_book_tools' has no attribute 'NotARealName'",
+    ):
+        pdomain_book_tools.NotARealName  # noqa: B018 - triggers __getattr__ deliberately
 
 
 def test_typography_return_geometry_contract_is_public() -> None:
