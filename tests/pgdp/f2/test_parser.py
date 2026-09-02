@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pdomain_book_contracts.sources.pgdp.f2.parser as parser_module
 import pytest
 
-import pdomain_book_tools.pgdp.f2.parser as parser_module
 from pdomain_book_tools.pgdp.f2.parser import F2Parser
 from pdomain_book_tools.pgdp.f2.project_rules import ProjectRule, ProjectRuleRegistry
 from pdomain_book_tools.typography.labels import (
@@ -330,14 +330,14 @@ def test_parser_reuses_a_bounded_lexical_index_by_artifact_hash(
 ) -> None:
     artifact = b'{"001.png":"<i>one</i>","002.png":"<b>two</b>"}'
     calls = 0
-    original_read = parser_module.read_lexical_f2_index
+    original_read = parser_module.read_lexical_index
 
     def counted_read(payload: bytes) -> LexicalF2Index:
         nonlocal calls
         calls += 1
         return original_read(payload)
 
-    monkeypatch.setattr(parser_module, "read_lexical_f2_index", counted_read)
+    monkeypatch.setattr(parser_module, "read_lexical_index", counted_read)
     parser = F2Parser(document_cache_size=1)
     identity = _identity(f2_artifact=artifact)
 
@@ -363,14 +363,14 @@ def test_parser_evicts_the_oldest_cached_document_deterministically(
     first_artifact = b'{"001.png":"one"}'
     second_artifact = b'{"001.png":"two"}'
     calls = 0
-    original_read = parser_module.read_lexical_f2_index
+    original_read = parser_module.read_lexical_index
 
     def counted_read(payload: bytes) -> LexicalF2Index:
         nonlocal calls
         calls += 1
         return original_read(payload)
 
-    monkeypatch.setattr(parser_module, "read_lexical_f2_index", counted_read)
+    monkeypatch.setattr(parser_module, "read_lexical_index", counted_read)
     parser = F2Parser(document_cache_size=1)
 
     for artifact in (first_artifact, second_artifact, first_artifact):
