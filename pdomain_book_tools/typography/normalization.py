@@ -1,17 +1,20 @@
-"""Re-export of the text-normalization comparison views, moved to ``pdomain-book-contracts``.
+"""Re-export of the typography-normalization comparison views, moved to ``pdomain-book-contracts``.
 
 These build the comparison views alignment consumes and are pure-Python
 with no imaging-stack dependency, so they now live in
-``pdomain_book_contracts.text.normalization`` — in the ``text`` package,
-not ``typography``, since none of this is specific to typography or OCR
-results (see the module layout spec). This module keeps the old import
-path (``pdomain_book_tools.typography.normalization``) working for
-existing callers.
+``pdomain_book_contracts.typography.normalization``. They moved to
+``pdomain_book_contracts.text.normalization`` briefly, but that module
+needs ``typography.labels`` and ``typography.spans`` for its own
+vocabulary, which produced a real import cycle with
+``typography/records.py`` — see ``pdomain-book-contracts``'s history for
+the fix. This module keeps the old import path
+(``pdomain_book_tools.typography.normalization``) working for existing
+callers.
 """
 
 from __future__ import annotations
 
-from pdomain_book_contracts.text.normalization import (
+from pdomain_book_contracts.typography.normalization import (
     ComparisonOperation,
     ComparisonOperationKind,
     ComparisonView,
