@@ -28,6 +28,7 @@ from cv2 import (
     findNonZero,
     threshold,
 )
+from pdomain_book_contracts.geometry.bounding_box import register_image_ops
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 
@@ -310,3 +311,28 @@ def crop_top_bbox(bbox: BoundingBox, image: MatLike) -> BoundingBox:
 def crop_bottom_bbox(bbox: BoundingBox, image: MatLike) -> BoundingBox:
     """Return a new bbox cropped to the bottom half of its image content."""
     return _vertical_crop(bbox, image, keep="bottom")
+
+
+# ---------------------------------------------------------------------------
+# Register this module as the imaging backend for BoundingBox's back-compat
+# wrapper methods (refine/crop_top/crop_bottom). This runs at import time, so
+# any caller of those methods must import this module first — see
+# ocr/image_utilities.py and ocr/word.py, which import it for that reason.
+# ---------------------------------------------------------------------------
+
+
+class _BookToolsImageOps:
+    """Adapter satisfying ``ImageOpsProvider`` from ``pdomain-book-contracts``.
+
+    A thin wrapper, not a reimplementation: each attribute is the free
+    function above, exposed as a static method so the instance's calling
+    convention (``provider.refine(bbox, image, ...)``) matches what
+    ``BoundingBox``'s wrapper methods call through.
+    """
+
+    refine = staticmethod(refine_bbox)
+    crop_top = staticmethod(crop_top_bbox)
+    crop_bottom = staticmethod(crop_bottom_bbox)
+
+
+register_image_ops(_BookToolsImageOps())

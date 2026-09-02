@@ -4,6 +4,9 @@ from typing import TYPE_CHECKING, Protocol, cast, runtime_checkable
 
 from numpy import ndarray
 
+from pdomain_book_tools.geometry import (
+    image_ops,  # pyright: ignore[reportUnusedImport]  # noqa: F401 - registers the BoundingBox image-ops provider refine_word_bbox()/crop_word_bottom()/crop_word_top() dispatch through
+)
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.image_processing.cv2_processing import encode_bgr_image_as_png
 from pdomain_book_tools.ocr.block import Block

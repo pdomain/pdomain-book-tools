@@ -14,6 +14,9 @@ from thefuzz.fuzz import (  # pyright: ignore[reportMissingTypeStubs]  # no upst
     ratio as _fuzz_ratio_raw,  # pyright: ignore[reportUnknownVariableType]  # no upstream stubs
 )
 
+from pdomain_book_tools.geometry import (
+    image_ops,  # pyright: ignore[reportUnusedImport]  # noqa: F401 - registers the BoundingBox image-ops provider this module's refine()/crop_bottom()/crop_top() calls dispatch through
+)
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.ocr.character import Character

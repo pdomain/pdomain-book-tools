@@ -7,10 +7,13 @@ old import path (``pdomain_book_tools.geometry.bounding_box``) working for
 existing callers.
 
 ``BoundingBox.refine()``, ``.crop_bottom()``, and ``.crop_top()`` are
-back-compat wrappers that still call into :mod:`pdomain_book_tools.geometry.
-image_ops` (cv2) via a local import at call time — that free-function
-implementation stays in this package, since ``pdomain-book-contracts`` must
-not depend on cv2.
+back-compat wrappers that dispatch through a provider registry (see
+``pdomain_book_contracts.geometry.bounding_box.register_image_ops``).
+:mod:`pdomain_book_tools.geometry.image_ops` registers itself as that
+provider at its own import time — that free-function implementation stays
+in this package, since ``pdomain-book-contracts`` must not depend on cv2.
+Callers of the wrapper methods must import ``image_ops`` (directly or
+transitively) first, or the methods raise ``ImageOpsUnavailableError``.
 
 ``_BoundingBoxDict`` is re-exported too: it is underscore-prefixed (an
 implementation detail, not part of the documented public API), but existing
