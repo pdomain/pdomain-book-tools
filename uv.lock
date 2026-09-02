@@ -1420,6 +1420,34 @@ wheels = [
 ]
 
 [[package]]
+name = "pdomain-book-contracts"
+version = "0.1.0"
+source = { editable = "../pdomain-book-contracts" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "pydantic-core" },
+    { name = "regex" },
+    { name = "shapely" },
+    { name = "typing-extensions" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.11,<3" },
+    { name = "pydantic-core", specifier = ">=2.27,<3" },
+    { name = "regex", specifier = ">=2024.11.6,<2025.0.0" },
+    { name = "shapely", specifier = ">=2.0,<3" },
+    { name = "typing-extensions", specifier = ">=4.12,<5" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "basedpyright", specifier = ">=1.36,<2" },
+    { name = "pytest", specifier = ">=8.4,<9" },
+    { name = "ruff", specifier = ">=0.14,<1" },
+]
+
+[[package]]
 name = "pdomain-book-tools"
 source = { editable = "." }
 dependencies = [
@@ -1431,6 +1459,7 @@ dependencies = [
     { name = "numpy" },
     { name = "opencv-contrib-python" },
     { name = "pandas" },
+    { name = "pdomain-book-contracts" },
     { name = "pillow" },
     { name = "pillow-avif-plugin" },
     { name = "pillow-heif" },
@@ -1480,6 +1509,7 @@ requires-dist = [
     { name = "opencv-contrib-python", specifier = ">=4.12.0.88" },
     { name = "opencv-cuda", marker = "extra == 'gpu'", specifier = ">=0.0.2" },
     { name = "pandas", specifier = ">=2.2.3" },
+    { name = "pdomain-book-contracts", editable = "../pdomain-book-contracts" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "pillow-avif-plugin", specifier = ">=1.4" },
     { name = "pillow-heif", specifier = ">=0.18" },
