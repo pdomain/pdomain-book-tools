@@ -1,21 +1,13 @@
+"""Re-export of :class:`GtOrphans`, moved to ``pdomain-book-contracts``.
+
+``GtOrphans`` is a pure-Python dataclass with no imaging-stack dependency,
+so it now lives in ``pdomain_book_contracts.ocr.gt_orphans``. This module
+keeps the old import path (``pdomain_book_tools.ocr.gt_orphans``) working
+for existing callers.
+"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pdomain_book_contracts.ocr.gt_orphans import GtOrphans
 
-
-@dataclass
-class GtOrphans:
-    """GT entries that could not be matched to any OCR content during GtMapped.
-
-    Preserved so the labeler can surface unmatched ground truth to the reviewer.
-    Pages with no GT mapping will never populate this — it stays None on Page.
-    """
-
-    words: list[object] = field(default_factory=list)
-    lines: list[object] = field(default_factory=list)
-    paragraphs: list[object] = field(default_factory=list)
-    page: list[str] = field(default_factory=list)
-
-    def is_empty(self) -> bool:
-        """Return True if all orphan collections are empty."""
-        return not (self.words or self.lines or self.paragraphs or self.page)
+__all__ = ["GtOrphans"]

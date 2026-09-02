@@ -60,7 +60,10 @@ def test_is_valid_spdx_id_handles_non_str_input():
 
 
 def test_vendored_json_data_file_loadable():
-    resource = importlib.resources.files("pdomain_book_tools.data").joinpath(
+    # The vendored data file moved with the module to pdomain-book-contracts
+    # (see pdomain_book_tools/licenses.py); this test follows it there
+    # rather than checking a copy that no longer ships in this package.
+    resource = importlib.resources.files("pdomain_book_contracts.data").joinpath(
         "spdx_licenses.json"
     )
     assert resource.is_file()
@@ -72,7 +75,9 @@ def test_vendored_json_data_file_loadable():
 def test_vendored_spdx_data_has_third_party_attribution():
     """The vendored SPDX data ships an adjacent third-party notice naming
     its upstream source and license, so redistributors can trace it."""
-    notice = importlib.resources.files("pdomain_book_tools.data").joinpath(
+    # See test_vendored_json_data_file_loadable: the vendored data (and its
+    # notice) moved to pdomain-book-contracts along with licenses.py.
+    notice = importlib.resources.files("pdomain_book_contracts.data").joinpath(
         "THIRD-PARTY-NOTICES.md"
     )
     assert notice.is_file()

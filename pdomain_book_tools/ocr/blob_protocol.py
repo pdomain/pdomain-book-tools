@@ -1,18 +1,14 @@
+"""Re-export of :class:`BlobStoreProtocol`, moved to ``pdomain-book-contracts``.
+
+``BlobStoreProtocol`` is a pure-Python ``typing.Protocol`` with no
+imaging-stack dependency, so it now lives in
+``pdomain_book_contracts.ocr.blob_protocol``. This module keeps the old
+import path (``pdomain_book_tools.ocr.blob_protocol``) working for
+existing callers.
+"""
+
 from __future__ import annotations
 
-from typing import Protocol
+from pdomain_book_contracts.ocr.blob_protocol import BlobStoreProtocol
 
-
-class BlobStoreProtocol(Protocol):
-    """Minimum interface Page needs from a blob store.
-
-    Defined here (in pdomain-book-tools) so Page can type-hint get_image() and
-    get_thumbnail() without importing pdomain-ops — which would create a circular
-    dependency (pdomain-ops depends on pdomain-book-tools).
-
-    The concrete BlobStore in pdomain-ops implements this protocol.
-    """
-
-    def read(self, hash: str) -> bytes:
-        """Return raw bytes for a blob identified by its SHA256 hash."""
-        ...
+__all__ = ["BlobStoreProtocol"]
