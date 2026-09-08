@@ -827,6 +827,76 @@ def validate_word_preservation(
     return errors
 
 
+def find_duplicated_words(
+    pre_words: list[Word],
+    post_words: list[Word],
+) -> list[str]:
+    """Report words the reorganize pipeline duplicated.
+
+    ``validate_word_preservation`` is the mirror of this and permits extras,
+    which was correct while a word could belong to several regions at once.
+    Sibling regions are disjoint in membership, so one word appearing in two of
+    them is a defect rather than a nesting.
+
+    Counts are compared against the pre-multiset rather than against one, so a
+    page that already held two identical signatures is not falsely flagged.
+    Empty-text and bbox-less words are filtered by ``collect_word_signatures``,
+    matching the drop validator exactly.
+
+    A signature absent from ``pre_words`` (pre-count zero) is never flagged,
+    even though its post-count technically "exceeds" zero. The cursive
+    drop-cap fallback (``dropcap.detect_and_stitch_cursive_dropcaps``)
+    legitimately synthesizes a brand-new ``Word`` for a glyph OCR missed
+    entirely — recovered content, not a duplicate of anything that existed
+    before. Duplication requires the signature to have already existed.
+    """
+    pre_counts = Counter(collect_word_signatures(pre_words))
+    post_counts = Counter(collect_word_signatures(post_words))
+    errors: list[str] = []
+    for sig, post_n in post_counts.items():
+        pre_n = pre_counts.get(sig, 0)
+        if pre_n == 0:
+            continue
+        extra = post_n - pre_n
+        if extra <= 0:
+            continue
+        text, x0, y0, x1, y1 = sig
+        for _ in range(extra):
+            errors.append(
+                f"reorganize duplicated word: text={text!r} "
+                f"bbox=({x0:.4f},{y0:.4f})-({x1:.4f},{y1:.4f})"
+            )
+    return errors
+
+
+class ReorganizeDuplicatedWordsError(RuntimeError):
+    """Raised in strict mode when reorganize_page duplicates one or more words."""
+
+    def __init__(self, errors: list[str]) -> None:
+        super().__init__(
+            f"reorganize_page duplicated {len(errors)} word(s); "
+            + f"first: {errors[0] if errors else '(none)'}"
+        )
+        self.errors: list[str] = errors
+
+
+def raise_if_words_duplicated(
+    pre_words: list[Word],
+    post_words: list[Word],
+    *,
+    strict: bool,
+) -> list[str]:
+    """Return duplication errors, raising instead when ``strict`` is set.
+
+    Mirrors the dropped-word policy: loud in CI and tests, recoverable in
+    ordinary use so a person still sees the page.
+    """
+    errors = find_duplicated_words(pre_words, post_words)
+    if errors and strict:
+        raise ReorganizeDuplicatedWordsError(errors)
+    return errors
+
+
 def find_dropped_words(
     pre_words: list[Word],
     post_words: list[Word],
@@ -973,6 +1043,11 @@ def reconcile_dropped_words(
     for outer in final_blocks:
         post_words.extend(outer.words)
     errors = validate_word_preservation(pre_words, post_words)
+    duplication_errors = raise_if_words_duplicated(
+        pre_words, post_words, strict=reorganize_strict_mode_enabled()
+    )
+    for message in duplication_errors:
+        logger.warning(message)
     if not errors:
         return final_blocks
 
