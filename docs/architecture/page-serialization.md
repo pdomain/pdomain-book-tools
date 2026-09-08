@@ -86,10 +86,13 @@ drift test.
 
 ### Block roles
 
-`block_role_labels` accepts `artefact`, `blockquote`, `caption`, `decoration`,
-`figure`, `footnote`, `formula`, `illustration`, `list`, `page footer`,
-`page header`, `page number`, `paragraph`, `poetry`, `printers mark`,
-`recovered`, `section`, `sidenote`, `table`, and `title`.
+`block_role_labels` accepts `abandoned`, `artefact`, `blockquote`, `brace`,
+`bracket`, `caption`, `catchword`, `decoration`, `decorated initial`, `figure`,
+`footnote`, `formula`, `group label`, `illustration`, `interlinear gloss`,
+`list`, `page footer`, `page header`, `page number`, `paragraph`, `plate`,
+`poetry`, `press figure`, `printers mark`, `recovered`, `rule`, `section`,
+`sidenote`, `signature mark`, `speaker label`, `stage direction`, `table`,
+`title`, and `unknown`.
 
 ### Line roles
 
@@ -113,7 +116,9 @@ canonical values when possible.
 Block-role aliases include `block quote` → `blockquote`, `pageheader` →
 `page header`, `pagefooter` → `page footer`, and `pagenumber` → `page number`.
 They also include `printer's mark` and `printersmark` → `printers mark`, and
-`poem` → `poetry`.
+`poem` → `poetry`. Additional aliases map `frontispiece` → `plate`,
+`signaturemark` → `signature mark`, `pressfigure` → `press figure`,
+`stagedirection` → `stage direction`, and `speakerlabel` → `speaker label`.
 
 Line-role aliases map the short forms `body`, `heading`, `verse`, `blockquote`,
 `header`, `footer`, `footnote`, and `caption` to their corresponding `… line`

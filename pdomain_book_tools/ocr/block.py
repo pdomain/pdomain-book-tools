@@ -91,6 +91,22 @@ class Block:
             # full inventory of detected regions instead of silently
             # discarding non-text ones.
             "artefact",
+            # Additions widening the vocabulary to the 34 roles shared with
+            # `pdomain-book-contracts`'s region vocabulary.
+            "signature mark",
+            "catchword",
+            "press figure",
+            "rule",
+            "brace",
+            "bracket",
+            "group label",
+            "plate",
+            "speaker label",
+            "stage direction",
+            "interlinear gloss",
+            "abandoned",
+            "decorated initial",
+            "unknown",
         }
     )
 
@@ -140,6 +156,11 @@ class Block:
         "printer's mark": "printers mark",
         "printersmark": "printers mark",
         "poem": "poetry",
+        "frontispiece": "plate",
+        "signaturemark": "signature mark",
+        "pressfigure": "press figure",
+        "stagedirection": "stage direction",
+        "speakerlabel": "speaker label",
     }
 
     LINE_ROLE_LABEL_ALIASES: ClassVar[dict[str, str]] = {
