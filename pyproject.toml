@@ -27,7 +27,7 @@ dependencies = [
     # layout, licensing, and the PGDP readers) split out per the pdomain-ops
     # extraction plan. Resolved from the pdomain package index, the same one
     # pdomain-source-data and pdomain-ocr-training use for book-tools itself.
-    "pdomain-book-contracts>=0.1.0",
+    "pdomain-book-contracts>=0.2.0",
     # Pillow was previously a transitive dep (via matplotlib / others). It is
     # now declared directly because pdomain_book_tools owns its image-format
     # contract: pillow-heif / pillow-avif-plugin both register decoders with
@@ -110,11 +110,7 @@ required-version = ">=0.11.16"
 # To upgrade: find the desired commit in mindee/doctr, update the rev= value,
 # run `uv lock`, verify tests, then commit both this file and uv.lock together.
 python-doctr = { git = "https://github.com/mindee/doctr.git", rev = "390330ebe4fe25f214d84df89dc0f9b4dcdbf447" }
-# Pinned to the annotation-vocabularies merge commit because
-# pdomain-index-pip only serves tagged GitHub Releases, and that merge
-# (RegionType.page_number) has not been cut as a release yet. Revert to
-# the index source once a pdomain-book-contracts release includes it.
-pdomain-book-contracts = { git = "https://github.com/pdomain/pdomain-book-contracts.git", rev = "bfcb7dd71324bd3ba7e078f3d3898a47c188f314" }
+pdomain-book-contracts = { index = "pdomain-index-pip" }
 
 [tool.coverage.run]
 source = ["pdomain_book_tools"]
