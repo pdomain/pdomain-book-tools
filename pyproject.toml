@@ -27,7 +27,7 @@ dependencies = [
     # layout, licensing, and the PGDP readers) split out per the pdomain-ops
     # extraction plan. Resolved from the pdomain package index, the same one
     # pdomain-source-data and pdomain-ocr-training use for book-tools itself.
-    "pdomain-book-contracts>=0.1.0",
+    "pdomain-book-contracts>=0.2.0",
     # Pillow was previously a transitive dep (via matplotlib / others). It is
     # now declared directly because pdomain_book_tools owns its image-format
     # contract: pillow-heif / pillow-avif-plugin both register decoders with

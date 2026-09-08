@@ -112,6 +112,7 @@ _REGION_TO_BLOCK_ROLE: dict[RegionType, str] = {
     RegionType.footnote: "footnote",
     RegionType.formula: "formula",
     RegionType.sidenote: "sidenote",
+    RegionType.page_number: "page number",
 }
 
 

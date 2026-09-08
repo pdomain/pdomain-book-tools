@@ -67,6 +67,8 @@ def test_emit_includes_review_metadata_schema():
         "validated",
         "reviewer_note",
         "flagged_for_attention",
+        "source",
+        "state",
     }
 
 

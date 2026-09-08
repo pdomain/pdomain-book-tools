@@ -137,8 +137,10 @@ not be recovered and contributes no replacement character.
 
 `RegionType` accepts `text`, `title`, `section`, `list`, `table`, `figure`,
 `decoration`, `caption`, `header`, `footer`, `footnote`, `formula`, `abandoned`,
-and `sidenote`. These detector-output values are distinct from block roles even
-where their spelling overlaps.
+`sidenote`, and `page_number`. These detector-output values are distinct from
+block roles even where their spelling overlaps. `page_number` maps to the
+`page number` block role (via `PP_DOCLAYOUT_TO_PGDP` and
+`_REGION_TO_BLOCK_ROLE`) rather than collapsing into `footer`.
 
 ## Evidence
 

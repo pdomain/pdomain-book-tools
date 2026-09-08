@@ -28,7 +28,7 @@ from pdomain_book_tools.layout.types import RegionType
     [
         ("header", RegionType.header),
         ("footer", RegionType.footer),
-        ("page_number", RegionType.footer),
+        ("page_number", RegionType.page_number),
         ("footnote", RegionType.footnote),
     ],
 )

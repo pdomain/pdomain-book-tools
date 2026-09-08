@@ -40,7 +40,7 @@ def test_regular_is_not_a_positive_style_label() -> None:
         ),
         (
             LabelSource,
-            {"f2", "gutenberg_html", "se_computed_css", "human", "synthetic"},
+            {"f2", "gutenberg_html", "se_computed_css", "human", "synthetic", "model"},
         ),
         (ConfidenceTier, {"gold", "silver", "bronze", "quarantine"}),
     ],

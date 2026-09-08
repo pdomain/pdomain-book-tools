@@ -27,11 +27,13 @@ PP_DOCLAYOUT_TO_PGDP: dict[str, str | None] = {
     # Page chrome — preserved as typed regions; whether they are
     # subsequently dropped, kept, or annotated is a call-site decision
     # (e.g. ``layout_aware_reorg`` / ``ProjectConfig`` filters), not a
-    # property of this mapping. ``page_number`` collapses into ``footer``
-    # because PGDP treats it as part of the bottom-margin chrome.
+    # property of this mapping. ``page_number`` keeps its own region type
+    # rather than collapsing into ``footer`` — the folio position is a
+    # distinct signal a page-kind/confidence proposal needs, and folding it
+    # into bottom-margin chrome discarded it.
     "header": "header",
     "footer": "footer",
-    "page_number": "footer",
+    "page_number": "page_number",
     "footnote": "footnote",
     # Lists & navigation
     "list_of_references": "list",
