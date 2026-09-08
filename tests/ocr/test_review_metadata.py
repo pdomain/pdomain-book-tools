@@ -33,6 +33,8 @@ def test_review_metadata_to_dict_full():
         "validated": True,
         "reviewer_note": "ok",
         "flagged_for_attention": True,
+        "source": None,
+        "state": "unknown",
     }
 
 
@@ -48,6 +50,8 @@ def test_review_metadata_to_dict_defaults_omit_none_note():
         "validated": False,
         "reviewer_note": None,
         "flagged_for_attention": False,
+        "source": None,
+        "state": "unknown",
     }
 
 

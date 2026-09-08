@@ -38,6 +38,8 @@ def test_page_to_dict_includes_review_when_set():
         "validated": True,
         "reviewer_note": None,
         "flagged_for_attention": True,
+        "source": None,
+        "state": "unknown",
     }
 
 

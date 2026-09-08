@@ -63,6 +63,8 @@ def test_block_to_dict_includes_review_when_set() -> None:
         "validated": True,
         "reviewer_note": "line ok",
         "flagged_for_attention": False,
+        "source": None,
+        "state": "unknown",
     }
 
 

@@ -46,6 +46,8 @@ def test_word_to_dict_includes_review_when_set() -> None:
         "validated": True,
         "reviewer_note": "ok",
         "flagged_for_attention": True,
+        "source": None,
+        "state": "unknown",
     }
 
 
