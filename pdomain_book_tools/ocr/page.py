@@ -123,7 +123,7 @@ class Page:
 
     # What this page is — title page, chapter opening, body, and so on. Only a
     # human action ever sets this (never the propose_page_kinds classifier job);
-    # see docs/specs/2026-09-07-region-provenance-and-persistence-design.md
+    # see pdomain-ocr-synth's docs/specs/2026-09-07-region-provenance-and-persistence-design.md
     # "Page kind is classified per book, and it runs before regions".
     page_kind: PageKind | None = None
 
