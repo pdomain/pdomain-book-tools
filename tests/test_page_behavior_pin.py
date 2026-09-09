@@ -46,6 +46,8 @@ def test_constructor_signature_pin():
         "page_labels",
         "name",
         "review",
+        # page-kind-field task: confirmed page kind added after review.
+        "page_kind",
         "items",
         "cv2_numpy_page_image",
     ]
