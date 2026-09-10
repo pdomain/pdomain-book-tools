@@ -57,10 +57,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# CUDA-12-only GPU acceleration. Opt-in to avoid breaking CPU-only installs
+# CUDA-13-only GPU acceleration. Opt-in to avoid breaking CPU-only installs
 # (CI, macOS, CPU-only Linux). Install with: pip install 'pdomain-book-tools[gpu]'
 gpu = [
-    "cupy-cuda12x>=13.4.1",
+    # Capped below 14.2: that build needs numpy 2.5 at the binary level while
+    # this package pins numpy <2.5, so `import cupy` dies with
+    # "numpy.core.multiarray failed to import". 14.2 also calls
+    # cuda.pathfinder.load_nvidia_dynamic_lib while declaring only
+    # cuda-pathfinder>=1.3.4, an API that landed later. 14.1.1 is the version
+    # the CUDA 12 lock already used, so the family moves and nothing else does.
+    "cupy-cuda13x>=13.4.1,<14.2",
     "opencv-cuda>=0.0.2",
 ]
 # UVDoc ONNX dewarp backend. Install with: pip install 'pdomain-book-tools[dewarp-dl]'
