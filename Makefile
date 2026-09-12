@@ -18,7 +18,7 @@ $(_goals):
 
 else
 
-.PHONY: setup remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-slow test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check update-hooks build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
+.PHONY: setup install-hooks remove-venv reset reset-venv reset-full upgrade-deps sync-gpu test test-slow test-verbose test-single test-k coverage lint lint-check format-check typecheck format pre-commit-check update-hooks build clean clean-logs clean-debug ci ci-slow release-patch release-minor release-major _do-release layout-fork-info layout-fork-update layout-fork-pin layout-fixtures-regenerate help local-dev local-check local-upgrade-deps dev-local check-dev-local upgrade-deps-local
 
 # Layout-detector fork sync (see pdomain_book_tools/layout/adapters/pp_doclayout.py)
 HF_LAYOUT_UPSTREAM ?= PaddlePaddle/PP-DocLayout_plus-L_safetensors
@@ -44,8 +44,22 @@ else
 endif
 	uv sync --group dev $(GPU_EXTRA)
 	@echo "🪝 Setting up pre-commit hooks..."
-	@[ -f .git/hooks/pre-commit ] || [ -f .git ] || [ -n "$$(git config --get core.hooksPath 2>/dev/null)" ] || uv run pre-commit install
+	@$(MAKE) --no-print-directory install-hooks
 	@echo "✅ Setup complete!"
+
+install-hooks: ## (Re)install pre-commit hooks (repairs a stale interpreter path)
+	@# `pre-commit install` bakes an absolute interpreter path into .git/hooks.
+	@# A hook written against a different environment name, or against a worktree
+	@# that has since been deleted, keeps failing until it is rewritten — and a
+	@# "skip if the file exists" guard never rewrites it. Rewriting costs ~0.2s,
+	@# so do it every time this repo owns its hooks directory.
+	@if [ -f .git ]; then \
+	  echo "hooks: worktree checkout — the canonical repo owns them, skipping"; \
+	elif [ -n "$$(git config --get core.hooksPath 2>/dev/null)" ]; then \
+	  echo "hooks: core.hooksPath is set — leaving it alone, skipping"; \
+	else \
+	  uv run pre-commit install --hook-type pre-commit --hook-type commit-msg; \
+	fi
 
 reset-venv: reset ## Alias for reset
 
