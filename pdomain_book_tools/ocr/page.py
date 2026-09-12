@@ -38,6 +38,7 @@ from cv2 import rectangle as cv2_rectangle
 from numpy import frombuffer as np_frombuffer
 from numpy import ndarray
 from numpy import uint8 as np_uint8
+from pdomain_book_contracts.annotation import PageKind
 from pydantic_core import CoreSchema, core_schema
 
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
@@ -119,6 +120,12 @@ class Page:
     # Optional human-review metadata (Page-scope). See
     # pdomain_book_tools/ocr/review.py.
     review: ReviewMetadata | None = None
+
+    # What this page is — title page, chapter opening, body, and so on. Only a
+    # human action ever sets this (never the propose_page_kinds classifier job);
+    # see pdomain-ocr-synth's docs/specs/2026-09-07-region-provenance-and-persistence-design.md
+    # "Page kind is classified per book, and it runs before regions".
+    page_kind: PageKind | None = None
 
     # Internal state — not part of the public init signature.
     _items: list[Block] = field(
@@ -2718,7 +2725,8 @@ class Page:
 
         All metadata fields are preserved — only bounding box coordinates and
         the ``width``/``height`` dimensions change. Fields preserved include
-        ``page_id`` (entity identity), ``page_labels``, ``name``, and ``review``.
+        ``page_id`` (entity identity), ``page_labels``, ``name``, ``review``,
+        and ``page_kind``.
 
         Note: ``image_blob_hash`` / ``thumbnail_blob_hash`` reference the stored
         source-scan blobs and are carried through unchanged — scaling is a view
@@ -2737,6 +2745,7 @@ class Page:
             page_labels=self.page_labels,
             name=self.name,
             review=self.review,
+            page_kind=self.page_kind,
             image_blob_hash=self.image_blob_hash,
             thumbnail_blob_hash=self.thumbnail_blob_hash,
             gt_orphans=self.gt_orphans,
@@ -2760,6 +2769,8 @@ class Page:
             result["name"] = self.name
         if self.review is not None:
             result["review"] = self.review.to_dict()
+        if self.page_kind is not None:
+            result["page_kind"] = self.page_kind.value
         if self.image_blob_hash is not None:
             result["image_blob_hash"] = self.image_blob_hash
         if self.thumbnail_blob_hash is not None:
@@ -3333,6 +3344,14 @@ class Page:
             else None
         )
 
+        # page_kind: restore and validate against PageKind when present. A page
+        # written before this field existed has no "page_kind" key and loads
+        # with page_kind=None, matching every other optional field here.
+        page_kind_raw = data.get("page_kind")
+        page_kind: PageKind | None = (
+            PageKind(str(page_kind_raw)) if page_kind_raw is not None else None
+        )
+
         return cls(
             blocks=blocks,
             page_id=page_id,
@@ -3343,6 +3362,7 @@ class Page:
             page_labels=page_labels,
             name=cast("str | None", data.get("name")),
             review=review,
+            page_kind=page_kind,
             image_blob_hash=cast("str | None", data.get("image_blob_hash")),
             thumbnail_blob_hash=cast("str | None", data.get("thumbnail_blob_hash")),
             gt_orphans=gt_orphans,
@@ -3757,6 +3777,10 @@ class Page:
                     ),
                     "review": core_schema.typed_dict_field(
                         core_schema.nullable_schema(review_schema),
+                        required=False,
+                    ),
+                    "page_kind": core_schema.typed_dict_field(
+                        NULLABLE_STR_SCHEMA,
                         required=False,
                     ),
                     "image_blob_hash": core_schema.typed_dict_field(

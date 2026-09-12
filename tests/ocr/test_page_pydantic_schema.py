@@ -56,6 +56,7 @@ def test_page_json_schema_shape():
         "page_labels",
         "name",
         "review",
+        "page_kind",
         "image_blob_hash",
         "thumbnail_blob_hash",
         "gt_orphans",
