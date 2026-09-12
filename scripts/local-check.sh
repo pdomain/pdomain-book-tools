@@ -2,8 +2,21 @@
 # scripts/local-check.sh — print local-dev (GPU-extras) status.
 set -euo pipefail
 
+# uv installs into UV_PROJECT_ENVIRONMENT when that is set and into .venv
+# otherwise, so mirror the same rule instead of hardcoding either name. The
+# pd-suite devcontainer sets ".venv-container" because the workspace is a bind
+# mount shared with the host; a plain checkout outside a container gets .venv.
+venv_under() {
+  case "${UV_PROJECT_ENVIRONMENT:-}" in
+    "") printf '%s/.venv' "$1" ;;
+    /*) printf '%s' "$UV_PROJECT_ENVIRONMENT" ;;
+    *) printf '%s/%s' "$1" "$UV_PROJECT_ENVIRONMENT" ;;
+  esac
+}
+
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-MARKER="$REPO_ROOT/.venv/.pdomain-local-mode"
+PROJECT_VENV="$(venv_under "$REPO_ROOT")"
+MARKER="$PROJECT_VENV/.pdomain-local-mode"
 
 if [[ -f "$MARKER" ]]; then
   echo "MODE: local-dev (GPU extras active; marker at $MARKER)"

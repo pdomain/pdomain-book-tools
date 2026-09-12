@@ -14,7 +14,7 @@ Architecture: ``docs/architecture/local-dev-mode.md``.
 
 CLI usage::
 
-    uv run python scripts/write_dev_local_marker.py [--venv .venv]
+    uv run python scripts/write_dev_local_marker.py [--venv <dir>]
 
 Exits 0 on success, non-zero (with a message on stderr) when the venv
 directory is missing.
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import os
 import sys
 from pathlib import Path
 
@@ -77,8 +78,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--venv",
-        default=".venv",
-        help="Path to the venv directory (default: .venv).",
+        default=os.environ.get("UV_PROJECT_ENVIRONMENT") or ".venv",
+        help=(
+            "Path to the venv directory "
+            "(default: UV_PROJECT_ENVIRONMENT if set, else .venv)."
+        ),
     )
     args = parser.parse_args(argv)
 

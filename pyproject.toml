@@ -337,7 +337,11 @@ known-first-party = ["pdomain_book_tools"]
 "pdomain_book_tools/ocr/review.py" = ["ANN", "D"]
 "pdomain_book_tools/layout/geometry.py" = ["N806", "ANN", "D", "G003", "G004"]
 "pdomain_book_tools/image_processing/formats.py" = ["F401", "ANN", "D", "BLE001"]
-"pdomain_book_tools/image_processing/external_tools.py" = ["N803", "ANN", "D", "G003", "G004", "BLE001", "S607"]
+# S603 joins S607 here: both calls pass `shell=False` with an argv list, so
+# there is no shell to inject into. `run_gegl_c2g` splits caller-supplied
+# options with shlex into further argv entries, which reach gegl as its own
+# arguments and cannot start another process. Ruff 0.16.7 began reporting it.
+"pdomain_book_tools/image_processing/external_tools.py" = ["N803", "ANN", "D", "G003", "G004", "BLE001", "S607", "S603"]
 "pdomain_book_tools/utility/ipynb_widgets.py" = ["ANN", "D"]
 "pdomain_book_tools/image_processing/cv2_processing/contours.py" = ["N806", "ANN", "D", "G003", "G004"]
 "pdomain_book_tools/image_processing/cv2_processing/crop.py" = ["N803", "N806", "ANN", "D"]

@@ -52,9 +52,17 @@ logger = logging.getLogger(__name__)
 # magic-byte sniff continues to work even if decode would later fail.
 
 try:
-    import pillow_heif as _pillow_heif  # pyright: ignore[reportMissingTypeStubs]
+    # pillow-heif ships py.typed as of 1.x, and `register_heif_opener` lives in
+    # `as_plugin`, which declares no `__all__`. Importing it from the package
+    # root therefore reads as a private re-export; import it from the module
+    # that defines it instead.
+    import pillow_heif as _pillow_heif
 
-    _pillow_heif.register_heif_opener()  # pyright: ignore[reportUnknownMemberType]
+    # pillow-heif ships py.typed as of 1.x, so the stub ignore is gone. Two
+    # gaps remain at this boundary: `register_heif_opener` is re-exported from
+    # `as_plugin`, which declares no `__all__`, and it is typed
+    # `(**kwargs: Unknown) -> None`.
+    _pillow_heif.register_heif_opener()  # pyright: ignore[reportPrivateImportUsage, reportUnknownMemberType]
 except Exception as _heif_exc:  # pragma: no cover - import-time guard
     logger.debug(
         "pillow-heif not available; HEIF/HEIC decode will fail. (%s)",

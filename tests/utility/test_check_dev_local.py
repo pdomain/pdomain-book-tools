@@ -50,6 +50,8 @@ if TYPE_CHECKING:
 
         def _project_root(self) -> Path: ...
 
+        def _project_venv(self) -> Path: ...
+
         def _marker_path(self) -> Path: ...
 
 
@@ -357,3 +359,39 @@ class TestMarkerFilenameConsistency:
 
         rc = cdl.main(["--quiet"])
         assert rc == 0, "Canonical venv must allow upgrade-deps to proceed (exit 0)"
+
+
+class TestProjectEnvironmentResolution:
+    """``_project_venv`` must follow uv's own rule for where it installs.
+
+    uv writes to ``UV_PROJECT_ENVIRONMENT`` when that is set and to ``.venv``
+    otherwise. Hardcoding ``.venv`` made the marker invisible inside the
+    pd-suite devcontainer, which names the environment ``.venv-container``.
+    """
+
+    def test_defaults_to_dot_venv(
+        self, cdl: _CheckDevLocalModule, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("UV_PROJECT_ENVIRONMENT", raising=False)
+        monkeypatch.setattr(cdl, "_project_root", lambda: tmp_path)
+
+        assert cdl._project_venv() == tmp_path / ".venv"
+        assert cdl._marker_path() == tmp_path / ".venv" / ".pdomain-dev-local"
+
+    def test_honours_relative_override(
+        self, cdl: _CheckDevLocalModule, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", ".venv-container")
+        monkeypatch.setattr(cdl, "_project_root", lambda: tmp_path)
+
+        assert cdl._project_venv() == tmp_path / ".venv-container"
+        assert cdl._marker_path() == tmp_path / ".venv-container" / ".pdomain-dev-local"
+
+    def test_honours_absolute_override(
+        self, cdl: _CheckDevLocalModule, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        elsewhere = tmp_path / "elsewhere"
+        monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(elsewhere))
+        monkeypatch.setattr(cdl, "_project_root", lambda: tmp_path)
+
+        assert cdl._project_venv() == elsewhere

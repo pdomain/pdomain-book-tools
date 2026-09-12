@@ -2,7 +2,8 @@
 
 A venv is dev-local when it has overrides — sibling pdomain-* editable
 installs, the ``[gpu]`` extra, an explicit
-``PDOMAIN_DEV_LOCAL=1`` env var, or a ``.venv/.pdomain-dev-local`` marker file —
+``PDOMAIN_DEV_LOCAL=1`` env var, or a ``.pdomain-dev-local`` marker file in the
+project environment —
 that ``uv sync --group dev`` (the canonical sync) would silently
 revert. ``make upgrade-deps`` and any future recipe that rebuilds the
 venv invokes this script to refuse-rather-than-clobber.
@@ -196,9 +197,19 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _project_venv() -> Path:
+    """The environment uv installs into.
+
+    uv writes to ``UV_PROJECT_ENVIRONMENT`` when that is set and to ``.venv``
+    otherwise, so follow the same rule. An absolute value wins over the
+    project root, which is what ``Path.__truediv__`` already does.
+    """
+    return _project_root() / (os.environ.get("UV_PROJECT_ENVIRONMENT") or ".venv")
+
+
 def _marker_path() -> Path:
-    """Conventional marker location: ``<project>/.venv/.pdomain-dev-local``."""
-    return _project_root() / ".venv" / ".pdomain-dev-local"
+    """Conventional marker location: ``<project environment>/.pdomain-dev-local``."""
+    return _project_venv() / ".pdomain-dev-local"
 
 
 def _format_summary(result: DetectionResult) -> str:

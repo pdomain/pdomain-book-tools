@@ -276,6 +276,7 @@ Summary of the most significant bundles:
 | `pdomain_book_tools/ocr/page.py` | `ANN, D, G, BLE001, TRY, PERF401, …` | Heavy OCR pipeline file; annotation/docstring/logging debt backlog |
 | `pdomain_book_tools/ocr/reorganize_page_utils.py` | Same + `N803/N806/N815` | Same backlog; naming convention pre-dates style rules |
 | `pdomain_book_tools/geometry/bounding_box.py` | `N802, F401, ANN, D, G, S108` | Pre-migration file; full annotation pass deferred |
+| `pdomain_book_tools/image_processing/external_tools.py` | `N803, ANN, D, G, BLE001, S607, S603` | Wraps optipng and gegl; both calls pass `shell=False` with an argv list, so there is no shell to inject into |
 | `pdomain_book_tools/image_processing/cv2_processing/perspective_adjustment.py` | `N806, ANN, D, G, BLE001, TRY, S108` | ALL_CAPS coordinate variables; annotation debt |
 | `pdomain_book_tools/ocr/ground_truth_matching_helpers/character_groups.py` | `RUF012` | Enum members are list-typed values; `RUF012` incorrectly flags them |
 

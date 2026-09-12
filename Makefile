@@ -1,6 +1,12 @@
 AI ?=
 LOG := .ci-ai.log
 
+# uv installs into UV_PROJECT_ENVIRONMENT when it is set and into .venv
+# otherwise, so mirror that rule rather than hardcoding either name. The
+# pd-suite devcontainer sets ".venv-container" because the workspace is a bind
+# mount shared with the host; a plain checkout outside a container gets .venv.
+VENV := $(if $(UV_PROJECT_ENVIRONMENT),$(UV_PROJECT_ENVIRONMENT),.venv)
+
 ifdef AI
 _goals := $(or $(MAKECMDGOALS),ci)
 .PHONY: $(_goals)
@@ -45,7 +51,7 @@ reset-venv: reset ## Alias for reset
 
 remove-venv: ## Remove the virtual environment
 	@echo "🗑️  Removing existing virtual environment..."
-	rm -rf .venv
+	rm -rf $(VENV)
 	@echo "✅ Virtual environment removed!"
 
 reset: ## Rebuild virtual environment (keeps UV cache)
@@ -114,7 +120,7 @@ upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if loc
 	@# Two-tier dev-local detection (spec #200 / pdomain-ocr-cli canonical pattern):
 	@#   1. check_dev_local.py — probes editable installs, [gpu] extras, env var,
 	@#      and the .pdomain-dev-local marker written by write_dev_local_marker.py.
-	@#   2. Fast marker fallback — also check .venv/.pdomain-local-mode (written by
+	@#   2. Fast marker fallback — also check $(VENV)/.pdomain-local-mode (written by
 	@#      local-dev.sh for back-compat with shell-side scripts).
 	@# Either probe firing causes the recipe to refuse rather than clobber.
 	@if ! uv run python scripts/check_dev_local.py --quiet 2>/dev/null; then \
@@ -125,9 +131,9 @@ upgrade-deps: ## Upgrade dependencies and sync local environment (refuses if loc
 	  echo "" >&2; \
 	  exit 1; \
 	fi
-	@if [ -f .venv/.pdomain-local-mode ]; then \
+	@if [ -f $(VENV)/.pdomain-local-mode ]; then \
 	  echo "" >&2; \
-	  echo "❌ local-dev marker (.venv/.pdomain-local-mode) detected." >&2; \
+	  echo "❌ local-dev marker ($(VENV)/.pdomain-local-mode) detected." >&2; \
 	  echo "   Use:  make local-upgrade-deps" >&2; \
 	  echo "" >&2; \
 	  exit 1; \

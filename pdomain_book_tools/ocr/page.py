@@ -3897,7 +3897,8 @@ _legacy_params = [
         annotation="ndarray | None",
     ),
 ]
-_page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(  # type: ignore[attr-defined]  # runtime __signature__ injection; FunctionType supports it
+# Runtime __signature__ injection; FunctionType supports it.
+_page_init_with_deprecation_shim.__signature__ = _dc_sig.replace(
     parameters=_dc_params + _legacy_params,
 )
 _page_init_with_deprecation_shim.__name__ = "__init__"
