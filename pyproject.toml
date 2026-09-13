@@ -16,13 +16,13 @@ readme = "README.md"
 license = { text = "Unlicense" }
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "huggingface_hub>=0.23",
-    "ipython>=8.34",
+    "huggingface_hub>=1.16",
+    "ipython>=9.17",
     "ipywidgets>=8.1",
-    "matplotlib>=3.10.1",
+    "matplotlib>=3.11.2",
     "numpy (>=2.2,<2.5)",
-    "opencv-contrib-python>=4.12.0.88",
-    "pandas>=2.2.3",
+    "opencv-contrib-python>=5.0.0.93",
+    "pandas>=3.0.5",
     # Pure-Python contracts (geometry, text, typography, matching, ocr,
     # layout, licensing, and the PGDP readers) split out per the pdomain-ops
     # extraction plan. Resolved from the pdomain package index, the same one
@@ -32,27 +32,27 @@ dependencies = [
     # now declared directly because pdomain_book_tools owns its image-format
     # contract: pillow-heif / pillow-avif-plugin both register decoders with
     # Pillow at import time, so we need an explicit version contract.
-    "Pillow>=10.0",
+    "Pillow>=12.3",
     # HEIF/HEIC decode via libheif (LGPL-3) + libde265 (LGPL-3). pillow-heif
     # itself is BSD-3. We rely on Python's dynamic-loading model (LGPL §6 —
     # explicitly permits dynamic linking with a non-LGPL caller) to remain
     # compatible with this project's Unlicense terms; do not statically link
     # or bundle libheif into a derived binary. We only ever decode
     # (never encode HEVC), so the x265 GPL/patent path does not apply.
-    "pillow-heif>=0.18",
+    "pillow-heif>=1.7",
     # AVIF decode via libaom (BSD-2) through pillow-avif-plugin (MIT) —
     # fully permissive, no LGPL caveats.
-    "pillow-avif-plugin>=1.4",
-    "pydantic>=2.0",
+    "pillow-avif-plugin>=1.6",
+    "pydantic>=2.13",
     "pytesseract (>=0.3.13,<0.4.0)",
     "python-doctr",
     "regex (>=2024.11.6,<2025.0.0)",
-    "shapely>=2.0",
+    "shapely>=2.1",
     "thefuzz (>=0.22.1,<0.23.0)",
-    "torch>=2.6",
-    "torchaudio>=2.7.0",
-    "torchvision>=0.22.0",
-    "transformers>=4.45",
+    "torch>=2.14",
+    "torchaudio>=2.11.0",
+    "torchvision>=0.29.0",
+    "transformers>=5.3",
     "deskew>=1.6",
 ]
 
@@ -66,7 +66,7 @@ gpu = [
     # cuda.pathfinder.load_nvidia_dynamic_lib while declaring only
     # cuda-pathfinder>=1.3.4, an API that landed later. 14.1.1 is the version
     # the CUDA 12 lock already used, so the family moves and nothing else does.
-    "cupy-cuda13x>=13.4.1,<14.2",
+    "cupy-cuda13x>=14.1.1,<14.2",
     "opencv-cuda>=0.0.2",
 ]
 # UVDoc ONNX dewarp backend. Install with: pip install 'pdomain-book-tools[dewarp-dl]'
@@ -74,11 +74,11 @@ dewarp-dl = ["onnxruntime>=1.17"]
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.4",
+    "basedpyright>=1.40.1",
     "pre-commit (>=4.2.0,<5.0.0)",
-    "pytest-cov>=6.2.1",
-    "pytest>=8.3",
-    "ruff>=0.15.13",
+    "pytest-cov>=7.1.0",
+    "pytest>=9.1",
+    "ruff>=0.16.7",
     "pytest-xdist>=3.8.0",
     "gitlint>=0.19.1",
     "pandas-stubs>=3.0.3.260530",
