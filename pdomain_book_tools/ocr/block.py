@@ -786,6 +786,12 @@ class Block:
     def merge_adjacent_words(self, word_index: int, direction: str) -> bool:
         """Merge adjacent words within this line block.
 
+        Unlike :meth:`split_word_at_fraction`, this does not clear
+        ``ground_truth_text`` for the rest of the line. ``Word.merge``
+        already concatenates the two words' ground truth onto the survivor,
+        and no other word in the line changes position, text, or box, so
+        nothing about a merge invalidates their transcription.
+
         Args:
             word_index: Zero-based index of the selected word.
             direction: ``"left"`` merges into the preceding word,
@@ -825,9 +831,6 @@ class Block:
 
         words[keep_index].merge(words[remove_index])
         self.remove_item(words[remove_index])
-
-        for word in self.words:
-            word.ground_truth_text = ""
 
         return True
 

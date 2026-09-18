@@ -303,7 +303,7 @@ class TestDeleteWords:
 
 class TestMergeWords:
     def test_merge_word_left_success(self) -> None:
-        """Merging word left concatenates with the immediate left neighbor."""
+        """Merging word left concatenates GT with the immediate left neighbor."""
         line = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
             0,
@@ -314,13 +314,13 @@ class TestMergeWords:
 
         assert result is True
         assert [word.text for word in page.lines[0].words] == ["alphabeta", "gamma"]
-        assert [word.ground_truth_text for word in page.lines[0].words] == ["", ""]
+        assert [word.ground_truth_text for word in page.lines[0].words] == ["AB", "C"]
         merged_box = page.lines[0].words[0].bounding_box
         assert merged_box.top_left.x == 0
         assert merged_box.bottom_right.x == 30
 
     def test_merge_word_right_success(self) -> None:
-        """Merging word right concatenates with the immediate right neighbor."""
+        """Merging word right concatenates GT with the immediate right neighbor."""
         line = _line(
             [_word("alpha", "A", 0), _word("beta", "B", 20), _word("gamma", "C", 40)],
             0,
@@ -331,7 +331,7 @@ class TestMergeWords:
 
         assert result is True
         assert [word.text for word in page.lines[0].words] == ["alpha", "betagamma"]
-        assert [word.ground_truth_text for word in page.lines[0].words] == ["", ""]
+        assert [word.ground_truth_text for word in page.lines[0].words] == ["A", "BC"]
         merged_box = page.lines[0].words[1].bounding_box
         assert merged_box.top_left.x == 20
         assert merged_box.bottom_right.x == 50
@@ -346,10 +346,59 @@ class TestMergeWords:
         assert result is False
         assert [word.text for word in page.lines[0].words] == ["alpha", "beta"]
 
+    def test_merge_word_left_preserves_ground_truth_of_uninvolved_words(self) -> None:
+        """Merging two words in the middle of a longer line keeps every other
+        word's own ground truth untouched (regression: previously the merge
+        cleared ``ground_truth_text`` for every word in the line, not just the
+        merged pair)."""
+        line = _line(
+            [
+                _word("one", "ONE", 0),
+                _word("two", "TWO", 10),
+                _word("three", "THREE", 20),
+                _word("four", "FOUR", 30),
+                _word("five", "FIVE", 40),
+            ],
+            0,
+        )
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
+
+        result = page.lines[0].merge_word_left(3)
+
+        assert result is True
+        words = page.lines[0].words
+        assert [word.text for word in words] == ["one", "two", "threefour", "five"]
+        assert [word.ground_truth_text for word in words] == [
+            "ONE",
+            "TWO",
+            "THREEFOUR",
+            "FIVE",
+        ]
+
+    def test_merge_word_ground_truth_is_the_concatenation(self) -> None:
+        """The merged word's own ground truth is the two originals concatenated
+        (delegated to ``Word.merge``), not cleared and not left as only one
+        side's text."""
+        line = _line([_word("foo", "Foo", 0), _word("bar", "Bar", 20)], 0)
+        page = Page(width=100, height=100, page_index=0, blocks=[line])
+
+        result = page.lines[0].merge_word_right(0)
+
+        assert result is True
+        assert page.lines[0].words[0].ground_truth_text == "FooBar"
+
 
 class TestSplitWord:
     def test_split_word_success(self) -> None:
-        """Splitting a word creates two words and clears GT for the line."""
+        """Splitting a word creates two words and clears GT for the whole line.
+
+        Unlike a merge, a split is deliberately line-wide: which half of the
+        old ground truth belongs to which new word is ambiguous, so this
+        clears "gamma" too even though it was never touched by the split.
+        Do not "fix" this to match the merge behaviour — see
+        ``Block.split_word_at_fraction``'s docstring and
+        ``docs/issues/2026-09-18-word-merge-clears-the-whole-line-s-ground-truth.md``.
+        """
         line = _line([_word("alphabet", "ALPHABET", 0), _word("gamma", "GAMMA", 20)], 0)
         page = Page(width=100, height=100, page_index=0, blocks=[line])
 

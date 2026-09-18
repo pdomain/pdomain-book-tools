@@ -1,5 +1,5 @@
 ---
-Status: active
+Status: retired
 Owner: CT
 Created: 2026-09-18
 Last verified: 2026-09-18
@@ -12,10 +12,10 @@ Level: I1
 ## Agent Index
 
 - **Kind:** issue
-- **Status:** active
+- **Status:** retired
 - **Level:** I1
 - **Last verified:** 2026-09-18
-- **Resolution:** Open
+- **Resolution:** Resolved
 - **Severity:** High. A caller merging two words loses the ground-truth text of
   every other word in that line, with no warning and no way to recover it.
 - **Affected version:** `9dc73cf`
@@ -87,3 +87,36 @@ truth is unambiguous.
 The merge itself is correct: the right two words combine, the survivor keeps the
 merged text and box, and the removed word leaves the line. `Word.merge` is
 sound. This is only about the loop that runs afterwards.
+
+## Resolution
+
+**Resolved (2026-09-18), option 1.** Verified `Word.merge` before relying on
+it: it already concatenates `ground_truth_text` in left-to-right bbox order
+onto the surviving word, matching what it does with `text`, so the ruling
+held. `Block.merge_adjacent_words` in `pdomain_book_tools/ocr/block.py` no
+longer clears `ground_truth_text` for every word in the line after a merge —
+it clears nothing. The merged word's own ground truth is exactly
+`Word.merge`'s concatenation; every other word in the line keeps its own
+transcription untouched. `merge_word_left` and `merge_word_right` inherit the
+fix, since both delegate to `merge_adjacent_words`. `split_word_at_fraction`
+is unchanged and still clears ground truth for the whole line, because a
+split's ambiguity (which half owns the old transcription) does not apply to a
+merge.
+
+Checked every other `pdomain-*` repository in the workspace for callers of
+`merge_adjacent_words`, `merge_word_left`, and `merge_word_right`:
+`pdomain-ocr-labeler-spa` is the only other caller, and its
+`POST .../words/{li}/{wi}/merge` route (the right panel's "merge with
+prev/next" buttons) resolves the adjacent pair and calls `Word.merge`
+directly through a shared `_merge_words_core` helper, not through these
+`Block` methods — the same fix that repository made for itself on 2026-09-18
+(see its `docs/context/decisions.md`, "Retired: word merge had nowhere to
+live"). No caller anywhere in the workspace depended on the line-wide clear.
+
+Regression coverage: `tests/ocr/test_page_line_operations.py`,
+`TestMergeWords` — a five-word line merging two words in the middle now
+asserts every surviving word keeps its own ground truth, and a dedicated test
+asserts the merged word's ground truth is the two originals concatenated.
+`TestSplitWord::test_split_word_success` keeps asserting the split's
+line-wide clear, with a docstring pointing back at this issue so the split
+behaviour is not "fixed" to match the merge later.
