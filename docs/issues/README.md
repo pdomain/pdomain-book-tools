@@ -156,6 +156,7 @@ their own work is resolved.
 
 ## Open issues
 
+- **[High]** [merging two words clears every word's ground truth in the line](./2026-09-18-word-merge-clears-the-whole-line-s-ground-truth.md) — found by `pdomain-ocr-labeler-spa`
 - **[High]** [five workspace repos have had no CI since 2026-07-12](./2026-08-08-actions-disabled-five-repos.md) — cross-cut, stub
 - **[High]** [no pull request can satisfy the required check, so dep-refresh never lands](./2026-08-08-dep-refresh-cannot-auto-land.md) — CI gate
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
