@@ -1152,6 +1152,20 @@ class Block:
                 BlockCategory(block_cat_raw) if block_cat_raw else BlockCategory.BLOCK
             )
         )
+
+        # unmatched_ground_truth_words: reconstruct (int, str) tuples. JSON
+        # turns each tuple into a ``[int, str]`` list; restore 2-tuples so
+        # copy()/round-trip is representation-stable (mirrors Page.from_dict's
+        # identical gt_orphans.lines restoration).
+        unmatched_ground_truth_words = cast(
+            "list[tuple[int, str]]",
+            [
+                tuple(cast("list[object]", entry)) if isinstance(entry, list) else entry
+                for entry in cast(
+                    "list[object]", data.get("unmatched_ground_truth_words", [])
+                )
+            ],
+        )
         return cls(
             items=items,
             bounding_box=bounding_box,
@@ -1172,10 +1186,7 @@ class Block:
             override_page_sort_order=cast(
                 "int | None", data.get("override_page_sort_order", None)
             ),
-            unmatched_ground_truth_words=cast(
-                "list[tuple[int, str]] | None",
-                data.get("unmatched_ground_truth_words", []),
-            ),
+            unmatched_ground_truth_words=unmatched_ground_truth_words,
             additional_block_attributes=cast(
                 "dict[str, object] | None",
                 data.get("additional_block_attributes", {}),

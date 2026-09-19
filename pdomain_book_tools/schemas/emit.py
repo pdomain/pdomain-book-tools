@@ -28,6 +28,7 @@ from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.layout.types import LayoutRegion, PageLayout
 from pdomain_book_tools.ocr.block import Block
 from pdomain_book_tools.ocr.character import Character
+from pdomain_book_tools.ocr.glyph_annotations import GlyphAnnotations
 from pdomain_book_tools.ocr.page import Page
 from pdomain_book_tools.ocr.provenance import OCRModelProvenance, OCRProvenance
 from pdomain_book_tools.ocr.review import ReviewMetadata
@@ -68,6 +69,7 @@ PUBLIC_MODELS: tuple[type, ...] = (
     OCRModelProvenance,
     OCRProvenance,
     Character,
+    GlyphAnnotations,
     Word,
     Block,
     Page,

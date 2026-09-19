@@ -1636,3 +1636,29 @@ def test_gt_orphans_lines_tuples_survive_round_trip() -> None:
     assert restored.gt_orphans is not None
     assert restored.gt_orphans.lines == [(0, "UNMATCHED"), "bare"]
     assert isinstance(restored.gt_orphans.lines[0], tuple)
+
+
+def test_gt_orphans_lines_tuples_survive_json_round_trip() -> None:
+    """Regression guard for the hazard the restoration exists to fix.
+
+    ``Page.to_dict()`` alone does not exercise the list-to-tuple
+    restoration in ``Page.from_dict`` -- it hands back the live tuple
+    objects unchanged, so ``from_dict(p.to_dict())`` passes even if the
+    restoration were deleted. Only a real ``json.dumps``/``json.loads``
+    hop turns each ``(int, str)`` tuple into a ``[int, str]`` list the way
+    a persisted/re-loaded page would, which is what this test forces.
+    """
+    p = Page(
+        width=100,
+        height=100,
+        page_index=0,
+        blocks=[],
+        gt_orphans=GtOrphans(lines=[(0, "UNMATCHED"), "bare"]),
+    )
+    json_roundtripped = json.loads(json.dumps(p.to_dict()))
+
+    restored = Page.from_dict(json_roundtripped)
+
+    assert restored.gt_orphans is not None
+    assert restored.gt_orphans.lines == [(0, "UNMATCHED"), "bare"]
+    assert isinstance(restored.gt_orphans.lines[0], tuple)
