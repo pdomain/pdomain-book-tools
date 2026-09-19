@@ -156,9 +156,15 @@ their own work is resolved.
 
 ## Open issues
 
-- **[High]** [merging two words clears every word's ground truth in the line](./2026-09-18-word-merge-clears-the-whole-line-s-ground-truth.md) — found by `pdomain-ocr-labeler-spa`
+Three entries were removed from this list on 2026-09-19 after being checked
+against the code rather than taken on trust. Word merge clearing the whole
+line's ground truth was fixed on 2026-09-18, the same day it was filed. The
+dep-refresh gate and the GPU and slow-path CI strategy both describe GitHub
+workflows deleted in `67a714b`; `.github/workflows/` no longer exists, so
+neither describes anything that can happen. Their files remain for the
+reasoning.
+
 - **[High]** [five workspace repos have had no CI since 2026-07-12](./2026-08-08-actions-disabled-five-repos.md) — cross-cut, stub
-- **[High]** [no pull request can satisfy the required check, so dep-refresh never lands](./2026-08-08-dep-refresh-cannot-auto-land.md) — CI gate
 - **[High]** [five strict-xfail figure-noise baselines leave product gaps green in CI](./2026-07-21-reorganize-known-failing-baselines-xfail.md) — plan `B3 / S5`
 - **[Medium]** [docs/issues/ carries two record sets that describe the same work twice](./2026-08-07-duplicate-issue-records-after-rebase.md) — reconcile the two lists above
 - **[Medium]** [reorganize_page_utils branch coverage thin on high-risk heuristics](./2026-07-21-reorganize-branch-unit-coverage.md) — plan `B4`
@@ -167,7 +173,6 @@ their own work is resolved.
 - **[Medium]** [BoundingBox.center and contains_point weaken is_normalized discipline](./2026-07-21-geometry-primitive-flag-hygiene.md) — plan `C3 / S7`
 - **[Medium]** [geometry_correction dual gate and docs disagree; grid map_points unsupported](./2026-07-21-geometry-correction-gate-and-docs.md) — plan `C4 / S7`
 - **[Medium]** [HEIF/AVIF identify then fail on cv2 load; writes ignore imwrite success](./2026-07-21-image-io-heif-write-failures.md) — plan `C5 / S8`
-- **[Medium]** [default CI never runs GPU or @slow model paths](./2026-07-21-gpu-slow-ci-strategy.md) — plan `C6 / S8b`
 - **[Medium]** [PP-DocLayout registry rejects security kwargs; captions ignore above side](./2026-07-21-layout-registry-knobs-caption-above.md) — plan `C7 / S8b`
 - **[Medium]** [public-api.md is narrower than taught Document/hf/geometry_correction surface](./2026-07-21-public-api-surface-policy.md) — plan `D1 / S9`
 - **[Medium]** [schema emit incomplete for glyphs; public-api path drift; Block GT tuples](./2026-07-21-schema-emit-and-path-hygiene.md) — plan `D2 / S9`
