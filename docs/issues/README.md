@@ -172,7 +172,6 @@ reasoning.
 - **[Medium]** [BoundingBox.center and contains_point weaken is_normalized discipline](./2026-07-21-geometry-primitive-flag-hygiene.md) — plan `C3 / S7`
 - **[Medium]** [geometry_correction dual gate and docs disagree; grid map_points unsupported](./2026-07-21-geometry-correction-gate-and-docs.md) — plan `C4 / S7`
 - **[Medium]** [HEIF/AVIF identify then fail on cv2 load; writes ignore imwrite success](./2026-07-21-image-io-heif-write-failures.md) — plan `C5 / S8`; load + write defects fixed 2026-09-19, opencv-cuda dependency-honesty defect still open
-- **[Medium]** [PP-DocLayout registry rejects security kwargs; captions ignore above side](./2026-07-21-layout-registry-knobs-caption-above.md) — plan `C7 / S8b`
 - **[Medium]** [public-api.md is narrower than taught Document/hf/geometry_correction surface](./2026-07-21-public-api-surface-policy.md) — plan `D1 / S9`
 - **[Medium]** [schema emit incomplete for glyphs; public-api path drift; Block GT tuples](./2026-07-21-schema-emit-and-path-hygiene.md) — plan `D2 / S9`
 - **[Medium]** [greenfield specs blocked on unresolved owner decisions](./2026-07-21-owner-decision-pack-greenfield.md) — plan `E / S11`
@@ -202,6 +201,7 @@ reasoning.
 - [roadmap / intent-map backlog sync](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0` (2026-07-21)
 - [reorganize band classify coordinate-domain thresholds](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1` (2026-07-21)
 - [drop-cap path forces is_normalized=True and unit-space thresholds](./2026-07-21-dropcap-coordinate-domain.md) — plan `C2 / S6` (2026-09-19)
+- [PP-DocLayout registry rejects security kwargs; captions ignore above side](./2026-07-21-layout-registry-knobs-caption-above.md) — plan `C7 / S8b` (2026-09-19)
 
 These reports are resolved but still in the tree. Under the current rule each
 one is deleted once anything durable is promoted and a tombstone is written to

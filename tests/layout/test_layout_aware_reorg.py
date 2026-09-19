@@ -711,6 +711,121 @@ class TestAssociateCaptions:
         assert associate_captions(page, layout) == 0
         assert not any("illustration" in b.block_role_labels for b in page.items)
 
+    def test_caption_above_figure_attached(self) -> None:
+        """A caption printed above its figure (frontispiece / plate style)
+        must still be associated — not just the below-figure case."""
+        body = _paragraph_block([_line_block([_word("body", 100, 50, 200, 80)])])
+        caption_words = [
+            _word("Frontispiece.", 100, 220, 300, 260),
+        ]
+        caption_para = _paragraph_block([_line_block(caption_words)])
+        page = _make_page([body, caption_para])
+
+        layout = PageLayout(
+            regions=[
+                LayoutRegion(
+                    type=RegionType.caption,
+                    L=100,
+                    R=400,
+                    T=220,
+                    B=260,
+                    confidence=0.8,
+                ),
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=300,
+                    B=700,
+                    confidence=0.9,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+        attached = associate_captions(page, layout)
+        assert attached == 1
+
+        caption_blocks = [b for b in page.items if "caption" in b.block_role_labels]
+        assert len(caption_blocks) == 1
+        assert {w.text for w in caption_blocks[0].words} == {"Frontispiece."}
+
+    def test_caption_between_two_figures_claimed_by_closer_one(self) -> None:
+        """A caption sitting between two figures is ambiguous — it could
+        belong to the figure above it or the figure below it. The closer
+        figure (smaller vertical gap) wins, and the caption is attached
+        exactly once (no duplication across the two candidates).
+
+        The figure *below* the caption is the closer one here (gap 20px
+        vs. 70px), so it must be the one that claims it — verified by
+        checking how many illustration placeholders precede the caption
+        block in document order (one if the farther, first-in-reading-
+        order figure wrongly wins; two if the closer, second figure
+        correctly wins).
+        """
+        body = _paragraph_block([_line_block([_word("body", 100, 10, 200, 40)])])
+        caption_words = [_word("Plate II.", 100, 350, 300, 380)]
+        caption_para = _paragraph_block([_line_block(caption_words)])
+        page = _make_page([body, caption_para])
+
+        layout = PageLayout(
+            regions=[
+                # Figure above the caption — gap = 350 - 280 = 70px.
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=100,
+                    B=280,
+                    confidence=0.9,
+                ),
+                # Caption sits between the two figures.
+                LayoutRegion(
+                    type=RegionType.caption,
+                    L=100,
+                    R=400,
+                    T=350,
+                    B=380,
+                    confidence=0.8,
+                ),
+                # Figure below the caption — gap = 400 - 380 = 20px, closer.
+                LayoutRegion(
+                    type=RegionType.figure,
+                    L=100,
+                    R=400,
+                    T=400,
+                    B=800,
+                    confidence=0.9,
+                ),
+            ],
+            image_width=PAGE_W,
+            image_height=PAGE_H,
+            detector="test",
+        )
+
+        attached = associate_captions(page, layout)
+        # Only the closer figure claims the caption — exactly one caption
+        # block, no duplication across the two candidate figures.
+        assert attached == 1
+        caption_blocks = [b for b in page.items if "caption" in b.block_role_labels]
+        assert len(caption_blocks) == 1
+        assert {w.text for w in caption_blocks[0].words} == {"Plate II."}
+
+        # Confirm the *closer* (below) figure is the one that claimed it:
+        # both illustration placeholders must precede the caption block in
+        # document order, meaning the second (below) figure — not the
+        # first (above, farther) one — is the one paired with the caption.
+        item_labels = [
+            "illustration"
+            if "illustration" in b.block_role_labels
+            else ("caption" if "caption" in b.block_role_labels else "other")
+            for b in page.items
+        ]
+        caption_index = item_labels.index("caption")
+        assert item_labels[:caption_index].count("illustration") == 2, item_labels
+
 
 class TestTagWordsWithLayout:
     def test_word_in_caption_region_gets_tag(self) -> None:

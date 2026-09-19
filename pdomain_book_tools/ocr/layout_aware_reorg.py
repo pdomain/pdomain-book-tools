@@ -823,6 +823,25 @@ def _empty_illustration_block(
     )
 
 
+def _vertical_region_gap(figure: LayoutRegion, caption: LayoutRegion) -> float:
+    """True vertical gap between ``figure`` and ``caption``, either side.
+
+    ``caption_for_figure(..., above=True)`` will hand back a caption region
+    that sits either below or above ``figure``. The naive "figure bottom to
+    caption top" distance used before this helper existed assumed
+    below-only placement and silently floored to 0 for an above-side
+    caption (since ``caption.T - figure.B`` is negative there) — which made
+    every above-side pairing look like a zero-distance, always-wins
+    candidate in the cross-figure tie-break below. Computing the gap for
+    whichever side the caption is actually on keeps that tie-break honest.
+    """
+    if caption.T >= figure.B:
+        return caption.T - figure.B  # caption below the figure
+    if figure.T >= caption.B:
+        return figure.T - caption.B  # caption above the figure
+    return 0.0  # vertically overlapping — treat as touching
+
+
 def associate_captions(
     page: Page,
     layout: PageLayout | None,
@@ -865,6 +884,14 @@ def associate_captions(
     # Strategy: first pass collects (figure, caption_region) pairs; second
     # pass deduplicates by caption_region identity, keeping whichever figure
     # has the smallest vertical gap to that caption (first-wins on tie).
+    #
+    # ``above=True`` also lets a figure claim a caption printed above it —
+    # Victorian and 18th-century plates and frontispieces routinely caption
+    # that way (L-06 / caption_for_figure). A caption sandwiched between two
+    # figures is inherently ambiguous — it could belong to either — so we
+    # resolve it the same way as the pre-existing below-only case: whichever
+    # figure has the smaller true vertical gap wins, and the loser gets no
+    # caption at all (never a duplicate).
     claimed: set[int] = set()  # id(caption_region) for already-claimed regions
 
     # Phase 1: collect (region, caption_region | None) with gap distance.
@@ -875,11 +902,10 @@ def associate_captions(
         if region.confidence < confidence_threshold:
             continue
         caption_region = caption_for_figure(
-            region, layout.regions, max_gap_px=max_gap_px
+            region, layout.regions, max_gap_px=max_gap_px, above=True
         )
         if caption_region is not None:
-            # gap = distance from figure bottom to caption top (positive = below)
-            gap = max(0.0, caption_region.T - region.B)
+            gap = _vertical_region_gap(region, caption_region)
         else:
             gap = float("inf")
         _raw_pairs.append((region, caption_region, gap))
