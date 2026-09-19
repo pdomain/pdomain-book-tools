@@ -58,6 +58,57 @@ rg -n 'KNOWN_FAILING_BASELINES|xfail' tests/ocr/test_reorganize_page_utils_group
 Five cases, `pytest.mark.xfail(..., strict=True)` (~227–272). Architecture
 residual + intent-map already schedule fix or dated accept (not “done forever”).
 
+## What the five xfails are actually hiding (investigated 2026-09-19)
+
+**The xfail reasons misdescribe the failures.** All five say "figure-internal
+noise that should be dropped". None of the five diffs shows a noise-dropping
+failure. Noise dropping works. Every one is a reading-order and line-structure
+bug: the right words, correctly associated with the right region, in the wrong
+order.
+
+It is one defect family, not five, and what a reader would see is worse than
+the reasons suggest:
+
+- `figures-side-by-side-with-captions`: both figure captions are correctly
+  lifted out of the body flow and then reappear at the end of the page as word
+  salad, for example `now pallida, Contrastl tury FiG. copy lost, from
+  73.—Aristolochia Fig. of by a 79. a sixth-cen- Crateuas. drawing,`. A real
+  caption becomes unreadable.
+- `frontispiece-on-deck-dual-caption`: two caption lines are glued into one
+  with a noise glyph stitched into the middle, `On Deck. iFronlispicce.`
+- `plate-rio-harbour-photo`: the corner annotation prints before the caption it
+  sits below and to the right of.
+- `plate-service-on-board` and `plate-ii-celestial-influences`: short caption,
+  credit and heading lines swap position, and blank lines appear.
+
+Two confirmed causes and one shared trigger:
+
+1. **A multi-line caption is packed into one LINE block.** `emit_caption_block`
+   in `ocr/layout_aware_reorg.py` and `_build_band_block` in
+   `ocr/reorganize_page_utils.py` both collect a caption's words, which may
+   span several printed lines, into a single `Block` of category LINE.
+   `Block.__init__` sorts a words-child block strictly by x, which interleaves
+   the lines. Verified directly: `words_inside()` returns the words in correct
+   order, and the corruption appears only after the wrap.
+2. **Pixels compared against a normalised coordinate.**
+   `route_sidenote_reading_order` computes a midline from `page.width` in
+   pixels and compares it against a block centre in normalised space, so every
+   sidenote-tagged block reads as left of the midline whatever its real side,
+   and is pinned to the top of the page.
+3. **The trigger** is `classify_and_paragraphize_blocks`, a geometry-only
+   heuristic that misclassifies short isolated caption and credit fragments on
+   plate pages, which have no body column to compare against, as sidenote,
+   header or footer. That is what routes them into the two bugs above instead
+   of ordinary paragraph placement.
+
+One change across those three functions should close all five together. Cases
+3 and 5's exact reordering step needs one more trace: the real footer-band
+extractor reports no footer lines for them, so the reordering happens later in
+the footer-role assembly.
+
+These are the only `strict=True` xfails in the repository. All five still fail
+as before, so none is stale.
+
 ## Root-cause hypotheses
 
 1. **(Most likely) Desired baselines encode aspirational policy not yet implemented** — xfail reasons describe orphan noise that should be dropped.
