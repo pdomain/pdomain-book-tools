@@ -80,8 +80,16 @@ _SKIP_ROLES: frozenset[str] = frozenset(
 
 # Geometric-trigger thresholds. Tuned against the three known
 # regression fixtures (chapter-head-credulities, chapter-head-filial-duty,
-# footnotes-stacked-with-anchor). All values are in normalised coordinate
-# space (page width = 1.0).
+# footnotes-stacked-with-anchor). All values below are authored in
+# normalised coordinate space (page width = 1.0) but are ALWAYS scaled by
+# ``metrics.coord_w`` / ``metrics.coord_h`` at the point of use before being
+# compared against — or added to — a bbox coordinate. ``PageMetrics.coord_w``
+# / ``coord_h`` are ``1.0`` on a normalised-domain page and the actual page
+# width/height in pixels on a pixel-domain page (see
+# ``reorganize_page_utils._coord_dims_from_words``), so multiplying by them
+# is a no-op in normalised space and converts to pixel space on the
+# Tesseract ingress path. Never compare one of these constants directly
+# against a raw bbox coordinate — see docs/issues/2026-07-21-dropcap-coordinate-domain.md.
 #
 # A real drop-cap-induced indent is ~2-3 cap-glyph widths of blank
 # space to the left of the first body word, vs. a regular paragraph
@@ -92,7 +100,8 @@ _MIN_INDENT_DELTA = 0.025  # body word's minX must exceed body-left by this
 _MAX_INDENT_DELTA = 0.10  # body word's minX must NOT exceed body-left by more
 # than this (centered chapter titles can sit ≥0.20 past body-left; not a cap)
 _MULTI_LINE_INDENT_TOLERANCE = 0.02  # lines 2-3 indented within this of cap line
-_CAP_HEIGHT_RATIO_MIN = 1.5  # cap CC's height >= this x median_word_h
+_CAP_HEIGHT_RATIO_MIN = 1.5  # cap CC's height >= this x median_word_h; a ratio
+# against an already domain-matched metric, not a raw coordinate — exempt.
 
 
 @dataclass(frozen=True)
@@ -155,7 +164,9 @@ def _all_lines(block: Block) -> list[tuple[Block, Block]]:
     return out
 
 
-def _compute_indent_signature(blocks: list[Block]) -> _IndentSignature | None:
+def _compute_indent_signature(
+    blocks: list[Block], metrics: PageMetrics
+) -> _IndentSignature | None:
     """Compute the page's body-left margin + typical paragraph indent.
 
     ``body_left`` = modal minX across non-skipped body lines (the
@@ -163,6 +174,9 @@ def _compute_indent_signature(blocks: list[Block]) -> _IndentSignature | None:
     indent measured ONLY in multi-line paragraphs whose continuation
     lines hug ``body_left`` (i.e. real body paragraphs, not chapter
     heads or centered titles whose minX swings wildly).
+
+    ``metrics`` scales the unit-space tolerance / fallback constants below
+    into the page's actual coordinate domain (normalised or pixel).
 
     Returns ``None`` if there isn't enough body geometry.
     """
@@ -201,7 +215,7 @@ def _compute_indent_signature(blocks: list[Block]) -> _IndentSignature | None:
     body_left = sorted(body_lefts[:cutoff])[len(body_lefts[:cutoff]) // 2]
 
     indents: list[float] = []
-    body_left_tolerance = 0.02
+    body_left_tolerance = 0.02 * metrics.coord_w
     for line_children in multi_line_paragraphs:
         first = line_children[0]
         rest = line_children[1:]
@@ -225,13 +239,13 @@ def _compute_indent_signature(blocks: list[Block]) -> _IndentSignature | None:
     else:
         # No usable body paragraphs to compare against. Pick a small
         # default — typical print indent ~0.025-0.04 of page width.
-        standard_indent = 0.03
+        standard_indent = 0.03 * metrics.coord_w
 
     return _IndentSignature(body_left=body_left, standard_indent=standard_indent)
 
 
 def _geometric_gap_candidates(
-    blocks: list[Block], indent: _IndentSignature
+    blocks: list[Block], indent: _IndentSignature, metrics: PageMetrics
 ) -> list[_GapCandidate]:
     """Find body lines whose minX is abnormally indented, with the
     *next line below* (in reading order, even if it's in a different
@@ -246,9 +260,16 @@ def _geometric_gap_candidates(
     body lines around itself, and the paragraph splitter often puts
     those lines into different paragraphs because of the indent
     discontinuity).
+
+    ``metrics`` scales the unit-space threshold constants into the page's
+    actual coordinate domain (normalised or pixel) before they're compared
+    against raw bbox coordinates.
     """
     candidates: list[_GapCandidate] = []
-    indent_threshold = indent.body_left + indent.standard_indent + _MIN_INDENT_DELTA
+    min_indent_delta = _MIN_INDENT_DELTA * metrics.coord_w
+    max_indent_delta = _MAX_INDENT_DELTA * metrics.coord_w
+    multi_line_indent_tolerance = _MULTI_LINE_INDENT_TOLERANCE * metrics.coord_w
+    indent_threshold = indent.body_left + indent.standard_indent + min_indent_delta
 
     for block in blocks:
         if _block_role_skipped(block):
@@ -296,7 +317,7 @@ def _geometric_gap_candidates(
             # this is obviously a centered chapter title.
             if first_body_word.bounding_box.minX < indent_threshold:
                 continue
-            if first_body_word.bounding_box.minX > indent.body_left + _MAX_INDENT_DELTA:
+            if first_body_word.bounding_box.minX > indent.body_left + max_indent_delta:
                 continue
 
             # Look at the next line in reading order. It must exist and
@@ -320,7 +341,7 @@ def _geometric_gap_candidates(
                 next_line.bounding_box.minX
                 >= indent.body_left
                 + indent.standard_indent
-                - _MULTI_LINE_INDENT_TOLERANCE
+                - multi_line_indent_tolerance
             )
             next_token_count = sum(1 for w in next_line.words if (w.text or "").strip())
             next_short_artifact = (
@@ -332,7 +353,7 @@ def _geometric_gap_candidates(
 
             # The gap to scan is from the body-left margin (minus a
             # whisker) to just left of the first body word's bbox.
-            gap_minX = max(0.0, indent.body_left - 0.005)
+            gap_minX = max(0.0, indent.body_left - 0.005 * metrics.coord_w)
             gap_maxX = first_body_word.bounding_box.minX
             line_minY = line.bounding_box.minY
             line_maxY = line.bounding_box.maxY
@@ -371,7 +392,8 @@ def _scan_dropcap_cc(
       don't pick up the body word's ascender),
     * sits left of the first body word.
 
-    Returns the cap's bbox in normalised page coordinates, or ``None``.
+    Returns the cap's bbox in the page's own coordinate domain (normalised
+    or pixel — matches ``candidate``'s bboxes), or ``None``.
     """
     if image is None:
         return None
@@ -387,15 +409,34 @@ def _scan_dropcap_cc(
     # Expand the search band vertically by ~1.5 body-line heights above
     # the body line so we capture the cap's top half (drop caps extend
     # upwards from the body baseline). And by 0.5 body-line heights
-    # below to capture the descender area.
-    pad_y = max(1.5 * candidate.body_line_height, 0.02)
+    # below to capture the descender area. The ``0.02`` floor and the
+    # page-bottom clamp are unit-space (page height = 1.0); scale both by
+    # ``metrics.coord_h`` so they land correctly whether ``candidate`` is
+    # in normalised or pixel coordinates.
+    pad_y = max(1.5 * candidate.body_line_height, 0.02 * metrics.coord_h)
     band_top = max(0.0, candidate.line_minY - pad_y)
-    band_bot = min(1.0, candidate.line_maxY + 0.5 * candidate.body_line_height)
+    band_bot = min(
+        metrics.coord_h, candidate.line_maxY + 0.5 * candidate.body_line_height
+    )
 
-    x1 = int(candidate.gap_minX * W)
-    x2 = int(candidate.gap_maxX * W)
-    y1 = int(band_top * H)
-    y2 = int(band_bot * H)
+    # candidate's coordinates are in the page's own domain (metrics.coord_w
+    # / coord_h): normalised [0, 1] fractions on a DocTR-style page, or raw
+    # pixel values on a Tesseract-style page. Only the normalised case needs
+    # scaling up to the image's actual pixel grid — a pixel-domain page's
+    # coordinates already line up with ``image``'s W/H. Mirrors the
+    # ``metrics.coord_h <= 2.0`` domain check used for ``median_h_px`` below.
+    x1 = (
+        int(candidate.gap_minX * W)
+        if metrics.coord_w <= 2.0
+        else int(candidate.gap_minX)
+    )
+    x2 = (
+        int(candidate.gap_maxX * W)
+        if metrics.coord_w <= 2.0
+        else int(candidate.gap_maxX)
+    )
+    y1 = int(band_top * H) if metrics.coord_h <= 2.0 else int(band_top)
+    y2 = int(band_bot * H) if metrics.coord_h <= 2.0 else int(band_bot)
     # Margin the crop to make sure we don't slice through the glyph.
     if x2 <= x1 + 4 or y2 <= y1 + 4:
         return None
@@ -441,17 +482,36 @@ def _scan_dropcap_cc(
     if best is None:
         return None
     bx, by, bw, bh, _area = best
-    abs_x1 = (x1 + bx) / W
-    abs_y1 = (y1 + by) / H
-    abs_x2 = (x1 + bx + bw) / W
-    abs_y2 = (y1 + by + bh) / H
+    # Fractions of the image's own pixel grid — always [0, 1] by
+    # construction, regardless of candidate's coordinate domain.
+    frac_x1 = (x1 + bx) / W
+    frac_y1 = (y1 + by) / H
+    frac_x2 = (x1 + bx + bw) / W
+    frac_y2 = (y1 + by + bh) / H
+
+    # Convert back into the page's own coordinate domain so the returned
+    # bbox matches candidate's (and the rest of the page's) domain — a
+    # normalised-domain page keeps the [0, 1] fractions as-is; a
+    # pixel-domain page scales them up by the page's actual pixel
+    # dimensions. Mirrors the x1/x2/y1/y2 domain check above.
+    is_normalized = metrics.coord_w <= 2.0 and metrics.coord_h <= 2.0
+    if is_normalized:
+        cap_x1, cap_y1, cap_x2, cap_y2 = frac_x1, frac_y1, frac_x2, frac_y2
+    else:
+        cap_x1 = frac_x1 * metrics.coord_w
+        cap_x2 = frac_x2 * metrics.coord_w
+        cap_y1 = frac_y1 * metrics.coord_h
+        cap_y2 = frac_y2 * metrics.coord_h
+
     # Guard against rounding pushing maxX past the body word's minX
     # (would make Block.recompute_bounding_box reorder the words).
-    if abs_x2 > candidate.first_body_word.bounding_box.maxX:
-        abs_x2 = min(abs_x2, candidate.first_body_word.bounding_box.minX)
-    if abs_x1 >= abs_x2 or abs_y1 >= abs_y2:
+    if cap_x2 > candidate.first_body_word.bounding_box.maxX:
+        cap_x2 = min(cap_x2, candidate.first_body_word.bounding_box.minX)
+    if cap_x1 >= cap_x2 or cap_y1 >= cap_y2:
         return None
-    return BoundingBox.from_ltrb(abs_x1, abs_y1, abs_x2, abs_y2, is_normalized=True)
+    return BoundingBox.from_ltrb(
+        cap_x1, cap_y1, cap_x2, cap_y2, is_normalized=is_normalized
+    )
 
 
 def _resolve_cap_letter(body_word_text: str) -> str | None:
@@ -588,11 +648,11 @@ def detect_and_stitch_cursive_dropcaps(
     """
     if image is None:
         return blocks
-    indent = _compute_indent_signature(blocks)
+    indent = _compute_indent_signature(blocks, metrics)
     if indent is None:
         return blocks
 
-    candidates = _geometric_gap_candidates(blocks, indent)
+    candidates = _geometric_gap_candidates(blocks, indent, metrics)
     if not candidates:
         return blocks
 
@@ -664,12 +724,25 @@ def detect_and_stitch_cursive_dropcaps(
                 # OCR letter, replace with the inferred one. Keep the
                 # bbox (it's where the cap glyph actually lives) but
                 # union it with the CC bbox for safety.
+                #
+                # Both boxes must already share a coordinate domain: CLAUDE.md
+                # forbids silently coercing across domains in a union, and
+                # ``_scan_dropcap_cc`` returns ``cc_bbox`` in the same domain
+                # as the page's own words (see its docstring), so a mismatch
+                # here means the two mixed rather than that they legitimately
+                # differ — fail loudly instead of guessing.
+                if existing.bounding_box.is_normalized != cc_bbox.is_normalized:
+                    raise ValueError(
+                        "drop-cap bbox union mixed coordinate domains: "
+                        f"existing word is_normalized={existing.bounding_box.is_normalized}, "
+                        f"CC scan is_normalized={cc_bbox.is_normalized}"
+                    )
                 cap_bbox = BoundingBox.from_ltrb(
                     min(existing.bounding_box.minX, cc_bbox.minX),
                     min(existing.bounding_box.minY, cc_bbox.minY),
                     max(existing.bounding_box.maxX, cc_bbox.maxX),
                     max(existing.bounding_box.maxY, cc_bbox.maxY),
-                    is_normalized=True,
+                    is_normalized=existing.bounding_box.is_normalized,
                 )
                 existing.text = letter
                 existing.bounding_box = cap_bbox
@@ -778,8 +851,11 @@ def _next_word_attached_to_drop_cap(
             continue
         gap = wb.minX - cap_bb.maxX
         # Tight gap: drop cap is visually fused with the next word. Allow a
-        # small negative gap (overlap) up to ~25% of the cap's width.
-        max_gap = max(2.5 * body_h, 0.04)
+        # small negative gap (overlap) up to ~25% of the cap's width. The
+        # ``0.04`` floor is unit-space (page width = 1.0); scale it by
+        # ``metrics.coord_w`` so it's a real fallback on a pixel-domain page
+        # too, not a floor that's already below zero pixels.
+        max_gap = max(2.5 * body_h, 0.04 * metrics.coord_w)
         min_gap = -0.25 * cap_bb.width
         if gap > max_gap or gap < min_gap:
             continue

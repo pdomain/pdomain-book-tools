@@ -169,7 +169,6 @@ reasoning.
 - **[Medium]** [docs/issues/ carries two record sets that describe the same work twice](./2026-08-07-duplicate-issue-records-after-rebase.md) — reconcile the two lists above
 - **[Medium]** [reorganize_page_utils branch coverage thin on high-risk heuristics](./2026-07-21-reorganize-branch-unit-coverage.md) — plan `B4`
 - **[Medium]** [DocTR and Tesseract OCR ingress omit explicit is_normalized flags](./2026-07-21-ocr-ingress-is-normalized-explicit.md) — plan `C1 / S6`
-- **[Medium]** [drop-cap path forces is_normalized=True and unit-space thresholds](./2026-07-21-dropcap-coordinate-domain.md) — plan `C2 / S6`
 - **[Medium]** [BoundingBox.center and contains_point weaken is_normalized discipline](./2026-07-21-geometry-primitive-flag-hygiene.md) — plan `C3 / S7`
 - **[Medium]** [geometry_correction dual gate and docs disagree; grid map_points unsupported](./2026-07-21-geometry-correction-gate-and-docs.md) — plan `C4 / S7`
 - **[Medium]** [HEIF/AVIF identify then fail on cv2 load; writes ignore imwrite success](./2026-07-21-image-io-heif-write-failures.md) — plan `C5 / S8`; load + write defects fixed 2026-09-19, opencv-cuda dependency-honesty defect still open
@@ -202,6 +201,7 @@ reasoning.
 - [README OCR orientation examples](./2026-07-21-readme-ocr-orientation-examples.md) — plan `A5 / S0` (2026-07-21)
 - [roadmap / intent-map backlog sync](./2026-07-21-roadmap-intent-map-backlog-sync.md) — plan `D3 / S0` (2026-07-21)
 - [reorganize band classify coordinate-domain thresholds](./2026-07-21-reorganize-coord-domain-thresholds.md) — plan `A1 / S1` (2026-07-21)
+- [drop-cap path forces is_normalized=True and unit-space thresholds](./2026-07-21-dropcap-coordinate-domain.md) — plan `C2 / S6` (2026-09-19)
 
 These reports are resolved but still in the tree. Under the current rule each
 one is deleted once anything durable is promoted and a tombstone is written to

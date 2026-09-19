@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import pytest
 
@@ -42,12 +42,67 @@ if TYPE_CHECKING:
 FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures" / "layout_regression"
 INPUT_DIR = FIXTURE_ROOT / "inputs"
 
+# Recursive JSON value type for walking a decoded fixture in place.
+_JsonValue: TypeAlias = (
+    "dict[str, _JsonValue] | list[_JsonValue] | str | float | bool | None"
+)
+
 
 def _load_and_reorganize(case: str) -> Page:
     cv2 = pytest.importorskip("cv2")
     doc = Document.from_dict(
         json.loads((INPUT_DIR / f"{case}.json").read_text(encoding="utf-8"))
     )
+    page = doc.pages[0]
+    page.cv2_numpy_page_image = cv2.imread(str(INPUT_DIR / f"{case}.png"))
+    page.refine_bounding_boxes()
+    page.reorganize_page(drop_layout_words=True)
+    return page
+
+
+def _rewrite_bboxes_to_pixel_domain(
+    node: _JsonValue, width: float, height: float
+) -> None:
+    """Recursively rewrite a fixture's normalized bounding boxes in place to
+    pixel-domain coordinates.
+
+    Mimics what the Tesseract ingress path actually produces
+    (``Document._tesseract_bbox`` builds every ``Word`` bbox from raw
+    Tesseract L/T/W/H pixel columns via ``BoundingBox.from_ltwh``, with no
+    normalization step), as opposed to the DocTR-normalized ``[0, 1]``
+    fixtures the rest of this module exercises.
+    """
+    if isinstance(node, dict):
+        if "top_left" in node and "bottom_right" in node:
+            for corner in ("top_left", "bottom_right"):
+                point = node[corner]
+                assert isinstance(point, dict)
+                x, y = point["x"], point["y"]
+                assert isinstance(x, (int, float))
+                assert isinstance(y, (int, float))
+                point["x"] = x * width
+                point["y"] = y * height
+                point["is_normalized"] = False
+            node["is_normalized"] = False
+        for value in node.values():
+            _rewrite_bboxes_to_pixel_domain(value, width, height)
+    elif isinstance(node, list):
+        for item in node:
+            _rewrite_bboxes_to_pixel_domain(item, width, height)
+
+
+def _load_and_reorganize_pixel_domain(case: str) -> Page:
+    """Load ``case`` like ``_load_and_reorganize``, but in pixel-domain
+    coordinates — the domain the Tesseract ingress path produces, as
+    opposed to DocTR's normalized ``[0, 1]`` fractions.
+    """
+    cv2 = pytest.importorskip("cv2")
+    data = json.loads((INPUT_DIR / f"{case}.json").read_text(encoding="utf-8"))
+    page_dict = data["pages"][0]
+    width = float(page_dict["width"])
+    height = float(page_dict["height"])
+    _rewrite_bboxes_to_pixel_domain(data, width, height)
+    doc = Document.from_dict(data)
     page = doc.pages[0]
     page.cv2_numpy_page_image = cv2.imread(str(INPUT_DIR / f"{case}.png"))
     page.refine_bounding_boxes()
@@ -104,6 +159,47 @@ def test_credulities_cursive_cap_S_recovered() -> None:
     assert line.text.startswith("SUPERSTITIONS"), (
         f"line.text={line.text!r}, expected to start with 'SUPERSTITIONS'"
     )
+
+
+def test_filial_duty_cursive_cap_O_recovered_pixel_domain() -> None:
+    """Same fixture as ``test_filial_duty_cursive_cap_O_recovered``, but with
+    every bounding box in pixel-domain coordinates — the domain the
+    Tesseract ingress path actually produces (``Document._tesseract_bbox``),
+    not DocTR's normalized ``[0, 1]`` fractions.
+
+    Regression for the coordinate-domain bug: unit-space indent-delta
+    constants (tuned for a page width of ``1.0``) were compared directly
+    against raw pixel ``minX`` values, so the geometric trigger's ceiling
+    sat a fraction of a pixel past the body-left margin and every real
+    pixel-domain drop cap was silently rejected before the CC scan ever
+    ran.
+    """
+    page = _load_and_reorganize_pixel_domain("chapter-head-filial-duty")
+    drop_caps = [w for w in page.words if "drop cap" in (w.word_components or [])]
+    assert len(drop_caps) == 1, (
+        f"expected exactly 1 drop-cap-tagged Word in the pixel-domain path, "
+        f"got {len(drop_caps)}: {[(w.text, w.word_components) for w in drop_caps]}"
+    )
+    cap = drop_caps[0]
+    assert cap.text == "O", f"cap text={cap.text!r}, expected 'O'"
+    assert cap.bounding_box.is_normalized is False, (
+        "cap bbox must stay in the page's own pixel coordinate domain, not "
+        "be forced to normalized"
+    )
+    line, words = _line_holding(page, lambda w: w is cap)
+    assert line is not None, "cap word missing from final lines"
+    assert words is not None
+    assert words[0] is cap, "cap should be the first word in the line"
+    body = words[1]
+    assert body.text == "NCE", f"body word={body.text!r}"
+    assert "drop cap" not in (body.word_components or []), (
+        "body word must NOT carry the drop cap tag — only the cap itself"
+    )
+    assert cap.bounding_box.maxX <= body.bounding_box.minX, (
+        f"cap bbox should be left of body bbox: cap maxX={cap.bounding_box.maxX:.4f}, "
+        f"body minX={body.bounding_box.minX:.4f}"
+    )
+    assert line.text.startswith("ONCE"), f"line.text={line.text!r}"
 
 
 def test_filial_duty_cursive_cap_O_recovered() -> None:
