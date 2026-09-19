@@ -94,6 +94,7 @@ def test_public_models_includes_full_set():
         "OCRModelProvenance",
         "OCRProvenance",
         "Character",
+        "GlyphAnnotations",
         "Word",
         "Block",
         "Page",
@@ -296,3 +297,30 @@ def test_emit_page_layout_roundtrip():
     assert restored.detector == "test-detector"
     assert len(restored.regions) == 1
     assert restored.regions[0].type == RegionType.text
+
+
+# ---------------------------------------------------------------------------
+# docs/issues/2026-07-21-schema-emit-and-path-hygiene.md: GlyphAnnotations
+# must be present in PUBLIC_MODELS -- it carries the ``any_schema`` glyph
+# structure on Word (``Word.glyph_annotations``) and codegen consumers need
+# its shape.
+# ---------------------------------------------------------------------------
+
+
+def test_public_models_includes_glyph_annotations():
+    """GlyphAnnotations is public API (attached to Word) and must appear in
+    PUBLIC_MODELS."""
+    names = {cls.__name__ for cls in PUBLIC_MODELS}
+    assert "GlyphAnnotations" in names, (
+        "GlyphAnnotations backs Word.glyph_annotations but is missing from "
+        "PUBLIC_MODELS in schemas/emit.py"
+    )
+
+
+def test_emit_glyph_annotations_schema_has_expected_fields():
+    """GlyphAnnotations schema exposes ligatures, long_s_positions, swash, source."""
+    schemas = emit_schemas()
+    assert "GlyphAnnotations" in schemas
+    props = schemas["GlyphAnnotations"].get("properties", {})
+    for field in ("ligatures", "long_s_positions", "swash", "source"):
+        assert field in props, f"GlyphAnnotations schema missing field {field!r}"

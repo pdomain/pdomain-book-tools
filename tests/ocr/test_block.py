@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -774,6 +775,30 @@ def test_block_from_dict_roundtrip_with_null_bounding_box() -> None:
     assert rt.child_type == BlockChildType.WORDS
     assert rt.block_category == BlockCategory.LINE
     assert rt.items == []
+
+
+def test_block_from_dict_restores_unmatched_ground_truth_words_as_tuples(
+    sample_block1: Block,
+) -> None:
+    """``unmatched_ground_truth_words`` must be tuples after a JSON round-trip.
+
+    ``json.dumps``/``json.loads`` turns each ``(int, str)`` tuple into a
+    ``[int, str]`` list (JSON has no tuple type). ``Block.from_dict`` must
+    restore 2-tuples so the declared type,
+    ``list[tuple[int, str]] | None``, holds at runtime — mirroring
+    ``Page.from_dict``'s ``gt_orphans.lines`` restoration for the identical
+    hazard.
+    """
+    sample_block1.unmatched_ground_truth_words = [(0, "unmatched1"), (2, "unmatched2")]
+    json_roundtripped = cast(
+        "dict[str, object]", json.loads(json.dumps(sample_block1.to_dict()))
+    )
+
+    rt = Block.from_dict(json_roundtripped)
+
+    assert rt.unmatched_ground_truth_words == [(0, "unmatched1"), (2, "unmatched2")]
+    for entry in rt.unmatched_ground_truth_words:
+        assert isinstance(entry, tuple)
 
 
 def test_refine_bounding_boxes_empty() -> None:
