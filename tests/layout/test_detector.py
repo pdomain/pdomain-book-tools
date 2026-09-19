@@ -156,6 +156,57 @@ class TestRegistry:
         with pytest.raises(TypeError, match="extra keyword arguments"):
             get_detector("none", min_area_frac=0.01)
 
+    def test_pp_doclayout_security_kwargs_forwarded(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # The adapter accepts trust_remote_checkpoint / local_files_only /
+        # revision (air-gapped and revision-pinned deployments need these),
+        # but the registry's builtin branch used to reject *any* extra
+        # kwarg for "pp-doclayout-plus-l" before ever reaching the adapter.
+        import pdomain_book_tools.layout.adapters.pp_doclayout as pp_doclayout_mod
+        from pdomain_book_tools.layout.registry import _TimingDetector
+
+        received: dict[str, object] = {}
+
+        class _StubDetector:
+            def __init__(
+                self,
+                device: str = "cpu",
+                confidence: float = 0.5,
+                checkpoint_path: str | None = None,
+                revision: str | None = None,
+                *,
+                local_files_only: bool = False,
+                trust_remote_checkpoint: bool = False,
+            ) -> None:
+                received["device"] = device
+                received["confidence"] = confidence
+                received["checkpoint_path"] = checkpoint_path
+                received["revision"] = revision
+                received["local_files_only"] = local_files_only
+                received["trust_remote_checkpoint"] = trust_remote_checkpoint
+
+            def detect(self, source: object) -> PageLayout:
+                raise NotImplementedError
+
+        monkeypatch.setattr(pp_doclayout_mod, "PPDocLayoutPlusLDetector", _StubDetector)
+
+        det = get_detector(
+            "pp-doclayout-plus-l",
+            revision="abc123",
+            local_files_only=True,
+            trust_remote_checkpoint=True,
+        )
+
+        assert isinstance(det, _TimingDetector)
+        assert received["revision"] == "abc123"
+        assert received["local_files_only"] is True
+        assert received["trust_remote_checkpoint"] is True
+
+    def test_pp_doclayout_unknown_kwarg_rejected(self) -> None:
+        with pytest.raises(TypeError, match="unexpected keyword arguments"):
+            get_detector("pp-doclayout-plus-l", not_a_real_kwarg=1)
+
     def test_concurrent_get_detector_builds_once(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:

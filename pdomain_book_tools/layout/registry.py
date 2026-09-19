@@ -74,6 +74,16 @@ _CONTOUR_DETECTOR_KWARGS = (
     "close_kernel_px",
 )
 
+# Security / provenance knobs accepted by PPDocLayoutPlusLDetector beyond
+# device/confidence/checkpoint_path (which get_detector already threads
+# through positionally). See pdomain_book_tools.layout.adapters.pp_doclayout
+# for what each one does.
+_PP_DOCLAYOUT_DETECTOR_KWARGS = (
+    "revision",
+    "local_files_only",
+    "trust_remote_checkpoint",
+)
+
 
 def _assert_hashable_kwargs(kwargs: dict[str, object], context: str) -> None:
     """Raise ``TypeError`` early when any kwarg value is not hashable.
@@ -130,10 +140,24 @@ def _build(
             PPDocLayoutPlusLDetector,
         )
 
+        pp_doclayout_kwargs = {
+            k: v for k, v in extra_kwargs.items() if k in _PP_DOCLAYOUT_DETECTOR_KWARGS
+        }
+        unknown = set(extra_kwargs) - set(_PP_DOCLAYOUT_DETECTOR_KWARGS)
+        if unknown:
+            raise TypeError(
+                "PPDocLayoutPlusLDetector got unexpected keyword arguments: "
+                f"{sorted(unknown)}"
+            )
+        # ``pp_doclayout_kwargs`` values are typed ``object`` (user-supplied
+        # via **detector_kwargs); PPDocLayoutPlusLDetector's params are
+        # heterogeneous str/bool, so a ``**`` spread cannot be statically
+        # checked.
         return PPDocLayoutPlusLDetector(
             device=device,
             confidence=confidence,
             checkpoint_path=checkpoint_path,
+            **pp_doclayout_kwargs,  # pyright: ignore[reportArgumentType]
         )
     factory = _USER_DETECTORS.get(key)
     if factory is not None:
@@ -168,6 +192,12 @@ def get_detector(
     are forwarded to ``ContourDetector`` and *do* participate in the
     cache key.
 
+    For ``"pp-doclayout-plus-l"``, the security/provenance kwargs
+    ``revision``, ``local_files_only``, and ``trust_remote_checkpoint``
+    are forwarded to ``PPDocLayoutPlusLDetector`` and participate in the
+    cache key, so distinct revisions or trust settings memoise to
+    distinct instances.
+
     ``on_error`` controls how build failures are surfaced. The default
     ``"raise"`` re-raises the underlying exception (network error,
     missing weights, OOM during model load, unknown key) — appropriate
@@ -192,6 +222,21 @@ def get_detector(
         # own tunables are what matter, so include them.
         _assert_hashable_kwargs(detector_kwargs, f"get_detector({key!r})")
         cache_key = (key, device, 0.0, None, *tuple(sorted(detector_kwargs.items())))
+    elif key == "pp-doclayout-plus-l":
+        # Unlike ``contour``, device/confidence/checkpoint_path are all
+        # meaningful for the model adapter, so they stay in the cache key
+        # as-is; the security/provenance kwargs (revision,
+        # local_files_only, trust_remote_checkpoint) fold in the same way
+        # user-registered detectors' extra kwargs do, so distinct
+        # revisions/trust settings memoise to distinct instances.
+        _assert_hashable_kwargs(detector_kwargs, f"get_detector({key!r})")
+        cache_key = (
+            key,
+            device,
+            confidence,
+            checkpoint_path,
+            *tuple(sorted(detector_kwargs.items())),
+        )
     elif key in _USER_DETECTORS:
         # User-registered detectors may take extra kwargs; fold them into
         # the cache key the same way ``contour`` does so distinct tunings
