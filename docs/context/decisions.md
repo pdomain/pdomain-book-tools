@@ -471,7 +471,7 @@ Kind: context
 - Old path: docs/issues/2026-05-11-gh-043-style-review-detect-subprocess-failure.md
 - Outcome: implemented outside this repo
 - Superseded by: N/A
-- Removal commit: (fill after commit)
+- Removal commit: b73311ecbb1320572bb82d0877f3eaeefa72cf72
 - Rationale kept: `ConcaveTrillion/ocr-container-meta#1` closed as completed on 2026-05-11. Its cutover commit `2bf4310` (2026-05-15) deleted `scripts/style-review-detect.py`, so the script no longer exists anywhere.
 - Remaining work: none
 
@@ -480,7 +480,7 @@ Kind: context
 - Old path: docs/issues/2026-05-17-gh-054-monthly-grooming.md, docs/issues/2026-05-17-gh-065-decompose-spec-flags.md
 - Outcome: abandoned
 - Superseded by: N/A
-- Removal commit: (fill after commit)
+- Removal commit: b73311ecbb1320572bb82d0877f3eaeefa72cf72
 - Rationale kept: both describe the old `/workspaces/ocr-container` workflow kept in `ConcaveTrillion/ocr-container-meta`. That repo's last push was 2026-06-06. The current workspace at `/mnt/work/projects/pdomain` has no grooming job and no decompose-spec command. Cross-repo work is now filed under `docs/issues/`.
 - Remaining work: none
 
@@ -489,7 +489,7 @@ Kind: context
 - Old path: docs/issues/2026-05-17-gh-077-workspace-agent-definitions.md, docs/issues/2026-05-17-gh-094-pd-ui-agent-definition.md, docs/issues/2026-05-17-gh-095-pd-ui-docs-agent-definition.md, docs/issues/2026-05-17-gh-096-pd-ocr-ops-agent-definition.md, docs/issues/2026-05-17-gh-097-pd-ocr-ops-docs-agent-definition.md, docs/issues/2026-05-17-gh-098-workspace-routing-table.md
 - Outcome: implemented outside this repo, then retired with that workflow
 - Superseded by: N/A
-- Removal commit: (fill after commit)
+- Removal commit: b73311ecbb1320572bb82d0877f3eaeefa72cf72
 - Rationale kept: `ConcaveTrillion/ocr-container-meta` holds `.claude/agents/pdomain-ui.md`, `pdomain-ui-docs.md`, `pdomain-ops.md` and `pdomain-ops-docs.md`, renamed from `pd-*` in commit `036073f` (2026-05-26). Its `CLAUDE.md` routing table lists `pdomain-ui/` and `pdomain-ops/`. So the claims were true. That workspace is no longer used.
 - Remaining work: none
 
@@ -498,7 +498,7 @@ Kind: context
 - Old path: docs/issues/2026-05-29-gh-226-release-batch-predictor-kwargs.md
 - Outcome: implemented
 - Superseded by: N/A
-- Removal commit: (fill after commit)
+- Removal commit: b73311ecbb1320572bb82d0877f3eaeefa72cf72
 - Rationale kept: `det_bs` and `reco_bs` are keyword arguments in `pdomain_book_tools/ocr/doctr_support.py`, tested in `tests/ocr/test_doctr_support.py`. Commit `5585d27` is in every tag from v0.15.0 to v0.30.1. The live index at `https://pdomain.github.io/pdomain-index-pip/simple/` serves the 0.30.1 wheel and sdist. `pdomain-ocr-cli` and `pdomain-ocr-simple-gui` pin `pdomain-book-tools==0.30.1` from that index.
 - Remaining work: none
 
@@ -507,6 +507,6 @@ Kind: context
 - Old path: docs/issues/2026-08-08-dep-refresh-cannot-auto-land.md
 - Outcome: abandoned; the defect no longer exists
 - Superseded by: N/A
-- Removal commit: (fill after commit)
+- Removal commit: b73311ecbb1320572bb82d0877f3eaeefa72cf72
 - Rationale kept: commit `67a714b` removed the GitHub workflows, including dep-refresh and the required `ci` check. On 2026-11-07 the GitHub API returned 404 "Branch not protected" for `master`. Whether a replacement CI gate is wanted stays in docs/issues/2026-07-21-gpu-slow-ci-strategy.md.
 - Remaining work: six stale `dep-refresh/*` branches (2026-08-09 to 2026-09-13) remain on the remote, and `delete_branch_on_merge` is still false.
