@@ -85,6 +85,18 @@ wrongly cites SuppliedPageSide while table lists gutter_shadow default.
 - Image-only pipeline still runs deskew/dewarp backends when gates pass.
 - Protocol/registry structure is sound.
 
+### Progress (2026-11-07)
+
+The docs half is done. `docs/usage/geometry-correction.md` and
+`docs/architecture/geometry-correction.md` now say that the regime picks the
+backend and the curvature recommendation turns dewarp on. The usage doc also
+says that grid `map_points` raises `NotImplementedError`, that a missing backend
+leaves `result.dewarp` as `None`, and that zero-confidence textline dewarp
+applies an identity transform. The page-side hint paragraph now names
+`GutterShadowPageSide`. Still open: whether to implement grid `map_points`, and
+whether `PipelineResult` should tell a skip from an identity no-op. Both need
+code.
+
 ## Resolution
 
 *Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the

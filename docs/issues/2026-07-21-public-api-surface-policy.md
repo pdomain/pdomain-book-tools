@@ -79,6 +79,16 @@ paths not fully pinned.
 - Listed top-level re-exports are identity-tested.
 - Local model round-trips remain strong.
 
+### Progress (2026-11-07)
+
+The docs half is done. `docs/usage/public-api.md` now lists `Document`, the
+`ocr` package names, `geometry_correction`, `hf`, `schemas.emit` and the
+`Typography*` names, and every added import runs. It says that every path on
+the page is supported and anything else is internal. Still open:
+`tests/test_public_api.py` does not pin `geometry_correction`, `hf`, the `ocr`
+package names or `Document`, and the `__all__` expansion for `layout` and `hf`
+is not done.
+
 ## Resolution
 
 *Open.* When fixed: set frontmatter + Agent Index `Status: retired`, link the

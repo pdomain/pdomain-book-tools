@@ -275,13 +275,13 @@ clean-debug: ## Remove all timestamped debug runs from layout_regression/debug/
 	  echo "ℹ️  $$DEBUG does not exist; nothing to clean."; \
 	fi
 
-release-patch: ## Release: bump patch, run ci-slow, tag, push (fires GitHub Release workflow; e.g. v0.10.0 → v0.10.1)
+release-patch: ## Release: bump patch, run ci-slow, tag, push, build, create GitHub Release locally with gh (e.g. v0.10.0 → v0.10.1)
 	@$(MAKE) --no-print-directory _do-release BUMP=patch
 
-release-minor: ## Release: bump minor, run ci-slow, tag, push (fires GitHub Release workflow; e.g. v0.10.0 → v0.11.0)
+release-minor: ## Release: bump minor, run ci-slow, tag, push, build, create GitHub Release locally with gh (e.g. v0.10.0 → v0.11.0)
 	@$(MAKE) --no-print-directory _do-release BUMP=minor
 
-release-major: ## Release: bump major, run ci-slow, tag, push (fires GitHub Release workflow; e.g. v0.10.0 → v1.0.0)
+release-major: ## Release: bump major, run ci-slow, tag, push, build, create GitHub Release locally with gh (e.g. v0.10.0 → v1.0.0)
 	@$(MAKE) --no-print-directory _do-release BUMP=major
 
 layout-fork-info: ## Show pinned layout SHA + upstream / fork latest SHAs (warns on real file drift; never fails)
@@ -345,8 +345,8 @@ layout-fork-pin: ## Pin a SHA into pp_doclayout.py (usage: make layout-fork-pin 
 
 # scripts/do-release.sh handles repo-state guards, runs the ci-slow
 # pre-flight, computes the next three-component tag from the latest v*
-# tag, creates the annotated tag, and pushes the release branch + tag
-# (which fires .github/workflows/release.yml).
+# tag, creates the annotated tag, pushes the release branch + tag, builds,
+# and creates the GitHub Release locally with gh.
 # Pass FORCE=1 to skip the repo-state guards (pre-flight still runs).
 # Pass SKIP_PUSH=1 to create the tag locally without pushing.
 # Pass RELEASE_BRANCH to override the default branch when needed.

@@ -94,9 +94,9 @@ Open work is one line plus the path of its issue or plan. The same list is the [
 - Reorganize branch coverage is still thin on plate noise, column strategy, and floated captions. [branch coverage](2026-07-21-reorganize-branch-unit-coverage.md). Plan theme B4.
 - DocTR and Tesseract ingress still omit an explicit `is_normalized` flag. [OCR ingress](2026-07-21-ocr-ingress-is-normalized-explicit.md). Plan theme C1.
 - `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. [geometry flags](2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
-- Geometry-correction docs and the dual gate still disagree, and grid `map_points` is unsupported. [geometry gate](2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
+- Grid `map_points` is unsupported, and `PipelineResult` cannot tell a dewarp skip from an identity no-op. The docs are fixed. [geometry gate](2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
 - HEIF and AVIF load and write failures are fixed. The `opencv-cuda` dependency-honesty part is not. [image I/O](2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
-- `docs/usage/public-api.md` is narrower than the surface the README teaches. [public API](2026-07-21-public-api-surface-policy.md). Plan theme D1.
+- The public API page now matches the README, but `tests/test_public_api.py` does not pin the added names. [public API](2026-07-21-public-api-surface-policy.md). Plan theme D1.
 - No doc yet says which model owns provenance; the glyph schema emit and Block tuple restore are fixed. [schema emit](2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
 - Greenfield specs are blocked on owner decisions. [decision pack](2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
 - Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
@@ -115,13 +115,9 @@ Open work is one line plus the path of its issue or plan. The same list is the [
 - Checkpoint loading still lacks size, checksum, and safetensors limits. [gh-165](2026-05-22-gh-165-checkpoint-hardening.md).
 - Strict image validation for untrusted inputs is open. [gh-191](2026-05-22-gh-191-strict-image-validation.md).
 - Advisory static scanners are not added. [gh-201](2026-05-22-gh-201-advisory-static-scanners.md).
-- `det_bs` and `reco_bs` are in git history. The registry cutover is unverified. [gh-226](2026-05-29-gh-226-release-batch-predictor-kwargs.md).
 - OCR entry points have no progress callback. [progress hook](2026-08-08-ocr-progress-hook.md).
 - Two issue-record sets still describe the same clusters. [duplicate records](2026-08-07-duplicate-issue-records-after-rebase.md).
 - GPU and slow-path CI strategy. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6.
-- Dep-refresh cannot auto-land. The issue describes a required `ci` status from workflows that are gone. Branch protection was not re-checked. [dep-refresh](2026-08-08-dep-refresh-cannot-auto-land.md).
 - Five workspace repos have had no CI since 2026-07-12. [actions disabled](2026-08-08-actions-disabled-five-repos.md).
-- Workspace process claims are unverified. [gh-054](2026-05-17-gh-054-monthly-grooming.md), [gh-065](2026-05-17-gh-065-decompose-spec-flags.md), [gh-077](2026-05-17-gh-077-workspace-agent-definitions.md), [gh-094](2026-05-17-gh-094-pd-ui-agent-definition.md), [gh-095](2026-05-17-gh-095-pd-ui-docs-agent-definition.md), [gh-096](2026-05-17-gh-096-pd-ocr-ops-agent-definition.md), [gh-097](2026-05-17-gh-097-pd-ocr-ops-docs-agent-definition.md), [gh-098](2026-05-17-gh-098-workspace-routing-table.md).
-- The style-review subprocess failure disposition is external. [gh-043](2026-05-11-gh-043-style-review-detect-subprocess-failure.md).
 
 Coverage and process ratchet choices in plan theme J have no separate issue file. They stay in the continued-work plan.

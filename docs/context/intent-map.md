@@ -122,10 +122,7 @@ The open list is the [roadmap](../plans/roadmap.md). The [issue index](../issues
 - Resolve migrated owner-decision records through the
   [issue index](../issues/README.md). A closed GitHub source does not close the local file.
 - GPU and slow-path CI. [gpu-slow-ci-strategy](../issues/2026-07-21-gpu-slow-ci-strategy.md) describes GitHub workflows removed in `67a714b`. This pass did not prove that a replacement gate was chosen or built.
-- Dep-refresh auto-land. [dep-refresh](../issues/2026-08-08-dep-refresh-cannot-auto-land.md) describes a required `ci` status from workflows that are gone. Branch protection was not re-checked from this repo.
 - Five workspace repos and CI. [actions-disabled](../issues/2026-08-08-actions-disabled-five-repos.md) is cross-repo. This pass did not prove those repositories now run CI.
-- Workspace process claims. [gh-043](../issues/2026-05-11-gh-043-style-review-detect-subprocess-failure.md), [gh-054](../issues/2026-05-17-gh-054-monthly-grooming.md), [gh-065](../issues/2026-05-17-gh-065-decompose-spec-flags.md), [gh-077](../issues/2026-05-17-gh-077-workspace-agent-definitions.md), and [gh-094](../issues/2026-05-17-gh-094-pd-ui-agent-definition.md) through [gh-098](../issues/2026-05-17-gh-098-workspace-routing-table.md) ask for checks outside this repository. The files stay.
-- Predictor batch-size release. [gh-226](../issues/2026-05-29-gh-226-release-batch-predictor-kwargs.md) says `det_bs` and `reco_bs` are in git history and the registry cutover is still unverified.
 
 ## Legacy-unverified sweep
 

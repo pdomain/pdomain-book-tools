@@ -21,7 +21,7 @@ Level: I1
 - **Read when:** a workflow will not fire, a repo reports no check runs, or you are deciding where cross-cut work is tracked
 - **Search terms:** actions disabled, no CI, dep-refresh never ran, 2026-07-12 sweep, cross-cut, workspace-wide
 - **Relates to:** [issues index](README.md),
-  [dep-refresh cannot auto-land](2026-08-08-dep-refresh-cannot-auto-land.md)
+  dep-refresh cannot auto-land (retired 2026-11-07, see [decisions](../context/decisions.md))
 
 ## Summary
 

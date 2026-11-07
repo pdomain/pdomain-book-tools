@@ -51,19 +51,14 @@ output for debugging.
 - 0.11.0: `cupy-cuda12x`/`opencv-cuda` moved to `[project.optional-dependencies].gpu`.
 - `aspect_ratio` param removed from `rescale_image` family; aspect shaping done downstream via `map_content_onto_scaled_canvas`.
 
-## GH issues
+## Issues
 
-Cross-cut work tasks are tracked as GH issues in
-**`ConcaveTrillion/ocr-container-meta`** (not in this repo's own tracker).
-Plans under `docs/plans/` in the workspace root are synced there
-via `/decompose-spec --sync`. Milestone naming: `spec: <plan-basename> (#N)`.
-
-When shipping a plan task:
-
-- Before starting: `gh issue view <N> --repo ConcaveTrillion/ocr-container-meta`
-- After completing: `gh issue close <N> --repo ConcaveTrillion/ocr-container-meta`
-- List open tasks:
-  `gh issue list --repo ConcaveTrillion/ocr-container-meta --milestone "spec: <name> (#N)" --state open`
+Work is tracked as Markdown files in `docs/issues/`, including items that cut
+across several `pdomain-*` repos. The open list is
+[`docs/issues/README.md`](docs/issues/README.md). GitHub Issues is disabled on
+this repo. `ConcaveTrillion/ocr-container-meta` was the tracker for the old
+`/workspaces/ocr-container` workspace. Its last push was 2026-06-06, and it is
+no longer used.
 
 ## docs/ folder
 
@@ -116,19 +111,18 @@ change any step below.
    `plans/` (the work plan), `specs/` (design specs — follow any `Spec:`
    pointer from the issue), `research/` (prior investigations), `decisions/`
    (ADRs / constraints), `architecture/` (shipped design).
-4. **Check live issue status.** `gh issue view <N> --repo <owner/repo>` —
-   confirm it isn't already closed; note its milestone.
+4. **Check issue status.** Read the issue file under `docs/issues/` and
+   confirm it is still open.
 5. **Check for in-flight work.** Open PRs and existing branches touching the
    same area, to avoid colliding with work-in-progress.
 6. **Consult agent memory.** `.claude/agent-memory/<repo>/feedback_*.md` for
    corrections not yet promoted to `CONVENTIONS.md`.
 7. **Locate code with `Explore` first.** Use an `Explore` subagent to find
    relevant files before broad `Read`/grep.
-8. **Isolate in a worktree.** Never work directly in the interactive checkout
-   at `/workspaces/ocr-container/<repo>/`. Use the `using-git-worktrees` skill
-   to set up an isolated worktree. When delegating to a full-power
-   implementation agent, pass `isolation: "worktree"` on the `Agent` call
-   (skip for `-docs` agents and the `driver` agent). When an agent returns a
+8. **Isolate in a worktree.** Never work directly in the main checkout.
+   Use the `using-git-worktrees` skill to set up an isolated worktree. When
+   delegating to an implementation agent, pass `isolation: "worktree"` on the
+   `Agent` call. When an agent returns a
    worktree path + branch, use the `finishing-a-development-branch` skill to
    decide how to integrate.
 9. **TDD.** Write the failing test first where the plan calls for it.

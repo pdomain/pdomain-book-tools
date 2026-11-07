@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-06
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -12,7 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-07
 - **Read when:** changing deskew, dewarp, page-side detection, curvature
   routing, transforms, or CPU/GPU parity.
 - **Search terms:** geometry correction, deskew, dewarp, textline disparity,
@@ -28,8 +28,9 @@ uses owned in-process backends instead of shelling out to image or PDF tools.
 
 Projection and Sbrunner are the shipped fine-deskew backends. Coarse
 orientation remains an OCR concern, not a deskew backend. The scanned pipeline
-routes flat, flat-curl, and oblique pages separately. Expensive dewarp runs
-only when the measured regime needs it.
+routes flat, flat-curl, and oblique pages separately. The regime picks which
+dewarp backend to use, or none. Dewarp runs only when the curvature
+measurement recommends it and the regime has picked a backend.
 
 Textline-disparity is the classical scanned-page dewarper. Its NumPy baseline
 and CuPy mirror preserve even/odd gutter handling, flat-scan fallback, and

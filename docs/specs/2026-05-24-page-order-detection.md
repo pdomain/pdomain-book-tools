@@ -76,7 +76,7 @@ detection side; `pdomain-prep-for-pgdp` owns the route and serialisation.
 
 | Signal | Source | Availability |
 |---|---|---|
-| Filename sequence number | `Page.source_path` basename, digit-run extraction | Always (if files have numeric names) |
+| Filename sequence number | Source filename basename, digit-run extraction. The source is an open question; see 7.2 | Only if a caller supplies filenames, and they are numeric |
 | OCR page number | `Page.blocks` — footer/header containing a bare integer | Only when page has been OCR'd and reorganised |
 | Visual similarity hash | Page thumbnail (derived from `Page.image_array` or a cached thumbnail) | Always (requires image access) |
 
@@ -211,10 +211,19 @@ pdomain_book_tools/
 ### 7.2 Signal implementations
 
 **filename_signal.py** — Extract the last continuous digit run from the
-basename of `Page.source_path`. For `IMG_0042.jpg`, that is `42`. Sort all
+basename of the page's source filename. For `IMG_0042.jpg`, that is `42`. Sort all
 pages by their extracted digit. Flag pairs where the sorted position differs
 from the list position by more than a configurable tolerance, which defaults
 to 2 positions. Return proposed swap pairs.
+
+**Open question: where the filename comes from.** `Page` has no `source_path`.
+It has `name`, `page_index`, and `page_id`. `Page.name` defaults to `None`, and
+no OCR ingestion code sets it, so it does not hold the filename unless the
+caller sets it. `Document.from_image_ocr_via_doctr` records the filename only
+as `Document.source_identifier`, one value for the whole `Document`. For a
+multi-image `Document` that value is empty. The caller must either set
+`Page.name` to the source filename before calling the module, or pass a list of
+filenames in page order. Pick one before implementation.
 
 **ocr_page_num.py** — Scan `Page.blocks` for blocks with
 `block_role_labels` containing `footer` or `header`. Within those blocks,

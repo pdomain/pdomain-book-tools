@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-06-02
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: usage
 ---
 
@@ -94,9 +94,12 @@ from pdomain_book_tools.geometry_correction import PageSide
 result = default_pipeline().run(img, page_side_hint=PageSide.LEFT)
 ```
 
-The pipeline's `SuppliedPageSide` backend uses the hint directly. For a left
-page, it gives `gutter_edge="right"` because the binding is on the right of a
-left-hand page.
+The default pipeline uses `GutterShadowPageSide`. It trusts its own shadow
+detection first. It falls back to the hint only when the shadow contrast is too
+weak, and then reports confidence 0.3. For a left page the hint gives
+`gutter_edge="right"` because the binding is on the right of a left-hand page.
+To trust the hint always, build a `GeometryPipeline` with the `supplied`
+backend (`SuppliedPageSide`).
 
 ## Register and use custom backends
 
@@ -130,12 +133,15 @@ Every backend returns an identity, affine, grid, or rectified
 ```python
 transform = result.deskew.transform
 corrected = transform.apply(img)          # apply to image
-pts_out = transform.map_points(pts)       # propagate keypoints
-inv = transform.invert()                  # invert (affine only)
+pts_out = transform.map_points(pts)       # propagate keypoints (not for grid)
+inv = transform.invert()                  # invert (affine, homography, identity)
 ```
 
-Grid transforms with `kind="grid"` are non-invertible because they come from
-dense backward-map dewarpers. Affine transforms invert exactly.
+`map_points` works for identity, affine, and homography transforms. It raises
+`NotImplementedError` for grid transforms (`kind="grid"`), so keypoints and OCR
+boxes are not remapped after a dewarp. Grid transforms are also non-invertible
+because they come from dense backward-map dewarpers. Affine transforms invert
+exactly.
 
 ## Dewarp scanned pages with textline disparity
 
@@ -163,6 +169,12 @@ requires no neural-network weights.
 | `flat_curl` | high sag, low convergence | `textline_disparity` |
 | `oblique` | high convergence | UVDoc (when available) |
 
+The regime only picks the dewarp backend name. It does not turn dewarp on. Dewarp
+runs only when the curvature detector also returns `recommended == "dewarp"`.
+If the regime names a backend that was not registered (for example `uvdoc`
+without `with_uvdoc=True`), no dewarp runs and `result.dewarp` is `None`.
+A `flat` page names no backend, so it also gets no dewarp.
+
 Use `scanned_pipeline()` for the regime-aware default:
 
 ```python
@@ -187,8 +199,10 @@ detected binding side.
 
 When fewer than `min_textlines=15` text lines survive the short-line cull,
 `TextlineDisparityDewarp.estimate()` returns an identity transform with
-`confidence=0.0`. This threshold is Leptonica's `DefaultMinLines`. The regime
-gate or caller can then defer to UVDoc or skip dewarp entirely.
+`confidence=0.0`. This threshold is Leptonica's `DefaultMinLines`. The pipeline
+does not skip dewarp on low confidence. It still applies that identity transform,
+which changes nothing, and `result.dewarp` is set. A caller that wants UVDoc or no
+dewarp must check `result.dewarp.confidence` itself.
 
 ### GPU acceleration (`[gpu]` extra)
 
