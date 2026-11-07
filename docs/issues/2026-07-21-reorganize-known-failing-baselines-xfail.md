@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-06
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-21
+- **Last verified:** 2026-11-06
 - **Resolution:** Open
 - **Severity:** High — false-green until closed or dated accept
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
@@ -108,6 +108,47 @@ the footer-role assembly.
 
 These are the only `strict=True` xfails in the repository. All five still fail
 as before, so none is stale.
+
+## A partial fix was tried and must not land (judged 2026-11-06)
+
+**Commit `ed54ecd` on branch `fix/caption-reading-order` fixes two of the three
+causes above in isolation, but it breaks other baselines and closes none of the
+five xfails.** Do not merge it. Redo the work with all three causes together.
+It is not the v0.30.1 caption change: that was `ee3be65`, which associates
+captions printed above a figure.
+
+The branch makes two edits:
+
+- `Block._sort_items` sorts a words block by printed line, not strictly by x.
+- `route_sidenote_reading_order` scales the block centre into pixels before it
+  compares it with the midline.
+
+Each edit fixes its own bug in a narrow test. Two printed lines packed into one
+caption block then read `now pallida, from Crateuas.` instead of `now from
+pallida, Crateuas.`. A right-margin sidenote in normalised coordinates, with a
+`bbox` of about 0.82–0.95 on a 1000px page, then goes to the bottom instead of
+the top, where `override_page_sort_order` -1000000 had pinned it.
+
+On the layout corpus in `tests/ocr/test_reorganize_page_utils_grouping.py`,
+neither edit is safe:
+
+- **Sorting by printed line changes nine locked baselines.** Dante, the
+  Parthenon steed, the herbal plate, the Beauvais chairs and the Asarum caption
+  become readable. But `catalog-multi-block-ads`, `text-wraps-around-figure` and
+  `sidenote-right-with-footnotes` also move words: `a`, and `Jean-` / `Démos-`.
+  The five target cases stay xfail.
+- **Scaling the sidenote centre breaks `contents-page`** on both the legacy and
+  the default-mode track. `PAGE` / `7` leaves the top of the page. A short block
+  mistagged as a sidenote had stayed at the top only because its normalised
+  centre was less than the pixel midline. The bug was hiding a misclassification.
+
+The branch leaves cause 3, `classify_and_paragraphize_blocks` misreading short
+caption and credit lines as sidenotes, untouched. The corpus run shows the
+first two edits need that fix alongside them. The next attempt should start
+there, then re-lock or re-check the nine moved baselines one by one.
+
+The branch stays in the repository so its diff can be read. The patch lives in
+`pdomain_book_tools/ocr/block.py` and `pdomain_book_tools/ocr/layout_aware_reorg.py`.
 
 ## Root-cause hypotheses
 
