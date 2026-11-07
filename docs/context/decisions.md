@@ -354,7 +354,7 @@ Kind: context
 - Old path: docs/plans/2026-08-22-pgdp-aware-matcher.md
 - Outcome: implemented
 - Superseded by: docs/architecture/pgdp-aware-matcher.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/pgdp-aware-matcher.md
 - Remaining work: source-data production and the SPA reader stay outside this package. Hyphen n-gram lookup is not part of decoding.
 
@@ -363,7 +363,7 @@ Kind: context
 - Old path: docs/specs/2026-08-22-pgdp-aware-matcher.md
 - Outcome: implemented
 - Superseded by: docs/architecture/pgdp-aware-matcher.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/pgdp-aware-matcher.md
 - Remaining work: none in this package. The spec's phase-one contract shipped as re-exports of `pdomain_book_contracts` with tests in this repo.
 
@@ -372,7 +372,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-reorganize-coord-domain-thresholds.md
 - Outcome: implemented
 - Superseded by: docs/architecture/reorganize-page-pipeline.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/reorganize-page-pipeline.md
 - Remaining work: none
 
@@ -381,7 +381,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-reorganize-early-return-skips-reconcile.md
 - Outcome: implemented
 - Superseded by: docs/architecture/reorganize-page-pipeline.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/reorganize-page-pipeline.md
 - Remaining work: none
 
@@ -390,7 +390,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-reorganize-soft-recover-untested.md
 - Outcome: implemented
 - Superseded by: docs/architecture/reorganize-page-pipeline.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/reorganize-page-pipeline.md
 - Remaining work: none
 
@@ -399,7 +399,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-reorganize-default-mode-not-baselined.md
 - Outcome: implemented
 - Superseded by: docs/architecture/layout-regression-fixture-corpus.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/layout-regression-fixture-corpus.md
 - Remaining work: five strict-xfail baselines remain open in docs/issues/2026-07-21-reorganize-known-failing-baselines-xfail.md
 
@@ -408,7 +408,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-layout-regression-harness-without-layout.md
 - Outcome: implemented
 - Superseded by: docs/architecture/layout-regression-fixture-corpus.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/layout-regression-fixture-corpus.md
 - Remaining work: the five strict xfails, same issue as the default-mode tombstone
 
@@ -417,7 +417,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-gpu-textline-foreground-polarity.md
 - Outcome: implemented
 - Superseded by: docs/architecture/geometry-correction.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/geometry-correction.md
 - Remaining work: none
 
@@ -426,7 +426,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-readme-ocr-orientation-examples.md
 - Outcome: implemented
 - Superseded by: docs/architecture/ocr-page-orientation.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: README examples and docs/architecture/ocr-page-orientation.md
 - Remaining work: none
 
@@ -435,7 +435,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-roadmap-intent-map-backlog-sync.md
 - Outcome: implemented
 - Superseded by: docs/plans/roadmap.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/plans/roadmap.md and docs/context/intent-map.md
 - Remaining work: none
 
@@ -444,7 +444,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-dropcap-coordinate-domain.md
 - Outcome: implemented
 - Superseded by: docs/architecture/reorganize-page-pipeline.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/reorganize-page-pipeline.md
 - Remaining work: drop-cap Iteration C heading cross-check is still open
 
@@ -453,7 +453,7 @@ Kind: context
 - Old path: docs/issues/2026-07-21-layout-registry-knobs-caption-above.md
 - Outcome: implemented
 - Superseded by: docs/architecture/pp-doclayout-trust-boundary.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/pp-doclayout-trust-boundary.md and docs/architecture/reorganize-page-pipeline.md
 - Remaining work: none
 
@@ -462,6 +462,6 @@ Kind: context
 - Old path: docs/issues/2026-09-18-word-merge-clears-the-whole-line-s-ground-truth.md
 - Outcome: implemented
 - Superseded by: docs/architecture/ocr-model-and-schema-boundaries.md
-- Removal commit: pending
+- Removal commit: 9cb8296f5648ce6cf43d21c5c708ffa81e26dd67
 - Rationale kept: docs/architecture/ocr-model-and-schema-boundaries.md
 - Remaining work: `split_word_at_fraction` still clears ground truth for the whole line on purpose
