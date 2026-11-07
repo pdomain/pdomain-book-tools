@@ -537,3 +537,39 @@ Kind: context
   2. A user's drag-drop reorder must not be flagged as an error. The caller
      passes the original ingest order, or the signal skips pages the user
      moved. Decide which in the gh-212 tests.
+
+### 2026-11-07 Retired: Archived deep-review handoff (2026-07-21)
+
+- Old path: docs/_archive/handoff/2026-07-21-143246-deep-review-continued-work.md
+- Outcome: superseded
+- Superseded by: N/A; its successor handoff is retired below
+- Removal commit: (fill after commit)
+- Rationale kept: The 2026-07-13 decision keeps retired docs in Git, not in an archive tree. `b5d5947` moved this handoff into `docs/_archive/` instead of deleting it.
+- Remaining work: none
+
+### 2026-11-07 Retired: Issue-tracker migration handoff
+
+- Old path: docs/handoff/2026-07-19-issue-tracker-migration.md
+- Outcome: implemented
+- Superseded by: [issues index](../issues/README.md)
+- Removal commit: (fill after commit)
+- Rationale kept: Its status was already complete. The migration ledger and the issues index hold its results.
+- Remaining work: none
+
+### 2026-11-07 Retired: Deep-review continued-work handoff (2026-08-07)
+
+- Old path: docs/handoff/2026-08-07-211601-deep-review-continued-work-after-origin-rebase.md
+- Outcome: superseded
+- Superseded by: [issues index](../issues/README.md) and [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md)
+- Removal commit: (fill after commit)
+- Rationale kept: Its state section was out of date: master was pushed, the backup branches were deleted on 2026-11-07, and `make ci AI=1` passes. Its open work, B3, Theme E and the duplicate records, is tracked in the issues index.
+- Remaining work: none beyond the issues index
+
+### 2026-11-07 Retired: Cross-repo CI and dependency-hygiene handoff (2026-08-08)
+
+- Old path: docs/handoff/2026-08-08-143320-cross-repo-ci-defects-and-dependency-hygiene.md
+- Outcome: superseded
+- Superseded by: [issues index](../issues/README.md)
+- Removal commit: (fill after commit)
+- Rationale kept: Decisions 1 and 2 were answered on 2026-11-07: gh-043 and the meta repo were retired, and the dep-refresh issue was retired. This repo's `AGENTS.md` now names `docs/issues/`. The other repos' meta pointers are filed as [agent pointers](../issues/2026-11-07-agent-docs-point-at-retired-meta-repo.md); the five merge gates stay in [actions disabled](../issues/2026-08-08-actions-disabled-five-repos.md).
+- Remaining work: Unverified leftovers it listed: ruff version skew in pdomain-ocr-labeler-spa, and whether Markdown is excluded from ruff the same way in every repo.

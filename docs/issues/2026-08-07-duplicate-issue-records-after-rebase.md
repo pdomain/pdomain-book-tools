@@ -87,7 +87,7 @@ Local `master` and `origin/master` shared no commits after `a7bff12` on
 produced the `gh-NNN` records. Local ran the 2026-07-21 deep review and
 produced the dated reports. Neither session could see the other's folder.
 
-The handoff at `docs/handoff/2026-07-19-issue-tracker-migration.md` names only
+The issue-tracker migration handoff of 2026-07-19, retired 2026-11-07, named only
 PRs #234–#236, because it was written before the last four merged. Confirm the
 full range against GitHub:
 

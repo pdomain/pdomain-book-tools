@@ -68,6 +68,7 @@ The [continued-work plan](2026-07-21-continued-work-from-deep-review.md) stays a
 - Two issue-record sets still describe the same clusters. [duplicate records](../issues/2026-08-07-duplicate-issue-records-after-rebase.md).
 - GPU and slow-path CI strategy. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](../issues/2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6.
 - Five workspace repos have had no CI since 2026-07-12. [actions disabled](../issues/2026-08-08-actions-disabled-five-repos.md).
+- Seven pdomain repos still point agents at the retired ocr-container-meta tracker. [agent pointers](../issues/2026-11-07-agent-docs-point-at-retired-meta-repo.md).
 
 ## Still out of scope
 

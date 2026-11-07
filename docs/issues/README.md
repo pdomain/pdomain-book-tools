@@ -119,5 +119,6 @@ Open work is one line plus the path of its issue or plan. The same list is the [
 - Two issue-record sets still describe the same clusters. [duplicate records](2026-08-07-duplicate-issue-records-after-rebase.md).
 - GPU and slow-path CI strategy. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6.
 - Five workspace repos have had no CI since 2026-07-12. [actions disabled](2026-08-08-actions-disabled-five-repos.md).
+- Seven pdomain repos still point agents at the retired ocr-container-meta tracker. [agent pointers](2026-11-07-agent-docs-point-at-retired-meta-repo.md).
 
 Coverage and process ratchet choices in plan theme J have no separate issue file. They stay in the continued-work plan.
