@@ -198,8 +198,6 @@ format: ## Format code
 # basedpyright is skipped here because `typecheck` runs it separately; running
 # it twice in one CI pass costs minutes. A caller's SKIP is appended rather than
 # discarded, so `SKIP=... make ci` works.
-# (pre-commit-update needs no entry: it is pinned to the manual stage in
-# .pre-commit-config.yaml, so neither this gate nor `git commit` invokes it.)
 COMMA := ,
 GATE_SKIP_HOOKS := basedpyright
 PRECOMMIT_SKIP := $(GATE_SKIP_HOOKS)$(if $(strip $(SKIP)),$(COMMA)$(strip $(SKIP)))
@@ -208,12 +206,10 @@ pre-commit-check: ## Run pre-commit on all files (skips basedpyright, which `typ
 	@echo "🪝 Running pre-commit on all files..."
 	SKIP=$(PRECOMMIT_SKIP) uv run pre-commit run --all-files
 
-update-hooks: ## Bump pinned pre-commit hook revisions in .pre-commit-config.yaml
-	@echo "⬆️  Updating pinned pre-commit hook revisions..."
-	@# The hook exits non-zero when it rewrites the config, which is the success
-	@# case here, so its status is not the target's status.
-	-@uv run pre-commit run pre-commit-update --all-files --hook-stage manual
-	@echo "✅ Hook revisions updated — review the .pre-commit-config.yaml diff."
+update-hooks: ## Bump pre-commit hooks to their latest releases, frozen to commit SHAs
+	@echo "⬆️  Updating pre-commit hook revisions (frozen to commit SHAs)..."
+	uv run pre-commit autoupdate --freeze
+	@echo "✅ Hook revisions updated — review upstream release notes and the .pre-commit-config.yaml diff."
 
 lint-check: ## Read-only ruff format+check on all files (no auto-fix; matches GitHub CI exactly)
 	@echo "🔍 Checking format and lint (read-only, full repo)..."

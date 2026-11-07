@@ -29,9 +29,13 @@ fixes, formatting, Markdown lint, and `uv lock --check`. The repository's
 `pre-commit-check` target skips the duplicate basedpyright hook; `make ci` runs
 the separate `typecheck` target afterward. The commit-msg stage runs gitlint.
 
-`pre-commit-update` checks hook revisions and rewrites
-`.pre-commit-config.yaml`. It is pinned to the manual stage, so neither
-`git commit` nor `make ci` runs it. Run it with `make update-hooks`.
+Every external hook revision is a full commit SHA with a `# frozen: <tag>`
+comment, because a tag can be moved upstream. The local
+`require-frozen-hook-revs` hook fails any other `rev:`. To bump the hooks, run
+`make update-hooks`. It runs `pre-commit autoupdate --freeze`, which moves each
+hook to its latest release and writes the SHA. Node is pinned to 26.13.0 for
+the markdownlint hook, because unpinned nodeenv picks a prerelease and fails to
+build the environment.
 
 ## Ruff, tests, and coverage
 
