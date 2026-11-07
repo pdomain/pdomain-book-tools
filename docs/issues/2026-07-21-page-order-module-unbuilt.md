@@ -77,7 +77,7 @@ Blocked on Theme E page-order redesign decisions.
 
 ## What is NOT broken
 
-- Page already exposes `page_id`, `page_index`, `name` and header/footer **roles** usable by a future module. No ingestion code sets `name` yet; see Q-PO-4 in the spec.
+- Page already exposes `page_id`, `page_index`, `name` and header/footer **roles** usable by a future module. No ingestion code sets `name`, and per Q-PO-4 the filename signal takes filenames from the caller instead.
 - This issue tracks missing Stage-11 product surface, not a silent OCR failure.
 
 ## Resolution

@@ -216,14 +216,15 @@ pages by their extracted digit. Flag pairs where the sorted position differs
 from the list position by more than a configurable tolerance, which defaults
 to 2 positions. Return proposed swap pairs.
 
-**Open question: where the filename comes from.** `Page` has no `source_path`.
+**Where the filename comes from (decided 2026-11-07, Q-PO-4).** `Page` has no `source_path`.
 It has `name`, `page_index`, and `page_id`. `Page.name` defaults to `None`, and
 no OCR ingestion code sets it, so it does not hold the filename unless the
 caller sets it. `Document.from_image_ocr_via_doctr` records the filename only
 as `Document.source_identifier`, one value for the whole `Document`. For a
-multi-image `Document` that value is empty. The caller must either set
-`Page.name` to the source filename before calling the module, or pass a list of
-filenames in page order. Pick one before implementation.
+multi-image `Document` that value is empty. The caller passes a list of source
+filenames in the current page order, as an optional argument to
+`detect_out_of_order_pages`. Ingestion does not set `Page.name`. See
+[decisions](../context/decisions.md), entry dated 2026-11-07.
 
 **ocr_page_num.py** — Scan `Page.blocks` for blocks with
 `block_role_labels` containing `footer` or `header`. Within those blocks,
@@ -296,12 +297,11 @@ significant enough to justify it.
   independently from `Page.image_array`? Leaning toward route-owns-thumbnails
   to keep `SwapProposal` data-only, but needs alignment with the
   `pdomain-prep-for-pgdp` slice owner.
-- **Q-PO-4**: Where does the filename signal get each page's filename? See the
-  open question in section 7.2. Either ingestion sets `Page.name` to the source
-  filename, or the caller passes a list of filenames in page order. This is an
-  owner decision, tracked in the
-  [owner decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md).
-  Decide it before implementing `filename_signal.py`.
+- **Q-PO-4** (decided 2026-11-07): Where does the filename signal get each
+  page's filename? The caller passes a list of source filenames in page order.
+  Ingestion does not set `Page.name`, because prep-for-pgdp runs page order
+  before OCR. See section 7.2 and the 2026-11-07 entry in
+  [decisions](../context/decisions.md).
 
 ## Adversarial Review
 

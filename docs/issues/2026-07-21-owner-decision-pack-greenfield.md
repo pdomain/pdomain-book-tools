@@ -25,9 +25,9 @@ Level: I1
 
 ## Summary
 
-Active specs 06b/c, 09, 10, page-order, scannos, hyphen still need owner decisions (Q-RL-*, char-bbox polarity, table fallbacks, page-order redesign, the page-order filename source, scannos IDs, hyphen packaging). Implementing from unrevised drafts re-litigates prior adversarial reviews. Also pick overrides for public-API default, geometry dual-gate, GPU CI strategy, coverage ratchet.
+Active specs 06b/c, 09, 10, page-order, scannos, hyphen still need owner decisions (Q-RL-*, char-bbox polarity, table fallbacks, page-order redesign, scannos IDs, hyphen packaging). Implementing from unrevised drafts re-litigates prior adversarial reviews. Also pick overrides for public-API default, geometry dual-gate, GPU CI strategy, coverage ratchet.
 
-### Page-order filename source (added 2026-11-07)
+### Page-order filename source (decided 2026-11-07)
 
 The page-order filename signal needs each page's source filename. `Page.name`
 exists but defaults to `None`, and no ingestion code sets it.
@@ -39,9 +39,11 @@ empty for a multi-image document. Pick one:
 2. `detect_out_of_order_pages` takes an optional list of filenames in page
    order. Ingestion stays as it is, but each caller must supply the list.
 
-The spec records this as Q-PO-4. Issue
-[gh-212](2026-05-24-gh-212-page-order-filename-signal.md) cannot start until it
-is answered.
+**Answer: option 2.** The `page_order` stage in prep-for-pgdp runs before OCR,
+so no ingested `Page` exists when it runs. See the 2026-11-07 entry in
+[decisions](../context/decisions.md). The spec records this as Q-PO-4, and
+issue [gh-212](2026-05-24-gh-212-page-order-filename-signal.md) is no longer
+blocked on it.
 
 ## Impact
 

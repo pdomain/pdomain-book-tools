@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-06
+Last verified: 2026-11-07
 Kind: context
 ---
 
@@ -510,3 +510,30 @@ Kind: context
 - Removal commit: b73311ecbb1320572bb82d0877f3eaeefa72cf72
 - Rationale kept: commit `67a714b` removed the GitHub workflows, including dep-refresh and the required `ci` check. On 2026-11-07 the GitHub API returned 404 "Branch not protected" for `master`. Whether a replacement CI gate is wanted stays in docs/issues/2026-07-21-gpu-slow-ci-strategy.md.
 - Remaining work: six stale `dep-refresh/*` branches (2026-08-09 to 2026-09-13) remain on the remote, and `delete_branch_on_merge` is still false.
+
+### 2026-11-07 — Page-order callers pass filenames; ingestion leaves Page.name alone
+
+- **Context:** The page-order filename signal needs each page's source
+  filename. `Page.name` defaults to `None` and no ingestion code sets it
+  (spec question Q-PO-4).
+- **Decision:** `detect_out_of_order_pages` takes an optional list of source
+  filenames in the current page order. Ingestion does not set `Page.name`.
+- **Rationale:** In pdomain-prep-for-pgdp, the main consumer, the `page_order`
+  stage depends on `source` and `text_zones`, not on `ocr`. When it runs, OCR
+  ingestion has not built any `Page`, so a name set there would not exist yet.
+  The apps already keep filenames in their own records: prep-for-pgdp stores
+  `source_stem` per page at ingest, and the labeler passes `name=` explicitly
+  to pgdp-measure's `ProfileInputPage`.
+- **Evidence:** Owner decision on 2026-11-07, after a review of
+  pdomain-prep-for-pgdp (`core/pipeline/stage_dag.py`, `core/ingest.py`),
+  pdomain-ocr-cli (`ocr_to_txt.py`) and pdomain-ocr-labeler-spa
+  (`core/page_measurement.py`). All three OCR one image per one-page
+  `Document` and keep `pages[0]`.
+- **Remaining work:** Two points for the implementation of issue gh-212.
+  1. prep-for-pgdp sorts pages by stem as plain text and ocr-cli uses
+     `sorted(glob)`, so list order already equals filename order. The signal
+     only adds information for numbers that are not zero-padded, such as
+     `img_9` after `img_10`, or after the user reorders pages.
+  2. A user's drag-drop reorder must not be flagged as an error. The caller
+     passes the original ingest order, or the signal skips pages the user
+     moved. Decide which in the gh-212 tests.
