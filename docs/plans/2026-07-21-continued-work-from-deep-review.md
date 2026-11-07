@@ -387,6 +387,7 @@ implementation re-litigates adversarial findings.
 | Char-bbox polarity, ligature, fallback (09) | Theme H |
 | Table word fallback, rendering, sort (10) | Theme I |
 | Page-order redesign (drop unvalidated visual-sim as swap vote) | Theme G |
+| Page-order filename source: ingestion sets `Page.name`, or caller passes filenames (Q-PO-4) | Theme G |
 | Scannos book/occurrence IDs, dual-write, rule IDs | Theme G |
 | Hyphen download, locking, packaging (~50 MB asset) | Theme G |
 | Provenance / OcrCompleted home (not on Page) | Task 5/Plan 2 ownership |

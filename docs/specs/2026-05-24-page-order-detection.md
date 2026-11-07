@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-24
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -296,6 +296,12 @@ significant enough to justify it.
   independently from `Page.image_array`? Leaning toward route-owns-thumbnails
   to keep `SwapProposal` data-only, but needs alignment with the
   `pdomain-prep-for-pgdp` slice owner.
+- **Q-PO-4**: Where does the filename signal get each page's filename? See the
+  open question in section 7.2. Either ingestion sets `Page.name` to the source
+  filename, or the caller passes a list of filenames in page order. This is an
+  owner decision, tracked in the
+  [owner decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md).
+  Decide it before implementing `filename_signal.py`.
 
 ## Adversarial Review
 

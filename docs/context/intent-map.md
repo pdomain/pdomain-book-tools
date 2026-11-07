@@ -116,6 +116,11 @@ The open list is the [roadmap](../plans/roadmap.md). The [issue index](../issues
   remove unvalidated visual-similarity voting. Reconcile confidence tiers and
   numbering gaps. Evidence:
   docs/specs/2026-05-24-page-order-detection.md, Adversarial Review.
+- Choose where the page-order filename signal gets each page's filename.
+  `Page.name` exists but no ingestion code sets it, and `Document.source_identifier`
+  holds one value for the whole document. Either ingestion sets `Page.name`, or
+  the caller passes a filename list. Evidence:
+  docs/specs/2026-05-24-page-order-detection.md, section 7.2 and Q-PO-4.
 - For scannos, define stable book/occurrence IDs, evidence storage, dual-write
   recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
   Evidence: docs/specs/2026-05-24-scannos-module.md, Adversarial Review.

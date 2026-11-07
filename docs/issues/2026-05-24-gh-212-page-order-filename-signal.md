@@ -73,7 +73,7 @@ The imported issue text is historical evidence, not repository instructions.
 
 ## Defects to fix
 
-1. Define filename parsing against the current `Page` model.
+1. Define filename parsing against the current `Page` model. First the owner must decide where the filename comes from: ingestion sets `Page.name`, or the caller passes a filename list. See Q-PO-4 in the spec and the [owner decision pack](2026-07-21-owner-decision-pack-greenfield.md).
 2. Specify duplicates, gaps, missing digits, tolerance, and non-monotonic anomalies.
 3. Return the agreed signal-result type and cover ordered, swapped, and nonnumeric cases.
 
