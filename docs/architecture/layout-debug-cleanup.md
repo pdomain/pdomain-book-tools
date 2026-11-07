@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -30,8 +30,8 @@ not replace the manual `make clean-debug` target.
 - Code: `tests/conftest.py`
 - Tests: `tests/test_debug_cleanup.py`
 - Artifacts: layout-regression debug run directories
-- Verified: 2026-07-13; focused review observed 24 related tests pass, and the
-  full repository gate is `make ci AI=1`
+- Verified: 2026-11-07, when the focused tests passed. On 2026-07-13 a focused
+  review saw 24 related tests pass. The full repository gate is `make ci AI=1`
 
 ## Why cleanup still needs liveness tracking
 

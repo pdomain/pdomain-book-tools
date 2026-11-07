@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-11
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -280,7 +280,7 @@ All code paths that use GPU-specific libraries must be guarded by an
 availability check or placed behind the `[gpu]` extra. Test code must
 not import CuPy or CUDA-specific helpers unconditionally.
 
-**Why.** CI runs CPU-only. The `make sync-gpu` / `make dev-local` workflow
+**Why.** CI runs CPU-only. The `make sync-gpu` / `make local-dev` workflow
 exists precisely to add GPU extras locally without polluting the canonical
 lockfile. Unconditional GPU imports break CI silently.
 

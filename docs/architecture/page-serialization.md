@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -34,8 +34,9 @@ serialization tree.
 the UUID string for the Page entity. The `bounding_box` is a serialized box or
 `null`. The `items` field is a list of serialized Blocks.
 
-The serializer emits `page_labels`, `name`, `review`, `image_blob_hash`, and
-`thumbnail_blob_hash` only when they are not `None`. It emits `gt_orphans` only
+The serializer emits `page_labels`, `name`, `review`, `page_kind` (as its
+string value), `image_blob_hash`, and `thumbnail_blob_hash` only when they are
+not `None`. It emits `gt_orphans` only
 when the value exists and is not empty. It does not emit `ocr_provenance`,
 `image_path`, `rotation_applied`, or `source`.
 
@@ -53,8 +54,8 @@ matching data, additional attributes, and optional review metadata.
 It recursively loads the declared child kind.
 
 `Word.to_dict()` records text, bounding box, OCR confidence, labels and
-components, baseline, ground-truth matching fields, and optional review and
-glyph annotations. `Word.from_dict()` requires text and bounding-box data. It
+components, baseline, ground-truth matching fields, and optional review, glyph
+annotations, and typography annotations. `Word.from_dict()` requires text and bounding-box data. It
 supplies compatibility defaults for optional collections.
 
 `BoundingBox.to_dict()` records `top_left`, `bottom_right`, and `is_normalized`.
@@ -79,9 +80,9 @@ model. Scaling does not revive or promise those obsolete fields.
 ## Vocabulary ownership
 
 Allowed block-role, block-position, line-role, and line-position labels live on
-`Block`. Word-component labels live in `ocr/label_normalization.py`.
-Layout-region vocabulary lives in `layout/types.py`. Those code definitions are
-authoritative. Adding a vocabulary value requires updating its documentation
+`Block`. Word-component labels and layout-region vocabulary are defined in
+`pdomain-book-contracts`. `ocr/label_normalization.py` and `layout/types.py`
+re-export them. Those code definitions are authoritative. Adding a vocabulary value requires updating its documentation
 drift test.
 
 ### Block roles
@@ -148,8 +149,8 @@ block roles even where their spelling overlaps. `page_number` maps to the
 - `pdomain_book_tools/ocr/block.py`: `Block.to_dict`, `Block.from_dict`, `BlockChildType`, and `BlockCategory`.
 - `pdomain_book_tools/ocr/word.py`: `Word.to_dict` and `Word.from_dict`.
 - `pdomain_book_tools/geometry/bounding_box.py`: `BoundingBox.to_dict` and `BoundingBox.from_dict`.
-- `pdomain_book_tools/ocr/label_normalization.py`: word-component vocabulary.
-- `pdomain_book_tools/layout/types.py`: `PageLayout`, `LayoutRegion`, and `RegionType`.
+- `pdomain_book_tools/ocr/label_normalization.py`: re-export of the word-component vocabulary from `pdomain-book-contracts`.
+- `pdomain_book_tools/layout/types.py`: re-export of `PageLayout`, `LayoutRegion`, and `RegionType` from `pdomain-book-contracts`.
 - `tests/test_page_model_doc.py`: vocabulary coverage, current minimal Page fields, explicit absence of removed Page fields, and canonical-API mentions.
 - `tests/ocr/test_page_pydantic_schema.py`: Page schema behavior.
 - `tests/test_page_behavior_pin.py`: pinned Page behavior.

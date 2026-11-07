@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-15
-Last verified: 2026-07-15
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -66,12 +66,12 @@ clobber escape hatch. To upgrade from local-dev mode, run
 `make local-upgrade-deps`. To return to canonical mode, rebuild the venv.
 
 **Only `upgrade-deps` is guarded.** These other dependency-syncing targets
-run `sync-gpu` instead: `setup`, `test`, `test-slow`, `test-verbose`,
-`test-single`, `test-k`, and `coverage`. `sync-gpu` decides the
-`--extra gpu` flag purely from an nvidia-smi hardware probe, which is
-forced off when `CI` is set. That mechanism never consults the markers,
-the env var, or `scripts/check_dev_local.py`, so those targets can
-re-sync the venv without a refusal.
+use an nvidia-smi hardware probe instead. `test`, `test-slow`,
+`test-verbose`, `test-single`, `test-k`, and `coverage` run `sync-gpu`.
+`setup` runs `uv sync --group dev` with the same probe result inline. The
+probe is forced off when `CI` is set. It never consults the markers, the
+env var, or `scripts/check_dev_local.py`, so those targets can re-sync the
+venv without a refusal.
 
 On a GPU machine, the auto-detect usually restores the same extras. When
 the hardware probe and your actual local-dev state disagree, though, those
@@ -133,7 +133,8 @@ from any other path, such as a relocated clone or a symlinked checkout.
   restore-equivalence claim above depends on it)
 - Tests: `tests/utility/test_check_dev_local.py`,
   `tests/utility/test_write_dev_local_marker.py`
-- Verified: 2026-07-15 while retiring
+- Verified: 2026-11-07 against the Makefile and scripts; first verified
+  2026-07-15 while retiring
   `docs/specs/07-dev-local-upgrade-flow.md` (last spec revision: commit
   `010d382`; history: [`git log -- docs/specs/07-dev-local-upgrade-flow.md`])
 

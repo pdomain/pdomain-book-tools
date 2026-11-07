@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -57,4 +57,4 @@ tracks those unresolved decisions and safeguards.
   signature, accepted-state-dict, rejected-object, and rejected-value cases.
 - **Commits:** `31137f1` added the safe default and injection boundary;
   `e5cf913` added state-dict validation.
-- **Verified:** 2026-07-19 against the current code and focused tests.
+- **Verified:** 2026-11-07 against the current code and focused tests.

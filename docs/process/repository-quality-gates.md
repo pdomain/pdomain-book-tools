@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -29,9 +29,9 @@ fixes, formatting, Markdown lint, and `uv lock --check`. The repository's
 `pre-commit-check` target skips the duplicate basedpyright hook; `make ci` runs
 the separate `typecheck` target afterward. The commit-msg stage runs gitlint.
 
-`pre-commit-update` checks hook revisions and may modify
-`.pre-commit-config.yaml`. A feature commit may skip that self-updater when its
-only result is an unrelated dependency bump, but the remaining hooks still run.
+`pre-commit-update` checks hook revisions and rewrites
+`.pre-commit-config.yaml`. It is pinned to the manual stage, so neither
+`git commit` nor `make ci` runs it. Run it with `make update-hooks`.
 
 ## Ruff, tests, and coverage
 

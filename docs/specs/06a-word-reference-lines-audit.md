@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-21
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -75,7 +75,7 @@ for decisions requested.
 
 ### 1.1 Word.estimate_baseline_from_image
 
-Location: `pdomain_book_tools/ocr/word.py:961`.
+Location: `pdomain_book_tools/ocr/word.py:1081`.
 
 Signature:
 
@@ -88,12 +88,12 @@ def estimate_baseline_from_image(
 What it does:
 
 - Calls `self.split_into_characters_from_whitespace(image)`
-  (`pdomain_book_tools/ocr/word.py:768`) to get a list of `Character`
+  (`pdomain_book_tools/ocr/word.py:884`) to get a list of `Character`
   objects whose individual `bounding_box` heights came from
   per-character vertical extents inside the binarized ROI.
 - Computes a weighted average of the per-character `bounding_box.maxY`
   (the bottom of each character's tight bbox), with descenders
-  (`{"p", "g", "j", "q", "Q"}` — `word.py:974`) down-weighted to
+  (`{"p", "g", "j", "q", "Q"}` — `word.py:1094`) down-weighted to
   `0.35`.
 - Returns a dict
   `{"type": "horizontal", "y": <pixel-y>, "confidence": <float>,
@@ -115,11 +115,11 @@ Reliability:
 - The estimator only looks at character-bbox `maxY`. There is no
   horizontal projection profile. If
   `split_into_characters_from_whitespace` segments incorrectly (which
-  it can — see the morphology fallback at `word.py:831`), the baseline
+  it can — see the morphology fallback at `word.py:946`), the baseline
   inherits that error.
 - A two-letter word with both letters at the same height
   produces `weighted_std == 0` and therefore confidence `1.0` —
-  see `tests/ocr/test_word.py:1332-1348`. So "high confidence" does
+  see `test_word_estimate_baseline_from_image_sets_attribute` in `tests/ocr/test_word.py:1522`, which uses two equal-height letters. So "high confidence" does
   not mean "this is a real baseline"; it means only "the per-character bottoms
   agree". A single-character word also produces a meaningless
   confidence (zero variance).
@@ -132,7 +132,7 @@ Per-word, not per-line.
 
 ### 1.2 Block.estimate_baseline_from_image
 
-Location: `pdomain_book_tools/ocr/block.py:1000`.
+Location: `pdomain_book_tools/ocr/block.py:1200`.
 
 Signature:
 
@@ -145,7 +145,7 @@ def estimate_baseline_from_image(
 What it does:
 
 - Only acts on blocks where `child_type == BlockChildType.WORDS` and
-  `block_category == BlockCategory.LINE` (`block.py:1010-1015`).
+  `block_category == BlockCategory.LINE` (`block.py:1211-1215`).
 - For each `Word` in the line, calls
   `split_into_characters_from_whitespace(image)`, then collects
   per-character (mid-x, maxY) points with the same descender weighting
@@ -160,13 +160,13 @@ The line-level baseline is **not horizontal**. It is a slanted line,
 `y = slope*x + intercept`, which is correct for tilted scans.
 
 It also calls `item.estimate_baseline_from_image(image)` as a
-side-effect on every word in the block (`block.py:1028`), populating
+side-effect on every word in the block (`block.py:1228`), populating
 each word's `self.baseline`. So calling block-level once gives you
 a per-line baseline plus one horizontal per-word baseline per word.
 
 ### 1.3 The descender heuristic in split_into_characters_from_whitespace
 
-Location: `pdomain_book_tools/ocr/word.py:927-958`.
+Location: `pdomain_book_tools/ocr/word.py:1047-1078`.
 
 When a word is split into 2+ characters, the function does not compute a
 baseline. Instead, it performs these calculations:
@@ -187,11 +187,11 @@ therefore includes x-height only implicitly and does not expose it directly.
 
 Defined inline in three places:
 
-- `pdomain_book_tools/ocr/word.py:937` — used in
+- `pdomain_book_tools/ocr/word.py:1057` — used in
   `split_into_characters_from_whitespace`.
-- `pdomain_book_tools/ocr/word.py:974` — used in
+- `pdomain_book_tools/ocr/word.py:1094` — used in
   `estimate_baseline_from_image`.
-- `pdomain_book_tools/ocr/block.py:1017` — used in
+- `pdomain_book_tools/ocr/block.py:1217` — used in
   `Block.estimate_baseline_from_image`.
 
 All three copies are the literal `{"p", "g", "j", "q", "Q"}`. The
@@ -222,7 +222,7 @@ the binarized ROI.
 ### 1.6 The page level
 
 `Page.refine_bounding_boxes` exists at
-`pdomain_book_tools/ocr/page.py:3055`, but **there is no
+`pdomain_book_tools/ocr/page.py:3389`, but **there is no
 `Page.estimate_baseline_from_image` or any page-level
 reference-line aggregation.** A caller wanting per-line baselines for
 every line on a page must iterate blocks themselves.
@@ -231,7 +231,7 @@ every line on a page must iterate blocks themselves.
 
 | Reference line | Status | Notes |
 |---|---|---|
-| **Bottom (descender bottom / lowest ink)** | **Missing** | No helper returns "lowest ink row in the word ROI". The bottom-crop spec's plan is to add `BoundingBox.crop_bottom_to_y` for this; that primitive _would_ compute the lowest ink row internally but does not expose it. The closest existing thing is the implicit lowest-row detection in `BoundingBox._vertical_crop` (`bounding_box.py:611-650`), which is internal. |
+| **Bottom (descender bottom / lowest ink)** | **Missing** | No helper returns "lowest ink row in the word ROI". The bottom-crop spec's plan is to add `BoundingBox.crop_bottom_to_y` for this; that primitive _would_ compute the lowest ink row internally but does not expose it. The closest existing thing is the implicit lowest-row detection in `_vertical_crop` in `pdomain_book_tools/geometry/image_ops.py:253`, which is internal. |
 | **Baseline** | **Partial — usable but limited** | `Word.estimate_baseline_from_image` and `Block.estimate_baseline_from_image` exist. They are the good news. Limitations: dict-return (no dataclass), pixel-space only, confidence signal is "do per-character bottoms agree" rather than "is this likely the true baseline", no fallback when characters cannot be split. The block-level estimator returns a _slanted_ linear baseline; the word-level one returns a horizontal scalar. The two return shapes do not unify. |
 | **Centerline / x-height** | **Missing** | Implicit in `split_into_characters_from_whitespace`'s `median_top`, but not exposed and not the right value (it is an average of _all_ character tops, ascenders included, not the top of the densest body band). |
 | **Top-line (cap / ascender top)** | **Missing** | No helper returns "highest ink row" or "top of tallest character". `median_top` again gives an average, not a max. There is also no helper that says "this word contains an ascender" so a caller cannot decide whether top-line and x-height-line collide. |

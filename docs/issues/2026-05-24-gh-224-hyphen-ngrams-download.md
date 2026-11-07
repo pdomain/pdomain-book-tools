@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-24
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — first-use data acquisition lacks a safe reproducible contract
 - **Affected version:** Draft hyphen n-grams design dated 2026-05-24

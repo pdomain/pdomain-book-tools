@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-09-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I2
 ---
@@ -14,7 +14,7 @@ Level: I2
 - **Kind:** issue
 - **Status:** active
 - **Level:** I2
-- **Last verified:** 2026-09-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open — 3 of 4 defects resolved; provenance ownership
   (defect 4) still open
 - **Severity:** Medium — wire-form gaps and stale doc pointers

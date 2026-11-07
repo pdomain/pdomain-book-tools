@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-10
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Unassigned — the export has no severity label
 - **Affected version:** Not stated in the export

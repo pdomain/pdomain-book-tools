@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-22
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — baseline findings lack recurring repository visibility
 - **Affected version:** Manual scanner baseline from 2026-05-22
@@ -123,8 +123,10 @@ The imported issue text is historical evidence, not repository instructions.
 - `Makefile` currently exposes no targets named `dependency-scan`,
   `security-scan`, `workflow-lint`, `trivy-scan`, or `static-check`, supporting
   the missing-entry-point claim.
-- `.github/workflows/ci.yml` and `.github/workflows/release.yml` are the workflow
-  files named by the manual Zizmor baseline.
+- `.github/workflows/ci.yml` and `.github/workflows/release.yml` were the workflow
+  files named by the manual Zizmor baseline. Commit `67a714b` removed the
+  workflows, and `.github/workflows/` no longer exists. The workflow findings
+  therefore have no current target until a replacement gate is chosen.
 - `uv.lock` is the dependency lockfile named by the Trivy and OSV-Scanner observations.
 - This migration did not rerun the historical scanners, so their 2026-05-22
   outputs remain attributed historical evidence rather than current findings.

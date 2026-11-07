@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-10
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Unassigned — the export has no severity label
 - **Affected version:** Not stated in the export
@@ -25,7 +25,7 @@ Level: I1
 ## Summary
 
 Add `postclassify_decoration(layout, page) -> PageLayout` in
-`pd_book_tools/layout/geometry.py`. Run it as a late pass in
+`pdomain_book_tools/layout/geometry.py`. Run it as a late pass in
 `Page.reorganize_page`, after `tag_words_with_layout`. The heuristic should
 reclassify a `figure` region as `decoration` when all three conditions hold:
 
@@ -81,7 +81,7 @@ The export states no operating system, package version, command, or environment 
 
 The immutable raw export and its digest preserve the original body. The classified durable facts are:
 
-- Add `postclassify_decoration(layout, page) -> PageLayout` in `pd_book_tools/layout/geometry.py`, run as a late pass in `Page.reorganize_page` after `tag_words_with_layout`. Heuristic: a `figure` region that is small (<5% of page area), positioned near top or bottom, and contains no detected text words should be reclassified as `decoration`.
+- Add `postclassify_decoration(layout, page) -> PageLayout` in `pdomain_book_tools/layout/geometry.py`, run as a late pass in `Page.reorganize_page` after `tag_words_with_layout`. Heuristic: a `figure` region that is small (<5% of page area), positioned near top or bottom, and contains no detected text words should be reclassified as `decoration`.
 - PP-DocLayout has no `decoration` class. The adapter maps `seal` to
   `RegionType.decoration` and falls back from `image` to `figure` for ornamental
   woodcuts, including chapter headpieces and fleurons.
@@ -112,7 +112,7 @@ Further evidence is required before implementation.
 ## Defects to fix
 
 1. Add `postclassify_decoration(layout, page) -> PageLayout` in
-   `pd_book_tools/layout/geometry.py`. Run it late in `Page.reorganize_page`,
+   `pdomain_book_tools/layout/geometry.py`. Run it late in `Page.reorganize_page`,
    after `tag_words_with_layout`. Reclassify a `figure` as `decoration` only
    when it is small (<5% of page area), near the top or bottom, and contains no
    detected text words.

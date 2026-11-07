@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -55,7 +55,7 @@ edit it on parallel file-level branches.
 - Tests: `make ci AI=1`; `uv run basedpyright` reports 0 errors, 0 warnings,
   0 notes on GPU-capable and CPU-only dependency sets (2026-07-19)
 - Artifacts: empty basedpyright file baseline
-- Verified: 2026-07-19 after reproducing the CPU-only CI dependency set; the
+- Verified: 2026-11-07 by config inspection; earlier 2026-07-19 after reproducing the CPU-only CI dependency set; the
   original 2026-07-15 migration drove 7,697 strict errors to zero
 
 ## Residual intent

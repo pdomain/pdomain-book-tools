@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-08-07
-Last verified: 2026-08-07
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-08-07
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — a reader can close one record and leave its twin open
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ 6b8e610
@@ -109,9 +109,11 @@ gh pr view 240 --repo pdomain/pdomain-book-tools --json number,title,state,merge
 ## Defects to fix
 
 1. **The index double-counts open work.** README reports 43 + 19 without
-   stating that 24 of the 43 overlap. (Primary)
+   stating that 24 of the 43 overlap. (Primary) Resolved by 2026-11-07: the README
+   now lists each cluster once under Remaining work, with links to both records.
 2. **No record links to its twin.** Neither set carries a cross-reference, so
-   closing one gives no signal about the other.
+   closing one gives no signal about the other. Still true on 2026-11-07 for the
+   record files themselves.
 3. **F2 and F3 have no issue file.** Their migrated counterparts (#3, #46, #2,
    #45) do, so the deferred plan items are the weaker record of the two.
 

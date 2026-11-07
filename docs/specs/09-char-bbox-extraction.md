@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-16
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -465,8 +465,9 @@ in §3.6 (`split_ligature_blobs=False` default) favours a merged box, but
 the labeler could override this per session. This needs a UX decision
 from the labeler spec owner before the CharFixer implementation lands.
 
-**Q2 — DocTR CTC alignment access.** The current `run_page_ocr` pipeline
-in `pdomain_book_tools/ocr/doctr_support.py` does not expose per-character
+**Q2 — DocTR CTC alignment access.** The current DocTR pipeline
+(`Document.from_image_ocr_via_doctr` in `pdomain_book_tools/ocr/document.py`,
+built on `pdomain_book_tools/ocr/doctr_support.py`) does not expose per-character
 column positions. Accessing the CTC alignment requires either:
 
   (a) Patching the doctr fork to return logit-level alignment alongside

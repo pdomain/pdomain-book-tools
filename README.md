@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2025-03-23
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: usage
 ---
 
@@ -46,15 +46,15 @@ The default install is CPU-only and works on Linux (CPU), macOS, and CI:
 pip install pdomain-book-tools
 ```
 
-For the optional CuPy/CUDA-12 acceleration (Linux + NVIDIA GPU only),
+For the optional CuPy/CUDA-13 acceleration (Linux + NVIDIA GPU only),
 install with the `gpu` extra:
 
 ```bash
 pip install 'pdomain-book-tools[gpu]'
 ```
 
-This pulls in `cupy-cuda12x` and `opencv-cuda`, which require a
-CUDA 12 toolkit and a compatible NVIDIA driver. The CPU pipeline
+This pulls in `cupy-cuda13x` and `opencv-cuda`, which require a
+CUDA 13 toolkit and a compatible NVIDIA driver. The CPU pipeline
 (`pdomain_book_tools.image_processing.cv2_processing.*`) remains the
 fallback when the extra is not installed; calling any
 `pdomain_book_tools.image_processing.cupy_processing.*` function without
@@ -98,7 +98,7 @@ If you prefer manual setup instead of using make:
 uv sync --group dev
 
 # Set up pre-commit hooks
-uv run pre-commit install
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg
 
 # Test the installation
 uv run pytest -n auto -v -ra
@@ -158,7 +158,7 @@ make build
 ### Complete CI Pipeline
 
 ```bash
-make ci  # Runs install, pre-commit-check, test, and build
+make ci  # Runs setup, pre-commit-check, lint-check, format-check, typecheck, test, build, and layout-fork-info
 ```
 
 ### Troubleshooting

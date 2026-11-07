@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -51,7 +51,7 @@ and verifies the clear `ImportError` message.
 - Code: `pdomain_book_tools/ocr/cv2_tesseract.py`
 - Tests: `tests/ocr/test_cv2_tesseract.py`
 - Shipped by: merge commit `1d5859a`
-- Verified: 2026-07-19 by code inspection and a focused test run; 145 selected
+- Verified: 2026-11-07 by code inspection; earlier 2026-07-19 by code inspection and a focused test run; 145 selected
   tests passed and five expected layout-regression cases xfailed.
 
 The focused command did not satisfy the repository-wide 87% coverage gate

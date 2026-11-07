@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: architecture
 ---
 
@@ -44,16 +44,18 @@ Automatic validation and tolerant handling of future annotation kinds remain pro
 
 ## Evidence
 
-- `pdomain_book_tools/ocr/glyph_annotations.py:32-44` defines the banned ground-truth codepoints.
-- `pdomain_book_tools/ocr/glyph_annotations.py:52-123` defines the current ligature vocabulary and legacy aliases.
-- `pdomain_book_tools/ocr/glyph_annotations.py:131-175` defines ligature serialization and fail-closed kind loading.
-- `pdomain_book_tools/ocr/glyph_annotations.py:187-256` defines provenance, annotation defaults, and serialization.
-- `pdomain_book_tools/ocr/glyph_annotations.py:258-308` implements caller-invoked cross-field validation.
-- `pdomain_book_tools/ocr/word.py:102-106` records the `None` versus reviewed-empty contract.
-- `pdomain_book_tools/ocr/word.py:670-696` conditionally serializes annotations.
-- `pdomain_book_tools/ocr/word.py:698-750` deserializes annotations into `Word`.
-- `tests/ocr/test_glyph_annotations.py:23-365` covers vocabulary, legacy migration, provenance, and annotation serialization.
-- `tests/ocr/test_glyph_annotations.py:387-471` covers explicit validation.
-- `tests/ocr/test_glyph_annotations.py:483-557` covers `Word` integration and the unknown/reviewed-empty distinction.
+- The glyph types now live in `pdomain-book-contracts`, in
+  `pdomain_book_contracts/ocr/glyph_annotations.py`. They define the banned
+  ground-truth codepoints (`_BANNED_GT_CODEPOINTS`), `LigatureKind` and its
+  legacy aliases, `LigatureMark`, provenance, `GlyphAnnotations`, and
+  `GlyphAnnotations.validate()`.
+- `pdomain_book_tools/ocr/glyph_annotations.py` is a thin re-export of those
+  names, so the old import path still works.
+- `pdomain_book_tools/ocr/word.py`: the `Word.glyph_annotations` field comment
+  records the `None` versus reviewed-empty contract. `Word.to_dict` writes the
+  field only when set. `Word.from_dict` rebuilds it.
+- `tests/ocr/test_glyph_annotations.py` covers vocabulary, legacy migration,
+  provenance, and annotation serialization, then explicit validation, then
+  `Word` integration and the unknown/reviewed-empty distinction.
 - `tests/ocr/test_word_pydantic_schema.py` covers non-empty, reviewed-empty, and
   absent glyph annotations across the Pydantic round trip.

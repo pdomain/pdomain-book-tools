@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-21
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — core module ~80% line / 220 missing branches under 90% headline
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
@@ -73,7 +73,7 @@ while package headline ~90.3%.
 
 ## Next steps
 
-1. Land A2/A3 tests first (highest risk).
+1. Done: the A2/A3 tests landed in `tests/ocr/test_reorganize_early_return_and_soft_recover.py` (commit `c1967c5`, early return, soft recover, multiset signature). The coverage figures above predate that commit and were not re-measured on 2026-11-07.
 2. Add plate and column matrices next; defer file split until tables exist.
 
 ## What is NOT broken

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-21
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — coordinate inference at engine boundary
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
@@ -55,8 +55,8 @@ Related governed docs:
 rg -n 'from_nested_float|from_ltwh|is_normalized' pdomain_book_tools/ocr/document.py | head -40
 ```
 
-DocTR path ~554–566 and Tesseract ~917–924 omit explicit `is_normalized`.
-`BoundingBox._build` infers when the flag is omitted.
+DocTR path (`_doctr_bbox`, ~564) and Tesseract (`_tesseract_bbox`, ~919) omit explicit `is_normalized`.
+`BoundingBox._build` (now in `pdomain-book-contracts`) infers when the flag is omitted.
 
 ## Root-cause hypotheses
 

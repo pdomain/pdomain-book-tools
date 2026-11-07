@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2025-09-13
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: process
 ---
 
@@ -53,10 +53,10 @@ skipif_ci = pytest.mark.skipif(
     reason="Skipping GPU tests in CI environment"
 )
 
-# Skip when CUDA not available
+# Skip when CUDA is not available, or in CI
 skipif_no_cuda = pytest.mark.skipif(
-    not _is_cuda_available(),
-    reason="CUDA not available"
+    not _is_cuda_available() or _is_ci_environment(),
+    reason="CUDA not available or running in CI environment"
 )
 ```
 
@@ -201,13 +201,13 @@ class TestCupyMorphology:
         cp = cupy_module
 
         # Import actual module to test
-        from pdomain_book_tools.image_processing.cupy_processing.morph import dilate_image
+        from pdomain_book_tools.image_processing.cupy_processing.morph import dilate
 
         # Create kernel
         kernel = cp.ones((3, 3), dtype=cp.uint8)
 
         # Test operation
-        result = dilate_image(sample_gpu_image, kernel)
+        result = dilate(sample_gpu_image, kernel)
 
         # Verify result
         assert isinstance(result, cp.ndarray)

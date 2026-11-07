@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-22
-Last verified: 2026-07-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I2
 ---
@@ -14,7 +14,7 @@ Level: I2
 - **Kind:** issue
 - **Status:** active
 - **Level:** I2
-- **Last verified:** 2026-07-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Low — extension-only acceptance can expose decoders to arbitrary data
 - **Affected version:** Current `pdomain_book_tools/image_processing/formats.py` and the 2026-05-22 review snapshot

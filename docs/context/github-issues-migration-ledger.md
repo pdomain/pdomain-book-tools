@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-20
+Last verified: 2026-11-07
 Kind: context
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** context
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-07-20
+- **Last verified:** 2026-11-07
 - **Read when:** checking the migration coverage or deletion readiness of completed GitHub issues.
 - **Search terms:** GitHub issues migration, completed issues, raw digest, deletion readiness, coverage ledger.
 
@@ -1293,7 +1293,9 @@ Issue #198 found no visible attribution beside the vendored SPDX license data.
 Commit `86b6789`, also merged in `cb10703`, adds
 `pdomain_book_tools/data/THIRD-PARTY-NOTICES.md`. The notice names the upstream
 project and repository, CC0-1.0 license, and vendor date. A package test ensures
-the notice ships and retains its source and license statements.
+the notice ships and retains its source and license statements. Commit `c6f0abf`
+later moved the notice, the SPDX data, and that test's target to
+`pdomain-book-contracts`.
 
 Issue #199 requested a tagged release containing the reconciled glyph model.
 Commit `2e815f3` added the `v0.13.0` changelog entry and was tagged `v0.13.0`.

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-08-08
-Last verified: 2026-08-08
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-08-08
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** High — five repositories have merged code with no checks for nearly a month
 - **Affected version:** workspace-wide as of 2026-08-08
@@ -53,6 +53,11 @@ disabled  ocr-labeler-spa 10:08:58Z · ocr-synth 10:09:02Z
 enabled   book-tools, index-npm, index-pip, ocr-cli, simple-gui, ops, ui
           (all still running weekly through 2026-08-02)
 ```
+
+Rechecked 2026-11-07: `actions/permissions` still returns `enabled: false` for
+all five repos. `pdomain-book-tools` still has Actions enabled, but its
+workflows were removed in commit `67a714b` (2026-09-13), so it too runs no
+checks.
 
 ## Evidence
 

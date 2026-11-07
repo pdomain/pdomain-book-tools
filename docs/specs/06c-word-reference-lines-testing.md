@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-21
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -244,7 +244,7 @@ assert exact pixel coordinates for geometry-only cases and use relative
 tolerances for rendering-dependent cases.
 
 Live next to existing baseline tests
-(`tests/ocr/test_word.py:1332-1348` and
+(`tests/ocr/test_word.py:1522` and
 `tests/ocr/test_block_coverage2.py`).
 
 ### 11.1 Unit tests for `Word.estimate_reference_lines`
@@ -394,7 +394,7 @@ All open questions for this feature are listed in section 9 above
 - [06a-word-reference-lines-audit.md](06a-word-reference-lines-audit.md) — Audit + gap analysis
 - [06b-word-reference-lines-api.md](06b-word-reference-lines-api.md) — API surface, heuristics, parameters
 - Original parent spec — superseded by 06a, 06b, and 06c; preserved in Git history
-- `tests/ocr/test_word.py:1332-1348` — existing baseline tests
+- `tests/ocr/test_word.py:1502-1540` — existing baseline tests
 - `tests/ocr/test_block_coverage2.py` — existing block baseline tests
 
 ## Adversarial Review

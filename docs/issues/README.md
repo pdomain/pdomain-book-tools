@@ -97,7 +97,7 @@ Open work is one line plus the path of its issue or plan. The same list is the [
 - Geometry-correction docs and the dual gate still disagree, and grid `map_points` is unsupported. [geometry gate](2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
 - HEIF and AVIF load and write failures are fixed. The `opencv-cuda` dependency-honesty part is not. [image I/O](2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
 - `docs/usage/public-api.md` is narrower than the surface the README teaches. [public API](2026-07-21-public-api-surface-policy.md). Plan theme D1.
-- Schema emit is incomplete for glyphs, and Block ground-truth tuple hygiene is unfinished. [schema emit](2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
+- No doc yet says which model owns provenance; the glyph schema emit and Block tuple restore are fixed. [schema emit](2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
 - Greenfield specs are blocked on owner decisions. [decision pack](2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
 - Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
 - Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3.

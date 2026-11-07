@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-28
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -44,8 +44,8 @@ Related specs:
    reconstruction sites in §4, or they are silently dropped.
 3. Add a category-aware sort branch so a `TABLE` orders its `CELL` children
    **row-major by `(row, col)`** instead of the current bbox top-left sort
-   (`block.py:317`). Add a `TABLE` / `CELL` rendering branch to `Block.text`
-   (`block.py:508`).
+   (`block.py:339`). Add a `TABLE` / `CELL` rendering branch to `Block.text`
+   (`block.py:533`).
 4. Add a new **post-OCR** structure step that runs after words exist. A TATR
    detector adapter, built on HuggingFace transformers and the existing torch
    stack, emits row / column / spanning-cell boxes per table region.
@@ -65,21 +65,21 @@ Related specs:
 
 The OCR page model is already recursive and category-tagged:
 
-- `Block` stores children in `_items: list[Word | Block]` (`block.py:162`).
+- `Block` stores children in `_items: list[Word | Block]` (`block.py:183`).
   The `BlockChildType` enum `{WORDS, BLOCKS}` (`block.py:38`) switches between
   the two child shapes.
 - A block's semantic role is the `BlockCategory` enum, today
   `{BLOCK, PARAGRAPH, LINE}` (`block.py:43`).
 - A LINE is a `Block` with `block_category=LINE` and `child_type=WORDS`. A
-  strict construction guard at `block.py:194-201` enforces this: a LINE whose
+  strict construction guard at `block.py:216-223` enforces this: a LINE whose
   `child_type` is set and is not `WORDS` raises `ValueError`. The guard is
   **LINE-only**. `PARAGRAPH` and `BLOCK` are not validated, and neither is any
   new category that uses `BLOCKS`.
-- Only `Word` is a separate `@dataclass` (`word.py:55-56`). It carries its
-  bbox, `ocr_confidence: float | None` (`word.py:87`), and ground-truth
+- Only `Word` is a separate `@dataclass` (`word.py:60-61`). It carries its
+  bbox, `ocr_confidence: float | None` (`word.py:92`), and ground-truth
   fields.
 - `Block` is a hand-written class with **identity equality**, not a dataclass
-  or pydantic model. See the note at `block.py:158-160`. New attributes
+  or pydantic model. See the note at `block.py:178-181`. New attributes
   therefore cannot perturb equality.
 
 Tables are already a first-class layout concept downstream of detection:
@@ -87,8 +87,8 @@ Tables are already a first-class layout concept downstream of detection:
 - `"table"` is a member of `ALLOWED_BLOCK_ROLE_LABELS` (`block.py:82`).
 - The role is stamped onto top-level blocks during layout by
   `bubble_block_roles_from_layout`
-  (`pdomain_book_tools/ocr/layout_aware_reorg.py:634`), which the page
-  pipeline calls at `page.py:3213`.
+  (`pdomain_book_tools/ocr/layout_aware_reorg.py:654`), which the page
+  pipeline calls at `page.py:3163` and `page.py:3239`.
 
 The page model can already identify a region as a table. It cannot yet record
 that a table has 4 rows and 3 columns or place a word in row 2, column 1. This
@@ -102,7 +102,7 @@ The current detector is an RT-DETR layout model, the fork
 (`pdomain_book_tools/layout/adapters/pp_doclayout.py:119`) and registered
 behind the `LayoutDetector` Protocol
 (`pdomain_book_tools/layout/detector.py:43`) via the registry's
-`register_detector` (`pdomain_book_tools/layout/registry.py:257`).
+`register_detector` (`pdomain_book_tools/layout/registry.py:302`).
 
 The stack already uses the DETR family and transformers. A TATR-style table
 **structure** detector can therefore use the same adapter and registry pattern
@@ -165,13 +165,13 @@ not code.
 
 - **Five-site field threading (hard hazard).** Every new `Block` field must be
   added to all five of these sites:
-  - `__init__` (`block.py:164`)
-  - the `scale` reconstructor (`block.py:1009`), which must forward **all**
-    metadata; see the existing field list at `block.py:1017-1034`
-  - `to_dict` (`block.py:1047`)
-  - `from_dict` (`block.py:1073`)
-  - the pydantic core-schema `typed_dict_schema` (`block.py:1276`, inside
-    `__get_pydantic_core_schema__` at `block.py:1255`)
+  - `__init__` (`block.py:185`)
+  - the `scale` reconstructor (`block.py:1037`), which must forward **all**
+    metadata; see the existing field list at `block.py:1048-1067`
+  - `to_dict` (`block.py:1075`)
+  - `from_dict` (`block.py:1101`)
+  - the pydantic core-schema `typed_dict_schema` (`block.py:1315`, inside
+    `__get_pydantic_core_schema__` at `block.py:1294`)
 
   Omitting a field from `to_dict`, `from_dict`, or the pydantic schema silently
   drops it. This is a known repository hazard. See the agent-memory note
@@ -179,10 +179,10 @@ not code.
   The grid fields must appear at all five sites and ship with explicit
   round-trip tests.
 - **Identity equality is preserved.** `Block` uses identity equality
-  (`block.py:158-160`), so adding optional fields cannot break existing
+  (`block.py:178-181`), so adding optional fields cannot break existing
   equality-based tests.
 - **The LINE guard must not be widened.** The strict guard
-  (`block.py:194-201`) fires only for LINE. Both `CELL` and `TABLE` use
+  (`block.py:216-223`) fires only for LINE. Both `CELL` and `TABLE` use
   `child_type=BLOCKS`, so neither trips the guard, and the happy path needs
   **no new guard**. An optional defensive guard for `CELL` / `TABLE` shapes is
   an open question; see §9.3.
@@ -212,7 +212,7 @@ This option duplicates serialization, scaling, reading-order, and text logic.
 Every downstream consumer would need a second traversal path.
 
 **Option C — store grid metadata only in `additional_block_attributes`
-(rejected).** This existing free-form dict lives at `block.py:178`. It is
+(rejected).** This existing free-form dict lives at `block.py:253`. It is
 untyped, invisible to the pydantic schema, and easy to drop, so it cannot hold
 the structural fields. It remains available for ad hoc detector metadata,
 such as raw confidence scores.
@@ -265,7 +265,7 @@ fields stay `None` and round-trip as absent or null.
 
 ### 6.2 Row-major cell sort
 
-`_sort_items` (`block.py:317`) currently sorts `child_type=WORDS` by bbox
+`_sort_items` (`block.py:339`) currently sorts `child_type=WORDS` by bbox
 top-left and child blocks by bbox order. That behavior is **wrong** for a
 `TABLE`: a spanning cell or slightly misaligned cell box can reorder the grid.
 Add a category-aware branch. When `block_category == TABLE`, sort `CELL`
@@ -275,7 +275,7 @@ branches.
 
 ### 6.3 Plain-text grid rendering
 
-`Block.text` (`block.py:508`) is already type-dispatched: WORDS joins on
+`Block.text` (`block.py:533`) is already type-dispatched: WORDS joins on
 spaces, PARAGRAPH joins on `\n`, and other shapes join on `\n\n`. Add a
 `TABLE` / `CELL` branch that renders the grid as plain text. Rows are separated
 by newlines, and cells within a row are separated by a simple delimiter such
@@ -302,7 +302,7 @@ The step runs **after OCR**, when words already exist on the page. It has four
 stages:
 
 1. **Table-region detection (exists).** The `"table"` role label is already
-   stamped at `page.py:3213` via `bubble_block_roles_from_layout` and the
+   stamped at `page.py:3163` and `page.py:3239` via `bubble_block_roles_from_layout` and the
    existing `LayoutDetector`
    (`pdomain_book_tools/layout/detector.py:43`). No new work is needed; this
    stage just identifies the regions to process.
@@ -310,7 +310,7 @@ stages:
    transformers, crops each `"table"` region, runs structure recognition, and
    emits row / column / spanning-cell boxes in page coordinates. The adapter
    is registered through `register_detector`
-   (`pdomain_book_tools/layout/registry.py:257`) exactly like
+   (`pdomain_book_tools/layout/registry.py:302`) exactly like
    `pp_doclayout.py:119`, behind the same Protocol shape.
 3. **Cell-to-word assignment (new, pure numpy).** Port the deepdoctection
    geometry concepts (Apache-2.0; see §9.4) as plain numpy functions:
@@ -435,7 +435,7 @@ to the table in reading order. Any choice must satisfy no-silent-drop.
 
 ### 9.3 Defensive guard for CELL / TABLE shapes
 
-The LINE guard (`block.py:194-201`) is deliberately LINE-only. One option adds
+The LINE guard (`block.py:216-223`) is deliberately LINE-only. One option adds
 a defensive guard that requires `child_type=BLOCKS` for a `CELL` or `TABLE`.
 The other leaves these shapes unvalidated to match PARAGRAPH and BLOCK. The
 current preference is **no new guard**, matching the existing leniency.

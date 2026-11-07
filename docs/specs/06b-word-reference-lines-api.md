@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-21
-Last verified: 2026-07-13
+Last verified: 2026-11-07
 Kind: spec
 ---
 
@@ -198,7 +198,7 @@ The word-level entry point remains available so callers can:
 ### 3.4 Persistence on the Word
 
 `Word` already has a `baseline: dict[str, float | str] | None`
-attribute (`word.py:71`) populated as a side-effect of
+attribute (`word.py:145`) populated as a side-effect of
 `estimate_baseline_from_image`. Keep that for backward compatibility,
 and add a new attribute:
 
@@ -216,7 +216,7 @@ from `WordReferenceLines.baseline` when the new helper runs. Existing
 callers that read `word.baseline["y"]` keep working.
 
 `to_dict` and `from_dict` in `Word` currently serialize the `baseline` dict
-(`word.py:648`, `word.py:671`). The new `reference_lines` attribute is an
+(`word.py:698`, `word.py:776`). The new `reference_lines` attribute is an
 image-derived, cheap-to-recompute runtime cache. We do **not** add it to the
 v1 JSON schema. Character splits follow the same policy.
 
@@ -227,8 +227,8 @@ ink-density evidence and the most words. When given line context, the
 word-level helper inherits `baseline` and `x_height`. It computes its own
 `top` and `bottom` from the word ROI.
 
-Common preprocessing: use `BoundingBox._threshold_inverted`
-(`bounding_box.py:835`) to get the binarized ROI of the **whole line
+Common preprocessing: use `_threshold_inverted`
+(`pdomain_book_tools/geometry/image_ops.py:93`) to get the binarized ROI of the **whole line
 block** — same Otsu pipeline as refine and crop. Pad the ROI vertically
 by `~ 0.5 * estimated_x_height` (estimated coarsely from
 `mean(word.bbox.height)`) so descenders and ascenders are not clipped
@@ -391,7 +391,7 @@ iterating.
 An inability to estimate does not raise an exception. Exceptions are reserved
 for programmer errors. One example is `image is None` on a code path that
 documents image as required, matching the existing `crop_bottom` error
-semantics at `word.py:1083-1088`.
+semantics in `crop_word_bottom` (`pdomain_book_tools/ocr/image_utilities.py:189`).
 
 ## 7. Per-word vs per-line robustness — worked examples
 

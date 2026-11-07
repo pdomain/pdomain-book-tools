@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-09-19
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-09-19
+- **Last verified:** 2026-11-07
 - **Resolution:** Open — 2 of 3 defects resolved; opencv-cuda dependency
   honesty (defect 3) still open
 - **Severity:** Medium — accept-then-fail load; silent write no-ops

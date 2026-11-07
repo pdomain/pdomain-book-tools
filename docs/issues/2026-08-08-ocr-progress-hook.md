@@ -2,7 +2,7 @@
 Status: active
 Owner: maintainers
 Created: 2026-08-08
-Last verified: 2026-08-08
+Last verified: 2026-11-07
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-08-08
+- **Last verified:** 2026-11-07
 - **Resolution:** Open
 - **Severity:** Medium — a caller cannot distinguish model load from inference, or working from stuck
 - **Affected version:** `pdomain-book-tools` 0.21.0, tree at commit `8e90c8f`
