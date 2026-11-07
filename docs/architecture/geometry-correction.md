@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-11-06
 Kind: architecture
 ---
 
@@ -12,6 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
+- **Last verified:** 2026-11-06
 - **Read when:** changing deskew, dewarp, page-side detection, curvature
   routing, transforms, or CPU/GPU parity.
 - **Search terms:** geometry correction, deskew, dewarp, textline disparity,
@@ -32,7 +33,9 @@ only when the measured regime needs it.
 
 Textline-disparity is the classical scanned-page dewarper. Its NumPy baseline
 and CuPy mirror preserve even/odd gutter handling, flat-scan fallback, and
-output parity. UVDoc is an optional neural backend for photo-like distortion.
+output parity. CPU and GPU `_ensure_foreground` use the same gate: a binary
+image whose mean is below 128 already has text at 255, and a library-polarity
+image whose mean is at least 128 is inverted. UVDoc is an optional neural backend for photo-like distortion.
 It requires the `dewarp-dl` extra and model weights.
 
 ## Boundaries and non-goals
@@ -57,4 +60,4 @@ The task-oriented API remains in
   `_tbd/ocr-container-docs/specs/2026-06-02-geometry-correction-design.md`,
   `_tbd/ocr-container-docs/specs/2026-06-02-textline-disparity-dewarp-design.md`,
   `_tbd/ocr-container-docs/research/2026-06-02-deskew-dewarp-backend-options.md`
-- **Verified:** 2026-07-13 against the current code and focused tests.
+- **Verified:** 2026-11-06 against `cv2_processing/textline_dewarp.py`, `cupy_processing/textline_dewarp.py`, `tests/image_processing/cv2_processing/test_textline_dewarp.py` (`test_ensure_foreground_passes_through_text255_majority_dark`, `test_ensure_foreground_reinverts_library_text0_binary`), and `tests/image_processing/cupy_processing/test_textline_dewarp.py` (`test_ensure_foreground_parity_text255_and_text0`). Earlier pipeline facts were verified 2026-07-13.

@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-19
+Last verified: 2026-11-06
 Kind: architecture
 ---
 
@@ -12,6 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
+- **Last verified:** 2026-11-06
 - **Read when:** changing `Page.reorganize_page`, reading order, layout-aware OCR grouping, word-preservation policy, or layout debug stages.
 - **Search terms:** reorganize page, reading order, PageMetrics, row blocks, layout hints, drop caps, word preservation.
 
@@ -19,7 +20,9 @@ Kind: architecture
 
 Step logic lives in `pdomain_book_tools/ocr/reorganize_page_utils.py`. Layout-model integration lives in `pdomain_book_tools/ocr/layout_aware_reorg.py`. Drop-cap recovery lives in `pdomain_book_tools/ocr/dropcap.py`.
 
-The pipeline accepts normalized or pixel-space OCR geometry. `compute_page_metrics` derives the coordinate domain and page-relative medians once for the geometry heuristics.
+The pipeline accepts normalized or pixel-space OCR geometry. `compute_page_metrics` derives the coordinate domain and page-relative medians once for the geometry heuristics. Band classification uses `_coord_dims_for_block`, so the same page in unit space and in pixel space gets the same roles. `tests/ocr/test_reorganize_coord_domain.py` locks that matrix, including `test_dual_domain_matrix_identical_role_outcomes`.
+
+Drop-cap thresholds scale by `PageMetrics.coord_w` and `coord_h` before they are compared with a box. `dropcap.py` sets `is_normalized` from those metrics. A pixel page is not forced into the unit square.
 
 Layout regions act as hints while geometric grouping still runs. They tag words and influence roles, sidenote routing, and illustration/caption placeholders.
 
@@ -44,9 +47,9 @@ When `PD_OCR_LAYOUT_DEBUG` is enabled, debug emitters expose the mixed-line, hea
 
 ## Word-preservation contract
 
-The default `drop_layout_words=False` path preserves meaningful OCR words. After assembly, `reconcile_dropped_words` compares text-and-bbox signatures.
+The default `drop_layout_words=False` path preserves meaningful OCR words. After assembly, `reconcile_dropped_words` compares text-and-bbox signatures. The empty row-block path does the same after `emit_band_only_blocks`, so body words that never formed a row are not dropped in silence.
 
-Strict mode (`PD_OCR_REORGANIZE_STRICT=1`) raises `ReorganizeDroppedWordsError`. Normal mode appends missing words in a final block tagged `recovered` and emits a warning. Empty-text or bbox-less artifacts do not participate in this comparison.
+Strict mode (`PD_OCR_REORGANIZE_STRICT=1`) raises `ReorganizeDroppedWordsError`. Normal mode appends missing words in a final block tagged `recovered` and emits a warning. Empty-text or bbox-less artifacts do not participate in this comparison. `tests/ocr/test_reorganize_early_return_and_soft_recover.py` covers the early return, the soft recover path, and the empty-bbox filter.
 
 The layout regression text harness intentionally calls `Page.reorganize_page(drop_layout_words=True)` because its committed baselines encode the legacy figure-noise-removal mode. Those baselines do not redefine the default preservation contract.
 
@@ -58,17 +61,13 @@ Header and footer bands carry page-role labels. Special blocks carry role labels
 
 A stitched drop cap remains a separate `Word` tagged `drop cap`. `Block.text` joins it to the following body word without a space.
 
-Caption association claims a shared caption region at most once. The pipeline
-first builds figure-to-caption-region candidates, orders them by geometric gap,
-and lets the closest figure claim each region. Later figures that select the
-same region receive no caption words. This rule deduplicates a shared region;
-it does not provide global word-identity deduplication across unrelated caption
-regions.
+Caption association claims a shared caption region at most once. `associate_captions` searches above and below the figure (`above=True`). The pipeline builds figure-to-caption-region candidates, orders them by the true gap on either side, and lets the closest figure claim each region. Later figures that select the same region receive no caption words. This rule deduplicates a shared region. It does not provide global word-identity deduplication across unrelated caption regions. `tests/layout/test_layout_aware_reorg.py` (`test_caption_above_figure_attached`) covers a caption printed above its figure.
 
 ## Evidence
 
 - Code: `pdomain_book_tools/ocr/page.py`, `pdomain_book_tools/ocr/reorganize_page_utils.py`, `pdomain_book_tools/ocr/layout_aware_reorg.py`, `pdomain_book_tools/ocr/dropcap.py`, `pdomain_book_tools/ocr/block.py`
-- Core behavior tests: `tests/ocr/test_reorganize_page_utils_grouping.py`, `tests/ocr/test_reconcile_dropped_words.py`, `tests/ocr/test_reorganize_diagnostic_snapshots.py`, `tests/ocr/test_dropcap.py`
+- Core behavior tests: `tests/ocr/test_reorganize_page_utils_grouping.py`, `tests/ocr/test_reconcile_dropped_words.py`, `tests/ocr/test_reorganize_early_return_and_soft_recover.py`, `tests/ocr/test_reorganize_coord_domain.py`, `tests/ocr/test_reorganize_diagnostic_snapshots.py`, `tests/ocr/test_dropcap.py`
+- **Verified:** 2026-11-06 against `page.py` early-return reconciliation, `dropcap.py` coordinate scaling, `reorganize_page_utils.py` `_coord_dims_for_block`, and `layout_aware_reorg.py` `associate_captions`.
 - Layout integration tests: `tests/layout/test_fixture_layouts.py`, `tests/layout/test_geometry.py`, `tests/layout/test_mappings.py`, `tests/layout/test_layout_aware_reorg.py`
 - Fixture artifacts: `tests/fixtures/layout_regression/inputs/`, `tests/fixtures/layout_regression/expected_text/baseline/`
 

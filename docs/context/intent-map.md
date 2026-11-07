@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-21
+Last verified: 2026-11-06
 Kind: context
 ---
 
@@ -12,13 +12,15 @@ Kind: context
 
 - **Kind:** context
 - **Status:** active
-- **Last verified:** 2026-07-21
+- **Last verified:** 2026-11-06
 - **Read when:** deciding whether proposed work is active, deferred, rejected, blocked, or awaiting an owner decision.
 - **Search terms:** intent, deferred, rejected, blocked, legacy sweep.
 
 ## Active bets
 
-- Complete the active designs in
+- Finish the open lines in the [roadmap](../plans/roadmap.md). The same list is the [issue index](../issues/README.md).
+- Keep the [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md) until its unfinished themes are done. Shipped slices are named at the top of that plan.
+- Build the greenfield designs only after the owner decisions below are answered:
   [specs 06a](../specs/06a-word-reference-lines-audit.md),
   [06b](../specs/06b-word-reference-lines-api.md),
   [06c](../specs/06c-word-reference-lines-testing.md),
@@ -27,12 +29,6 @@ Kind: context
   [page-order detection](../specs/2026-05-24-page-order-detection.md),
   [scannos](../specs/2026-05-24-scannos-module.md), and
   [hyphen n-grams](../specs/2026-05-24-hyphen-ngrams-sqlite.md).
-- Continue the residual work in the [roadmap](../plans/roadmap.md).
-- Work the 43 active local records from the [issue backlog](../issues/README.md):
-  one record for each of the 33 source-open issues and 10 retained closed-source
-  issues (#43, #54, #65, #77, #94 through #98, and #165). A
-  closed source GitHub issue does not supersede its active local governance
-  status.
 
 ## Deferred work
 
@@ -95,16 +91,9 @@ Kind: context
 
 None.
 
-## Open issues (deep-review plan)
+## Open issues
 
-Governed issue reports for the 2026-07-21 continued-work plan live under
-[`docs/issues/`](../issues/README.md). High-severity open items:
-
-- [known-failing xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md) (B3)
-
-Full open list (including Medium and greenfield trackers):
-[`docs/issues/README.md`](../issues/README.md). Plan:
-[`docs/plans/2026-07-21-continued-work-from-deep-review.md`](../plans/2026-07-21-continued-work-from-deep-review.md).
+The open list is the [roadmap](../plans/roadmap.md). The [issue index](../issues/README.md) repeats it. The [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md) holds the unfinished theme sequence.
 
 ## Needs owner decision
 
@@ -131,16 +120,22 @@ Full open list (including Medium and greenfield trackers):
   recovery, collision-safe rule IDs, deduplication, concurrency, and migrations.
   Evidence: docs/specs/2026-05-24-scannos-module.md, Adversarial Review.
 - Resolve migrated owner-decision records through the
-  [issue backlog](../issues/README.md). Keep all 43 active local records after
-  their GitHub transport copies are deleted.
+  [issue index](../issues/README.md). A closed GitHub source does not close the local file.
+- GPU and slow-path CI. [gpu-slow-ci-strategy](../issues/2026-07-21-gpu-slow-ci-strategy.md) describes GitHub workflows removed in `67a714b`. This pass did not prove that a replacement gate was chosen or built.
+- Dep-refresh auto-land. [dep-refresh](../issues/2026-08-08-dep-refresh-cannot-auto-land.md) describes a required `ci` status from workflows that are gone. Branch protection was not re-checked from this repo.
+- Five workspace repos and CI. [actions-disabled](../issues/2026-08-08-actions-disabled-five-repos.md) is cross-repo. This pass did not prove those repositories now run CI.
+- Workspace process claims. [gh-043](../issues/2026-05-11-gh-043-style-review-detect-subprocess-failure.md), [gh-054](../issues/2026-05-17-gh-054-monthly-grooming.md), [gh-065](../issues/2026-05-17-gh-065-decompose-spec-flags.md), [gh-077](../issues/2026-05-17-gh-077-workspace-agent-definitions.md), and [gh-094](../issues/2026-05-17-gh-094-pd-ui-agent-definition.md) through [gh-098](../issues/2026-05-17-gh-098-workspace-routing-table.md) ask for checks outside this repository. The files stay.
+- Predictor batch-size release. [gh-226](../issues/2026-05-29-gh-226-release-batch-predictor-kwargs.md) says `det_bs` and `reco_bs` are in git history and the registry cutover is still unverified.
 
 ## Legacy-unverified sweep
 
 - **Can retire:** every file formerly under docs/archive/; the completed deep
   code/security review; Git history preserves their evidence.
-- **Still active:** docs/plans/roadmap.md, docs/process/lint-deviations.md,
-  active specs 06a–06c, 09, 10, hyphen n-grams, page-order detection, scannos,
-  and the specs index.
+- **Still active:** docs/plans/roadmap.md,
+  docs/plans/2026-07-21-continued-work-from-deep-review.md,
+  docs/process/lint-deviations.md, active specs 06a–06c, 09, 10, hyphen
+  n-grams, page-order detection, scannos, and the specs index. The PGDP-aware
+  matcher spec and plan were promoted on 2026-11-06.
 - **Superseded:** the original word-reference-lines parent spec, replaced by
   specs 06a, 06b, and 06c.
 - **Needs owner review:** none beyond the remaining architecture destinations

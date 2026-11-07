@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-19
-Last verified: 2026-07-19
+Last verified: 2026-11-06
 Kind: architecture
 ---
 
@@ -12,6 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
+- **Last verified:** 2026-11-06
 - **Read when:** loading PP-DocLayout models, changing `checkpoint_path`,
   revisions, offline behavior, or remote-model trust policy.
 - **Search terms:** PP-DocLayout, checkpoint_path, Hugging Face,
@@ -39,6 +40,11 @@ Local directories need no trust flag. Passing `local_files_only=True` forwards
 that option to both `from_pretrained()` calls and prevents network access.
 Local files remain caller-trusted input.
 
+`get_detector("pp-doclayout-plus-l")` forwards `revision`, `local_files_only`,
+and `trust_remote_checkpoint` to the adapter. Those three kwargs are part of
+the memoisation cache key, so a different revision or trust setting is a
+different cached instance. Unrecognised kwargs still raise `TypeError`.
+
 The adapter does not pass or enable `trust_remote_code`; it relies on the
 installed Transformers default. That default reduces one remote-code path, but
 model configuration, weights, artifact size, and inference resource use still
@@ -65,5 +71,9 @@ to Hugging Face `from_pretrained()`.
   offline forwarding.
 - **Tests:** `tests/layout/test_pp_doclayout.py` — local offline loading, remote
   rejection, remote opt-in, and built-in default behavior.
-- **Commit:** `c5ca010`, merged in `bad42d3`.
-- **Verified:** 2026-07-19 against the current adapter and tests.
+  `tests/layout/test_detector.py` locks registry forwarding of
+  `trust_remote_checkpoint`.
+- **Commit:** `c5ca010`, merged in `bad42d3`. Registry forwarding of the three
+  kwargs is on master `0d8b9d40`.
+- **Verified:** 2026-11-06 against `layout/registry.py` and
+  `layout/adapters/pp_doclayout.py`. The 2026-07-19 adapter facts still hold.

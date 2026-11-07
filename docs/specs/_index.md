@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-10
-Last verified: 2026-07-19
+Last verified: 2026-11-06
 Kind: process
 ---
 
@@ -40,6 +40,7 @@ the workspace's fixing-specs guide.
 | — | [scannos-module](2026-05-24-scannos-module.md) | `pdomain_book_tools.scannos` — `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote` | Implementing pdomain-prep-for-pgdp Stage 13; understanding SQLite (global rules) vs JSON sidecar (per-book candidates) split; promotion evidence trail |
 | — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `pdomain_book_tools.hyphen_ngrams` — `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction pipeline | Implementing pdomain-prep-for-pgdp Stage 15 (post-JSON-adapter); understanding download-on-first-use packaging and SQLite schema for Google Books Ngrams hyphen pairs |
 | — | ~~writing-docs plugin routing~~ _(implemented; retired)_ | Repository writing guidance and plugin ownership | Retired 2026-07-19; canonical routing lives in `AGENTS.md` and `CONVENTIONS.md`, and Git history preserves the process-only design |
+| — | ~~PGDP-aware matcher~~ _(implemented; retired)_ | Immutable match graph, PGDP continuations, legacy projection, book manifest | Retired 2026-11-06; shipped contract is [architecture/pgdp-aware-matcher.md](../architecture/pgdp-aware-matcher.md) |
 
 ## Historical numbering
 

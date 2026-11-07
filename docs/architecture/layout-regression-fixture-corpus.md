@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-13
+Last verified: 2026-11-06
 Kind: architecture
 ---
 
@@ -12,6 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
+- **Last verified:** 2026-11-06
 - **Read when:** adding a layout fixture, regenerating cached layout data, reviewing reorganize text changes, or changing baseline policy.
 - **Search terms:** layout regression, fixture corpus, PageLayout JSON, reorganize baseline, strict xfail, baseline promotion.
 
@@ -47,9 +48,9 @@ reorganize coverage when its proofread reference is missing.
 - Required corpus region coverage.
 - Mapping compatibility.
 
-`tests/ocr/test_reorganize_page_utils_grouping.py` auto-discovers every baseline with matching PNG and OCR JSON inputs. It runs reorganize in strict preservation mode. The test writes current output and unified diffs. It then compares rendered text byte-for-byte with the committed baseline. Step debug output is enabled unless `PD_OCR_TEST_NO_DEBUG` disables image generation. Per-worker output paths isolate xdist runs.
+`tests/ocr/test_reorganize_page_utils_grouping.py` auto-discovers every baseline with matching PNG and OCR JSON inputs. It loads `inputs/<case>.layout.json` and calls `reorganize_page(layout=layout, drop_layout_words=True)` in strict preservation mode. The test writes current output and unified diffs. It then compares rendered text byte-for-byte with the committed baseline. Step debug output is enabled unless `PD_OCR_TEST_NO_DEBUG` disables image generation. Per-worker output paths isolate xdist runs.
 
-The text harness passes `drop_layout_words=True`. Its baselines therefore describe the legacy figure-noise-removal mode. They do not describe the default word-preserving `Page.reorganize_page` mode. Five cases carry strict xfails. Their committed baselines describe desired figure-noise removal that current output does not satisfy.
+That legacy track passes `drop_layout_words=True`. Its baselines describe figure-noise removal. They do not describe the default word-preserving mode. A second track, `expected_text/default_baseline/`, locks `drop_layout_words=False` for six body-heavy cases through `test_reorganize_page_default_mode_core_outputs`. Five cases on the legacy track carry strict xfails. Their committed baselines describe desired figure-noise removal that current output does not satisfy.
 
 ## Baseline policy
 
@@ -77,6 +78,8 @@ The corpus does not contain representative tables, mathematical formulae, or cro
 - Corpus manifest: `tests/fixtures/layout_regression/README.md`
 - Inputs and cached outputs: `tests/fixtures/layout_regression/inputs/`
 - Text baselines: `tests/fixtures/layout_regression/expected_text/baseline/`
+- Default-mode baselines: `tests/fixtures/layout_regression/expected_text/default_baseline/` (six cases)
+- **Verified:** 2026-11-06 against `test_reorganize_page_utils_grouping.py` (`layout=` on the legacy track, `drop_layout_words=False` on the six-case default track).
 - Layout corpus tests: `tests/layout/test_fixture_layouts.py`
 - Reorganize text tests: `tests/ocr/test_reorganize_page_utils_grouping.py`
 - Fixture tooling: `tests/fixtures/layout_regression/ocr_fixtures.py`, `tests/fixtures/layout_regression/regenerate_layouts.py`, `tests/fixtures/layout_regression/dump_reorganize_output.py`

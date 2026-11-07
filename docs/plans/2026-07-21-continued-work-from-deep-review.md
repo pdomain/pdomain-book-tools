@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-07-21
+Last verified: 2026-11-06
 Kind: plan
 ---
 
@@ -12,6 +12,7 @@ Kind: plan
 
 - **Kind:** plan
 - **Status:** active
+- **Last verified:** 2026-11-06
 - **Read when:** picking the next implementation theme after the 2026-07-21 deep review; sequencing P0 fixes vs greenfield modules.
 - **Search terms:** continued work, P0 reorganize, coordinate domain, layout harness, drop-cap C, decision pack, prep-for-pgdp modules.
 
@@ -33,6 +34,20 @@ Per-item governed trackers (evidence, defects, severity):
 This plan **extends** [`docs/plans/roadmap.md`](roadmap.md). It does not
 replace residual layout, image, or dev items already there: sidenote default
 flip, drop-cap C, decoration postclassify, and doctr-from-git signal.
+
+## Shipped slices
+
+Code on master `0d8b9d40`, read on 2026-11-06, proves these slices. The checklists under the same headings below are the original task list. The remaining-work list in the [roadmap](roadmap.md) is the open set. Do not treat a shipped slice as open work.
+
+- A1 coordinate-domain thresholds, A2 early-return reconciliation, A3 soft recover, and C2 drop-cap coordinate scaling: [reorganize page pipeline](../architecture/reorganize-page-pipeline.md).
+- A4 GPU and CPU foreground polarity: [geometry correction](../architecture/geometry-correction.md).
+- A5 README orientation examples: [OCR page orientation](../architecture/ocr-page-orientation.md) and the README.
+- B1 layout-fed harness and B2 six-case default-mode track: [layout regression fixtures](../architecture/layout-regression-fixture-corpus.md).
+- C7 registry trust kwargs and captions printed above a figure: [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md) and [reorganize page pipeline](../architecture/reorganize-page-pipeline.md).
+- D3 backlog sync: the roadmap is now the remaining-work list.
+- Word merge no longer clears the line's ground truth: [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md).
+
+C5 is only partly done. Load and write failures are fixed. The `opencv-cuda` dependency-honesty part is still open.
 
 ## Architecture
 

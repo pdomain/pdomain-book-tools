@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-04
-Last verified: 2026-07-13
+Last verified: 2026-11-06
 Kind: process
 ---
 
@@ -27,7 +27,7 @@ Git history preserves retired documentation. Do not create a parallel archive
 tree; promote durable truth into architecture, decisions, or context before
 deleting a retired document.
 
-Active docs map to GitHub issues. See this repo's issue tracker for status.
+Open work is the [roadmap](plans/roadmap.md). GitHub Issues is disabled for this repository.
 
 This layout follows the workspace standard. See
 `/workspaces/ocr-container/docs/README.md` for the master.
@@ -47,6 +47,5 @@ This layout follows the workspace standard. See
 - [Completed GitHub issue migration ledger](context/github-issues-migration-ledger.md)
 - [Roadmap](plans/roadmap.md)
 - [Specifications](specs/_index.md)
-- [PGDP-aware matcher design](specs/2026-08-22-pgdp-aware-matcher.md)
-- [PGDP-aware matcher plan](plans/2026-08-22-pgdp-aware-matcher.md)
+- [PGDP-aware matcher](architecture/pgdp-aware-matcher.md)
 - [Geometry correction usage](usage/geometry-correction.md)

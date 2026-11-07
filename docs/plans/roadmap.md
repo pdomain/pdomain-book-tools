@@ -2,213 +2,98 @@
 Status: active
 Owner: CT
 Created: 2026-05-04
-Last verified: 2026-07-21
+Last verified: 2026-11-06
 Kind: plan
 ---
 
 # Roadmap
 
-This roadmap tracks forward-looking work that belongs specifically in
-pdomain-book-tools. It excludes work better tracked in a consuming app's
-roadmap. For example, the layout-fine-tune workflow lives in the workspace
-layout-training specification because it spans pdomain-ocr-labeler-spa +
-pdomain-ocr-training.
+## Agent Index
 
-The items below come from the now-archived workspace docs
-`PLAN-layout-aware-ocr.md` and `TODO-layout-training.md`. Their original phases
-have shipped. Only the remaining work appears here.
+- **Kind:** plan
+- **Status:** active
+- **Last verified:** 2026-11-06
+- **Read when:** choosing the next library change, or checking whether a behavior already shipped.
+- **Search terms:** roadmap, remaining work, sidenote, drop cap, page order, scannos, hyphen n-grams.
 
-> Git history preserves shipped roadmap items removed from this live plan.
+Shipped behavior is an architecture doc. Open work is one line plus its issue or plan.
 
-## Open — layout consumption
+## Shipped
 
-The layout module exists and is wired up, but its consumption logic could be
-sharper. None of these items block the fine-tune workflow. They are useful on
-their own. One item, per-type confidence, becomes more relevant after a
-fine-tune lands because confidences will distribute differently.
+- [PGDP-aware matcher](../architecture/pgdp-aware-matcher.md)
+- [Reorganize page pipeline](../architecture/reorganize-page-pipeline.md)
+- [Layout regression fixtures](../architecture/layout-regression-fixture-corpus.md)
+- [Geometry correction](../architecture/geometry-correction.md)
+- [OCR page orientation](../architecture/ocr-page-orientation.md)
+- [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md)
+- [Local development mode](../architecture/local-dev-mode.md)
+- [DocTR checkpoint loading](../architecture/checkpoint-loading-trust-boundary.md)
+- [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md)
+- [Page serialization](../architecture/page-serialization.md)
+- [Glyph annotations](../architecture/glyph-annotations.md)
+- [Tesseract integration](../architecture/tesseract-integration.md)
+- [Type checking](../architecture/type-checking.md)
+- [Layout debug cleanup](../architecture/layout-debug-cleanup.md)
 
-### Decoration-vs-figure post-classification
+## Remaining work
 
-PP-DocLayout has no `decoration` class. The adapter maps `seal` →
-`RegionType.decoration`. For ornamental woodcuts such as chapter headpieces and
-fleurons, it falls back to `image` → `figure`. PLAN open question 3 sketched a
-heuristic: "if a `figure` is small (<5 % of page), positioned at top or bottom,
-and contains no detected text words, reclassify as `decoration`."
+The [continued-work plan](2026-07-21-continued-work-from-deep-review.md) stays active. Its opening note names the slices the code already proves. The lines below are what is still unfinished.
 
-Add `postclassify_decoration(layout, page) -> PageLayout` to
-`pdomain_book_tools/layout/geometry.py`. Run it as a late pass in
-`Page.reorganize_page`, after `tag_words_with_layout`, so the pass knows which
-words fall inside the figure region. This cheap change helps the downstream
-illustration extractor choose the correct `type=decoration` for
-`i_<stem>_NN.png` filenames.
+- Five strict-xfail figure-noise baselines still define those cases in CI. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3.
+- Reorganize branch coverage is still thin on plate noise, column strategy, and floated captions. [branch coverage](../issues/2026-07-21-reorganize-branch-unit-coverage.md). Plan theme B4.
+- DocTR and Tesseract ingress still omit an explicit `is_normalized` flag. [OCR ingress](../issues/2026-07-21-ocr-ingress-is-normalized-explicit.md). Plan theme C1.
+- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
+- Geometry-correction docs and the dual gate still disagree, and grid `map_points` is unsupported. [geometry gate](../issues/2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
+- HEIF and AVIF load and write failures are fixed. The `opencv-cuda` dependency-honesty part is not. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
+- `docs/usage/public-api.md` is narrower than the surface the README teaches. [public API](../issues/2026-07-21-public-api-surface-policy.md). Plan theme D1.
+- Schema emit is incomplete for glyphs, and Block ground-truth tuple hygiene is unfinished. [schema emit](../issues/2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
+- Greenfield specs are blocked on owner decisions. [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
+- Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](../issues/2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](../issues/2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](../issues/2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
+- Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](../issues/2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](../issues/2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3.
+- The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](../issues/2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](../issues/2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2.
+- Sidenote x-height image projection is unbuilt. [gh-004](../issues/2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](../issues/2026-05-11-gh-047-spec-sidenote-projection-x-height.md).
+- Row-block expansion is not sidenote-aware. [gh-006](../issues/2026-05-10-gh-006-sidenote-aware-row-blocks.md), [gh-049](../issues/2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md).
+- A DocTR fork pin does not flag local-dev mode. [gh-007](../issues/2026-05-10-gh-007-dev-local-doctr-fork-pin.md). Deferred until a fork-pin workflow needs it.
+- The page-order module is specified and unbuilt. [tracker](../issues/2026-07-21-page-order-module-unbuilt.md), [gh-208](../issues/2026-05-24-gh-208-spec-page-order-detection.md), [gh-211](../issues/2026-05-24-gh-211-page-order-module-skeleton.md), [gh-212](../issues/2026-05-24-gh-212-page-order-filename-signal.md), [gh-213](../issues/2026-05-24-gh-213-page-order-ocr-signal.md), [gh-214](../issues/2026-05-24-gh-214-page-order-visual-signal.md), [gh-215](../issues/2026-05-24-gh-215-page-order-aggregation.md). Plan theme G1.
+- The scannos module is specified and unbuilt. [tracker](../issues/2026-07-21-scannos-module-unbuilt.md), [gh-209](../issues/2026-05-24-gh-209-spec-scannos-module.md), [gh-216](../issues/2026-05-24-gh-216-scanno-dataclasses.md), [gh-217](../issues/2026-05-24-gh-217-sqlite-rule-library.md), [gh-218](../issues/2026-05-24-gh-218-json-candidate-store.md), [gh-219](../issues/2026-05-24-gh-219-scanno-scan-promote-api.md), [gh-220](../issues/2026-05-24-gh-220-scanno-promotion-tests.md). Plan theme G2.
+- The hyphen n-grams client is specified and unbuilt. [tracker](../issues/2026-07-21-hyphen-ngrams-unbuilt.md), [gh-210](../issues/2026-05-24-gh-210-spec-hyphen-ngrams-sqlite.md), [gh-221](../issues/2026-05-24-gh-221-hyphen-ngrams-protocol.md), [gh-222](../issues/2026-05-24-gh-222-hyphen-ngrams-sqlite-client.md), [gh-223](../issues/2026-05-24-gh-223-hyphen-ngrams-json-api-client.md), [gh-224](../issues/2026-05-24-gh-224-hyphen-ngrams-download.md), [gh-225](../issues/2026-05-24-gh-225-hyphen-ngrams-extraction.md). Plan theme G3.
+- The word-reference-lines API is unbuilt beyond the baseline helpers. [tracker](../issues/2026-07-21-word-reference-lines-api-unbuilt.md). Plan theme H1. Specs [06a](../specs/06a-word-reference-lines-audit.md), [06b](../specs/06b-word-reference-lines-api.md), [06c](../specs/06c-word-reference-lines-testing.md).
+- Character bounding-box extraction is unbuilt. [tracker](../issues/2026-07-21-char-bbox-extraction-unbuilt.md), [spec 09](../specs/09-char-bbox-extraction.md). Plan theme H2.
+- Table TABLE/CELL structure is unbuilt. [tracker](../issues/2026-07-21-table-structure-unbuilt.md), [spec 10](../specs/10-table-structure.md). Plan theme I1.
+- Heavy OCR dependencies are still mandatory. [gh-161](../issues/2026-05-21-gh-161-optional-ocr-dependencies.md).
+- Checkpoint loading still lacks size, checksum, and safetensors limits. [gh-165](../issues/2026-05-22-gh-165-checkpoint-hardening.md). The shipped baseline is the checkpoint architecture doc above.
+- Strict image validation for untrusted inputs is open. [gh-191](../issues/2026-05-22-gh-191-strict-image-validation.md).
+- Advisory static scanners are not added. [gh-201](../issues/2026-05-22-gh-201-advisory-static-scanners.md).
+- `det_bs` and `reco_bs` are in git history. The registry cutover is unverified. [gh-226](../issues/2026-05-29-gh-226-release-batch-predictor-kwargs.md).
+- OCR entry points have no progress callback. [progress hook](../issues/2026-08-08-ocr-progress-hook.md).
+- Two issue-record sets still describe the same clusters. [duplicate records](../issues/2026-08-07-duplicate-issue-records-after-rebase.md).
+- GPU and slow-path CI strategy. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](../issues/2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6.
+- Dep-refresh cannot auto-land. The issue describes a required `ci` status from workflows that are gone. Branch protection was not re-checked. [dep-refresh](../issues/2026-08-08-dep-refresh-cannot-auto-land.md).
+- Five workspace repos have had no CI since 2026-07-12. [actions disabled](../issues/2026-08-08-actions-disabled-five-repos.md).
+- Workspace process claims are unverified: monthly grooming, decompose-spec flags, and agent definitions. [gh-054](../issues/2026-05-17-gh-054-monthly-grooming.md), [gh-065](../issues/2026-05-17-gh-065-decompose-spec-flags.md), [gh-077](../issues/2026-05-17-gh-077-workspace-agent-definitions.md), [gh-094](../issues/2026-05-17-gh-094-pd-ui-agent-definition.md), [gh-095](../issues/2026-05-17-gh-095-pd-ui-docs-agent-definition.md), [gh-096](../issues/2026-05-17-gh-096-pd-ocr-ops-agent-definition.md), [gh-097](../issues/2026-05-17-gh-097-pd-ocr-ops-docs-agent-definition.md), [gh-098](../issues/2026-05-17-gh-098-workspace-routing-table.md).
+- The style-review subprocess failure disposition is external. [gh-043](../issues/2026-05-11-gh-043-style-review-detect-subprocess-failure.md).
 
-This work is out of scope until the fine-tune lands. Once the model has a
-first-class `decoration` head, the heuristic becomes a fallback instead of the
-primary classifier.
+## Still out of scope
 
-## Open — image-processing improvements (no model fine-tune needed)
-
-These are independent of the layout fine-tune. Each addresses a
-specific reorg-pipeline weakness called out in the archived
-`TODO-layout-training.md`.
-
-### Glyph-size analysis for sidenote detection — partial
-
-Bbox-height support has shipped: `detect_geometric_sidenotes` now accepts
-`max_height_ratio: float | None = None`. When set (e.g. `0.8`), a
-margin cluster is rejected unless its median bbox height is
-`<= max_height_ratio * body_median_height` (body sample excludes
-words already in either margin cluster. This exclusion prevents a tall sidenote
-from raising the median. The default `None` preserves legacy x-only behaviour.
-
-The reorganize-level pass-through has also shipped:
-`Page.reorganize_page(sidenote_max_height_ratio=…)` threads through
-to Step Layout-1b. Default `None` preserves legacy behaviour; callers
-opt in by passing a float. A pdomain-ocr-cli flag remains a downstream
-follow-up in that repo's roadmap. It can connect directly to this kwarg without
-further changes here.
-
-Still open:
-
-- **Default-flip decision.** Whether to flip the reorganize-level
-  default from `None` to e.g. `0.85` (more aggressive) needs tuning
-  with real fixtures. No fixture today regresses with the current
-  `None` default. Flipping the default needs evidence that
-  `0.85`-style gating helps the corpus more than it hurts. Do not pick this
-  slice without running a fixture pass first.
-- **Image-projection refinement.** Bbox heights are coarse for OCR
-  output that bundles ascenders and descenders inconsistently. The
-  PLAN sketched a horizontal-projection pass on the cropped image
-  to estimate true x-height per word. Worth doing only if a fixture
-  shows bbox-height alone misclassifying.
-
-### Drop-cap glyph recognition — Iteration C (queued)
-
-Iterations A and B shipped (see the archive table below). The remaining work is
-the multi-letter heading-OCR cross-check. When body-word inference is ambiguous,
-use the chapter title above to disambiguate it. For example, the body word
-"BELIEF" is already valid English, so the cursive fallback cannot uniquely
-resolve the cap to "A". The title "A BELIEF IN OMENS…" shows that the cap is
-"A". Today, these cases enter the ``"drop cap unrecovered"`` failure path, and
-the closest body Word is tagged for human review.
-
-The fixture that exercises this gap is
-`tests/fixtures/layout_regression/inputs/footnotes-stacked-with-anchor`
-(cap "A", body "BELIEF" — currently unrecovered).
-
-### Multi-column body detection enhancements
-
-Once the glyph-size data described above exists, column detection in
-`expand_row_blocks` can become sidenote-aware. The geometric column splitter
-should not break on a sidenote that creates a narrow third column. This case is
-currently rare in the PGDP corpus, so it is a follow-up to the glyph-size work,
-not standalone work.
-
-## Open — page handling
-
-### Page rotation — already shipped
-
-The PLAN's "open follow-up" for page-rotation detection has shipped as
-`pdomain_book_tools/ocr/rotation.py`. Documented in
-`../architecture/ocr-page-orientation.md`. It covers sideways plates,
-upside-down scans, and the Peutinger map fixture. **No further work tracked here.**
-
-## Open — developer tooling
-
-### dev-local-aware `upgrade-deps` flow — shipped
-
-Detection and the guard have shipped. `scripts/check_dev_local.py` reports
-dev-local mode (sibling pdomain-* editables, `[gpu]` extra installed,
-`.venv/.pdomain-dev-local` marker, or `PDOMAIN_DEV_LOCAL=1` env var) with
-exit-code contract (0 canonical / 1 dev-local) and a `--quiet`
-mode for Makefile branching. `make upgrade-deps` refuses with a
-pointer to `make local-upgrade-deps` when dev-local is detected;
-`make local-upgrade-deps` upgrades the lockfile and syncs with the
-`[gpu]` extra restored. The shipped contract is documented in
-[`docs/architecture/local-dev-mode.md`](../architecture/local-dev-mode.md);
-the originating spec is retired (Git history preserves it).
-
-`make local-dev` shipped: syncs the `[gpu]` extra and writes the two
-mode markers (`.venv/.pdomain-local-mode` and `.venv/.pdomain-dev-local`,
-the latter via `scripts/write_dev_local_marker.py`). Lifecycle is
-anchored to the venv — a venv rebuild deletes the markers
-automatically. Downstream `pdomain-*` repos can now tell users
-"run `make local-dev` in pdomain-book-tools first" with a stable contract.
-
-Still open:
-
-- **Doctr-from-git signal.** Whether `python-doctr` installed from a
-  non-canonical URL (a contributor's fork rather than
-  `mindee/doctr.git`) should auto-flag dev-local without a marker
-  file. The current detector only inspects `uv pip list --format=json`,
-  which does not expose the install URL. A probe would have to read
-  doctr's `direct_url.json` from dist-info. Design question: which
-  URLs count as "non-canonical" given pyproject already pins doctr
-  from `mindee/doctr.git` (so canonical installs leave a `vcs_info`
-  block too). This work is deferred until a concrete fork-pin workflow needs it.
-
-## Open — prep-for-pgdp / greenfield (absorbed from GH #208–#225)
-
-Absorbed **2026-07-21** from the open GitHub clusters so tracker wipe does not
-lose provenance. Implementation is **blocked on Theme E** owner decisions in
-[`2026-07-21-continued-work-from-deep-review.md`](./2026-07-21-continued-work-from-deep-review.md)
-(Themes G–I). Per-item trackers live under `docs/issues/`.
-
-| Cluster | GH issues | Plan | Issue report |
-|---|---|---|---|
-| page-order | #208 (spec), #211–#215 | G1 | [`page-order-module-unbuilt`](../issues/2026-07-21-page-order-module-unbuilt.md) |
-| scannos | #209 (spec), #216–#220 | G2 | [`scannos-module-unbuilt`](../issues/2026-07-21-scannos-module-unbuilt.md) |
-| hyphen-ngrams | #210 (spec), #221–#225 | G3 | [`hyphen-ngrams-unbuilt`](../issues/2026-07-21-hyphen-ngrams-unbuilt.md) |
-
-Related (not in #208–#225, same decision gate): word reference lines (H1),
-char-bbox extraction (H2), table structure (I1). Do not start G/H/I code until
-the decision pack answers land.
-
-## Out of scope (still)
-
-- **Training PP-DocLayout from scratch.** The model's pretrained
-  corpus already includes ancient books. Fine-tuning is enough.
-- **Custom architectures (DocLayout-YOLO, DocLayNet-DETR, DiT).**
-  RT-DETR is a solid baseline. Swapping architectures buys little
-  for the engineering cost.
-- **Cross-book transfer learning** beyond what fine-tuning provides.
-- **Table-to-PGDP-table syntax.** Layout *detection* for tables (PP-DocLayout
-  table regions) is available. TABLE/CELL structure (spec 10) is **not**
-  shipped — see Theme I in the continued-work plan and
-  `docs/issues/2026-07-21-table-structure-unbuilt.md`. Serialising into PGDP
-  table syntax stays out of scope / manual either way.
-- **Cross-page figure stitching** (foldout maps spanning two pages).
-- **Layout-aware OCR crops** (different recognition models per
-  region type — handwriting / fraktur / running text). This would be a real
-  improvement, but it is a separate effort and is not on this roadmap.
+- Training PP-DocLayout from scratch. Fine-tuning is the planned path, and it lives outside this repo.
+- Replacing RT-DETR with DocLayout-YOLO, DocLayNet-DETR, or DiT.
+- Cross-book transfer learning beyond fine-tuning.
+- Serialising tables into PGDP table syntax. Layout detection of table regions is shipped. TABLE/CELL structure is the open spec 10 item above.
+- Stitching a figure across a page boundary.
+- Running a different recognition model per region type.
 
 ## Goal
 
-Track only forward-looking work that belongs in the `pdomain-book-tools`
-library, carrying forward residual layout, image-processing, page-handling, and
-developer-tooling work after the original phases shipped. Exclude work owned by
-consuming applications or cross-repository training workflows.
+Track unfinished work that belongs in this library. Point shipped behavior at `docs/architecture/` instead of retelling it here.
 
 ## Architecture
 
-Extend the existing `Page.reorganize_page` pipeline with late layout
-post-classification and optional sidenote refinements, and keep drop-cap
-recovery in the OCR reorganization path. Keep local-development detection in
-repository scripts and Make targets, with downstream CLI wiring and
-cross-repository training outside this plan.
+Remaining work extends `Page.reorganize_page`, the layout-regression corpus, geometry correction, and the unbuilt page-order, scannos, hyphen n-gram, reference-line, character-box, and table-structure modules. Shipped contracts stay in the architecture docs linked above.
 
 ## Tech Stack
 
-The roadmap builds on PP-DocLayout and `PageLayout`/`RegionType` layout
-types, OCR bounding boxes and cropped-image projection analysis,
-layout-regression fixtures, and the Python scripts, uv environment metadata,
-and Make targets used by the local-development workflow.
+The open items use PP-DocLayout and `PageLayout`, OCR boxes, the layout-regression fixtures, and the existing pytest suite. Local-dev detection stays in the repository scripts and Make targets.
 
 ## Global Constraints
 
-Do not flip the sidenote-height default without a real-fixture pass, and add
-image-projection refinement only when a fixture demonstrates that bounding-box
-height is insufficient. Keep decoration post-classification deferred until
-fine-tuning lands, preserve legacy behavior by default, and retain the listed
-model-training, architecture-swap, cross-book, table-serialization, cross-page,
-and layout-aware OCR exclusions.
+Do not flip the sidenote height default without a fixture pass. Keep decoration post-classification waiting until a fine-tune provides a decoration class. Do not start the page-order, scannos, hyphen n-gram, reference-line, character-box, or table-structure implementations until the owner decision pack is answered. Keep the out-of-scope list above out of this repo.

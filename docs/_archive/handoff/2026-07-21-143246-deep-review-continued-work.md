@@ -75,11 +75,9 @@ dual-path hardening, using the governed issue trackers as the work queue.
 - `docs/research/2026-07-21-deep-code-review-findings.md`
 - `docs/plans/2026-07-21-continued-work-from-deep-review.md`
 - `docs/issues/README.md`
-- `docs/issues/2026-07-21-reorganize-coord-domain-thresholds.md` (A1)
-- `docs/issues/2026-07-21-reorganize-early-return-skips-reconcile.md` (A2)
-- `docs/issues/2026-07-21-reorganize-soft-recover-untested.md` (A3)
-- `docs/issues/2026-07-21-gpu-textline-foreground-polarity.md` (A4)
-- `docs/issues/2026-07-21-layout-regression-harness-without-layout.md` (B1)
+- `docs/architecture/reorganize-page-pipeline.md` (A1, A2, A3; issue files retired 2026-11-06)
+- `docs/architecture/geometry-correction.md` (A4; issue file retired 2026-11-06)
+- `docs/architecture/layout-regression-fixture-corpus.md` (B1; issue file retired 2026-11-06)
 - `docs/context/intent-map.md` (Open issues section)
 - `docs/handoff/2026-07-17-issue-tracker-migration.md` (separate scope; still open)
 

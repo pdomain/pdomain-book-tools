@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-07-20
+Last verified: 2026-11-06
 Kind: context
 ---
 
@@ -348,3 +348,120 @@ Kind: context
   batches. The live issue count is zero, and GitHub Issues is disabled.
 - **Remaining work:** Resolve the 43 active Git records through their normal
   technical or owner-decision workflows.
+
+### 2026-11-06 Retired: PGDP-aware matcher plan
+
+- Old path: docs/plans/2026-08-22-pgdp-aware-matcher.md
+- Outcome: implemented
+- Superseded by: docs/architecture/pgdp-aware-matcher.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/pgdp-aware-matcher.md
+- Remaining work: source-data production and the SPA reader stay outside this package. Hyphen n-gram lookup is not part of decoding.
+
+### 2026-11-06 Retired: PGDP-aware matcher spec
+
+- Old path: docs/specs/2026-08-22-pgdp-aware-matcher.md
+- Outcome: implemented
+- Superseded by: docs/architecture/pgdp-aware-matcher.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/pgdp-aware-matcher.md
+- Remaining work: none in this package. The spec's phase-one contract shipped as re-exports of `pdomain_book_contracts` with tests in this repo.
+
+### 2026-11-06 Retired: reorganize coordinate-domain thresholds
+
+- Old path: docs/issues/2026-07-21-reorganize-coord-domain-thresholds.md
+- Outcome: implemented
+- Superseded by: docs/architecture/reorganize-page-pipeline.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/reorganize-page-pipeline.md
+- Remaining work: none
+
+### 2026-11-06 Retired: early-return word reconciliation
+
+- Old path: docs/issues/2026-07-21-reorganize-early-return-skips-reconcile.md
+- Outcome: implemented
+- Superseded by: docs/architecture/reorganize-page-pipeline.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/reorganize-page-pipeline.md
+- Remaining work: none
+
+### 2026-11-06 Retired: soft word-recover coverage
+
+- Old path: docs/issues/2026-07-21-reorganize-soft-recover-untested.md
+- Outcome: implemented
+- Superseded by: docs/architecture/reorganize-page-pipeline.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/reorganize-page-pipeline.md
+- Remaining work: none
+
+### 2026-11-06 Retired: default-mode baseline track
+
+- Old path: docs/issues/2026-07-21-reorganize-default-mode-not-baselined.md
+- Outcome: implemented
+- Superseded by: docs/architecture/layout-regression-fixture-corpus.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/layout-regression-fixture-corpus.md
+- Remaining work: five strict-xfail baselines remain open in docs/issues/2026-07-21-reorganize-known-failing-baselines-xfail.md
+
+### 2026-11-06 Retired: layout regression harness without layout
+
+- Old path: docs/issues/2026-07-21-layout-regression-harness-without-layout.md
+- Outcome: implemented
+- Superseded by: docs/architecture/layout-regression-fixture-corpus.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/layout-regression-fixture-corpus.md
+- Remaining work: the five strict xfails, same issue as the default-mode tombstone
+
+### 2026-11-06 Retired: GPU textline foreground polarity
+
+- Old path: docs/issues/2026-07-21-gpu-textline-foreground-polarity.md
+- Outcome: implemented
+- Superseded by: docs/architecture/geometry-correction.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/geometry-correction.md
+- Remaining work: none
+
+### 2026-11-06 Retired: README OCR orientation examples
+
+- Old path: docs/issues/2026-07-21-readme-ocr-orientation-examples.md
+- Outcome: implemented
+- Superseded by: docs/architecture/ocr-page-orientation.md
+- Removal commit: pending
+- Rationale kept: README examples and docs/architecture/ocr-page-orientation.md
+- Remaining work: none
+
+### 2026-11-06 Retired: roadmap and intent-map backlog sync
+
+- Old path: docs/issues/2026-07-21-roadmap-intent-map-backlog-sync.md
+- Outcome: implemented
+- Superseded by: docs/plans/roadmap.md
+- Removal commit: pending
+- Rationale kept: docs/plans/roadmap.md and docs/context/intent-map.md
+- Remaining work: none
+
+### 2026-11-06 Retired: drop-cap coordinate domain
+
+- Old path: docs/issues/2026-07-21-dropcap-coordinate-domain.md
+- Outcome: implemented
+- Superseded by: docs/architecture/reorganize-page-pipeline.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/reorganize-page-pipeline.md
+- Remaining work: drop-cap Iteration C heading cross-check is still open
+
+### 2026-11-06 Retired: layout registry knobs and captions above
+
+- Old path: docs/issues/2026-07-21-layout-registry-knobs-caption-above.md
+- Outcome: implemented
+- Superseded by: docs/architecture/pp-doclayout-trust-boundary.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/pp-doclayout-trust-boundary.md and docs/architecture/reorganize-page-pipeline.md
+- Remaining work: none
+
+### 2026-11-06 Retired: word merge clears the line's ground truth
+
+- Old path: docs/issues/2026-09-18-word-merge-clears-the-whole-line-s-ground-truth.md
+- Outcome: implemented
+- Superseded by: docs/architecture/ocr-model-and-schema-boundaries.md
+- Removal commit: pending
+- Rationale kept: docs/architecture/ocr-model-and-schema-boundaries.md
+- Remaining work: `split_word_at_fraction` still clears ground truth for the whole line on purpose
