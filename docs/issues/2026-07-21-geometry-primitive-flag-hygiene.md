@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: issue
 Level: I2
 ---
@@ -14,7 +14,7 @@ Level: I2
 - **Kind:** issue
 - **Status:** active
 - **Level:** I2
-- **Last verified:** 2026-11-07
+- **Last verified:** 2026-11-10
 - **Resolution:** Open
 - **Severity:** Medium — silent flag loss / mixed-space contains
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
@@ -61,6 +61,19 @@ rg -n 'def center|def contains_point|_require_same_coords' \
 package, `center` (~247) builds `Point` without the box flag, and
 `contains_point` (~540) has no domain check. Union and intersect use
 `_require_same_coords` (~552+). The fix therefore lands in the contracts repo.
+
+### Recheck (2026-11-10)
+
+Still open, and it cannot be fixed in this repo. `center` and `contains_point`
+are unchanged in the installed `pdomain-book-contracts` 0.2.0 and in that repo's
+source at `a50c756`. `pdomain_book_tools/geometry/bounding_box.py` only re-exports
+the class. This repo has no caller of `BoundingBox.center` or
+`BoundingBox.contains_point`. The `contains_point` call in
+`pdomain_book_tools/ocr/layout_aware_reorg.py` is on a layout region, not a box.
+
+The 2026-11-10 pass was told not to change another repo, so nothing changed here.
+After the contracts fix ships, raise the `pdomain-book-contracts` lower bound in
+`pyproject.toml`.
 
 ## Root-cause hypotheses
 

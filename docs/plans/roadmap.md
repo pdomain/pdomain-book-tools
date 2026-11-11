@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-04
-Last verified: 2026-11-06
+Last verified: 2026-11-10
 Kind: plan
 ---
 
@@ -12,7 +12,7 @@ Kind: plan
 
 - **Kind:** plan
 - **Status:** active
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-10
 - **Read when:** choosing the next library change, or checking whether a behavior already shipped.
 - **Search terms:** roadmap, remaining work, sidenote, drop cap, page order, scannos, hyphen n-grams.
 
@@ -40,13 +40,9 @@ Shipped behavior is an architecture doc. Open work is one line plus its issue or
 The [continued-work plan](2026-07-21-continued-work-from-deep-review.md) stays active. Its opening note names the slices the code already proves. The lines below are what is still unfinished.
 
 - Five strict-xfail figure-noise baselines still define those cases in CI. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3.
-- Reorganize branch coverage is still thin on plate noise, column strategy, and floated captions. [branch coverage](../issues/2026-07-21-reorganize-branch-unit-coverage.md). Plan theme B4.
-- DocTR and Tesseract ingress still omit an explicit `is_normalized` flag. [OCR ingress](../issues/2026-07-21-ocr-ingress-is-normalized-explicit.md). Plan theme C1.
-- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
-- Grid `map_points` is unsupported, and `PipelineResult` cannot tell a dewarp skip from an identity no-op. The docs are fixed. [geometry gate](../issues/2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
+- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. The fix belongs in `pdomain-book-contracts`. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
 - HEIF and AVIF load and write failures are fixed. The `opencv-cuda` dependency-honesty part is not. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
-- The public API page now matches the README, but `tests/test_public_api.py` does not pin the added names. [public API](../issues/2026-07-21-public-api-surface-policy.md). Plan theme D1.
-- Schema emit is incomplete for glyphs, and Block ground-truth tuple hygiene is unfinished. [schema emit](../issues/2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
+- The floated-caption split never fires on pages with normalized coordinates. [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md).
 - Greenfield specs are blocked on owner decisions. [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
 - Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](../issues/2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](../issues/2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](../issues/2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
 - Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](../issues/2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](../issues/2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3.

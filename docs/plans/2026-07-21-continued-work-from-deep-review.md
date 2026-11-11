@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-06
+Last verified: 2026-11-10
 Kind: plan
 ---
 
@@ -12,7 +12,7 @@ Kind: plan
 
 - **Kind:** plan
 - **Status:** active
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-10
 - **Read when:** picking the next implementation theme after the 2026-07-21 deep review; sequencing P0 fixes vs greenfield modules.
 - **Search terms:** continued work, P0 reorganize, coordinate domain, layout harness, drop-cap C, decision pack, prep-for-pgdp modules.
 
@@ -46,6 +46,8 @@ Code on master `0d8b9d40`, read on 2026-11-06, proves these slices. The checklis
 - C7 registry trust kwargs and captions printed above a figure: [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md) and [reorganize page pipeline](../architecture/reorganize-page-pipeline.md).
 - D3 backlog sync: the roadmap is now the remaining-work list.
 - Word merge no longer clears the line's ground truth: [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md).
+
+Branch `fix/roadmap-no-owner-items`, dated 2026-11-10, also proves C1, C4, D1, D2, and B4. The Theme E rows that let the owner override D1 and C4, and the row for the provenance home, stay open. C3 is still open, because `BoundingBox` now lives in `pdomain-book-contracts`.
 
 C5 is only partly done. Load and write failures are fixed. The `opencv-cuda` dependency-honesty part is still open.
 

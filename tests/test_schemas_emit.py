@@ -300,7 +300,7 @@ def test_emit_page_layout_roundtrip():
 
 
 # ---------------------------------------------------------------------------
-# docs/issues/2026-07-21-schema-emit-and-path-hygiene.md: GlyphAnnotations
+# Plan item D2: GlyphAnnotations
 # must be present in PUBLIC_MODELS -- it carries the ``any_schema`` glyph
 # structure on Word (``Word.glyph_annotations``) and codegen consumers need
 # its shape.
