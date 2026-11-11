@@ -1,19 +1,21 @@
 ---
-kind: handoff
-status: "active"
-created: "2026-11-11"
+kind: archive
+status: retired
 created_at: "2026-11-11T03:22:38Z"
 owner: "CT"
 branch: "fix/roadmap-no-owner-items"
 scope: "roadmap-no-owner-items"
 worktree: "/mnt/work/projects/pdomain/pdomain-book-tools/.claude/worktrees/roadmap-no-owner-items"
 base_commit: "029d05dd3b63f6d0f7ab4b613d42baffac70ba88"
-supersedes: ""
 handoff_reason: "user_requested"
 host: "claude-code"
+created: "2026-11-11"
+last_verified: "2026-11-11"
 ---
 
 # Roadmap items without owner decisions ready for review
+
+> **Retired — superseded by `docs/handoff/2026-11-11-051125-roadmap-items-caption-bug-left-open.md`.**
 
 ## Goal
 
