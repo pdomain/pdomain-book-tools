@@ -158,3 +158,49 @@ def test_grid_map_points_reads_cupy_maps_through_asnumpy(
     )
     out = t.map_points(np.array([[5.0, 6.0]], np.float32))
     np.testing.assert_allclose(out, [[7.0, 7.0]], atol=1e-3)
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf])
+def test_grid_map_points_returns_nan_for_non_finite_input(bad: float) -> None:
+    map_x, map_y = _shifted_grid(40, 60, dx=3.0, dy=5.0)
+    t = GeometryTransform.grid(map_x, map_y, (40, 60))
+
+    out = t.map_points(np.array([[bad, 12.0], [10.0, 12.0]], np.float32))
+
+    assert np.isnan(out[0]).all()
+    np.testing.assert_allclose(out[1], [13.0, 17.0], atol=1e-3)
+
+
+def test_grid_map_points_refines_past_the_coarse_seed_on_a_large_map() -> None:
+    """A map wider than the seed sample still lands to a small fraction of a pixel."""
+    h, w = 900, 1300
+    xs, ys = np.meshgrid(np.arange(w, dtype=np.float32), np.arange(h, dtype=np.float32))
+    sag = 12.0 * np.sin(xs * np.pi / w).astype(np.float32)
+    t = GeometryTransform.grid(xs, ys + sag, (h, w))
+    output_x = np.array([100.0, 650.0, 1211.0])
+    output_y = np.array([200.0, 450.0, 700.0])
+    source_y = output_y + 12.0 * np.sin(output_x * np.pi / w)
+
+    out = t.map_points(np.column_stack([output_x, source_y]).astype(np.float32))
+
+    np.testing.assert_allclose(out[:, 0], output_x, atol=1e-2)
+    np.testing.assert_allclose(out[:, 1], output_y, atol=1e-2)
+
+
+def test_grid_map_points_reaches_the_far_corner_between_seed_samples() -> None:
+    """The last row and column are not on the seed grid when the stride skips them."""
+    h, w = 901, 1301
+    map_x, map_y = _shifted_grid(h, w, dx=0.0, dy=0.0)
+    t = GeometryTransform.grid(map_x, map_y, (h, w))
+
+    out = t.map_points(np.array([[1300.0, 900.0]], np.float32))
+
+    np.testing.assert_allclose(out, [[1300.0, 900.0]], atol=1e-2)
+
+
+def test_grid_map_points_rejects_a_map_too_small_to_interpolate() -> None:
+    map_x, map_y = _shifted_grid(1, 10, 0.0, 0.0)
+    t = GeometryTransform.grid(map_x, map_y, (1, 10))
+
+    with pytest.raises(ValueError, match="2x2"):
+        t.map_points(np.array([[1.0, 0.0]], np.float32))

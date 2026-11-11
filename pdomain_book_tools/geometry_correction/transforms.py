@@ -60,13 +60,16 @@ def _invert_grid_points(
     Each point starts at the nearest of a coarse sample of the maps and is
     refined with Newton steps on the bilinear surface. A point that no output
     position reaches, because the warp moved it off the page, comes back as NaN.
+    A NaN or infinite input point also comes back as NaN.
     """
     h, w = map_x.shape[:2]
     if h < 2 or w < 2:
         raise ValueError("grid map_points needs maps of at least 2x2 pixels")
     fx = map_x.astype(np.float64)
     fy = map_y.astype(np.float64)
-    source = source_pts.astype(np.float64)
+    all_points = source_pts.astype(np.float64)
+    finite = np.isfinite(all_points).all(axis=1)
+    source = all_points[finite]
 
     stride = max(1, max(h, w) // _GRID_SEED_CELLS)
     seed_x = fx[::stride, ::stride]
@@ -97,7 +100,9 @@ def _invert_grid_points(
     distance = np.hypot(x_at - source[:, 0], y_at - source[:, 1])
     # Written as "not within" so a NaN distance also counts as unreachable.
     solved[~(distance <= _GRID_MAX_RESIDUAL_PX)] = np.nan
-    return solved.astype(np.float32)
+    mapped = np.full_like(all_points, np.nan, dtype=np.float32)
+    mapped[finite] = solved
+    return mapped
 
 
 @dataclass(frozen=True)

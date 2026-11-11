@@ -142,8 +142,8 @@ corrected image. It works for identity, affine, homography, and grid transforms.
 It raises `NotImplementedError` for rectified transforms, which hold only a finished
 image.
 
-A grid transform's `map_points` returns NaN for a point the warp moved off the page,
-so check the result with `np.isnan`. The pipeline does not remap OCR boxes for you.
+A grid transform's `map_points` returns NaN for a point the warp moved off the page
+and for a NaN or infinite input point, so check the result with `np.isnan`. The pipeline does not remap OCR boxes for you.
 Call `map_points` on the box corners if you need them in the corrected image.
 
 `invert()` returns `None` for grid transforms, because their dense backward maps have
