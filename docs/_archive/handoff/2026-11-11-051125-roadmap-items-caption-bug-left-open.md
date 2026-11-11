@@ -1,7 +1,6 @@
 ---
-kind: handoff
-status: "active"
-created: "2026-11-11"
+kind: archive
+status: retired
 created_at: "2026-11-11T05:11:25Z"
 owner: "CT"
 branch: "fix/roadmap-no-owner-items"
@@ -11,9 +10,13 @@ base_commit: "17dc9fdc5bc01f35b741e59fb961561eee248457"
 supersedes: "2026-11-11-032239-roadmap-items-without-owner-decisions-ready-for-review.md"
 handoff_reason: "stopping"
 host: "claude-code"
+created: "2026-11-11"
+last_verified: "2026-11-11"
 ---
 
 # Roadmap items: caption bug left open, B3 needs an owner accept
+
+> **Retired — superseded by `docs/handoff/2026-11-11-061618-layout-items-skipped-on-fixture-evidence.md`.**
 
 ## Goal
 
