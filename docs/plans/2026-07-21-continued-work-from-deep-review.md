@@ -49,7 +49,7 @@ Code on master `0d8b9d40`, read on 2026-11-06, proves these slices. The checklis
 
 Branch `fix/roadmap-no-owner-items`, dated 2026-11-10, also proves C1, C4, D1, D2, and B4. The Theme E rows that let the owner override D1 and C4, and the row for the provenance home, stay open. C3 is still open, because `BoundingBox` now lives in `pdomain-book-contracts`.
 
-C5 is only partly done. Load and write failures are fixed. The `opencv-cuda` dependency-honesty part is still open.
+C5 is nearly done. Load and write failures are fixed, and `opencv-cuda` is removed. `encode_bgr_image_as_png` still discards the `cv2.imencode` success flag.
 
 ## Architecture
 

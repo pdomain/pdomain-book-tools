@@ -20,7 +20,9 @@ import sys
 import tomllib
 from pathlib import Path
 
-PYPROJECT = Path(__file__).resolve().parent.parent / "pyproject.toml"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PYPROJECT = REPO_ROOT / "pyproject.toml"
+COVERAGERC_CPU = REPO_ROOT / ".coveragerc.cpu"
 
 
 def _project_dependencies() -> list[str]:
@@ -66,6 +68,27 @@ def test_opencv_headless_not_mixed_with_full() -> None:
         "pyproject.toml mixes full and headless OpenCV wheels — they "
         "install to the same cv2 namespace and conflict at runtime."
     )
+
+
+def test_gpu_extra_does_not_declare_unused_opencv_cuda() -> None:
+    """No code imports ``cv2.cuda``, and the package drags in ``opencv-python``.
+
+    ``opencv-cuda`` depends on ``opencv-python``, which conflicts in the ``cv2``
+    namespace with the ``opencv-contrib-python`` this project requires.
+    """
+    with PYPROJECT.open("rb") as fh:
+        data = tomllib.load(fh)
+    gpu_names = _dep_names(list(data["project"]["optional-dependencies"]["gpu"]))
+    assert "opencv-cuda" not in gpu_names
+
+
+def test_coverage_config_does_not_omit_the_missing_cv2cuda_package() -> None:
+    """The ``cv2cuda_processing`` package does not exist, so omitting it is dead."""
+    assert not (
+        REPO_ROOT / "pdomain_book_tools" / "image_processing" / "cv2cuda_processing"
+    ).exists()
+    assert "cv2cuda_processing" not in PYPROJECT.read_text(encoding="utf-8")
+    assert "cv2cuda_processing" not in COVERAGERC_CPU.read_text(encoding="utf-8")
 
 
 def test_tomllib_available() -> None:

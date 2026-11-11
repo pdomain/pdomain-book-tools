@@ -41,7 +41,7 @@ The [continued-work plan](2026-07-21-continued-work-from-deep-review.md) stays a
 
 - Five strict-xfail figure-noise baselines still define those cases in CI. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3.
 - `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. The fix belongs in `pdomain-book-contracts`. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
-- HEIF and AVIF load and write failures are fixed. The `opencv-cuda` dependency-honesty part is not. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
+- HEIF and AVIF load and write failures are fixed, and `opencv-cuda` is removed. `encode_bgr_image_as_png` still discards the `cv2.imencode` success flag. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
 - The floated-caption split never fires on pages with normalized coordinates. [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md).
 - Greenfield specs are blocked on owner decisions. [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
 - Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](../issues/2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](../issues/2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](../issues/2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.

@@ -123,6 +123,20 @@ def test_gpu_extra_flags_dev_local(cdl: _CheckDevLocalModule, tmp_path: Path) ->
     assert any("gpu" in r.lower() for r in result.reasons)
 
 
+def test_current_cupy_package_flags_dev_local(
+    cdl: _CheckDevLocalModule, tmp_path: Path
+) -> None:
+    """The [gpu] extra installs ``cupy-cuda13x``, which must also flag dev-local."""
+    project_root = tmp_path
+    pkgs = [
+        _pkg("pdomain-book-tools", editable_location=str(project_root)),
+        _pkg("cupy-cuda13x", "14.1.1"),
+    ]
+    result = cdl.detect_mode(pkgs, project_root=project_root, marker_path=None)
+    assert result.is_dev_local is True
+    assert any("cupy-cuda13x" in r for r in result.reasons)
+
+
 def test_sibling_editable_flags_dev_local(
     cdl: _CheckDevLocalModule, tmp_path: Path
 ) -> None:

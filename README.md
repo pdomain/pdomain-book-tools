@@ -53,7 +53,7 @@ install with the `gpu` extra:
 pip install 'pdomain-book-tools[gpu]'
 ```
 
-This pulls in `cupy-cuda13x` and `opencv-cuda`, which require a
+This pulls in `cupy-cuda13x`, which requires a
 CUDA 13 toolkit and a compatible NVIDIA driver. The CPU pipeline
 (`pdomain_book_tools.image_processing.cv2_processing.*`) remains the
 fallback when the extra is not installed; calling any

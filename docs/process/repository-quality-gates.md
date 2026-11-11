@@ -54,9 +54,7 @@ authoritative.
 Coverage uses two source sets with one threshold. A GPU-capable local run uses
 `pyproject.toml` and includes `cupy_processing` modules in the 87% branch
 coverage gate. A CPU-only or CI run uses `.coveragerc.cpu`, which omits
-`cupy_processing` and `cv2cuda_processing` because those paths cannot execute
-without the GPU extra. `cv2cuda_processing` is also omitted from the full
-configuration because it is a thin wrapper around the exercised CuPy backend.
+`cupy_processing` because those paths cannot execute without the GPU extra.
 
 The Makefile selects the full configuration when it detects a usable NVIDIA
 GPU and `CI` is absent. This split keeps CPU-only results honest without

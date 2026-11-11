@@ -67,7 +67,6 @@ gpu = [
     # cuda-pathfinder>=1.3.4, an API that landed later. 14.1.1 is the version
     # the CUDA 12 lock already used, so the family moves and nothing else does.
     "cupy-cuda13x>=14.1.1,<14.2",
-    "opencv-cuda>=0.0.2",
 ]
 # UVDoc ONNX dewarp backend. Install with: pip install 'pdomain-book-tools[dewarp-dl]'
 dewarp-dl = ["onnxruntime>=1.17"]
@@ -130,8 +129,6 @@ omit = [
     "*/.venv/*",
     "*/.tox/*",
     "*/site-packages/*",
-    # cv2cuda_processing is a thin wrapper; GPU tests exercise cupy_processing directly.
-    "*/image_processing/cv2cuda_processing/*",
 ]
 # "multiprocessing" is required so pytest-xdist (-n auto) per-worker
 # subprocesses each write a .coverage.* file that `coverage combine` can
