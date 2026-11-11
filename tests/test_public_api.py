@@ -12,8 +12,10 @@ in the same commit.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -229,3 +231,133 @@ def test_layout_reexports():
     assert contains is _contains
     assert horizontal_overlap_ratio is _hor
     assert region_reading_order is _reading_order
+
+
+def test_ocr_document_is_public():
+    from pdomain_book_tools.ocr.document import Document
+
+    assert callable(Document.from_image_ocr_via_doctr)
+
+
+def test_ocr_word_path_taught_by_readme_is_the_top_level_word():
+    from pdomain_book_tools import Word
+    from pdomain_book_tools.ocr.word import Word as _Word
+
+    assert _Word is Word
+
+
+def test_ocr_package_all_is_pinned():
+    from pdomain_book_tools import ocr
+
+    assert set(ocr.__all__) == {
+        "BlobStoreProtocol",
+        "GtOrphans",
+        "TypographyAnnotations",
+        "apply_text_normalizations",
+        "normalize_curly_quotes",
+        "normalize_em_dash",
+    }
+    for name in ocr.__all__:
+        assert getattr(ocr, name) is not None
+
+
+def test_layout_package_all_is_pinned():
+    from pdomain_book_tools import layout
+
+    assert set(layout.__all__) == {
+        "ContourDetector",
+        "LayoutDetector",
+        "LayoutRegion",
+        "LayoutRegionDict",
+        "NullDetector",
+        "PageLayout",
+        "PageLayoutDict",
+        "RegionType",
+        "auto_detect_illustrations_from_array",
+        "caption_for_figure",
+        "clear_detector_cache",
+        "contains",
+        "draw_layout_overlay",
+        "get_detector",
+        "horizontal_overlap_ratio",
+        "iou",
+        "region_reading_order",
+    }
+    for name in layout.__all__:
+        assert getattr(layout, name) is not None
+
+
+def test_hf_package_all_is_pinned():
+    from pdomain_book_tools import hf
+
+    assert set(hf.__all__) == {
+        "DEFAULT_DET_FILENAME",
+        "DEFAULT_HF_REPO",
+        "DEFAULT_RECO_FILENAME",
+        "LAYOUT_MODEL_FILES",
+        "OCR_MODEL_SIDECARS",
+        "hf_download",
+        "prefetch_layout_files",
+        "resolve_layout_source",
+        "resolve_ocr_models",
+        "short_revision",
+        "silence_transformers_load_chatter",
+        "suppress_hf_unauth_warning",
+    }
+    for name in hf.__all__:
+        assert getattr(hf, name) is not None
+
+
+def test_geometry_correction_package_all_is_pinned():
+    from pdomain_book_tools import geometry_correction
+
+    assert set(geometry_correction.__all__) == {
+        "CurvatureDetector",
+        "CurvatureReport",
+        "Deskew",
+        "DeskewResult",
+        "Dewarp",
+        "DewarpResult",
+        "GeometryTransform",
+        "MorphCentroidDetector",
+        "PageSide",
+        "PageSideDetector",
+        "PageSideResult",
+        "RegimeDetector",
+        "RegimeReport",
+        "TextlineDetector",
+        "TextlineDisparityDewarp",
+        "dewarp_for_regime",
+    }
+    for name in geometry_correction.__all__:
+        assert getattr(geometry_correction, name) is not None
+
+
+def test_geometry_correction_supported_submodule_paths():
+    from pdomain_book_tools.geometry_correction.defaults import (
+        default_pipeline,
+        scanned_pipeline,
+    )
+    from pdomain_book_tools.geometry_correction.pipeline import GeometryPipeline
+    from pdomain_book_tools.geometry_correction.registry import (
+        get_deskew,
+        register_deskew,
+    )
+
+    assert callable(default_pipeline)
+    assert callable(scanned_pipeline)
+    assert callable(GeometryPipeline)
+    assert callable(get_deskew)
+    assert callable(register_deskew)
+
+
+def test_readme_only_imports_paths_listed_in_public_api_page():
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    public_api = (root / "docs" / "usage" / "public-api.md").read_text(encoding="utf-8")
+    import_path = re.compile(r"^from (pdomain_book_tools[\w.]*) import ", re.MULTILINE)
+
+    documented = set(import_path.findall(public_api))
+    taught = set(import_path.findall(readme))
+
+    assert taught <= documented, sorted(taught - documented)
