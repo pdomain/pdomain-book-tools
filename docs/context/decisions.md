@@ -580,7 +580,7 @@ Kind: context
 - Outcome: implemented
 - Resolving commit: `04da801`
 - Superseded by: `pdomain_book_tools/ocr/document.py` and `tests/ocr/test_ocr_ingress_is_normalized.py`
-- Removal commit: (fill after commit)
+- Removal commit: d23a23a
 - Rationale kept: DocTR boxes are stated as normalized and Tesseract boxes as pixels. DocTR geometry outside [0, 1] now raises.
 - Remaining work: none
 
@@ -590,7 +590,7 @@ Kind: context
 - Outcome: implemented
 - Resolving commit: `a094ed7` and `39cdd9a`
 - Superseded by: [geometry correction usage](../usage/geometry-correction.md)
-- Removal commit: (fill after commit)
+- Removal commit: d23a23a
 - Rationale kept: Grid `map_points` inverts the backward maps. `PipelineResult.dewarp_outcome` names the four results. The docs had already been aligned with the dual gate.
 - Remaining work: The owner can still override the dual gate, tracked in the [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md). GPU use of grid `map_points` is unverified.
 
@@ -600,7 +600,7 @@ Kind: context
 - Outcome: implemented
 - Resolving commit: `eb4df23`
 - Superseded by: [public API](../usage/public-api.md) and `tests/test_public_api.py`
-- Removal commit: (fill after commit)
+- Removal commit: d23a23a
 - Rationale kept: The page, package `__all__`, tests, and README imports agree. The expand default from plan item D1 was applied.
 - Remaining work: The owner can still override the expand default, tracked in the [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md).
 
@@ -610,7 +610,7 @@ Kind: context
 - Outcome: implemented
 - Resolving commit: `e2c9a79`
 - Superseded by: [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md)
-- Removal commit: (fill after commit)
+- Removal commit: d23a23a
 - Rationale kept: The three earlier defects were resolved on 2026-09-19. The architecture page now says who owns OCR provenance.
 - Remaining work: Where the `Document` provenance value should go stays an owner decision in Theme E of the [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md).
 
@@ -620,6 +620,6 @@ Kind: context
 - Outcome: implemented
 - Resolving commit: `eeb9a82`
 - Superseded by: `tests/ocr/test_reorganize_branch_tables.py` and `tests/ocr/test_reorganize_early_return_and_soft_recover.py`
-- Removal commit: (fill after commit)
+- Removal commit: d23a23a
 - Rationale kept: Each B4 priority path has a focused test. With `tests/ocr` alone, the module went from 81.0% to 87.1%, and missing branches went from 218 to 163.
 - Remaining work: Splitting the module stays optional in plan item B4. A bug the tables exposed is filed as [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md).
