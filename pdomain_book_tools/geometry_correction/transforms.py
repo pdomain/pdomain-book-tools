@@ -8,10 +8,96 @@ import numpy as np
 
 TransformKind = Literal["identity", "affine", "homography", "grid", "rectified"]
 
+# Grid inversion: seed from a coarse sample, then refine with Newton steps.
+_GRID_SEED_CELLS = 128
+_GRID_NEWTON_STEPS = 25
+_GRID_CONVERGED_PX = 1e-3
+_GRID_MIN_DETERMINANT = 1e-9
+# A point further than this from every output pixel's source is off the page.
+_GRID_MAX_RESIDUAL_PX = 0.5
+
 
 def _is_cupy(arr: object) -> bool:
     """True if ``arr`` is a cupy ndarray, without importing cupy on CPU-only installs."""
     return arr is not None and type(arr).__module__.split(".")[0] == "cupy"
+
+
+def _as_numpy(arr: np.ndarray) -> np.ndarray:
+    """Return *arr* as a NumPy array, copying it off the GPU if it is a cupy array."""
+    if _is_cupy(arr):
+        import cupy as cp
+
+        return cp.asnumpy(arr)
+    return np.asarray(arr)
+
+
+def _bilinear_with_gradient(
+    field: np.ndarray, xy: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return *field* at the (N, 2) positions *xy*, with its d/dx and d/dy there."""
+    h, w = field.shape[:2]
+    col = np.minimum(xy[:, 0].astype(np.intp), w - 2)
+    row = np.minimum(xy[:, 1].astype(np.intp), h - 2)
+    u = xy[:, 0] - col
+    v = xy[:, 1] - row
+    f00 = field[row, col]
+    f01 = field[row, col + 1]
+    f10 = field[row + 1, col]
+    f11 = field[row + 1, col + 1]
+    value = (1 - v) * ((1 - u) * f00 + u * f01) + v * ((1 - u) * f10 + u * f11)
+    d_dx = (1 - v) * (f01 - f00) + v * (f11 - f10)
+    d_dy = (1 - u) * (f10 - f00) + u * (f11 - f01)
+    return value, d_dx, d_dy
+
+
+def _invert_grid_points(
+    map_x: np.ndarray, map_y: np.ndarray, source_pts: np.ndarray
+) -> np.ndarray:
+    """Return the output position of each source point under dense backward maps.
+
+    The maps give, for each output pixel, the source position it shows, so a
+    source point needs the inverse: the output position whose maps land on it.
+    Each point starts at the nearest of a coarse sample of the maps and is
+    refined with Newton steps on the bilinear surface. A point that no output
+    position reaches, because the warp moved it off the page, comes back as NaN.
+    """
+    h, w = map_x.shape[:2]
+    if h < 2 or w < 2:
+        raise ValueError("grid map_points needs maps of at least 2x2 pixels")
+    fx = map_x.astype(np.float64)
+    fy = map_y.astype(np.float64)
+    source = source_pts.astype(np.float64)
+
+    stride = max(1, max(h, w) // _GRID_SEED_CELLS)
+    seed_x = fx[::stride, ::stride]
+    seed_y = fy[::stride, ::stride]
+    solved = np.empty_like(source)
+    for i, (px, py) in enumerate(source):
+        nearest = np.argmin((seed_x - px) ** 2 + (seed_y - py) ** 2)
+        row, col = np.unravel_index(nearest, seed_x.shape)
+        solved[i] = (float(col) * stride, float(row) * stride)
+
+    max_xy = np.array([w - 1, h - 1], np.float64)
+    for _ in range(_GRID_NEWTON_STEPS):
+        x_at, dx_dx, dx_dy = _bilinear_with_gradient(fx, solved)
+        y_at, dy_dx, dy_dy = _bilinear_with_gradient(fy, solved)
+        err_x = x_at - source[:, 0]
+        err_y = y_at - source[:, 1]
+        if np.all(np.hypot(err_x, err_y) <= _GRID_CONVERGED_PX):
+            break
+        det = dx_dx * dy_dy - dx_dy * dy_dx
+        usable = np.abs(det) > _GRID_MIN_DETERMINANT
+        safe_det = np.where(usable, det, 1.0)
+        step_x = np.where(usable, (dy_dy * err_x - dx_dy * err_y) / safe_det, 0.0)
+        step_y = np.where(usable, (dx_dx * err_y - dy_dx * err_x) / safe_det, 0.0)
+        solved = np.clip(solved - np.column_stack([step_x, step_y]), 0.0, max_xy)
+
+    x_at, _, _ = _bilinear_with_gradient(fx, solved)
+    y_at, _, _ = _bilinear_with_gradient(fy, solved)
+    distance = np.hypot(x_at - source[:, 0], y_at - source[:, 1])
+    # Written as "not within" so a NaN distance also counts as unreachable.
+    solved[~(distance <= _GRID_MAX_RESIDUAL_PX)] = np.nan
+    return solved.astype(np.float32)
 
 
 @dataclass(frozen=True)
@@ -152,7 +238,12 @@ class GeometryTransform:
         return None
 
     def map_points(self, pts: np.ndarray) -> np.ndarray:
-        """Map *pts* (N, 2) through this transform and return (N, 2)."""
+        """Map source *pts* (N, 2) to their output positions and return (N, 2).
+
+        For a grid transform, a point the warp moved off the page comes back as
+        NaN, so check the result with ``np.isnan``. A rectified transform has no
+        point mapping and raises ``NotImplementedError``.
+        """
         pts = np.asarray(pts, np.float32).reshape(-1, 1, 2)
         if self.kind == "affine":
             if self.matrix is None:  # pragma: no cover
@@ -164,4 +255,10 @@ class GeometryTransform:
             return cv2.perspectiveTransform(pts, self.matrix).reshape(-1, 2)
         if self.kind == "identity":
             return pts.reshape(-1, 2)
+        if self.kind == "grid":
+            if self.map_x is None or self.map_y is None:  # pragma: no cover
+                raise ValueError("grid transform has no maps")
+            return _invert_grid_points(
+                _as_numpy(self.map_x), _as_numpy(self.map_y), pts.reshape(-1, 2)
+            )
         raise NotImplementedError(self.kind)
