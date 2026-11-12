@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-10
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: process
 ---
 
@@ -13,11 +13,14 @@ This index lists the architecture decisions and planning specs for
 behind a behaviour or knob. Issues, code comments, and downstream pdomain-*
 repos point to them.
 
-New specs follow the workspace 9-section template. The script at
-`/workspaces/ocr-container/scripts/lint-spec.py` enforces this template.
-Existing specs were imported from `docs/architecture/` and `docs/planning/`.
-Until migrated, `.specrc` allowlists them as `legacy:` under Procedure 1 in
-the workspace's fixing-specs guide.
+New specs follow the workspace 9-section template. Existing specs were
+imported from `docs/architecture/` and `docs/planning/`. The lint script
+that used to live at `/workspaces/ocr-container/scripts/lint-spec.py` is not
+in this repo.
+
+The [roadmap](../plans/roadmap.md) asks where page-order, scannos, hyphen
+n-grams, and the table detector should be built. Read that question before
+starting those specs. Reference lines and character boxes stay in this library.
 
 ## Index
 
@@ -36,9 +39,9 @@ the workspace's fixing-specs guide.
 | 08 | ~~geometry-repr~~ _(shipped)_ | `BoundingBox.__repr__` / `Point.__repr__` contract | Shipped 2026-05-22; spec issue #36 closed; implementation landed in PR #50; tests preserve the contract |
 | 09 | [char-bbox-extraction](09-char-bbox-extraction.md) | Per-character bounding-box extraction from word image crops | Implementing `extract_char_bboxes`; CharFixer feature in pdomain-ocr-labeler-spa; handling disconnected strokes (i/j tittles, diacritics), ligatures, and long-s |
 | 10 | [table-structure](10-table-structure.md) | `BlockCategory` TABLE/CELL + grid fields; post-OCR TATR structure detection; deepdoctection-derived numpy cell-assignment geometry | Adding table row/col/cell structure to the page model; threading new `Block` grid fields through the five serialization sites; wiring the post-OCR table-structure step; understanding spanning-cell storage and the no-silent-drop invariant |
-| — | [page-order-detection](2026-05-24-page-order-detection.md) | `pdomain_book_tools.page_order` module — `detect_out_of_order_pages` + `SwapProposal` | Implementing Stage 11 of pdomain-prep-for-pgdp; understanding the three-signal (filename seq, OCR page number, visual hash) confidence model |
-| — | [scannos-module](2026-05-24-scannos-module.md) | `pdomain_book_tools.scannos` — `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote` | Implementing pdomain-prep-for-pgdp Stage 13; understanding SQLite (global rules) vs JSON sidecar (per-book candidates) split; promotion evidence trail |
-| — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `pdomain_book_tools.hyphen_ngrams` — `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction pipeline | Implementing pdomain-prep-for-pgdp Stage 15 (post-JSON-adapter); understanding download-on-first-use packaging and SQLite schema for Google Books Ngrams hyphen pairs |
+| — | [page-order-detection](2026-05-24-page-order-detection.md) | `detect_out_of_order_pages` + `SwapProposal`. No `page_order` package exists here | Reading the three-signal design. The roadmap recommends building it in pdomain-prep-for-pgdp, which already has a `page_order` stage |
+| — | [scannos-module](2026-05-24-scannos-module.md) | `ScannoRule`, `ScannoCandidate`, `RuleLibrary`, `CandidateStore`, `scan_page`, `promote`. No `scannos` package exists here | Reading the SQLite rules vs JSON sidecar split. The roadmap recommends leaving this with prep-for-pgdp `wordcheck` until a second consumer exists |
+| — | [hyphen-ngrams-sqlite](2026-05-24-hyphen-ngrams-sqlite.md) | `HyphenNgramsClient` Protocol, `SqliteClient`, `JsonApiClient`, corpus extraction. No `hyphen_ngrams` package exists here | Reading the download-on-first-use SQLite schema for Google Books n-gram hyphen pairs. The roadmap recommends building the client in prep-for-pgdp beside `hyphen_join` |
 | — | ~~writing-docs plugin routing~~ _(implemented; retired)_ | Repository writing guidance and plugin ownership | Retired 2026-07-19; canonical routing lives in `AGENTS.md` and `CONVENTIONS.md`, and Git history preserves the process-only design |
 | — | ~~PGDP-aware matcher~~ _(implemented; retired)_ | Immutable match graph, PGDP continuations, legacy projection, book manifest | Retired 2026-11-06; shipped contract is [architecture/pgdp-aware-matcher.md](../architecture/pgdp-aware-matcher.md) |
 

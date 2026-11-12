@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: context
 ---
 
@@ -12,15 +12,15 @@ Kind: context
 
 - **Kind:** context
 - **Status:** active
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-12
 - **Read when:** starting work that depends on current priorities, risks, or in-flight documentation changes.
 - **Search terms:** current state, priorities, risks, in flight.
 
 ## What matters now
 
-Open work is the short list in the [roadmap](../plans/roadmap.md) and the [issue index](../issues/README.md). Shipped behavior is the architecture set those pages link, including the [PGDP-aware matcher](../architecture/pgdp-aware-matcher.md).
+Open work is the [roadmap](../plans/roadmap.md). The [issue index](../issues/README.md) points at that list. Shipped behavior is the [architecture index](../architecture/README.md), including the [PGDP-aware matcher](../architecture/pgdp-aware-matcher.md).
 
-The [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md) is still active. Its opening note names the slices already proven in code. The [migration ledger](github-issues-migration-ledger.md) remains the record of the 214 GitHub source issues.
+The [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md) is still active. Its opening note names the slices already proven in code. Theme G waits on the roadmap's question of which repo should hold page-order, scannos, and hyphen n-grams. The [migration ledger](github-issues-migration-ledger.md) remains the record of the 214 GitHub source issues.
 
 ## In-flight work
 

@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-05-04
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: process
 ---
 
@@ -27,25 +27,16 @@ Git history preserves retired documentation. Do not create a parallel archive
 tree; promote durable truth into architecture, decisions, or context before
 deleting a retired document.
 
-Open work is the [roadmap](plans/roadmap.md). GitHub Issues is disabled for this repository.
+Open work is the [roadmap](plans/roadmap.md). Shipped behavior is the [architecture index](architecture/README.md). GitHub Issues is disabled for this repository.
 
-This layout follows the workspace standard. See
-`/workspaces/ocr-container/docs/README.md` for the master.
+The folder table above is this repo's layout. The old pointer to `/workspaces/ocr-container/docs/README.md` described a workspace that is no longer the master copy.
 
 ## Current documentation
 
-- [Type-checking architecture](architecture/type-checking.md)
-- [Layout-debug cleanup architecture](architecture/layout-debug-cleanup.md)
-- [Page serialization architecture](architecture/page-serialization.md)
-- [OCR page-orientation architecture](architecture/ocr-page-orientation.md)
-- [Page reorganization architecture](architecture/reorganize-page-pipeline.md)
-- [Layout-regression fixture architecture](architecture/layout-regression-fixture-corpus.md)
-- [Glyph-annotation architecture](architecture/glyph-annotations.md)
-- [Tesseract integration architecture](architecture/tesseract-integration.md)
-- [DocTR checkpoint-loading trust boundary](architecture/checkpoint-loading-trust-boundary.md)
-- [PP-DocLayout model trust boundary](architecture/pp-doclayout-trust-boundary.md)
-- [Completed GitHub issue migration ledger](context/github-issues-migration-ledger.md)
+- [What this library is](architecture/README.md), the index of shipped architecture
 - [Roadmap](plans/roadmap.md)
 - [Specifications](specs/_index.md)
-- [PGDP-aware matcher](architecture/pgdp-aware-matcher.md)
+- [Issue index](issues/README.md)
+- [Public API](usage/public-api.md)
 - [Geometry correction usage](usage/geometry-correction.md)
+- [GitHub issue migration ledger](context/github-issues-migration-ledger.md)

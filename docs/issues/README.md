@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-15
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: process
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** process
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-12
 - **Read when:** filing a bug / defect / investigation report, or looking up an
   open issue's status, evidence, or resolution.
 - **Search terms:** issues folder, bug report, defect report, issue template,
@@ -88,37 +88,8 @@ the home for that work. Repo-local defects stay in their own repo.
 
 ## Remaining work
 
-Open work is one line plus the path of its issue or plan. The same list is the [roadmap](../plans/roadmap.md). Shipped behavior is linked from that roadmap to `docs/architecture/`. This file does not keep a second history of closed reports.
+The open list is the [roadmap](../plans/roadmap.md). Shipped behavior is the [architecture index](../architecture/README.md). This file does not keep a second copy of that list, so the two cannot drift.
 
-- Five strict-xfail figure-noise baselines still define those cases in CI. [xfail baselines](2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3 in the [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md).
-- Reorganize branch coverage is still thin on plate noise, column strategy, and floated captions. [branch coverage](2026-07-21-reorganize-branch-unit-coverage.md). Plan theme B4.
-- DocTR and Tesseract ingress still omit an explicit `is_normalized` flag. [OCR ingress](2026-07-21-ocr-ingress-is-normalized-explicit.md). Plan theme C1.
-- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. [geometry flags](2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
-- Grid `map_points` is unsupported, and `PipelineResult` cannot tell a dewarp skip from an identity no-op. The docs are fixed. [geometry gate](2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
-- HEIF and AVIF load and write failures are fixed. The `opencv-cuda` dependency-honesty part is not. [image I/O](2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
-- The public API page now matches the README, but `tests/test_public_api.py` does not pin the added names. [public API](2026-07-21-public-api-surface-policy.md). Plan theme D1.
-- No doc yet says which model owns provenance; the glyph schema emit and Block tuple restore are fixed. [schema emit](2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
-- Greenfield specs are blocked on owner decisions. [decision pack](2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
-- Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
-- Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3.
-- The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2.
-- Sidenote x-height image projection is unbuilt. [gh-004](2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](2026-05-11-gh-047-spec-sidenote-projection-x-height.md).
-- Row-block expansion is not sidenote-aware. [gh-006](2026-05-10-gh-006-sidenote-aware-row-blocks.md), [gh-049](2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md).
-- A DocTR fork pin does not flag local-dev mode. [gh-007](2026-05-10-gh-007-dev-local-doctr-fork-pin.md).
-- The page-order module is specified and unbuilt. [tracker](2026-07-21-page-order-module-unbuilt.md), [gh-208](2026-05-24-gh-208-spec-page-order-detection.md), [gh-211](2026-05-24-gh-211-page-order-module-skeleton.md), [gh-212](2026-05-24-gh-212-page-order-filename-signal.md), [gh-213](2026-05-24-gh-213-page-order-ocr-signal.md), [gh-214](2026-05-24-gh-214-page-order-visual-signal.md), [gh-215](2026-05-24-gh-215-page-order-aggregation.md). Plan theme G1.
-- The scannos module is specified and unbuilt. [tracker](2026-07-21-scannos-module-unbuilt.md), [gh-209](2026-05-24-gh-209-spec-scannos-module.md), [gh-216](2026-05-24-gh-216-scanno-dataclasses.md), [gh-217](2026-05-24-gh-217-sqlite-rule-library.md), [gh-218](2026-05-24-gh-218-json-candidate-store.md), [gh-219](2026-05-24-gh-219-scanno-scan-promote-api.md), [gh-220](2026-05-24-gh-220-scanno-promotion-tests.md). Plan theme G2.
-- The hyphen n-grams client is specified and unbuilt. [tracker](2026-07-21-hyphen-ngrams-unbuilt.md), [gh-210](2026-05-24-gh-210-spec-hyphen-ngrams-sqlite.md), [gh-221](2026-05-24-gh-221-hyphen-ngrams-protocol.md), [gh-222](2026-05-24-gh-222-hyphen-ngrams-sqlite-client.md), [gh-223](2026-05-24-gh-223-hyphen-ngrams-json-api-client.md), [gh-224](2026-05-24-gh-224-hyphen-ngrams-download.md), [gh-225](2026-05-24-gh-225-hyphen-ngrams-extraction.md). Plan theme G3.
-- The word-reference-lines API is unbuilt beyond the baseline helpers. [tracker](2026-07-21-word-reference-lines-api-unbuilt.md). Plan theme H1.
-- Character bounding-box extraction is unbuilt. [tracker](2026-07-21-char-bbox-extraction-unbuilt.md). Plan theme H2.
-- Table TABLE/CELL structure is unbuilt. [tracker](2026-07-21-table-structure-unbuilt.md). Plan theme I1.
-- Heavy OCR dependencies are still mandatory. [gh-161](2026-05-21-gh-161-optional-ocr-dependencies.md).
-- Checkpoint loading still lacks size, checksum, and safetensors limits. [gh-165](2026-05-22-gh-165-checkpoint-hardening.md).
-- Strict image validation for untrusted inputs is open. [gh-191](2026-05-22-gh-191-strict-image-validation.md).
-- Advisory static scanners are not added. [gh-201](2026-05-22-gh-201-advisory-static-scanners.md).
-- OCR entry points have no progress callback. [progress hook](2026-08-08-ocr-progress-hook.md).
-- Two issue-record sets still describe the same clusters. [duplicate records](2026-08-07-duplicate-issue-records-after-rebase.md).
-- GPU and slow-path CI strategy. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6.
-- Five workspace repos have had no CI since 2026-07-12. [actions disabled](2026-08-08-actions-disabled-five-repos.md).
-- Seven pdomain repos still point agents at the retired ocr-container-meta tracker. [agent pointers](2026-11-07-agent-docs-point-at-retired-meta-repo.md).
+On 2026-11-12 the per-issue lines that were in this section moved into the roadmap and were grouped. Library work stays under "Open work in this library". Page-order, scannos, hyphen n-grams, and the table detector are under "Homes still to choose". Cross-repo CI and agent-pointer notes are under "Tracker items outside the library". The schema-emit line now matches its issue file: glyph schema emission and Block tuple restore are fixed, and the provenance-ownership sentence is still open.
 
-Coverage and process ratchet choices in plan theme J have no separate issue file. They stay in the continued-work plan.
+Each issue file remains the evidence record. Add a new open issue to the roadmap in the same edit that adds the file.

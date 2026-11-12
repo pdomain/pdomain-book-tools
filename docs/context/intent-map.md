@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: context
 ---
 
@@ -12,15 +12,15 @@ Kind: context
 
 - **Kind:** context
 - **Status:** active
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-12
 - **Read when:** deciding whether proposed work is active, deferred, rejected, blocked, or awaiting an owner decision.
 - **Search terms:** intent, deferred, rejected, blocked, legacy sweep.
 
 ## Active bets
 
-- Finish the open lines in the [roadmap](../plans/roadmap.md). The same list is the [issue index](../issues/README.md).
-- Keep the [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md) until its unfinished themes are done. Shipped slices are named at the top of that plan.
-- Build the greenfield designs only after the owner decisions below are answered:
+- Finish the library lines in the [roadmap](../plans/roadmap.md). That file is the only remaining-work list. The [issue index](../issues/README.md) points at it. Shipped behavior is the [architecture index](../architecture/README.md).
+- Keep the [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md) until its unfinished themes are done. Shipped slices are named at the top of that plan. Theme G waits on the home question in the roadmap.
+- Build reference lines and character boxes in this library only after the owner decisions below are answered. Page-order, scannos, hyphen n-grams, and the table detector also wait on the home question in the roadmap. The specs are:
   [specs 06a](../specs/06a-word-reference-lines-audit.md),
   [06b](../specs/06b-word-reference-lines-api.md),
   [06c](../specs/06c-word-reference-lines-testing.md),
@@ -97,6 +97,7 @@ The open list is the [roadmap](../plans/roadmap.md). The [issue index](../issues
 
 ## Needs owner decision
 
+- Choose a home for the page-order detector, the scanno store, the hyphen n-gram client, and the table-structure detector. The roadmap recommends prep-for-pgdp for the first three (scannos stays with `wordcheck` until a second consumer exists) and a separate model package for the table detector, with `TABLE`/`CELL` fields staying on the page model here. Evidence: [roadmap](../plans/roadmap.md) section "Homes still to choose"; prep-for-pgdp intent map (wordcheck is the scanno stage; `scannocheck` is rejected); [page-order filename decision](decisions.md) on 2026-11-07.
 - Resolve the word-reference-lines coordinate, persistence, heuristic, mapping,
   font-fixture, and property-test contracts before implementation. Evidence:
   docs/specs/06b-word-reference-lines-api.md and
@@ -128,7 +129,7 @@ The open list is the [roadmap](../plans/roadmap.md). The [issue index](../issues
 
 - **Can retire:** every file formerly under docs/archive/; the completed deep
   code/security review; Git history preserves their evidence.
-- **Still active:** docs/plans/roadmap.md,
+- **Still active:** docs/architecture/README.md, docs/plans/roadmap.md,
   docs/plans/2026-07-21-continued-work-from-deep-review.md,
   docs/process/lint-deviations.md, active specs 06a–06c, 09, 10, hyphen
   n-grams, page-order detection, scannos, and the specs index. The PGDP-aware

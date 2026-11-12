@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: plan
 ---
 
@@ -12,7 +12,7 @@ Kind: plan
 
 - **Kind:** plan
 - **Status:** active
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-12
 - **Read when:** picking the next implementation theme after the 2026-07-21 deep review; sequencing P0 fixes vs greenfield modules.
 - **Search terms:** continued work, P0 reorganize, coordinate domain, layout harness, drop-cap C, decision pack, prep-for-pgdp modules.
 
@@ -50,6 +50,8 @@ Code on master `0d8b9d40`, read on 2026-11-06, proves these slices. The checklis
 C5 is only partly done. Load and write failures are fixed. The `opencv-cuda` dependency-honesty part is still open.
 
 ## Architecture
+
+The current map of packages, boundaries, and invariants is [What this library is](../architecture/README.md). The notes below say which theme touches which layer.
 
 The work touches four layers of this library, in the order the themes hit them.
 
@@ -425,7 +427,7 @@ Keep deferred until layout fine-tune policy allows. Then implement
 
 ## Theme G — Prep-for-pgdp modules (after Theme E)
 
-Order by stage pressure and risk:
+The [roadmap](roadmap.md) asks the owner to place these three modules outside this library: the page-order detector in `pdomain-prep-for-pgdp`, the scanno store with that repo's `wordcheck` until a second consumer exists, and the hyphen n-gram client beside `hyphen_join`. Leave the skeletons below unstarted in this package while that question is open. If the owner keeps them here, the order by stage pressure and risk is:
 
 1. **Page-order skeleton** — filename + OCR signals first; no unvalidated
    visual-sim swap authority (Stage 11).
@@ -511,7 +513,7 @@ For every code slice:
 | Multi-column body detection enhancements | After F2 / glyph-size evidence; still roadmap residual (not a separate theme until fixtures need it) |
 | Decoration postclassify | Theme F3 (still deferred) |
 | Doctr-from-git dev-local signal | Unchanged; still deferred |
-| (missing) page-order/scannos/hyphen | Theme G + D3 absorb |
+| Page-order, scannos, hyphen n-grams | Theme G. The roadmap now asks which repo should hold them |
 | (missing) 06/09/10 | Themes H–I after E |
 
 ## Success criteria for the plan overall
