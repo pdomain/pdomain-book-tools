@@ -36,6 +36,7 @@ These items change code or docs that already live here.
 
 - Five strict-xfail figure-noise baselines still define those cases in CI. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3.
 - Reorganize branch coverage is still thin on plate noise, column strategy, and floated captions. [branch coverage](../issues/2026-07-21-reorganize-branch-unit-coverage.md). Plan theme B4.
+- `_split_caption_like_prefix` and `absorb_caption_tails_into_caption` still scale their thresholds by pixel `page.width`, so a normalized floated caption never splits. A synthetic probe splits in pixels and does not split when normalized. A scan of 154 DocTR pages found no prefix that correct scaling would split, and 579 candidates were not run. Recorded on `fix/roadmap-no-owner-items`, commits `04da801` through `0a918f8`. Those commits leave both functions unchanged.
 - DocTR and Tesseract ingress still omit an explicit `is_normalized` flag. [OCR ingress](../issues/2026-07-21-ocr-ingress-is-normalized-explicit.md). Plan theme C1.
 - `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
 - Grid `map_points` is unsupported, and `PipelineResult` cannot tell a dewarp skip from an identity no-op. The docs are fixed. [geometry gate](../issues/2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
@@ -44,6 +45,7 @@ These items change code or docs that already live here.
 - The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](../issues/2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](../issues/2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2.
 - Sidenote x-height image projection is unbuilt. [gh-004](../issues/2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](../issues/2026-05-11-gh-047-spec-sidenote-projection-x-height.md).
 - Row-block expansion is not sidenote-aware. [gh-006](../issues/2026-05-10-gh-006-sidenote-aware-row-blocks.md), [gh-049](../issues/2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md).
+- `detect_geometric_sidenotes` never tags a normalized page, because its margin gap is at least `1.0` while those coordinates span `[0, 1]`. Recorded on `feat/layout-no-owner-items` at `6f5cf55`. That commit changes no code. The same commit notes that the body edge is the median of all word edges.
 - Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](../issues/2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](../issues/2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3. Training stays in the training repos named under out of scope.
 
 ### API, schema, and packaging
