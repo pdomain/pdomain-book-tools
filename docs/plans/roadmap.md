@@ -48,7 +48,7 @@ These items change code or docs that already live here.
 - The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](../issues/2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](../issues/2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2.
 - Sidenote x-height image projection is unbuilt. [gh-004](../issues/2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](../issues/2026-05-11-gh-047-spec-sidenote-projection-x-height.md).
 - Row-block expansion is not sidenote-aware. [gh-006](../issues/2026-05-10-gh-006-sidenote-aware-row-blocks.md), [gh-049](../issues/2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md).
-- `detect_geometric_sidenotes` never tags a normalized page, because its margin gap is at least `1.0` while those coordinates span `[0, 1]`. Recorded on `feat/layout-no-owner-items` at `6f5cf55`. That commit changes no code. The same commit notes that the body edge is the median of all word edges.
+- `detect_geometric_sidenotes` never tags a normalized page, because its margin gap is at least `1.0` while those coordinates span `[0, 1]`. Handoff `6f5cf55` (2026-11-11) is on master and changes no code. It notes that the body edge is the median of all word edges.
 - Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](../issues/2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](../issues/2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3. Training stays in the training repos named under out of scope.
 
 ### API, schema, and packaging
