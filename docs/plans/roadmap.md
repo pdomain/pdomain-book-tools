@@ -24,9 +24,15 @@ The [continued-work plan](2026-07-21-continued-work-from-deep-review.md) is the 
 
 Shipped behavior is the [architecture index](../architecture/README.md).
 
-Glyph schema emission and Block tuple restore are fixed, and the provenance-ownership sentence is the part still open.
+Glyph schema emission and Block tuple restore are fixed. The provenance-ownership sentence is in the [OCR model note](../architecture/ocr-model-and-schema-boundaries.md) (`e2c9a79`, 2026-11-10). Where the `Document` provenance value should go stays an owner decision in the continued-work plan.
 
-The schema-emit line below follows the issue file, last verified 2026-11-07.
+These commits from `fix/roadmap-no-owner-items` are on master. Their retirement records are in [decisions](../context/decisions.md).
+
+- OCR ingress states `is_normalized` (`04da801`, 2026-11-10).
+- Grid `map_points` and `PipelineResult.dewarp_outcome` (`a094ed7` and `39cdd9a`, 2026-11-10). GPU use of grid `map_points` is unverified.
+- The public-API test pins the documented names (`eb4df23`, 2026-11-10).
+- Reorganize branch tables cover the B4 priority paths (`eeb9a82`, 2026-11-10). Splitting that module stays optional.
+- Unused `opencv-cuda` is removed from the `[gpu]` extra (`b868a2a`, 2026-11-10).
 
 ## Open work in this library
 
@@ -34,13 +40,10 @@ These items change code or docs that already live here.
 
 ### Reorganize and geometry
 
-- Five strict-xfail figure-noise baselines still define those cases in CI. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3.
-- Reorganize branch coverage is still thin on plate noise, column strategy, and floated captions. [branch coverage](../issues/2026-07-21-reorganize-branch-unit-coverage.md). Plan theme B4.
-- `_split_caption_like_prefix` and `absorb_caption_tails_into_caption` still scale their thresholds by pixel `page.width`, so a normalized floated caption never splits. A synthetic probe splits in pixels and does not split when normalized. A scan of 154 DocTR pages found no prefix that correct scaling would split, and 579 candidates were not run. Recorded on `fix/roadmap-no-owner-items`, commits `04da801` through `0a918f8`. Those commits leave both functions unchanged.
-- DocTR and Tesseract ingress still omit an explicit `is_normalized` flag. [OCR ingress](../issues/2026-07-21-ocr-ingress-is-normalized-explicit.md). Plan theme C1.
-- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
-- Grid `map_points` is unsupported, and `PipelineResult` cannot tell a dewarp skip from an identity no-op. The docs are fixed. [geometry gate](../issues/2026-07-21-geometry-correction-gate-and-docs.md). Plan theme C4.
-- The `opencv-cuda` dependency-honesty part is not fixed. HEIF and AVIF load and write failures are fixed. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
+- Five strict-xfail baselines still define those cases in CI. They are reading-order failures, and `plate-rio-harbour-photo` and `plate-service-on-board` want opposite results from nearly the same geometry. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3. The unverified attempt stays on `fix/caption-reading-order` (`ed54ecd`, 2026-09-19).
+- `_split_caption_like_prefix` and `absorb_caption_tails_into_caption` still scale their thresholds by pixel `page.width`, so a normalized floated caption never splits. A synthetic probe splits in pixels and does not split when normalized. A scan of 154 DocTR pages found no prefix that correct scaling would split, and 579 candidates were not run. [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md). Commits `04da801` through `0a918f8` (2026-11-10) are on master and leave both functions unchanged.
+- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. The fix belongs in `pdomain-book-contracts`. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
+- HEIF and AVIF load and write failures are fixed, and unused `opencv-cuda` is removed. `encode_bgr_image_as_png` still discards the `cv2.imencode` success flag. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
 - Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](../issues/2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](../issues/2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](../issues/2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
 - The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](../issues/2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](../issues/2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2.
 - Sidenote x-height image projection is unbuilt. [gh-004](../issues/2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](../issues/2026-05-11-gh-047-spec-sidenote-projection-x-height.md).
@@ -50,8 +53,6 @@ These items change code or docs that already live here.
 
 ### API, schema, and packaging
 
-- The public API page matches the README, and `tests/test_public_api.py` does not yet pin the added names. [public API](../issues/2026-07-21-public-api-surface-policy.md). Plan theme D1.
-- The open remainder is one provenance-ownership sentence in the architecture or public-API docs. Glyph schema emission and Block ground-truth tuple restore are fixed (2026-09-19). [schema emit](../issues/2026-07-21-schema-emit-and-path-hygiene.md). Plan theme D2.
 - Heavy OCR dependencies are still mandatory. [gh-161](../issues/2026-05-21-gh-161-optional-ocr-dependencies.md).
 - Checkpoint loading still lacks size, checksum, and safetensors limits. [gh-165](../issues/2026-05-22-gh-165-checkpoint-hardening.md). The shipped baseline is [DocTR checkpoint loading](../architecture/checkpoint-loading-trust-boundary.md).
 - Strict image validation for untrusted inputs is open. [gh-191](../issues/2026-05-22-gh-191-strict-image-validation.md).

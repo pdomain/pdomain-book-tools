@@ -201,7 +201,7 @@ notes. Internal submodule paths, meaning anything not listed here, may change
 without notice. These guarantees cover this package only. They do not claim
 stability for any other `pdomain-*` project.
 
-Tests pin only part of this page. `tests/test_public_api.py` checks the
-top-level, geometry, pgdp, utility, and layout re-exports. It does not yet pin
-`geometry_correction`, `hf`, the `ocr` package names, or
-`ocr.document.Document`. `tests/test_schemas_emit.py` covers `schemas.emit`.
+`tests/test_public_api.py` pins this page. It checks the top-level, geometry,
+pgdp, utility, `ocr`, `layout`, `hf`, and `geometry_correction` names, the
+supported deeper paths, and that the README imports only paths listed here.
+`tests/test_schemas_emit.py` covers `schemas.emit`.

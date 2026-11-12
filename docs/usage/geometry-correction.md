@@ -133,15 +133,21 @@ Every backend returns an identity, affine, grid, or rectified
 ```python
 transform = result.deskew.transform
 corrected = transform.apply(img)          # apply to image
-pts_out = transform.map_points(pts)       # propagate keypoints (not for grid)
+pts_out = transform.map_points(pts)       # propagate keypoints (not for rectified)
 inv = transform.invert()                  # invert (affine, homography, identity)
 ```
 
-`map_points` works for identity, affine, and homography transforms. It raises
-`NotImplementedError` for grid transforms (`kind="grid"`), so keypoints and OCR
-boxes are not remapped after a dewarp. Grid transforms are also non-invertible
-because they come from dense backward-map dewarpers. Affine transforms invert
-exactly.
+`map_points` takes points in the source image and returns where they land in the
+corrected image. It works for identity, affine, homography, and grid transforms.
+It raises `NotImplementedError` for rectified transforms, which hold only a finished
+image.
+
+A grid transform's `map_points` returns NaN for a point the warp moved off the page
+and for a NaN or infinite input point, so check the result with `np.isnan`. The pipeline does not remap OCR boxes for you.
+Call `map_points` on the box corners if you need them in the corrected image.
+
+`invert()` returns `None` for grid transforms, because their dense backward maps have
+no exact inverse. Affine transforms invert exactly.
 
 ## Dewarp scanned pages with textline disparity
 
@@ -203,6 +209,17 @@ When fewer than `min_textlines=15` text lines survive the short-line cull,
 does not skip dewarp on low confidence. It still applies that identity transform,
 which changes nothing, and `result.dewarp` is set. A caller that wants UVDoc or no
 dewarp must check `result.dewarp.confidence` itself.
+
+### Tell whether dewarp changed the page
+
+`result.dewarp_outcome` says what happened at the dewarp step:
+
+| Value | Meaning | `result.dewarp` |
+|---|---|---|
+| `not_recommended` | The curvature detector did not ask for dewarp. | `None` |
+| `no_backend` | Dewarp was asked for, but no backend was selected. | `None` |
+| `identity_no_op` | A backend ran and returned an identity transform, so the image is unchanged. | set |
+| `applied` | A backend ran and warped the image. | set |
 
 ### GPU acceleration (`[gpu]` extra)
 

@@ -27,8 +27,11 @@ The [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md
 - GitHub Issues is disabled. Local files under `docs/issues/` are the tracker.
 - Greenfield modules stay blocked on the owner decisions in the [intent map](intent-map.md).
 - Items this pass could not prove are listed under "Needs owner decision" in that map. Their files stay.
+- `fix/caption-reading-order` (`ed54ecd`, 2026-09-19) is an unverified reading-order attempt. It stays off master.
 
 ## Risks
 
 - Do not treat deletion of a GitHub source as resolution of its governed file.
 - Do not delete an issue file because it looks old. Retire it only when code and tests prove the outcome.
+- [Plan item C3](../issues/2026-07-21-geometry-primitive-flag-hygiene.md) can only be fixed in `pdomain-book-contracts`.
+- [The floated-caption split](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md) does nothing on normalized pages, which includes DocTR output.

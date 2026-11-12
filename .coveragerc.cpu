@@ -7,7 +7,6 @@ omit =
     */.tox/*
     */site-packages/*
     */image_processing/cupy_processing/*
-    */image_processing/cv2cuda_processing/*
 concurrency =
     multiprocessing
     thread

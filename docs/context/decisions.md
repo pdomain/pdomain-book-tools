@@ -573,3 +573,53 @@ Kind: context
 - Removal commit: 4fd5299
 - Rationale kept: Decisions 1 and 2 were answered on 2026-11-07: gh-043 and the meta repo were retired, and the dep-refresh issue was retired. This repo's `AGENTS.md` now names `docs/issues/`. The other repos' meta pointers are filed as [agent pointers](../issues/2026-11-07-agent-docs-point-at-retired-meta-repo.md); the five merge gates stay in [actions disabled](../issues/2026-08-08-actions-disabled-five-repos.md).
 - Remaining work: Unverified leftovers it listed: ruff version skew in pdomain-ocr-labeler-spa, and whether Markdown is excluded from ruff the same way in every repo.
+
+### 2026-11-10 Retired: DocTR and Tesseract OCR ingress omit explicit is_normalized flags
+
+- Old path: docs/issues/2026-07-21-ocr-ingress-is-normalized-explicit.md
+- Outcome: implemented
+- Resolving commit: `04da801`
+- Superseded by: `pdomain_book_tools/ocr/document.py` and `tests/ocr/test_ocr_ingress_is_normalized.py`
+- Removal commit: d23a23a
+- Rationale kept: DocTR boxes are stated as normalized and Tesseract boxes as pixels. DocTR geometry outside [0, 1] now raises.
+- Remaining work: none
+
+### 2026-11-10 Retired: geometry_correction dual gate and docs disagree; grid map_points unsupported
+
+- Old path: docs/issues/2026-07-21-geometry-correction-gate-and-docs.md
+- Outcome: implemented
+- Resolving commit: `a094ed7` and `39cdd9a`
+- Superseded by: [geometry correction usage](../usage/geometry-correction.md)
+- Removal commit: d23a23a
+- Rationale kept: Grid `map_points` inverts the backward maps. `PipelineResult.dewarp_outcome` names the four results. The docs had already been aligned with the dual gate.
+- Remaining work: The owner can still override the dual gate, tracked in the [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md). GPU use of grid `map_points` is unverified.
+
+### 2026-11-10 Retired: public-api.md is narrower than taught Document/hf/geometry_correction surface
+
+- Old path: docs/issues/2026-07-21-public-api-surface-policy.md
+- Outcome: implemented
+- Resolving commit: `eb4df23`
+- Superseded by: [public API](../usage/public-api.md) and `tests/test_public_api.py`
+- Removal commit: d23a23a
+- Rationale kept: The page, package `__all__`, tests, and README imports agree. The expand default from plan item D1 was applied.
+- Remaining work: The owner can still override the expand default, tracked in the [decision pack](../issues/2026-07-21-owner-decision-pack-greenfield.md).
+
+### 2026-11-10 Retired: schema emit incomplete for glyphs; public-api path drift; Block GT tuples
+
+- Old path: docs/issues/2026-07-21-schema-emit-and-path-hygiene.md
+- Outcome: implemented
+- Resolving commit: `e2c9a79`
+- Superseded by: [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md)
+- Removal commit: d23a23a
+- Rationale kept: The three earlier defects were resolved on 2026-09-19. The architecture page now says who owns OCR provenance.
+- Remaining work: Where the `Document` provenance value should go stays an owner decision in Theme E of the [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md).
+
+### 2026-11-10 Retired: reorganize_page_utils branch coverage thin on high-risk heuristics
+
+- Old path: docs/issues/2026-07-21-reorganize-branch-unit-coverage.md
+- Outcome: implemented
+- Resolving commit: `eeb9a82`
+- Superseded by: `tests/ocr/test_reorganize_branch_tables.py` and `tests/ocr/test_reorganize_early_return_and_soft_recover.py`
+- Removal commit: d23a23a
+- Rationale kept: Each B4 priority path has a focused test. With `tests/ocr` alone, the module went from 81.0% to 87.1%, and missing branches went from 218 to 163.
+- Remaining work: Splitting the module stays optional in plan item B4. A bug the tables exposed is filed as [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md).

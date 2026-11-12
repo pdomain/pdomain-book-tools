@@ -1344,19 +1344,6 @@ wheels = [
 ]
 
 [[package]]
-name = "opencv-cuda"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "opencv-python" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/7f/c6/0f23be26ee049ec3b4e0dbc55d645af3c941063708580dab9e08da1a5e6c/opencv-cuda-0.0.2.tar.gz", hash = "sha256:1719ee0a49d3ca5f80a4992996a251f9ae146e4cde6fdbedf55e10e34fc872bc", size = 2297, upload-time = "2023-10-22T15:29:58.286Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/b9/2d9ada49ae2c0dd31ee5df4889e2c73a7767b2da5b32fa9cd2b71421d3d8/opencv_cuda-0.0.2-py3-none-any.whl", hash = "sha256:d1cf890cdd06c909ef0ffa322c37861de20082de3d3aae5dc29fa71768767401", size = 2749, upload-time = "2023-10-22T15:29:57.001Z" },
-]
-
-[[package]]
 name = "opencv-python"
 version = "4.14.0.94"
 source = { registry = "https://pypi.org/simple" }
@@ -1493,7 +1480,6 @@ dewarp-dl = [
 ]
 gpu = [
     { name = "cupy-cuda13x" },
-    { name = "opencv-cuda" },
 ]
 
 [package.dev-dependencies]
@@ -1519,7 +1505,6 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2,<2.5" },
     { name = "onnxruntime", marker = "extra == 'dewarp-dl'", specifier = ">=1.17" },
     { name = "opencv-contrib-python", specifier = ">=5.0.0.93" },
-    { name = "opencv-cuda", marker = "extra == 'gpu'", specifier = ">=0.0.2" },
     { name = "pandas", specifier = ">=3.0.5" },
     { name = "pdomain-book-contracts", specifier = ">=0.2.0", index = "https://pdomain.github.io/pdomain-index-pip/simple/" },
     { name = "pillow", specifier = ">=12.3" },

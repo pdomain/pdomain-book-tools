@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -24,6 +24,9 @@ if TYPE_CHECKING:
     )
 
 
+DewarpOutcome = Literal["not_recommended", "no_backend", "identity_no_op", "applied"]
+
+
 @dataclass(frozen=True)
 class PipelineResult:
     """Holds the fully corrected image and all intermediate results."""
@@ -34,6 +37,24 @@ class PipelineResult:
     dewarp: DewarpResult | None
     deskew: DeskewResult | None
     regime: str | None = None
+
+    @property
+    def dewarp_outcome(self) -> DewarpOutcome:
+        """Say what happened at the dewarp step.
+
+        - ``not_recommended``: the curvature detector did not ask for dewarp.
+        - ``no_backend``: dewarp was asked for, but no backend was selected.
+        - ``identity_no_op``: a backend ran and returned an identity transform,
+          so the image is unchanged. Textline dewarp does this on too few lines.
+        - ``applied``: a backend ran and warped the image.
+        """
+        if self.curvature.recommended != "dewarp":
+            return "not_recommended"
+        if self.dewarp is None:
+            return "no_backend"
+        if self.dewarp.transform.kind == "identity":
+            return "identity_no_op"
+        return "applied"
 
 
 class GeometryPipeline:

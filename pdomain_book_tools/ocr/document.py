@@ -554,6 +554,10 @@ class Document:
     def _doctr_bbox(geometry: object) -> BoundingBox | None:
         """Return a ``BoundingBox`` from a DocTR geometry tuple, or ``None``.
 
+        DocTR geometry is always normalized, so the flag is stated here instead
+        of being inferred from the coordinate range. A value outside [0, 1]
+        raises ``ValueError``.
+
         DocTR emits geometry as a nested float tuple; absent/falsy geometry
         means "not provided" (M-16), and the caller must preserve the
         record without raising — pdomain-book-tools' invariant is to never
@@ -562,7 +566,7 @@ class Document:
         if not geometry:
             return None
         return BoundingBox.from_nested_float(
-            cast("Sequence[Sequence[float]]", geometry)
+            cast("Sequence[Sequence[float]]", geometry), is_normalized=True
         )
 
     @classmethod
@@ -915,12 +919,17 @@ class Document:
 
     @classmethod
     def _tesseract_bbox(cls, row: _TesseractRow) -> BoundingBox:
-        """Build a ``BoundingBox`` from a Tesseract row's L/T/W/H columns."""
+        """Build a pixel ``BoundingBox`` from a Tesseract row's L/T/W/H columns.
+
+        Tesseract reports pixels. Stating that keeps a box inside the unit
+        square from being inferred as normalized.
+        """
         return BoundingBox.from_ltwh(
             cls.safe_float(row.left),
             cls.safe_float(row.top),
             cls.safe_float(row.width),
             cls.safe_float(row.height),
+            is_normalized=False,
         )
 
     @classmethod

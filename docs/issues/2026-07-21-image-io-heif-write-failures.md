@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-07
+Last verified: 2026-11-10
 Kind: issue
 Level: I1
 ---
@@ -14,9 +14,9 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-11-07
-- **Resolution:** Open — 2 of 3 defects resolved; opencv-cuda dependency
-  honesty (defect 3) still open
+- **Last verified:** 2026-11-10
+- **Resolution:** Open — all 3 defects resolved; the discarded `cv2.imencode`
+  success flag in `encoding.encode_bgr_image_as_png` is still unaddressed
 - **Severity:** Medium — accept-then-fail load; silent write no-ops
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
 - **Read when:** editing image_processing io/formats or gpu extras
@@ -74,14 +74,14 @@ imwrite bool; `opencv-cuda` listed, unused in package.
    `write_jpg`/`write_png` (`cv2.imwrite`). `encoding.encode_bgr_image_as_png`
    (`cv2.imencode`) was out of scope for this pass and still discards its
    success flag — unaddressed.
-3. **opencv-cuda** — use or remove; clean coverage omit. Still open; not
-   touched by this pass.
+3. ~~**opencv-cuda** — use or remove; clean coverage omit.~~ Resolved
+   2026-11-10: removed from `[gpu]`.
 
 ## Next steps
 
 1. ~~Add failing HEIF load test through production entrypoint if fixture
    available.~~ Done — see Resolution.
-2. ~~Fix write checks~~; resolve opencv-cuda dependency honesty (still open).
+2. ~~Fix write checks; resolve opencv-cuda dependency honesty.~~ Done.
 3. Decide whether `encoding.encode_bgr_image_as_png`'s discarded
    `cv2.imencode` success flag belongs in this report or a new one.
 
@@ -113,12 +113,17 @@ Pillow fallback`:
    order explicitly against a known red/blue HEIC fixture generated at test
    time).
 
-**Not resolved:** defect 3 (`opencv-cuda` listed in `[gpu]` but unused;
-`cv2cuda_processing` coverage-omit reference to a module that does not
-exist) — out of scope for this pass. `encoding.encode_bgr_image_as_png`'s
-discarded `cv2.imencode` success flag was noticed during this pass but was
-also out of scope (only `write_jpg`/`write_png` were named). Set
-`Status: retired` only once both remaining items are resolved or explicitly
-descoped, then follow the standard retirement convention (link the final
+**Defect 3 resolved (2026-11-10)** on branch `fix/roadmap-no-owner-items`.
+No code imports `cv2.cuda`, so `opencv-cuda` left the `[gpu]` extra and the
+lock file. It also depended on `opencv-python`, which conflicts in the `cv2`
+namespace with the required `opencv-contrib-python`. The coverage omits for
+the missing `cv2cuda_processing` package are gone from `pyproject.toml` and
+`.coveragerc.cpu`. `scripts/check_dev_local.py` now recognizes `cupy-cuda13x`.
+It previously knew only `cupy-cuda12x` and `opencv-cuda`, so without this
+change a `[gpu]` install would no longer have been detected.
+
+**Not resolved:** `encoding.encode_bgr_image_as_png`'s discarded
+`cv2.imencode` success flag. Set `Status: retired` only once that item is
+resolved or explicitly descoped, then follow the standard retirement convention (link the final
 resolving commit, move the README pointer to "Where resolved work is
 recorded", route through `doc-retirer`).

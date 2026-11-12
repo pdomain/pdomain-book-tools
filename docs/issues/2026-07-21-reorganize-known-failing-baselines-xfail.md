@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-21
-Last verified: 2026-11-06
+Last verified: 2026-11-10
 Kind: issue
 Level: I1
 ---
@@ -14,7 +14,7 @@ Level: I1
 - **Kind:** issue
 - **Status:** active
 - **Level:** I1
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-10
 - **Resolution:** Open
 - **Severity:** High — false-green until closed or dated accept
 - **Affected version:** pdomain-book-tools 0.21.x-dev @ a7bff12
@@ -149,6 +149,35 @@ there, then re-lock or re-check the nine moved baselines one by one.
 
 The branch stays in the repository so its diff can be read. The patch lives in
 `pdomain_book_tools/ocr/block.py` and `pdomain_book_tools/ocr/layout_aware_reorg.py`.
+
+## Two baselines conflict, so B3 needs an owner accept (checked 2026-11-10)
+
+**At least one of `plate-rio-harbour-photo` and `plate-service-on-board` needs a
+dated owner accept, because I found no geometric rule that produces both
+baselines.** Both pages print a centered caption with a short "to face page"
+line far to its right, and the two lines overlap vertically by about the same
+amount.
+
+| Case | Caption y | "To face" y | Gap across | Baseline wants |
+|---|---|---|---|---|
+| `plate-rio-harbour-photo` | 0.807–0.830 | 0.824–0.839 | 0.201 | two separate blocks |
+| `plate-service-on-board` | 0.896–0.912 | 0.907–0.922 | 0.293 | one line, joined |
+
+The page with the smaller gap is the one whose baseline keeps the lines apart.
+The only difference the pipeline can see is that the layout model found a footer
+region on the second page and nothing on the first.
+
+Packing each printed caption line into its own LINE, tried in memory at
+`emit_caption_block` on 2026-11-10, closes none of the five. It changes 6 locked
+baselines outside the five: `diagram-dante-universe`,
+`inline-figure-parthenon-steed`, `inline-figure-with-greek-labels`,
+`plate-chairs-beauvais-tapestry`, `plate-v-anglosaxon-herbal` and
+`text-wraps-around-figure`. Those baselines have word-salad lines locked in, and
+the change makes them readable, for example `FIG. 4.-HEAD OF PARTHENON STEED` /
+`Sce page 3.` instead of `FIG. 4.-HEAD OF Sce page PARTHENON 3. STEED`. A fix
+needs case-by-case promotion of those baselines. The change was not landed.
+
+The strict xfail reasons now name these failures instead of figure noise.
 
 ## Root-cause hypotheses
 

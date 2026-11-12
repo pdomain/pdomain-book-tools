@@ -91,7 +91,7 @@ The continued-work plan repeats them as rules for future edits.
 - A CPU image-processing change includes the GPU twin.
 - A public surface change reaches every downstream `pdomain-*` repo.
 - Operational persistence, event history, and project ordering belong to pdomain-ops records. They are not fields on `Page`. The model note is [OCR model and schema boundaries](ocr-model-and-schema-boundaries.md).
-- The schema issue still asks for one ownership sentence in the public-API docs. That sentence is open work, tracked on the roadmap.
+- The ownership sentence for OCR provenance is in [OCR model and schema boundaries](ocr-model-and-schema-boundaries.md). Where the `Document` value should go is still an owner decision.
 
 ## Shipped contracts
 

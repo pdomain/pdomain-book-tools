@@ -275,7 +275,7 @@ handles this; the trainer must not silently suppress the entry.
 
 ## Rule: GPU code paths are opt-in; never assume GPU in CPU test paths
 
-**The rule.** The `[gpu]` install extra (CuPy, opencv-cuda) is optional.
+**The rule.** The `[gpu]` install extra (CuPy) is optional.
 All code paths that use GPU-specific libraries must be guarded by an
 availability check or placed behind the `[gpu]` extra. Test code must
 not import CuPy or CUDA-specific helpers unconditionally.

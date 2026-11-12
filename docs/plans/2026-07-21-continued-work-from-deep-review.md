@@ -46,8 +46,9 @@ Code on master `0d8b9d40`, read on 2026-11-06, proves these slices. The checklis
 - C7 registry trust kwargs and captions printed above a figure: [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md) and [reorganize page pipeline](../architecture/reorganize-page-pipeline.md).
 - D3 backlog sync: the roadmap is now the remaining-work list.
 - Word merge no longer clears the line's ground truth: [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md).
+- C1, C4, D1, D2, and B4, from `fix/roadmap-no-owner-items` (2026-11-10). The Theme E rows that let the owner override D1 and C4, and the row for where `Document` provenance should go, stay open. C3 stays open because `BoundingBox` now lives in `pdomain-book-contracts`.
 
-C5 is only partly done. Load and write failures are fixed. The `opencv-cuda` dependency-honesty part is still open.
+C5 is nearly done. Load and write failures are fixed, and unused `opencv-cuda` is removed (`b868a2a`, 2026-11-10). `encode_bgr_image_as_png` still discards the `cv2.imencode` success flag.
 
 ## Architecture
 

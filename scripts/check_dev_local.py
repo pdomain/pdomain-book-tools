@@ -51,7 +51,7 @@ class PipListEntry(TypedDict, total=False):
 # Packages whose presence in the venv signals an active extra/override
 # that ``uv sync --group dev`` (no extras) would remove. Names are
 # normalized to lowercase for matching.
-_GPU_EXTRA_PACKAGES = frozenset({"cupy-cuda12x", "opencv-cuda"})
+_GPU_EXTRA_PACKAGES = frozenset({"cupy-cuda12x", "cupy-cuda13x"})
 
 # This package is the project itself; its editable install is normal in
 # every dev venv and MUST NOT be flagged as dev-local on its own.
@@ -100,7 +100,7 @@ def detect_mode(
        Sibling pdomain-* checkouts surface as ``editable_project_location``
        in ``uv pip list --format=json``.
     2. **A package from the ``[gpu]`` extra is installed**
-       (``cupy-cuda12x``, ``opencv-cuda``). Canonical sync drops
+       (``cupy-cuda12x``, ``cupy-cuda13x``). Canonical sync drops
        these, so their presence means a ``--extra gpu`` was
        explicitly applied.
     3. **Marker file present** at ``marker_path`` (if supplied) — the

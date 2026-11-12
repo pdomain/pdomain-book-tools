@@ -228,22 +228,25 @@ def _load_fixture_page(case_name: str) -> Page:
 # behaviour catches up.
 KNOWN_FAILING_BASELINES: dict[str, str] = {
     "figures-side-by-side-with-captions": (
-        "figure-internal noise: orphan 'A' between body and FIG. 72 caption "
-        "should be dropped (small word inside figure region)"
+        "reading order: both figure captions print after the body with their "
+        "lines interleaved, and a body paragraph carries the caption role"
     ),
     "frontispiece-on-deck-dual-caption": (
-        "figure-internal noise: 5 char-noise lines from engraving above "
-        "the caption should be dropped"
+        "line structure: two caption lines print as one page-footer line with "
+        "the OCR noise glyph 'i' kept; layout found no caption region"
     ),
     "plate-ii-celestial-influences": (
-        "figure-internal noise: ~5 single-char lines from circular figure "
-        "interior should be dropped"
+        "reading order: the 'From a MS.' footer band prints before the caption above it"
     ),
     "plate-rio-harbour-photo": (
-        "figure-internal noise: ~7 short lines from the photograph should be dropped"
+        "reading order: '[To face page 10.' is tagged a right sidenote and "
+        "prints before its caption; baseline conflicts with "
+        "plate-service-on-board"
     ),
     "plate-service-on-board": (
-        "figure-internal noise: ~5 noise lines from the engraving should be dropped"
+        "reading order: the 'To luce page s,' page footer prints before the "
+        "caption, and the baseline joins them on one line; baseline conflicts "
+        "with plate-rio-harbour-photo"
     ),
 }
 

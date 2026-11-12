@@ -53,7 +53,7 @@ install with the `gpu` extra:
 pip install 'pdomain-book-tools[gpu]'
 ```
 
-This pulls in `cupy-cuda13x` and `opencv-cuda`, which require a
+This pulls in `cupy-cuda13x`, which requires a
 CUDA 13 toolkit and a compatible NVIDIA driver. The CPU pipeline
 (`pdomain_book_tools.image_processing.cv2_processing.*`) remains the
 fallback when the extra is not installed; calling any
@@ -175,8 +175,7 @@ make reset-full  # Nuclear option: clear everything
 ### Geometry primitives
 
 ```python
-from pdomain_book_tools.geometry.bounding_box import BoundingBox
-from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.geometry import BoundingBox, Point
 
 bbox = BoundingBox(top_left=Point(10, 20), bottom_right=Point(110, 70))
 print(bbox.width, bbox.height, bbox.area)
@@ -185,8 +184,7 @@ print(bbox.width, bbox.height, bbox.area)
 ### OCR word model
 
 ```python
-from pdomain_book_tools.geometry.bounding_box import BoundingBox
-from pdomain_book_tools.geometry.point import Point
+from pdomain_book_tools.geometry import BoundingBox, Point
 from pdomain_book_tools.ocr.word import Word
 
 word = Word(
@@ -201,7 +199,7 @@ print(word.text, word.ground_truth_text)
 ### PGDP preprocessing
 
 ```python
-from pdomain_book_tools.pgdp.pgdp_results import PGDPResults
+from pdomain_book_tools.pgdp import PGDPResults
 
 results = PGDPResults("001.png", "Some -- raw [*proof note*] text")
 print(results.processed_page_text)

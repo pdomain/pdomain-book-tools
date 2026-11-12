@@ -16,7 +16,7 @@ Kind: architecture
 - **Read when:** changing Page identity, blob references, unmatched ground
   truth, review metadata, serialization, or public schema emission.
 - **Search terms:** Page, page_id, BlobStoreProtocol, GtOrphans,
-  ReviewMetadata, schemas emit, Pydantic schema.
+  ReviewMetadata, schemas emit, Pydantic schema, OCR provenance ownership.
 
 ## OCR values and lifecycle ownership
 
@@ -31,6 +31,20 @@ them to the block tree. `Page` retains the compatibility and content fields
 that current consumers use. Operational persistence, event history,
 application extensions, and project ordering belong to pdomain-ops records and
 aggregates. They do not belong to this foundation package.
+
+## Who owns OCR provenance
+
+`pdomain-book-contracts` owns the `OCRProvenance` and `OCRModelProvenance` types.
+This package re-exports them from `pdomain_book_tools.ocr.provenance`, and
+`PUBLIC_MODELS` emits their schemas so consumers can generate bindings.
+
+`Page` does not carry OCR provenance. `Document` builds an `OCRProvenance` during
+OCR and then discards it. The provenance history itself belongs to pdomain-ops,
+where the `OcrCompleted` event adds a `ProvenanceNode` to the page record.
+
+Nothing yet carries the `Document` value to that event. Where it should go is an
+open owner decision, listed in Theme E of the
+[continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md).
 
 ## Review and schema boundary
 

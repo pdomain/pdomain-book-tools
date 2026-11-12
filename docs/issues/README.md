@@ -90,6 +90,6 @@ the home for that work. Repo-local defects stay in their own repo.
 
 The open list is the [roadmap](../plans/roadmap.md). Shipped behavior is the [architecture index](../architecture/README.md). This file does not keep a second copy of that list, so the two cannot drift.
 
-On 2026-11-12 the per-issue lines that were in this section moved into the roadmap and were grouped. Library work stays under "Open work in this library". Page-order, scannos, hyphen n-grams, and the table detector are under "Homes still to choose". Cross-repo CI and agent-pointer notes are under "Tracker items outside the library". The schema-emit line now matches its issue file: glyph schema emission and Block tuple restore are fixed, and the provenance-ownership sentence is still open.
+On 2026-11-12 the per-issue lines that were in this section moved into the roadmap and were grouped. Library work stays under "Open work in this library". Page-order, scannos, hyphen n-grams, and the table detector are under "Homes still to choose". Cross-repo CI and agent-pointer notes are under "Tracker items outside the library". Glyph schema emission, Block tuple restore, and the provenance-ownership sentence are done. The sentence is in the OCR model architecture page. Where the `Document` provenance value should go stays an owner decision.
 
 Each issue file remains the evidence record. Add a new open issue to the roadmap in the same edit that adds the file.

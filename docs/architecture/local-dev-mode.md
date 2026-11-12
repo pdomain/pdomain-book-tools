@@ -51,7 +51,7 @@ every override. Detection is two-tier:
 1. `scripts/check_dev_local.py` exits 1 (dev-local) when any of these
    signals fire:
    - an editable install other than this project at the repo root
-   - a `[gpu]` extra package (`cupy-cuda12x`, `opencv-cuda`)
+   - a `[gpu]` extra package (`cupy-cuda12x`, `cupy-cuda13x`)
    - the `.venv/.pdomain-dev-local` marker
    - a truthy `PDOMAIN_DEV_LOCAL` env var
 
