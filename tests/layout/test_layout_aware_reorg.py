@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from pdomain_book_tools.geometry.bounding_box import BoundingBox
 from pdomain_book_tools.geometry.point import Point
 from pdomain_book_tools.layout.types import LayoutRegion, PageLayout, RegionType
@@ -1057,6 +1059,107 @@ class TestDetectGeometricSidenotes:
         assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
         # Body words must NOT pick up the sidenote tag.
         assert not any("layout:sidenote" in w.word_labels for w in body_words)
+
+    def _normalized_right_margin(self) -> tuple[list[Word], Page, list[Word]]:
+        # Same geometry as the pixel case, in the [0, 1] boxes DocTR emits.
+        # Page width stays in pixels.
+        scale = 1.0 / PAGE_W
+        body_words = [
+            _word(
+                f"body{i}",
+                80 * scale,
+                (100 + i * 40) * scale,
+                600 * scale,
+                (130 + i * 40) * scale,
+                normalized=True,
+            )
+            for i in range(12)
+        ]
+        page = _make_page([_paragraph_block([_line_block(body_words)])])
+        sidenote_words = [
+            _word(
+                f"side{i}",
+                820 * scale,
+                (110 + i * 50) * scale,
+                900 * scale,
+                (140 + i * 50) * scale,
+                normalized=True,
+            )
+            for i in range(5)
+        ]
+        page._items.append(_paragraph_block([_line_block(sidenote_words)]))
+        return body_words, page, sidenote_words
+
+    def test_right_margin_cluster_tagged_when_normalized(self) -> None:
+        body_words, page, sidenote_words = self._normalized_right_margin()
+
+        n = detect_geometric_sidenotes(page)
+        assert n == 5
+        assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
+        assert not any("layout:sidenote" in w.word_labels for w in body_words)
+
+    @pytest.mark.parametrize("label", ["layout:figure", "layout:footer"])
+    def test_specific_layout_tag_is_not_retagged_as_sidenote(self, label: str) -> None:
+        # Figure-only lines are dropped later, and a footer line stays in
+        # its band. Adding layout:sidenote keeps engraving noise and joins
+        # the caption on plate-coronel-text-in-image.
+        _body_words, page, sidenote_words = self._normalized_right_margin()
+        for word in sidenote_words:
+            word.word_labels.append(label)
+
+        n = detect_geometric_sidenotes(page)
+        assert n == 0
+        assert not any("layout:sidenote" in w.word_labels for w in sidenote_words)
+
+    def test_text_tagged_margin_is_still_a_sidenote(self) -> None:
+        _body_words, page, sidenote_words = self._normalized_right_margin()
+        for word in sidenote_words:
+            word.word_labels.append("layout:text")
+
+        n = detect_geometric_sidenotes(page)
+        assert n == 5
+        assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
+
+    def test_unit_boxes_without_the_flag_are_still_a_sidenote(self) -> None:
+        # Same [0, 1] geometry as the normalized case, with the flag left
+        # false. The largest right edge is still inside unit space.
+        scale = 1.0 / PAGE_W
+        body_words = [
+            _word(
+                f"body{i}",
+                80 * scale,
+                (100 + i * 40) * scale,
+                600 * scale,
+                (130 + i * 40) * scale,
+            )
+            for i in range(12)
+        ]
+        page = _make_page([_paragraph_block([_line_block(body_words)])])
+        sidenote_words = [
+            _word(
+                f"side{i}",
+                820 * scale,
+                (110 + i * 50) * scale,
+                900 * scale,
+                (140 + i * 50) * scale,
+            )
+            for i in range(5)
+        ]
+        page._items.append(_paragraph_block([_line_block(sidenote_words)]))
+
+        n = detect_geometric_sidenotes(page)
+        assert n == 5
+        assert all("layout:sidenote" in w.word_labels for w in sidenote_words)
+        assert not any("layout:sidenote" in w.word_labels for w in body_words)
+
+    def test_mixed_coordinate_flags_raise(self) -> None:
+        _body_words, page, _sidenote_words = self._normalized_right_margin()
+        page._items.append(
+            _paragraph_block([_line_block([_word("px", 80, 100, 200, 130)])])
+        )
+
+        with pytest.raises(ValueError, match="is_content_normalized"):
+            detect_geometric_sidenotes(page)
 
     def test_left_margin_cluster_tagged(self) -> None:
         # Body shifted right so x_left=300; sidenote at x=20..100.

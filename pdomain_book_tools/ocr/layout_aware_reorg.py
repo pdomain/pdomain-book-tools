@@ -438,6 +438,21 @@ def drop_figure_internal_words(
 # Geometric sidenote detection — a margin-column heuristic
 
 
+def _has_non_text_layout_label(word: Word) -> bool:
+    """True when the layout model already assigned a tag other than text.
+
+    Geometric sidenotes are a fallback for words left in the body text
+    region. A figure or footer tag is already a decision, and a second
+    sidenote tag would keep figure-internal noise and pull a footer line
+    out of its band.
+    """
+    text_label = _layout_label(RegionType.text)
+    return any(
+        label.startswith(LAYOUT_LABEL_PREFIX) and label != text_label
+        for label in word.word_labels
+    )
+
+
 def _percentile(sorted_values: Sequence[float], pct: float) -> float:
     if not sorted_values:
         return 0.0
@@ -495,9 +510,14 @@ def detect_geometric_sidenotes(
     if len(word_bboxes) < min_cluster_words * 2:
         return 0
 
-    # Resolve the page's horizontal extent. Word coords might be in pixel
-    # or normalized space; treat is_normalized words against [0,1].
-    is_norm = word_bboxes[0][1].is_normalized
+    # Word coords might be pixel or normalized. The page property checks
+    # every word and rejects a mix, instead of trusting the first word.
+    # Flags left unset on boxes that still sit in unit space use that unit.
+    is_norm = page.is_content_normalized
+    if not is_norm:
+        max_x = max(float(bbox.maxX) for _, bbox in word_bboxes)
+        if max_x <= 2.0:
+            is_norm = True
     if is_norm:
         page_w = 1.0
     else:
@@ -527,12 +547,17 @@ def detect_geometric_sidenotes(
     body_right = _percentile(rights, 0.50)
     body_left = _percentile(lefts, 0.50)
 
-    gap = max(min_gap_ratio * page_w, 1.0)
+    # A 1px floor keeps a pixel gap from collapsing below one pixel. In
+    # normalized space that floor is the whole page, so a margin center
+    # can never clear it.
+    gap = min_gap_ratio * page_w if is_norm else max(min_gap_ratio * page_w, 1.0)
     max_col_w = max_column_width_ratio * page_w
 
     right_candidates: list[Word] = []
     left_candidates: list[Word] = []
     for (_l, _r, cx), w in extents:
+        if _has_non_text_layout_label(w):
+            continue
         if cx > body_right + gap:
             right_candidates.append(w)
         elif cx < body_left - gap:

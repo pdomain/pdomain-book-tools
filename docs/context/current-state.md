@@ -33,5 +33,4 @@ The [continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md
 
 - Do not treat deletion of a GitHub source as resolution of its governed file.
 - Do not delete an issue file because it looks old. Retire it only when code and tests prove the outcome.
-- [Plan item C3](../issues/2026-07-21-geometry-primitive-flag-hygiene.md) can only be fixed in `pdomain-book-contracts`.
-- [The floated-caption split](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md) does nothing on normalized pages, which includes DocTR output.
+- [Plan item C3](../issues/2026-07-21-geometry-primitive-flag-hygiene.md) can only be fixed in `pdomain-book-contracts`. Blocker: another repo.

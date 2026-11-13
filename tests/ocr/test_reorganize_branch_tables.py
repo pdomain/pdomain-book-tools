@@ -388,16 +388,22 @@ def test_detect_floated_flow_declines(lines: list[Block]) -> None:
 # ── Caption prefix inside a floated flow ─────────────────────────────────────
 
 
-def _flow(tops: list[int], lefts: list[int] | None = None) -> list[Block]:
+def _flow(
+    tops: list[int],
+    lefts: list[int] | None = None,
+    scale: float = PIXEL,
+) -> list[Block]:
     xs = lefts if lefts is not None else [200] * len(tops)
     return [
-        _line(f"line {top}", x, top, x + 300) for top, x in zip(tops, xs, strict=True)
+        _line(f"line {top}", x, top, x + 300, scale=scale)
+        for top, x in zip(tops, xs, strict=True)
     ]
 
 
-def test_caption_prefix_splits_at_the_first_clear_gap() -> None:
+@pytest.mark.parametrize("scale", SCALES)
+def test_caption_prefix_splits_at_the_first_clear_gap(scale: float) -> None:
     prefix, rest = _split_caption_like_prefix(
-        _flow([100, 125, 200, 225, 250]), PAGE_WIDTH
+        _flow([100, 125, 200, 225, 250], scale=scale), PAGE_WIDTH
     )
 
     assert _text(prefix) == ["line 100", "line 125"]
@@ -420,48 +426,73 @@ def test_caption_prefix_declines(flow: list[Block]) -> None:
     assert len(rest) == len(flow)
 
 
-def _row_block() -> Block:
-    return _para([_body(top) for top in (500, 530, 560)])
+def _row_block(scale: float = PIXEL) -> Block:
+    return _para([_body(top, scale) for top in (500, 530, 560)])
 
 
-def _absorb(flow: list[Block]) -> tuple[list[str], list[str]]:
-    seed = [_line("seed", 200, 100, 500)]
+def _absorb(flow: list[Block], scale: float = PIXEL) -> tuple[list[str], list[str]]:
+    seed = [_line("seed", 200, 100, 500, scale=scale)]
     caption = list(seed)
     kept = absorb_caption_tails_into_caption(
-        _page([*seed, *flow]), _row_block(), flow, caption, seed
+        _page([*seed, *flow]), _row_block(scale), flow, caption, seed
     )
     return _text(kept), _text(caption)
 
 
-def test_caption_tail_next_to_the_seed_joins_the_caption() -> None:
-    kept, caption = _absorb([_line("tail", 200, 125, 500)])
+@pytest.mark.parametrize("scale", SCALES)
+def test_caption_tail_next_to_the_seed_joins_the_caption(scale: float) -> None:
+    kept, caption = _absorb([_line("tail", 200, 125, 500, scale=scale)], scale)
 
     assert kept == []
     assert caption == ["seed", "tail"]
 
 
+@pytest.mark.parametrize("scale", SCALES)
 @pytest.mark.parametrize(
-    "tail",
+    ("left", "top", "right"),
     [
-        pytest.param(_line("tail", 200, 300, 500), id="too-far-below"),
-        pytest.param(_line("tail", 200, 125, 900), id="too-wide"),
-        pytest.param(_line("tail", 700, 125, 950), id="too-far-across"),
+        pytest.param(200, 300, 500, id="too-far-below"),
+        pytest.param(200, 125, 900, id="too-wide"),
+        pytest.param(700, 125, 950, id="too-far-across"),
     ],
 )
-def test_caption_tail_stays_in_the_flow(tail: Block) -> None:
-    kept, caption = _absorb([tail])
+def test_caption_tail_stays_in_the_flow(
+    scale: float, left: int, top: int, right: int
+) -> None:
+    kept, caption = _absorb([_line("tail", left, top, right, scale=scale)], scale)
 
     assert kept == ["tail"]
     assert caption == ["seed"]
 
 
-def test_line_with_justified_text_below_stays_in_the_flow() -> None:
+def test_pixel_caption_tail_ignores_a_left_edge_speck() -> None:
+    # A 1.5px mark must not flip the page into unit thresholds. The tail
+    # sits 50px from the seed: inside 0.30 * page width, outside 0.30 * 1.
+    kept, caption = _absorb([_line("tail", 250, 125, 500), _line(".", 0, 800, 1.5)])
+
+    assert kept == ["."]
+    assert caption == ["seed", "tail"]
+
+
+def test_caption_split_rejects_mixed_coordinate_flags() -> None:
+    # Lines stay unparented, so block union never sees the mix. The split
+    # must still refuse to pick one coordinate width.
+    lines = _flow([100, 125, 200, 225, 250])
+    lines.append(_line("unit", 200, 300, 500, scale=NORMALIZED))
+
+    with pytest.raises(ValueError, match="mix"):
+        _split_caption_like_prefix(lines, PAGE_WIDTH)
+
+
+@pytest.mark.parametrize("scale", SCALES)
+def test_line_with_justified_text_below_stays_in_the_flow(scale: float) -> None:
     kept, caption = _absorb(
         [
-            _line("tail", 200, 125, 500),
-            _line("next", 200, 150, 500),
-            _line("last", 200, 175, 500),
-        ]
+            _line("tail", 200, 125, 500, scale=scale),
+            _line("next", 200, 150, 500, scale=scale),
+            _line("last", 200, 175, 500, scale=scale),
+        ],
+        scale,
     )
 
     assert kept == ["tail", "next", "last"]

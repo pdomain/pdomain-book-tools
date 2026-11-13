@@ -5,6 +5,7 @@ import pytest
 
 pytest.importorskip("cv2")
 
+from pdomain_book_tools.image_processing.cv2_processing import encoding
 from pdomain_book_tools.image_processing.cv2_processing.encoding import (
     encode_bgr_image_as_png,
 )
@@ -48,3 +49,18 @@ class TestEncodeBgrImageAsPng:
             decoded[0, 0], np.array([50, 100, 200], dtype=np.uint8)
         )
         np.testing.assert_array_equal(decoded, bgr)
+
+    def test_failed_imencode_is_not_returned(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        failed = np.array([1, 2, 3], dtype=np.uint8)
+        image = np.zeros((4, 4, 3), dtype=np.uint8)
+
+        def _fail(ext: str, img: np.ndarray) -> tuple[bool, np.ndarray]:
+            assert ext == ".png"
+            assert img.shape == image.shape
+            return False, failed
+
+        monkeypatch.setattr(encoding, "imencode", _fail)
+        with pytest.raises(ValueError, match="imencode"):
+            encode_bgr_image_as_png(image)

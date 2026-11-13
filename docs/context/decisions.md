@@ -622,4 +622,22 @@ Kind: context
 - Superseded by: `tests/ocr/test_reorganize_branch_tables.py` and `tests/ocr/test_reorganize_early_return_and_soft_recover.py`
 - Removal commit: d23a23a
 - Rationale kept: Each B4 priority path has a focused test. With `tests/ocr` alone, the module went from 81.0% to 87.1%, and missing branches went from 218 to 163.
-- Remaining work: Splitting the module stays optional in plan item B4. A bug the tables exposed is filed as [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md).
+- Remaining work: Splitting the module stays optional in plan item B4. The floated-caption thresholds the tables exposed now use the line-box coordinate width.
+
+### 2026-11-12 Retired: floated-caption thresholds ignore normalized coordinates
+
+- Old path: docs/issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md
+- Outcome: implemented
+- Superseded by: [Reorganize Page Pipeline](../architecture/reorganize-page-pipeline.md) and `tests/ocr/test_reorganize_branch_tables.py`
+- Removal commit: (fill after commit)
+- Rationale kept: The split gap and the tail-absorption distances use the line boxes' coordinate width. A normalized distance is not compared with pixel `page.width`.
+- Remaining work: none
+
+### 2026-11-12 Retired: HEIF/AVIF load and the discarded imencode flag
+
+- Old path: docs/issues/2026-07-21-image-io-heif-write-failures.md
+- Outcome: implemented
+- Superseded by: `pdomain_book_tools/image_processing/cv2_processing/io.py`, `pdomain_book_tools/image_processing/cv2_processing/encoding.py`, and `tests/image_processing/cv2_processing/test_encoding.py`
+- Removal commit: (fill after commit)
+- Rationale kept: HEIF and AVIF load through Pillow when OpenCV cannot open them. `write_jpg` and `write_png` raise when `cv2.imwrite` fails. `encode_bgr_image_as_png` raises `ValueError` when `cv2.imencode` reports failure. Unused `opencv-cuda` left the `[gpu]` extra in `b868a2a`.
+- Remaining work: none

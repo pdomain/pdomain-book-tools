@@ -33,6 +33,9 @@ These commits from `fix/roadmap-no-owner-items` are on master. Their retirement 
 - The public-API test pins the documented names (`eb4df23`, 2026-11-10).
 - Reorganize branch tables cover the B4 priority paths (`eeb9a82`, 2026-11-10). Splitting that module stays optional.
 - Unused `opencv-cuda` is removed from the `[gpu]` extra (`b868a2a`, 2026-11-10).
+- Floated-caption thresholds use the line-box coordinate width. The same vertical gap splits in pixels and when that geometry is normalized. Tail absorption uses that width too. A mix of coordinate flags raises. One left-edge pixel mark does not switch the width to 1. `tests/ocr/test_reorganize_branch_tables.py`.
+- Geometric sidenote detection tags a margin cluster on a normalized page, including unit boxes whose flag is unset. The domain is the page's shared coordinate flag, and a mix raises. The 1-pixel gap floor stays on pixel pages. A word that already has a layout tag other than text keeps that tag. Locked reorganize baselines still pass, and the five strict xfails stay xfail. `tests/layout/test_layout_aware_reorg.py` and `tests/ocr/test_reorganize_page_utils_grouping.py`.
+- `encode_bgr_image_as_png` raises `ValueError` when `cv2.imencode` reports failure. `tests/image_processing/cv2_processing/test_encoding.py`.
 
 ## Open work in this library
 
@@ -40,26 +43,23 @@ These items change code or docs that already live here.
 
 ### Reorganize and geometry
 
-- Five strict-xfail baselines still define those cases in CI. They are reading-order failures, and `plate-rio-harbour-photo` and `plate-service-on-board` want opposite results from nearly the same geometry. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3. The unverified attempt stays on `fix/caption-reading-order` (`ed54ecd`, 2026-09-19).
-- `_split_caption_like_prefix` and `absorb_caption_tails_into_caption` still scale their thresholds by pixel `page.width`, so a normalized floated caption never splits. A synthetic probe splits in pixels and does not split when normalized. A scan of 154 DocTR pages found no prefix that correct scaling would split, and 579 candidates were not run. [floated caption](../issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md). Commits `04da801` through `0a918f8` (2026-11-10) are on master and leave both functions unchanged.
-- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. The fix belongs in `pdomain-book-contracts`. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3.
-- HEIF and AVIF load and write failures are fixed, and unused `opencv-cuda` is removed. `encode_bgr_image_as_png` still discards the `cv2.imencode` success flag. [image I/O](../issues/2026-07-21-image-io-heif-write-failures.md). Plan theme C5.
-- Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](../issues/2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](../issues/2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](../issues/2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1.
-- The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](../issues/2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](../issues/2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2.
-- Sidenote x-height image projection is unbuilt. [gh-004](../issues/2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](../issues/2026-05-11-gh-047-spec-sidenote-projection-x-height.md).
-- Row-block expansion is not sidenote-aware. [gh-006](../issues/2026-05-10-gh-006-sidenote-aware-row-blocks.md), [gh-049](../issues/2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md).
-- `detect_geometric_sidenotes` never tags a normalized page, because its margin gap is at least `1.0` while those coordinates span `[0, 1]`. Handoff `6f5cf55` (2026-11-11) is on master and changes no code. It notes that the body edge is the median of all word edges.
-- Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](../issues/2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](../issues/2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3. Training stays in the training repos named under out of scope.
+- Five strict-xfail baselines still define those cases in CI. They are reading-order failures, and `plate-rio-harbour-photo` and `plate-service-on-board` want opposite results from nearly the same geometry. [xfail baselines](../issues/2026-07-21-reorganize-known-failing-baselines-xfail.md). Plan theme B3. The unverified attempt stays on `fix/caption-reading-order` (`ed54ecd`, 2026-09-19). Blocker: conflicting baselines.
+- `BoundingBox.center` and `contains_point` still weaken the `is_normalized` rule. The fix belongs in `pdomain-book-contracts`. [geometry flags](../issues/2026-07-21-geometry-primitive-flag-hygiene.md). Plan theme C3. Blocker: another repo.
+- Drop-cap Iteration C, the heading cross-check, is unbuilt. [Iteration C](../issues/2026-07-21-dropcap-iteration-c-heading-crosscheck.md), [gh-005](../issues/2026-05-10-gh-005-drop-cap-heading-cross-check.md), [gh-048](../issues/2026-05-11-gh-048-spec-drop-cap-heading-cross-check.md). Plan theme F1. Blocker: no supporting fixture.
+- The sidenote height-ratio default is still `None` until a fixture pass. [gh-003](../issues/2026-05-10-gh-003-sidenote-height-ratio-default.md), [gh-046](../issues/2026-05-11-gh-046-spec-sidenote-height-ratio-default.md). Plan theme F2. Blocker: no supporting fixture.
+- Sidenote x-height image projection is unbuilt. [gh-004](../issues/2026-05-10-gh-004-sidenote-projection-x-height.md), [gh-047](../issues/2026-05-11-gh-047-spec-sidenote-projection-x-height.md). Blocker: no supporting fixture.
+- Row-block expansion is not sidenote-aware. [gh-006](../issues/2026-05-10-gh-006-sidenote-aware-row-blocks.md), [gh-049](../issues/2026-05-11-gh-049-spec-sidenote-aware-row-blocks.md). Blocker: no supporting fixture.
+- Decoration-versus-figure post-classification waits on a fine-tune. [gh-002](../issues/2026-05-10-gh-002-decoration-figure-post-classification.md), [gh-045](../issues/2026-05-11-gh-045-spec-decoration-figure-post-classification.md). Plan theme F3. Training stays in the training repos named under out of scope. Blocker: another repo.
 
 ### API, schema, and packaging
 
-- Heavy OCR dependencies are still mandatory. [gh-161](../issues/2026-05-21-gh-161-optional-ocr-dependencies.md).
-- Checkpoint loading still lacks size, checksum, and safetensors limits. [gh-165](../issues/2026-05-22-gh-165-checkpoint-hardening.md). The shipped baseline is [DocTR checkpoint loading](../architecture/checkpoint-loading-trust-boundary.md).
-- Strict image validation for untrusted inputs is open. [gh-191](../issues/2026-05-22-gh-191-strict-image-validation.md).
-- OCR entry points have no progress callback. [progress hook](../issues/2026-08-08-ocr-progress-hook.md).
-- A DocTR fork pin does not flag local-dev mode. [gh-007](../issues/2026-05-10-gh-007-dev-local-doctr-fork-pin.md). Deferred until a fork-pin workflow needs it.
-- Advisory static scanners are not added. [gh-201](../issues/2026-05-22-gh-201-advisory-static-scanners.md). Keep this as a dev check in this repo.
-- Coverage and process ratchet choices in plan theme J have no separate issue file. They stay in the continued-work plan.
+- Heavy OCR dependencies are still mandatory. [gh-161](../issues/2026-05-21-gh-161-optional-ocr-dependencies.md). Blocker: explicit deferral.
+- Checkpoint loading still lacks size, checksum, and safetensors limits. [gh-165](../issues/2026-05-22-gh-165-checkpoint-hardening.md). The shipped baseline is [DocTR checkpoint loading](../architecture/checkpoint-loading-trust-boundary.md). Blocker: explicit deferral.
+- Strict image validation for untrusted inputs is open. [gh-191](../issues/2026-05-22-gh-191-strict-image-validation.md). Blocker: explicit deferral.
+- OCR entry points have no progress callback. [progress hook](../issues/2026-08-08-ocr-progress-hook.md). Blocker: explicit deferral.
+- A DocTR fork pin does not flag local-dev mode. [gh-007](../issues/2026-05-10-gh-007-dev-local-doctr-fork-pin.md). Deferred until a fork-pin workflow needs it. Blocker: explicit deferral.
+- Advisory static scanners are not added. [gh-201](../issues/2026-05-22-gh-201-advisory-static-scanners.md). Keep this as a dev check in this repo. Blocker: explicit deferral.
+- Coverage and process ratchet choices in plan theme J have no separate issue file. They stay in the continued-work plan. Blocker: explicit deferral.
 
 ### Geometry that stays here after the owner answers the specs
 
@@ -73,9 +73,9 @@ The labeler is the caller (`pdomain-ocr-labeler-spa`, CharFixer).
 
 A separate repo would split the word crop away from the word.
 
-- The word-reference-lines API is unbuilt beyond the baseline helpers. [tracker](../issues/2026-07-21-word-reference-lines-api-unbuilt.md). Plan theme H1. Specs [06a](../specs/06a-word-reference-lines-audit.md), [06b](../specs/06b-word-reference-lines-api.md), [06c](../specs/06c-word-reference-lines-testing.md).
-- Character bounding-box extraction is unbuilt. [tracker](../issues/2026-07-21-char-bbox-extraction-unbuilt.md), [spec 09](../specs/09-char-bbox-extraction.md). Plan theme H2.
-- Table `TABLE`/`CELL` fields on the page model stay with this library when they are built. The detector is a different home, in the next section. [tracker](../issues/2026-07-21-table-structure-unbuilt.md), [spec 10](../specs/10-table-structure.md). Plan theme I, slice A.
+- The word-reference-lines API is unbuilt beyond the baseline helpers. [tracker](../issues/2026-07-21-word-reference-lines-api-unbuilt.md). Plan theme H1. Specs [06a](../specs/06a-word-reference-lines-audit.md), [06b](../specs/06b-word-reference-lines-api.md), [06c](../specs/06c-word-reference-lines-testing.md). Blocker: owner decision.
+- Character bounding-box extraction is unbuilt. [tracker](../issues/2026-07-21-char-bbox-extraction-unbuilt.md), [spec 09](../specs/09-char-bbox-extraction.md). Plan theme H2. Blocker: owner decision.
+- Table `TABLE`/`CELL` fields on the page model stay with this library when they are built. The detector is a different home, in the next section. [tracker](../issues/2026-07-21-table-structure-unbuilt.md), [spec 10](../specs/10-table-structure.md). Plan theme I, slice A. Blocker: owner decision.
 
 The decision pack that blocks H and I is [owner decisions](../issues/2026-07-21-owner-decision-pack-greenfield.md). Plan theme E.
 
@@ -89,7 +89,7 @@ That repo now runs its own stages.
 
 This package has no `page_order`, `scannos`, or `hyphen_ngrams` code.
 
-Start them only after the owner picks the home.
+Start them only after the owner picks the home. Blocker: owner decision.
 
 The recommendation under each item is the one to take unless the owner says otherwise.
 
@@ -171,10 +171,10 @@ Records are the table tracker and spec 10 linked above. Plan theme I, after slic
 
 These files live in this repo because cross-repo notes were filed here. They are not features of the OCR library.
 
-- GPU and slow-path CI. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](../issues/2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6.
-- Five workspace repos have had no CI since 2026-07-12. [actions disabled](../issues/2026-08-08-actions-disabled-five-repos.md).
-- Seven pdomain repos still point agents at the retired ocr-container-meta tracker. [agent pointers](../issues/2026-11-07-agent-docs-point-at-retired-meta-repo.md).
-- Two issue-record sets still describe the same clusters. [duplicate records](../issues/2026-08-07-duplicate-issue-records-after-rebase.md).
+- GPU and slow-path CI. The issue describes GitHub workflows removed in `67a714b`. Whether a replacement gate is wanted is undecided. [GPU CI](../issues/2026-07-21-gpu-slow-ci-strategy.md). Plan theme C6. Blocker: owner decision.
+- Five workspace repos have had no CI since 2026-07-12. [actions disabled](../issues/2026-08-08-actions-disabled-five-repos.md). Blocker: another repo.
+- Seven pdomain repos still point agents at the retired ocr-container-meta tracker. [agent pointers](../issues/2026-11-07-agent-docs-point-at-retired-meta-repo.md). Blocker: another repo.
+- Two issue-record sets still describe the same clusters. [duplicate records](../issues/2026-08-07-duplicate-issue-records-after-rebase.md). Blocker: explicit deferral.
 
 ## Still out of scope
 

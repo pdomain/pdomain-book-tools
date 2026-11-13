@@ -2514,6 +2514,28 @@ def record_floated_flow_debug_squeezed(
         )
 
 
+def _coord_width_for_lines(lines: list[Block], page_width: float) -> float:
+    """Return the horizontal span of the coordinate system ``lines`` use.
+
+    Every box must share one ``is_normalized`` flag. Normalized boxes, and
+    pixel-flagged boxes whose largest right edge is still in unit space,
+    are compared with 1. A pixel box is compared with ``page_width``.
+    One left-edge pixel mark must not flip the rest of the page.
+    """
+    boxes = [line.bounding_box for line in lines if line.bounding_box is not None]
+    if not boxes:
+        return float(page_width)
+    flags = [bool(box.is_normalized) for box in boxes]
+    if any(flags) and not all(flags):
+        raise ValueError(
+            "_coord_width_for_lines: lines mix normalized and pixel bounding boxes"
+        )
+    max_x = max(float(box.maxX) for box in boxes)
+    if all(flags) or max_x <= 2.0:
+        return 1.0
+    return float(page_width)
+
+
 def absorb_caption_tails_into_caption(
     page: Page,
     row_block: Block,
@@ -2533,10 +2555,14 @@ def absorb_caption_tails_into_caption(
     seed_y0 = min(l.bounding_box.minY for l in seed_bbox_lines)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     seed_y1 = max(l.bounding_box.maxY for l in seed_bbox_lines)  # pyright: ignore[reportOptionalMemberAccess]  # same filter
     seed_h = float(np_mean([l.bounding_box.height for l in seed_bbox_lines] or [1]))  # pyright: ignore[reportOptionalMemberAccess]  # same filter
+    coord_width = _coord_width_for_lines(
+        [*seed_bbox_lines, *flow_rest, *row_block.lines],
+        float(page.width),
+    )
     block_median_w = float(
         np_median(
             [l.bounding_box.width for l in row_block.lines if l.bounding_box]
-            or [page.width]
+            or [coord_width]
         )
     )
 
@@ -2548,7 +2574,8 @@ def absorb_caption_tails_into_caption(
             return False
         anchor_left = bb.minX
         anchor_right = bb.maxX
-        anchor_h = max(bb.height, 1.0)
+        height_floor = 1.0 if coord_width > 2.0 else 1e-3
+        anchor_h = max(bb.height, height_floor)
         continuation_count = 0
         for next_line in sorted_flow[idx + 1 :]:
             nb = next_line.bounding_box
@@ -2556,8 +2583,8 @@ def absorb_caption_tails_into_caption(
                 continue
             if nb.minY - bb.maxY > 3.0 * anchor_h:
                 break
-            left_aligned = abs(nb.minX - anchor_left) <= 0.04 * page.width
-            right_aligned = abs(nb.maxX - anchor_right) <= 0.07 * page.width
+            left_aligned = abs(nb.minX - anchor_left) <= 0.04 * coord_width
+            right_aligned = abs(nb.maxX - anchor_right) <= 0.07 * coord_width
             if left_aligned and right_aligned:
                 continuation_count += 1
                 if continuation_count >= 2:
@@ -2574,7 +2601,7 @@ def absorb_caption_tails_into_caption(
         near_caption_band = (
             (seed_y0 - 0.3 * seed_h) <= y_mid <= (seed_y1 + 0.9 * seed_h)
         )
-        near_caption_x = abs(bb.minX - seed_x) <= 0.30 * page.width
+        near_caption_x = abs(bb.minX - seed_x) <= 0.30 * coord_width
         narrow_like_caption = bb.width <= 0.82 * block_median_w
         continuation_below = has_justified_continuation_below(idx, line)
         if (
@@ -4178,7 +4205,7 @@ def _split_caption_like_prefix(
     avg_h = float(
         np_mean([l.bounding_box.height for l in bbox_lines if l.bounding_box] or [1])
     )
-    coord_width = float(page_width)
+    coord_width = _coord_width_for_lines(bbox_lines, float(page_width))
     gap_threshold = max(1.8 * avg_h, 0.008 * coord_width)
 
     split_idx = None

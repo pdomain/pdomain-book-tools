@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-06
+Last verified: 2026-11-12
 Kind: architecture
 ---
 
@@ -12,7 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
-- **Last verified:** 2026-11-06
+- **Last verified:** 2026-11-12
 - **Read when:** changing `Page.reorganize_page`, reading order, layout-aware OCR grouping, word-preservation policy, or layout debug stages.
 - **Search terms:** reorganize page, reading order, PageMetrics, row blocks, layout hints, drop caps, word preservation.
 
@@ -21,6 +21,10 @@ Kind: architecture
 Step logic lives in `pdomain_book_tools/ocr/reorganize_page_utils.py`. Layout-model integration lives in `pdomain_book_tools/ocr/layout_aware_reorg.py`. Drop-cap recovery lives in `pdomain_book_tools/ocr/dropcap.py`.
 
 The pipeline accepts normalized or pixel-space OCR geometry. `compute_page_metrics` derives the coordinate domain and page-relative medians once for the geometry heuristics. Band classification uses `_coord_dims_for_block`, so the same page in unit space and in pixel space gets the same roles. `tests/ocr/test_reorganize_coord_domain.py` locks that matrix, including `test_dual_domain_matrix_identical_role_outcomes`.
+
+Floated-caption split and tail absorption use that same coordinate width. The lines must share one `is_normalized` flag, and a mix raises. Normalized boxes compare with 1. Pixel boxes compare with the page width in pixels. When the flags are unset, the width is 1 only if the largest right edge is at or below 2, so one left-edge pixel mark stays on the pixel width. `tests/ocr/test_reorganize_branch_tables.py` locks both scales, that speck, and the mixed-flag refusal (`test_caption_prefix_splits_at_the_first_clear_gap`, `test_caption_tail_stays_in_the_flow`, `test_pixel_caption_tail_ignores_a_left_edge_speck`, `test_caption_split_rejects_mixed_coordinate_flags`).
+
+Geometric sidenote detection measures its margin gap in the word coordinate system. `Page.is_content_normalized` supplies the domain and rejects a mix. Boxes with the flag unset use unit space when their largest right edge is at or below 2. The 1-pixel floor applies only when the boxes are pixels. A word that already has a layout tag other than `layout:text` is not given `layout:sidenote`, so a figure-only line can still be dropped and a footer line stays in its band. `tests/layout/test_layout_aware_reorg.py` covers the normalized cluster, the unflagged unit cluster, the mixed-flag refusal, and the tag exception (`test_right_margin_cluster_tagged_when_normalized`, `test_unit_boxes_without_the_flag_are_still_a_sidenote`, `test_mixed_coordinate_flags_raise`, `test_specific_layout_tag_is_not_retagged_as_sidenote`).
 
 Drop-cap thresholds scale by `PageMetrics.coord_w` and `coord_h` before they are compared with a box. `dropcap.py` sets `is_normalized` from those metrics. A pixel page is not forced into the unit square.
 
@@ -67,12 +71,12 @@ Caption association claims a shared caption region at most once. `associate_capt
 
 - Code: `pdomain_book_tools/ocr/page.py`, `pdomain_book_tools/ocr/reorganize_page_utils.py`, `pdomain_book_tools/ocr/layout_aware_reorg.py`, `pdomain_book_tools/ocr/dropcap.py`, `pdomain_book_tools/ocr/block.py`
 - Core behavior tests: `tests/ocr/test_reorganize_page_utils_grouping.py`, `tests/ocr/test_reconcile_dropped_words.py`, `tests/ocr/test_reorganize_early_return_and_soft_recover.py`, `tests/ocr/test_reorganize_coord_domain.py`, `tests/ocr/test_reorganize_diagnostic_snapshots.py`, `tests/ocr/test_dropcap.py`
-- **Verified:** 2026-11-06 against `page.py` early-return reconciliation, `dropcap.py` coordinate scaling, `reorganize_page_utils.py` `_coord_dims_for_block`, and `layout_aware_reorg.py` `associate_captions`.
+- **Verified:** 2026-11-12 against `page.py` early-return reconciliation, `dropcap.py` coordinate scaling, `reorganize_page_utils.py` caption coordinate width, and `layout_aware_reorg.py` normalized sidenote gap.
 - Layout integration tests: `tests/layout/test_fixture_layouts.py`, `tests/layout/test_geometry.py`, `tests/layout/test_mappings.py`, `tests/layout/test_layout_aware_reorg.py`
 - Fixture artifacts: `tests/fixtures/layout_regression/inputs/`, `tests/fixtures/layout_regression/expected_text/baseline/`
 
 ## Residual intent
 
-Five strict-xfail text baselines encode desired output that the current figure-noise behavior does not satisfy. The policy choice between current-output and desired-output baselines remains in `docs/context/intent-map.md`. That context entry also owns closure or explicit acceptance of the five xfails.
+Five strict-xfail text baselines are reading-order failures. `plate-rio-harbour-photo` and `plate-service-on-board` want opposite results from nearly the same geometry. Blocker: conflicting baselines. The policy choice remains in `docs/context/intent-map.md`.
 
 Planned metric additions and heuristic tuning remain demand-driven. They do not form part of this architecture contract.
