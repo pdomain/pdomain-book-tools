@@ -100,6 +100,19 @@ version-file = "pdomain_book_tools/_version.py"
 exclude = [
     ".venv/**",
     ".venv-container/**",
+    "/.docgraph/**",
+    "/.worktrees/**",
+    "/.worktree/**",
+    "/node_modules/**",
+    "/.ci-ai.log",
+    "/.coverage",
+    "/.coverage.*",
+    "/htmlcov/**",
+    "/coverage.xml",
+    "/.pytest_cache/**",
+    "/.ruff_cache/**",
+    "/.mypy_cache/**",
+    "/.cache/**",
 ]
 
 [[tool.uv.index]]
