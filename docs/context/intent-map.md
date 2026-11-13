@@ -2,7 +2,7 @@
 Status: active
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-12
+Last verified: 2026-11-13
 Kind: context
 ---
 
@@ -12,7 +12,7 @@ Kind: context
 
 - **Kind:** context
 - **Status:** active
-- **Last verified:** 2026-11-12
+- **Last verified:** 2026-11-13
 - **Read when:** deciding whether proposed work is active, deferred, rejected, blocked, or awaiting an owner decision.
 - **Search terms:** intent, deferred, rejected, blocked, legacy sweep.
 
@@ -31,6 +31,8 @@ Kind: context
   [hyphen n-grams](../specs/2026-05-24-hyphen-ngrams-sqlite.md).
 
 ## Deferred work
+
+- Audit geometry scale and four-point helpers for coordinate-domain preservation. Center flag preservation and mismatched-domain containment are resolved in consumed contracts 0.3.1; that does not establish the broader helper audit. Evidence: [geometry coordinate domains](../architecture/geometry-coordinate-domains.md) and continued-work plan C3.
 
 - Benchmark alternative OCR, HTR, and dewarp engines only when the work uses
   reproducible historical-document datasets. The work must include license

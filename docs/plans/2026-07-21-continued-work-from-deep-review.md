@@ -46,7 +46,7 @@ Code on master `0d8b9d40`, read on 2026-11-06, proves these slices. The checklis
 - C7 registry trust kwargs and captions printed above a figure: [PP-DocLayout trust boundary](../architecture/pp-doclayout-trust-boundary.md) and [reorganize page pipeline](../architecture/reorganize-page-pipeline.md).
 - D3 backlog sync: the roadmap is now the remaining-work list.
 - Word merge no longer clears the line's ground truth: [OCR model and schema boundaries](../architecture/ocr-model-and-schema-boundaries.md).
-- C1, C4, D1, D2, and B4, from `fix/roadmap-no-owner-items` (2026-11-10). The Theme E rows that let the owner override D1 and C4, and the row for where `Document` provenance should go, stay open. C3 stays open because `BoundingBox` now lives in `pdomain-book-contracts`.
+- C1, C4, D1, D2, and B4, from `fix/roadmap-no-owner-items` (2026-11-10). The Theme E rows that let the owner override D1 and C4, and the row for where `Document` provenance should go, stay open. C3 retains the unverified scale/four-point helper audit; center flag preservation and mismatched-domain containment are resolved in consumed contracts 0.3.1.
 
 C5 is done. Load and write failures are fixed, unused `opencv-cuda` is removed (`b868a2a`, 2026-11-10), and `encode_bgr_image_as_png` raises `ValueError` when `cv2.imencode` reports failure.
 
@@ -279,10 +279,9 @@ Add a pixel-style fixture or unit page.
 
 ### C3. Geometry primitive flag hygiene
 
-- `center` preserves box flag.
-- `contains_point` fail-closed on mismatch (match union/intersect).
-- Scale helpers document or enforce domain.
-- Unit tests for unit-square **pixel** boxes.
+Center flag preservation and fail-closed `contains_point` are implemented in consumed contracts 0.3.1. The migration's local consumption check covers a unit-square pixel center, both mismatch directions, and same-domain containment. See [geometry coordinate domains](../architecture/geometry-coordinate-domains.md).
+
+Remaining: audit scale and four-point helpers, and document or enforce their domain contracts. That broader audit is unverified.
 
 ### C4. Geometry-correction honesty
 

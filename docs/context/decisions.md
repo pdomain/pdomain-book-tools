@@ -641,3 +641,13 @@ Kind: context
 - Removal commit: b1f76b1
 - Rationale kept: HEIF and AVIF load through Pillow when OpenCV cannot open them. `write_jpg` and `write_png` raise when `cv2.imwrite` fails. `encode_bgr_image_as_png` raises `ValueError` when `cv2.imencode` reports failure. Unused `opencv-cuda` left the `[gpu]` extra in `b868a2a`.
 - Remaining work: none
+
+### 2026-11-13 Retired: BoundingBox center and containment coordinate-domain defects
+
+- Old path: docs/issues/2026-07-21-geometry-primitive-flag-hygiene.md
+- Outcome: implemented
+- Superseded by: [geometry coordinate domains](../architecture/geometry-coordinate-domains.md)
+- Resolving commits: contracts `0f1f9c5`, `88b2cc7`, and `b170f54`; book-tools dependency consumption in `195ab6b`.
+- Removal commit: resolve after integration with `git log -1 --format=%H --diff-filter=D -- docs/issues/2026-07-21-geometry-primitive-flag-hygiene.md`.
+- Rationale kept: The replacement architecture records the consumed contracts 0.3.1 behavior. `center` preserves the box's domain, and `contains_point` raises on mismatched domains. The migration's local consumption check passed for a unit-square pixel center, both mismatch directions, and same-domain containment. Source inspection and the check establish resolution of the reported defects.
+- Remaining work: The scale/four-point helper audit remains unverified in [the intent map](intent-map.md), [the roadmap](../plans/roadmap.md), and continued-work plan C3. Its status is unchanged by this issue's retirement.

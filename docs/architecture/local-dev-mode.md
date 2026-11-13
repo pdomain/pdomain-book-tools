@@ -69,7 +69,7 @@ clobber escape hatch. To upgrade from local-dev mode, run
 dependency-syncing targets use an nvidia-smi hardware probe instead. `test`,
 `test-slow`,
 `test-verbose`, `test-single`, `test-k`, and `coverage` run `sync-gpu`.
-`setup` runs `uv sync --group dev` with the same probe result inline. The
+`setup` runs `uv sync --locked --group dev` with the same probe result inline. The
 probe is forced off when `CI` is set. It never consults the markers, the
 env var, or `scripts/check_dev_local.py`, so those targets can re-sync the
 venv without a refusal.
@@ -79,9 +79,13 @@ the hardware probe and your actual local-dev state disagree, though, those
 targets can still silently revert overrides. This can happen, for example,
 when `CI` is set locally or when overrides go beyond the GPU extra.
 
+## Selected project environment
+
+`UV_PROJECT_ENVIRONMENT` selects the environment used by the shell helpers, Python probe, marker writer, and Just fallback guard. An unset or empty value selects `.venv`. Relative values resolve under the repository root; absolute values remain absolute. The `.venv/` paths below show the default only.
+
 ## The two-marker contract
 
-Entering local-dev mode writes two markers, both inside `.venv/` so a venv
+Entering local-dev mode writes two markers inside the selected project environment, so a venv
 rebuild removes them automatically:
 
 - `.venv/.pdomain-local-mode` — read by the shell scripts
@@ -134,7 +138,7 @@ from any other path, such as a relocated clone or a symlinked checkout.
   restore-equivalence claim above depends on it)
 - Tests: `tests/utility/test_check_dev_local.py`,
   `tests/utility/test_write_dev_local_marker.py`
-- Verified: 2026-11-07 against the Makefile and scripts; first verified
+- Verified: 2026-11-13 against the current justfile and selected-environment script paths, by inspection. Historical verification on 2026-11-07 covered the then-current Makefile and scripts; first verified
   2026-07-15 while retiring
   `docs/specs/07-dev-local-upgrade-flow.md` (last spec revision: commit
   `010d382`; history: [`git log -- docs/specs/07-dev-local-upgrade-flow.md`])

@@ -15,6 +15,10 @@ Kind: research
 - **Read when:** starting hardening work, choosing the next engineering theme, or checking whether a product gap is real vs documented residual intent.
 - **Search terms:** deep review, adversarial review, reorganize gaps, coordinate system, test quality, unimplemented specs, continued work.
 
+## Current disposition (2026-11-13)
+
+This report preserves the dated review findings and method below. It is not a statement that every finding remains open. Current work is tracked in [the roadmap](../plans/roadmap.md) and [the continued-work plan](../plans/2026-07-21-continued-work-from-deep-review.md). Shipped behavior is indexed in [architecture](../architecture/README.md), including [image I/O](../architecture/image-io.md) and [geometry coordinate domains](../architecture/geometry-coordinate-domains.md). The consumed contracts 0.3.1 resolves center/containment defects; the broader helper audit remains unverified.
+
 ## Main point
 
 **Core OCR and geometry is real**, and architecture docs are largely honest about it. Nine specialist audits plus three adversarial challenge passes still found that production confidence is inflated by three patterns.

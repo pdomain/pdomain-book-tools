@@ -53,6 +53,8 @@ The singular ingestion method exposes the chosen angle only in its return tuple.
 - `tests/ocr/test_document_coverage.py`: DocTR ingestion input and automatic-rotation call paths.
 - `tests/test_page_model_doc.py`: explicit exclusion of `rotation_applied` from serialized Page data.
 
+- `tests/ocr/test_document_batch_ocr.py`: batch degree lists, chosen fallback degrees, unbeaten upright zeroes, automatic-rotation-off zeroes, page order, and attached image frames. Commit `c34981b` adds the per-page return contract. Tests inspected on 2026-11-13; this is not a new test execution.
+
 ## Residual intent
 
 The decision about whether rotation probes need a durable audit or event surface remains deferred in `docs/context/intent-map.md`. The same is true for reproducible calibration of threshold and timing claims.

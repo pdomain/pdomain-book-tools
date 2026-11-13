@@ -58,7 +58,7 @@ The pipeline has to keep the DocTR and Tesseract coordinate domains apart. DocTR
 
 **Geometry.** `Point`, `BoundingBox`, and `geometry_correction` carry the `is_normalized` flag the OCR tree relies on.
 
-Ingress is supposed to set the flag.
+DocTR ingress explicitly sets `is_normalized=True`; Tesseract ingress sets `False`, including unit-square pixel boxes. See [Geometry coordinate domains](geometry-coordinate-domains.md).
 
 Merge, split, and union raise when two boxes disagree on it.
 
@@ -97,6 +97,9 @@ The continued-work plan repeats them as rules for future edits.
 
 Each link is the current description of that behavior.
 
+- [Image-derived baselines](baseline-estimation.md)
+- [Image loading and output failures](image-io.md)
+- [Geometry coordinate domains](geometry-coordinate-domains.md)
 - [PGDP-aware matcher](pgdp-aware-matcher.md)
 - [Reorganize page pipeline](reorganize-page-pipeline.md)
 - [Layout regression fixtures](layout-regression-fixture-corpus.md)

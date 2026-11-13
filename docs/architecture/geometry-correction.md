@@ -22,8 +22,8 @@ Kind: architecture
 
 The shipped geometry-correction pipeline separates page-side detection,
 curvature measurement, deskew, and dewarp behind protocols and named
-registries. `GeometryPipeline` returns a `GeometryTransform`. This transform
-represents identity, affine, grid, or rectified output. The default pipeline
+registries. `GeometryPipeline` returns a `PipelineResult`. It carries the corrected image, page-side and curvature results, optional dewarp and deskew results, and an optional regime. Individual transforms
+represent identity, affine, homography, grid, or rectified output. The default pipeline
 uses owned in-process backends instead of shelling out to image or PDF tools.
 
 Projection and Sbrunner are the shipped fine-deskew backends. Coarse
@@ -38,6 +38,12 @@ output parity. CPU and GPU `_ensure_foreground` use the same gate: a binary
 image whose mean is below 128 already has text at 255, and a library-polarity
 image whose mean is at least 128 is inverted. UVDoc is an optional neural backend for photo-like distortion.
 It requires the `dewarp-dl` extra and model weights.
+
+## Dewarp outcomes and point mapping
+
+`PipelineResult.dewarp_outcome` distinguishes `not_recommended`, `no_backend`, `identity_no_op`, and `applied`. A backend returning an identity transform is different from having no selected backend.
+
+Grid transforms store backward maps for image sampling. Their `map_points` operation inverts those maps to carry source points into output coordinates. Unreachable points and non-finite input points return NaN coordinates. Rectified transforms have no point mapping and raise `NotImplementedError`.
 
 ## Boundaries and non-goals
 
@@ -57,6 +63,7 @@ The task-oriented API remains in
 - **Tests:** `tests/geometry_correction/`,
   `tests/image_processing/cv2_processing/test_textline_dewarp.py`,
   `tests/image_processing/cupy_processing/test_textline_dewarp.py`
+- **Commits:** `a094ed7` adds grid point mapping and dewarp outcomes; `39cdd9a` handles non-finite points. `tests/geometry_correction/test_transforms.py` covers mapping direction, image agreement, unreachable/non-finite points, edges, large grids, and CuPy conversion. These additions were inspected on 2026-11-13; no new GPU execution is claimed.
 - **Salvaged sources:**
   `_tbd/ocr-container-docs/specs/2026-06-02-geometry-correction-design.md`,
   `_tbd/ocr-container-docs/specs/2026-06-02-textline-disparity-dewarp-design.md`,
