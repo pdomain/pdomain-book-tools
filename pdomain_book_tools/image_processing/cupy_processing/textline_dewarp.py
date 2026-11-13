@@ -81,7 +81,7 @@ def _ensure_foreground(binary: Any) -> Any:
     if (
         arr.dtype == cp.uint8
         and bool(cp.isin(cp.unique(arr), cp.asarray([0, 255])).all())
-        and float(arr.mean()) < 128.0
+        and float(cp.mean(arr)) < 128.0
     ):
         # Dark background (most pixels 0): text is already at 255
         return arr
@@ -158,7 +158,7 @@ def detect_textlines(
         )
 
         arr = cp.asarray(binary)
-        gray = arr if arr.ndim == 2 else arr.mean(axis=2).astype(cp.uint8)
+        gray = arr if arr.ndim == 2 else cp.mean(arr, axis=2).astype(cp.uint8)
         params = binarization_params or {}
         # threshold module returns BACKGROUND=255, TEXT=0 → invert to foreground=TEXT=255
         bg_fg = _binarize(gray, method=binarization, **params)
@@ -229,8 +229,8 @@ def build_vertical_disparity(
     require_cupy()
     h, w = size
     xs_full = cp.arange(w, dtype=cp.float64)
-    fitted = cp.stack([c.eval(xs_full) for c in coeffs])
-    refs = fitted.mean(axis=1)
+    fitted = cp.stack([c.eval(xs_full) for c in coeffs]).astype(cp.float64)
+    refs = cp.mean(fitted, axis=1)
     sample_x = cp.arange(0, w, sampling)
     rows_full = cp.arange(h, dtype=cp.float64)
     samp = cp.empty((h, sample_x.size), cp.float64)
@@ -247,10 +247,7 @@ def build_vertical_disparity(
             # Fall back to NumPy polyfit if BLAS libs unavailable
             y_np = cp.asnumpy(y_pts[order])
             d_np = cp.asnumpy(d_pts[order])
-            cc_np = cast(
-                "npt.NDArray[np.float64]",
-                np.polyfit(y_np, d_np, deg),  # pyright: ignore[reportCallIssue, reportArgumentType]  # generic-dtype fallback array, see CuPy stub module docstring
-            )
+            cc_np = np.polyfit(y_np, d_np, deg)
             samp[:, j] = cp.asarray(np.polyval(cc_np, cp.asnumpy(rows_full)))
     disparity = cp.empty((h, w), cp.float32)
     sx = sample_x.astype(cp.float64)
@@ -272,17 +269,14 @@ def build_horizontal_disparity(
     require_cupy()
     h, w = size
     if gutter_edge == "left":
-        ends = cp.asarray([ln.right for ln in lines])
+        ends = cp.asarray([ln.right for ln in lines], dtype=cp.float64)
         target = float(ends.max())
         anchor = "right"
     else:
-        ends = cp.asarray([ln.left for ln in lines])
+        ends = cp.asarray([ln.left for ln in lines], dtype=cp.float64)
         target = float(ends.min())
         anchor = "left"
-    shift = cast(
-        "npt.NDArray[np.float64]",
-        target - ends,  # pyright: ignore[reportOperatorIssue]  # CuPy arithmetic on generic-dtype array, see CuPy stub module docstring
-    )
+    shift = target - ends
     ref_rows = cp.asarray(
         [
             float(c.eval((ln.left + ln.right) / 2.0))

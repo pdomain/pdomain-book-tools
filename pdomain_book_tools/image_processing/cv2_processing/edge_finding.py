@@ -24,8 +24,8 @@ def find_edges(
     logger.debug(log_prefix + "Start")
 
     # Compute sum across columns and rows
-    columns = cast("npt.NDArray[np.int64]", np.sum(img, axis=0, dtype=np.int64))
-    rows = cast("npt.NDArray[np.int64]", np.sum(img, axis=1, dtype=np.int64))
+    columns = np.sum(img, axis=0, dtype=np.int64)
+    rows = np.sum(img, axis=1, dtype=np.int64)
 
     pixel_value_col_min = pixel_count_columns * 255
     pixel_value_row_min = pixel_count_rows * 255

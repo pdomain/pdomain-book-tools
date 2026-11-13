@@ -58,11 +58,9 @@ try:
     # that defines it instead.
     import pillow_heif as _pillow_heif
 
-    # pillow-heif ships py.typed as of 1.x, so the stub ignore is gone. Two
-    # gaps remain at this boundary: `register_heif_opener` is re-exported from
-    # `as_plugin`, which declares no `__all__`, and it is typed
+    # pillow-heif ships py.typed. register_heif_opener is typed
     # `(**kwargs: Unknown) -> None`.
-    _pillow_heif.register_heif_opener()  # pyright: ignore[reportPrivateImportUsage, reportUnknownMemberType]
+    _pillow_heif.register_heif_opener()  # pyright: ignore[reportUnknownMemberType]
 except Exception as _heif_exc:  # pragma: no cover - import-time guard
     logger.debug(
         "pillow-heif not available; HEIF/HEIC decode will fail. (%s)",

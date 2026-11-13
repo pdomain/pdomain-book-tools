@@ -1233,7 +1233,7 @@ def _float_at(values: FloatArray, index: int) -> float:
 
 
 def _float_max(values: FloatArray) -> float:
-    return float(cast("np.float64", values.max()))
+    return float(values.max())
 
 
 def _bbox_to_px_rect(

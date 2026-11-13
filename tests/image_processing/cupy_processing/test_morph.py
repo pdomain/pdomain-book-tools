@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+import numpy as np
 import pytest
 
 if TYPE_CHECKING:
     import cupy
-    import numpy as np
     import numpy.typing as npt
 
     CuPyArray = npt.NDArray[np.generic]
@@ -61,7 +61,7 @@ class TestCupyMorph:
         kernel = cp.ones((3, 3), dtype=cp.uint8)
         out = morph_mod.dilate(img, kernel)
         # Dilation with a 3x3 kernel expands the single 1 to a 3x3 square
-        assert int(out.sum()) >= 9
+        assert int(np.sum(np.astype(cp.asnumpy(out), np.uint8))) >= 9
 
     def test_erode_removes_lone_pixel(
         self, cupy_morph: tuple[_MorphModule, _CupyModule]
@@ -72,7 +72,7 @@ class TestCupyMorph:
         kernel = cp.ones((3, 3), dtype=cp.uint8)
         out = morph_mod.erode(img, kernel)
         # Erosion of a single pixel with a 3x3 kernel removes it
-        assert int(out.sum()) == 0
+        assert int(np.sum(np.astype(cp.asnumpy(out), np.uint8))) == 0
 
     def test_morph_fill_preserves_blob(
         self, cupy_morph: tuple[_MorphModule, _CupyModule]

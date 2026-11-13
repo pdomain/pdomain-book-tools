@@ -20,14 +20,17 @@ dependencies = [
     "ipython>=9.17",
     "ipywidgets>=8.1",
     "matplotlib>=3.11.2",
-    "numpy (>=2.2,<2.5)",
+    # Ceiling matches cupy-cuda13x 14.2.0, which requires numpy<2.6.
+    # numpy 2.5 requires Python >=3.12, so 3.11 resolves 2.4.6.
+    # Both pairs import with cupy-cuda13x 14.2.0.
+    "numpy (>=2.2,<2.6)",
     "opencv-contrib-python>=5.0.0.93",
     "pandas>=3.0.5",
     # Pure-Python contracts (geometry, text, typography, matching, ocr,
     # layout, licensing, and the PGDP readers) split out per the pdomain-ops
     # extraction plan. Resolved from the pdomain package index, the same one
     # pdomain-source-data and pdomain-ocr-training use for book-tools itself.
-    "pdomain-book-contracts>=0.2.0",
+    "pdomain-book-contracts>=0.3.1",
     # Pillow was previously a transitive dep (via matplotlib / others). It is
     # now declared directly because pdomain_book_tools owns its image-format
     # contract: pillow-heif / pillow-avif-plugin both register decoders with
@@ -60,13 +63,10 @@ dependencies = [
 # CUDA-13-only GPU acceleration. Opt-in to avoid breaking CPU-only installs
 # (CI, macOS, CPU-only Linux). Install with: pip install 'pdomain-book-tools[gpu]'
 gpu = [
-    # Capped below 14.2: that build needs numpy 2.5 at the binary level while
-    # this package pins numpy <2.5, so `import cupy` dies with
-    # "numpy.core.multiarray failed to import". 14.2 also calls
-    # cuda.pathfinder.load_nvidia_dynamic_lib while declaring only
-    # cuda-pathfinder>=1.3.4, an API that landed later. 14.1.1 is the version
-    # the CUDA 12 lock already used, so the family moves and nothing else does.
-    "cupy-cuda13x>=14.1.1,<14.2",
+    # 14.2.0 requires numpy>=2.0,<2.6 and cuda-pathfinder>=1.3.4.
+    # It imports with numpy 2.5.4 on Python >=3.12 and numpy 2.4.6 on
+    # Python 3.11. cuda-pathfinder 1.8.6 provides load_nvidia_dynamic_lib.
+    "cupy-cuda13x>=14.2.0",
 ]
 # UVDoc ONNX dewarp backend. Install with: pip install 'pdomain-book-tools[dewarp-dl]'
 dewarp-dl = ["onnxruntime>=1.17"]

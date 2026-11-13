@@ -364,7 +364,7 @@ class TestAdaptiveBinaryThreshGpu:
         )
         gpu_out_np = gpu_out.get()
 
-        diff = np.sum(cpu_out != gpu_out_np)
+        diff = int(np.sum(np.astype(cpu_out != gpu_out_np, np.uint8)))
         total = cpu_out.size
         assert diff / total < 0.02, (
             f"GPU/CPU mean-mode adaptive mismatch: {diff}/{total} pixels differ"
@@ -438,7 +438,7 @@ class TestSauvolaBinaryThreshGpu:
         gpu_out = thresh_mod.sauvola_binary_thresh(img_cp, window_size=25, k=0.2, r=128)
         gpu_out_np = gpu_out.get()
 
-        diff = np.sum(cpu_out != gpu_out_np)
+        diff = int(np.sum(np.astype(cpu_out != gpu_out_np, np.uint8)))
         total = cpu_out.size
         assert diff / total < 0.02, (
             f"GPU/CPU Sauvola mismatch: {diff}/{total} pixels differ"
@@ -507,7 +507,7 @@ class TestNiblackBinaryThreshGpu:
         gpu_out = thresh_mod.niblack_binary_thresh(img_cp, window_size=25, k=-0.2)
         gpu_out_np = gpu_out.get()
 
-        diff = np.sum(cpu_out != gpu_out_np)
+        diff = int(np.sum(np.astype(cpu_out != gpu_out_np, np.uint8)))
         total = cpu_out.size
         assert diff / total < 0.02, (
             f"GPU/CPU Niblack mismatch: {diff}/{total} pixels differ"

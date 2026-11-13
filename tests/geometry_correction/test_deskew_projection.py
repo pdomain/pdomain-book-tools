@@ -29,7 +29,8 @@ def test_recovers_known_skew() -> None:
 
     # variance of row-sum profile is higher when text rows are axis-aligned
     def row_var(im: MatLike) -> float:
-        return float(np.var(np.sum(255 - im, axis=1)))
+        values = np.asarray(im, dtype=np.uint8)
+        return float(np.var(np.sum(255 - values, axis=1)))
 
     assert row_var(deskewed) > row_var(skewed)
 

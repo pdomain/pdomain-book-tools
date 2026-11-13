@@ -190,12 +190,7 @@ def build_vertical_disparity(
         d_pts = refs - fitted[:, x]  # signed offset: pull bow toward its mean row
         order = np.argsort(y_pts)
         deg = min(2, len(coeffs) - 1)
-        # numpy's polyfit stub only matches known-dtype array-likes; the
-        # generic-dtype fitted/refs arrays above don't satisfy it precisely,
-        # so the return type resolves to Unknown without this cast.
-        cc = cast(
-            "npt.NDArray[np.float64]", np.polyfit(y_pts[order], d_pts[order], deg)
-        )
+        cc = np.polyfit(y_pts[order], d_pts[order], deg)
         samp[:, j] = np.polyval(cc, rows_full)
     disparity = np.empty((h, w), np.float32)
     for r in range(h):

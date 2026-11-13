@@ -53,7 +53,7 @@ def auto_deskew(
     y2 = min(maxY, minY + h_percent)
     top_of_img: ImageArray = img[y1:y2, x1:x2]
     logger.debug(f"Top of Img: {x1}:{x2},{y1}:{y2}")
-    columns = cast("npt.NDArray[np.int64]", np.sum(top_of_img, axis=0, dtype=np.int64))
+    columns = np.sum(top_of_img, axis=0, dtype=np.int64)
 
     positive_top_columns = np.flatnonzero(columns > 0)
     top_left_column = (
@@ -70,9 +70,7 @@ def auto_deskew(
     bottom_of_img: ImageArray = img[y1:y2, x1:x2]
     logger.debug(f"Bottom of Img: {x1}:{x2},{y1}:{y2}")
 
-    columns2 = cast(
-        "npt.NDArray[np.int64]", np.sum(bottom_of_img, axis=0, dtype=np.int64)
-    )
+    columns2 = np.sum(bottom_of_img, axis=0, dtype=np.int64)
 
     positive_bottom_columns = np.flatnonzero(columns2 > 0)
     bottom_left_column = (
