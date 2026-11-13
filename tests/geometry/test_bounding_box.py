@@ -128,9 +128,16 @@ def test_center_property(sample_bounding_box: BoundingBox) -> None:
 
 
 def test_bounding_box_contains_point() -> None:
-    bbox = BoundingBox(Point(0, 0), Point(1, 1))
-    assert bbox.contains_point(Point(0.5, 0.5))
-    assert not bbox.contains_point(Point(1.5, 1.5))
+    # Point(1.5, 1.5) is a pixel point. This box is normalized, and
+    # contains_point rejects that mix once contracts ships the check.
+    bbox = BoundingBox(Point(0.2, 0.2), Point(0.8, 0.8))
+    inside = Point(0.5, 0.5)
+    outside = Point(0.1, 0.1)
+    assert bbox.is_normalized is True
+    assert inside.is_normalized is True
+    assert outside.is_normalized is True
+    assert bbox.contains_point(inside)
+    assert not bbox.contains_point(outside)
 
 
 def test_bounding_box_contains_point_boundary_inclusive() -> None:
