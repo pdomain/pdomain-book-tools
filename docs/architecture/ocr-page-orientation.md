@@ -2,7 +2,7 @@
 Status: built
 Owner: CT
 Created: 2026-07-13
-Last verified: 2026-11-07
+Last verified: 2026-11-12
 Kind: architecture
 ---
 
@@ -12,6 +12,7 @@ Kind: architecture
 
 - **Kind:** architecture
 - **Status:** built
+- **Last verified:** 2026-11-12
 - **Read when:** changing DocTR ingestion, quarter-turn probing, confidence thresholds, or the image coordinate frame used after OCR.
 - **Search terms:** auto rotate, detect_best_rotation, RotationProbe, rotated frame, DocTR orientation, rotation degrees.
 
@@ -35,13 +36,13 @@ With automatic rotation disabled, the method performs one OCR call. It attaches 
 
 `Document.from_images_ocr_via_doctr()` performs the initial upright OCR as a batch. Pages at or above the threshold retain their upright result. Each lower-confidence page reuses its existing upright result and probes only the fallback orientations.
 
-When a fallback wins, its Page replaces the upright Page while retaining the batch page index. The method attaches the chosen image frame to every Page and returns a Document. It does not return per-page rotation degrees or probes.
+When a fallback wins, its Page replaces the upright Page while retaining the batch page index. The method attaches the chosen image frame to every Page. It returns the document and one clockwise degree per page, in page order. A page that stayed upright contributes 0, and every page contributes 0 when automatic rotation is off. It does not return the probe list.
 
 ## Audit boundary
 
 `Page` has no `rotation_applied` field. Page construction rejects that keyword. Page serialization also does not store a rotation angle.
 
-The singular ingestion method exposes the chosen angle only in its return tuple. Both singular and batch ingestion discard the probe list after choosing an image. The current architecture does not include durable rotation audit events or persisted diagnostics.
+The singular ingestion method exposes the chosen angle only in its return tuple. The batch method exposes one chosen degree per page in its return tuple. Both discard the probe list after choosing an image. The current architecture does not include durable rotation audit events or persisted diagnostics.
 
 ## Evidence
 

@@ -78,7 +78,7 @@ class TestFromImagesOcrViaDoctr:
             assert len(images) == 2, "predictor must receive both images in one call"
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["a", "b"],
             predictor=stub_predictor,
@@ -97,7 +97,7 @@ class TestFromImagesOcrViaDoctr:
         def stub_predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["a", "b"],
             predictor=stub_predictor,
@@ -115,7 +115,7 @@ class TestFromImagesOcrViaDoctr:
         def stub_predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["alpha", "beta"],
             predictor=stub_predictor,
@@ -134,7 +134,7 @@ class TestFromImagesOcrViaDoctr:
             assert len(images) == 1
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img],
             source_identifiers=["only"],
             predictor=stub_predictor,
@@ -176,7 +176,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             call_count["n"] += 1
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["a", "b"],
             predictor=predictor,
@@ -200,7 +200,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             call_count["n"] += 1
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img],
             predictor=predictor,
         )
@@ -220,7 +220,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             call_count["n"] += 1
             return fake_result
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["a", "b"],
             predictor=predictor,
@@ -247,7 +247,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             # Re-OCR for img_b rotation recovery - high confidence
             return _fake_doctr_result_with_words(1, [[0.9, 0.88]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["a", "b"],
             predictor=predictor,
@@ -276,7 +276,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             # Re-OCR at rotated orientation: high confidence
             return _fake_doctr_result_with_words(1, [[0.9, 0.85]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img],
             predictor=predictor,
             auto_rotate=True,
@@ -294,7 +294,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return _fake_doctr_result_with_words(1, [[0.95, 0.9]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img],
             predictor=predictor,
             auto_rotate=True,
@@ -311,7 +311,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return _fake_doctr_result_with_words(1, [[0.5]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img],
             predictor=predictor,
             auto_rotate=False,
@@ -339,7 +339,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             # Re-OCR for the low-confidence page: return high confidence
             return _fake_doctr_result_with_words(1, [[0.9]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b, img_c],
             source_identifiers=["a", "b", "c"],
             predictor=predictor,
@@ -362,7 +362,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             # Even very low confidence result
             return _fake_doctr_result_with_words(1, [[0.05, 0.1]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img],
             predictor=predictor,
             auto_rotate=True,
@@ -373,16 +373,69 @@ class TestFromImagesOcrViaDoctrAutoRotate:
         assert call_count["n"] == 1
         assert len(doc.pages) == 1
 
-    def test_return_type_is_document_not_tuple(self) -> None:
-        """from_images_ocr_via_doctr must return Document, not tuple[Document, int]."""
-        img = _make_rgb_image()
-        fake_result = _fake_doctr_result(1)
+    def test_returns_document_and_one_degree_per_page(self) -> None:
+        """Each page reports the chosen angle, in page order.
+
+        An empty upright page stays at 0. The return is not a single
+        batch-wide ``tuple[Document, int]``.
+        """
+        img_a = _make_rgb_image()
+        img_b = _make_rgb_image()
+        fake_result = _fake_doctr_result(2)
 
         def predictor(images: Sequence[np.ndarray]) -> MagicMock:
             return fake_result
 
-        result = Document.from_images_ocr_via_doctr([img], predictor=predictor)
-        assert isinstance(result, Document)
+        doc, degrees = Document.from_images_ocr_via_doctr(
+            [img_a, img_b],
+            predictor=predictor,
+            auto_rotate=False,
+        )
+        assert isinstance(doc, Document)
+        assert degrees == [0, 0]
+
+    def test_reports_the_chosen_degree_for_each_page(self) -> None:
+        """A confident page stays at 0. A recovered page reports 90.
+
+        The first fallback that beats the upright pass is 90 degrees.
+        """
+        img_a = _make_rgb_image(8, 8)
+        img_b = _make_rgb_image(8, 12)
+
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
+            if len(images) == 2:
+                return _fake_doctr_result_with_words(2, [[0.95, 0.9], [0.1, 0.15]])
+            return _fake_doctr_result_with_words(1, [[0.9, 0.88]])
+
+        doc, degrees = Document.from_images_ocr_via_doctr(
+            [img_a, img_b],
+            predictor=predictor,
+            auto_rotate=True,
+        )
+
+        assert [page.page_index for page in doc.pages] == [0, 1]
+        assert degrees == [0, 90]
+        assert not hasattr(doc.pages[1], "rotation_applied")
+
+    def test_unbeaten_upright_page_reports_zero(self) -> None:
+        """Probes that lose to the upright pass still report 0."""
+        img = _make_rgb_image(4, 8)
+        calls = {"n": 0}
+
+        def predictor(images: Sequence[np.ndarray]) -> MagicMock:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return _fake_doctr_result_with_words(1, [[0.2]])
+            return _fake_doctr_result_with_words(1, [[0.05]])
+
+        _doc, degrees = Document.from_images_ocr_via_doctr(
+            [img],
+            predictor=predictor,
+            auto_rotate=True,
+        )
+
+        assert calls["n"] > 1
+        assert degrees == [0]
 
     def test_all_pages_low_confidence_all_recover(self) -> None:
         """Regression: a fully rotated batch must not produce empty output.
@@ -407,7 +460,7 @@ class TestFromImagesOcrViaDoctrAutoRotate:
             # return high confidence to simulate correct orientation found
             return _fake_doctr_result_with_words(1, [[0.95, 0.9]])
 
-        doc = Document.from_images_ocr_via_doctr(
+        doc, _degrees = Document.from_images_ocr_via_doctr(
             [img_a, img_b],
             source_identifiers=["rotated_a", "rotated_b"],
             predictor=predictor,

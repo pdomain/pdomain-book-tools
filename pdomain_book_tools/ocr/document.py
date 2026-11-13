@@ -368,7 +368,7 @@ class Document:
         *,
         auto_rotate: bool = True,
         auto_rotate_threshold: float | None = None,
-    ) -> Document:
+    ) -> tuple[Document, list[int]]:
         """Perform OCR on a list of images with a single predictor call.
 
         Preprocesses each image to RGB, calls ``predictor([rgb1, rgb2, \u2026])``
@@ -391,6 +391,10 @@ class Document:
             a page's upright pass is considered good enough; ignored when
             ``auto_rotate`` is False. Defaults to
             :data:`pdomain_book_tools.ocr.rotation.DEFAULT_CONFIDENCE_THRESHOLD`.
+        :return: The document, and one clockwise degree per page in page order.
+            Each degree is the angle chosen for that page: 0 when the page
+            stayed upright, and 0 for every page when ``auto_rotate`` is False.
+            Probe lists are not returned and are not stored on the document.
         """
         if not images:
             raise ValueError("images must be a non-empty sequence")
@@ -441,6 +445,10 @@ class Document:
             )
             pages.append(page)
 
+        # One chosen degree per page. 0 is upright, including every page
+        # when auto-rotation is off. The probe list is discarded.
+        rotation_degrees = [0] * len(pages)
+
         if auto_rotate:
             # Lazy import to avoid overhead when callers opt out.
             from pdomain_book_tools.ocr.rotation import (
@@ -474,6 +482,7 @@ class Document:
                 if upright_conf >= threshold:
                     # Fast path: upright is fine — stash source image and move on.
                     page.cv2_numpy_page_image = image_ndarray
+                    rotation_degrees[page_idx] = 0
                     continue
 
                 # Slow path: this page's upright confidence is below threshold.
@@ -514,18 +523,20 @@ class Document:
                 # Stash the rotated source image (identity when chosen==0).
                 rotated_source = rotate_image(image_ndarray, chosen)
                 pages[page_idx].cv2_numpy_page_image = rotated_source
+                rotation_degrees[page_idx] = chosen
         else:
             # auto_rotate=False: stash each page's source image unchanged.
             for page_idx, page in enumerate(pages):
                 if page_idx < len(ndarray_list):
                     page.cv2_numpy_page_image = ndarray_list[page_idx]
 
-        return cls(
+        document = cls(
             source_lib="doctr",
             source_path=None,
             pages=pages,
             source_identifier=identifiers[0] if len(identifiers) == 1 else "",
         )
+        return document, rotation_degrees
 
     @classmethod
     def from_doctr_result(
