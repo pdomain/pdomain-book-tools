@@ -205,7 +205,7 @@ Page-order, scannos, and hyphen n-grams are absent from the tree. Their proposed
 
 Open library items use PP-DocLayout and `PageLayout`, OCR boxes, the layout-regression fixtures, and pytest with `-n auto`.
 
-Local-dev detection stays in the repository scripts and Make targets.
+Local-dev detection stays in the repository scripts and Just recipes.
 
 DocTR emits normalized coordinates, and Tesseract emits pixel coordinates.
 
@@ -213,7 +213,7 @@ Image processing is OpenCV on CPU and CuPy under the optional `[gpu]` extra.
 
 `transformers` is mandatory.
 
-Gates are ruff, basedpyright, and `make ci`.
+Gates are ruff, basedpyright, and `just ci`.
 
 ## Global Constraints
 

@@ -1,28 +1,25 @@
-"""Tests that developer-only Makefile targets reject malicious variables.
-
-``layout-fork-pin`` and ``layout-fork-update`` interpolate command-line
-Make variables (``SHA``, ``HF_LAYOUT_*``) into shell recipes. Without
-validation, a value like ``SHA='x; touch pwned'`` would be a
-command-injection surface. These tests confirm the strict regex guards
-reject such input before any recipe body runs.
-"""
+"""Developer layout recipes reject invalid environment inputs before mutation."""
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-_MAKE = shutil.which("make") or "make"
+_JUST = shutil.which("just") or "just"
 
 
-def _run_make(args: list[str], tmp_path: Path) -> subprocess.CompletedProcess[str]:
+def _run_just(
+    recipe: str, variables: dict[str, str]
+) -> subprocess.CompletedProcess[str]:
     # Args are test-controlled literals; injection is exactly what we assert
-    # the Makefile guards reject, so passing them through is intentional.
+    # the recipe guards reject, so passing them through is intentional.
     return subprocess.run(  # noqa: S603
-        [_MAKE, "--no-print-directory", *args],
+        [_JUST, "--quiet", recipe],
         cwd=REPO_ROOT,
+        env={**os.environ, **variables},
         capture_output=True,
         text=True,
         check=False,
@@ -34,14 +31,14 @@ def _run_make(args: list[str], tmp_path: Path) -> subprocess.CompletedProcess[st
 def test_layout_fork_pin_rejects_injected_sha(tmp_path: Path):
     sentinel = tmp_path / "pwned"
     malicious = f"deadbeef; touch {sentinel}"
-    proc = _run_make(["layout-fork-pin", f"SHA={malicious}"], tmp_path)
+    proc = _run_just("layout-fork-pin", {"SHA": malicious})
     assert proc.returncode != 0
     assert not sentinel.exists(), "injected command executed"
     assert "Invalid SHA" in (proc.stdout + proc.stderr)
 
 
 def test_layout_fork_pin_rejects_non_hex_sha(tmp_path: Path):
-    proc = _run_make(["layout-fork-pin", "SHA=not-a-sha"], tmp_path)
+    proc = _run_just("layout-fork-pin", {"SHA": "not-a-sha"})
     assert proc.returncode != 0
     assert "Invalid SHA" in (proc.stdout + proc.stderr)
 
@@ -49,7 +46,7 @@ def test_layout_fork_pin_rejects_non_hex_sha(tmp_path: Path):
 def test_layout_fork_update_rejects_injected_repo_id(tmp_path: Path):
     sentinel = tmp_path / "pwned-update"
     malicious = f"owner/name; touch {sentinel}"
-    proc = _run_make(["layout-fork-update", f"HF_LAYOUT_FORK={malicious}"], tmp_path)
+    proc = _run_just("layout-fork-update", {"HF_LAYOUT_FORK": malicious})
     assert proc.returncode != 0
     assert not sentinel.exists(), "injected command executed"
     assert "Invalid HF_LAYOUT_FORK" in (proc.stdout + proc.stderr)

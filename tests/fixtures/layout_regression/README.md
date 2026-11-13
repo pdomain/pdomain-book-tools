@@ -13,7 +13,7 @@ Each fixture case is a slug; for slug `<case>`:
 | `inputs/<case>.png` | source page image | hand-picked from `source-pgdp-data/output/<projectID>/` |
 | `inputs/<case>.pgdp.txt` | PGDP-proofread target text | extracted from that project's `pages.json` |
 | `inputs/<case>.json` | OCR `Page` model | run DocTR via `scripts/ocr_fixtures.py` (TODO) |
-| `inputs/<case>.layout.json` | `PageLayout` from PP-DocLayout | `make layout-fixtures-regenerate` |
+| `inputs/<case>.layout.json` | `PageLayout` from PP-DocLayout | `just layout-fixtures-regenerate` |
 | `expected_text/baseline/<case>.reorganize.txt` | reorganize_page output | `dump_reorganize_output.py <case>` |
 
 The `.pgdp.txt` files are **not** what `reorganize_page` is expected to

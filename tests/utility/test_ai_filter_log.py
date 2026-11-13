@@ -1,6 +1,6 @@
 """Unit tests for ``scripts/ai_filter_log.py``.
 
-The script extracts failure-relevant sections from a captured ``make ci``
+The script extracts failure-relevant sections from a captured ``just ci``
 log. To avoid excessive memory/CPU on pathologically large CI logs it
 caps the amount of input it accepts: oversized logs are read tail-first
 up to a byte budget rather than slurped whole.

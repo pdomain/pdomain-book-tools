@@ -632,7 +632,7 @@ These lines also carry `reportUnusedImport` (section 15).
 `ocr/test_ground_truth_matching_coverage.py:367`,
 `image_processing/cv2_processing/test_whitespace.py:47`), `E402` (2:
 `geometry_correction/test_protocols_registry.py:47-48`), `S603`
-(`utility/test_makefile_var_validation.py:23`), `S307`
+(`utility/test_makefile_var_validation.py:19`), `S307`
 (`test_geometry_repr.py:11`), `RUF012`
 (`ocr/test_ground_truth_matching_coverage.py:78`), `N803`
 (`utility/test_timing.py:29`), `B018` (`test_public_api.py:145`), `B009`
@@ -717,7 +717,7 @@ certain. Add a comment at the site or remove the suppression.
 - The `reportUnnecessaryTypeIgnoreComment=false` directive in six cupy files
   (section 18).
 - `pdomain_book_tools/pgdp/pgdp_page_image.py` — per-file `S314` and `S307`.
-- `tests/utility/test_makefile_var_validation.py:23` — `S603`.
+- `tests/utility/test_makefile_var_validation.py:19` — `S603`.
 - `pdomain_book_tools/geometry_correction/registry.py:78` and
   `pdomain_book_tools/layout/adapters/pp_doclayout.py:103` — `noqa` with no
   comment.

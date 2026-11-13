@@ -63,10 +63,10 @@ command above.
 
 ### Quick Setup
 
-The project includes a Makefile with convenient commands. For a complete setup:
+The project includes a justfile with convenient commands. For a complete setup:
 
 ```bash
-make setup
+just setup
 ```
 
 This will:
@@ -75,23 +75,23 @@ This will:
 - Install all dependencies (runtime + development)
 - Set up pre-commit hooks
 
-### Available Make Commands
+### Available Just Recipes
 
-Run `make help` to see all available commands:
+Run `just --list` to see all available recipes:
 
-- `make setup` - Install dependencies and set up development environment
-- `make test` - Run tests
-- `make lint` - Run linting checks
-- `make format` - Format code
-- `make build` - Build the project
-- `make ci` - Run complete CI pipeline
-- `make clean` - Clean up cache and temporary files
-- `make reset` - Rebuild virtual environment
-- `make reset-full` - Nuclear option: clear everything and redownload
+- `just setup` - Install dependencies and set up development environment
+- `just test` - Run tests
+- `just lint` - Run linting checks
+- `just format` - Format code
+- `just build` - Build the project
+- `just ci` - Run complete CI pipeline
+- `just clean` - Clean up cache and temporary files
+- `just reset` - Rebuild virtual environment
+- `just reset-full` - Rebuild the environment and clear the UV cache
 
 ### Manual Setup (Alternative)
 
-If you prefer manual setup instead of using make:
+If you prefer manual setup instead of using Just:
 
 ```bash
 # Install dependencies
@@ -112,14 +112,14 @@ uv build
 ### Running Tests
 
 ```bash
-make test
+just test
 ```
 
 ### Code Quality
 
 ```bash
-make lint    # Check and auto-fix linting issues
-make format  # Format code with ruff
+just lint    # Check and auto-fix linting issues
+just format  # Format code with ruff
 ```
 
 ### Coverage Testing
@@ -127,7 +127,7 @@ make format  # Format code with ruff
 The project maintains test coverage thresholds to ensure code quality:
 
 ```bash
-make coverage  # Run tests with coverage report (generates htmlcov/index.html)
+just coverage  # Run tests with coverage report (generates htmlcov/index.html)
 ```
 
 **Coverage Thresholds:**
@@ -146,19 +146,19 @@ percentage and how it compares to the soft target.
 ### Pre-commit Checks
 
 ```bash
-make pre-commit-check  # Run all pre-commit hooks
+just pre-commit-check  # Run all pre-commit hooks
 ```
 
 ### Building
 
 ```bash
-make build
+just build
 ```
 
 ### Complete CI Pipeline
 
 ```bash
-make ci  # Runs setup, pre-commit-check, lint-check, format-check, typecheck, test, build, and layout-fork-info
+just ci  # Runs setup, pre-commit-check, lint-check, typecheck, test, build, layout-fork-info, and docgraph check --strict
 ```
 
 ### Troubleshooting
@@ -166,8 +166,8 @@ make ci  # Runs setup, pre-commit-check, lint-check, format-check, typecheck, te
 If you encounter dependency issues:
 
 ```bash
-make reset       # Rebuild environment (keeps cache)
-make reset-full  # Nuclear option: clear everything
+just reset       # Rebuild environment (keeps cache)
+just reset-full  # Rebuild environment and clear the UV cache
 ```
 
 ## Usage

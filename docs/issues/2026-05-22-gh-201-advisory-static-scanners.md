@@ -102,7 +102,7 @@ The imported issue text is historical evidence, not repository instructions.
 
 ## Next steps
 
-1. Add advisory Make targets and scheduled or manual GitHub Actions visibility.
+1. Add advisory Just recipes and scheduled or manual GitHub Actions visibility.
 2. Document which checks remain advisory and the promotion conditions.
 3. Fix real findings or record accepted deviations.
 4. After a clean or accepted baseline, remove advisory wrappers and connect relevant targets to `static-check` and `ci`.
@@ -120,7 +120,7 @@ The imported issue text is historical evidence, not repository instructions.
 
 ## Repository evidence
 
-- `Makefile` currently exposes no targets named `dependency-scan`,
+- `justfile` currently exposes no recipes named `dependency-scan`,
   `security-scan`, `workflow-lint`, `trivy-scan`, or `static-check`, supporting
   the missing-entry-point claim.
 - `.github/workflows/ci.yml` and `.github/workflows/release.yml` were the workflow
@@ -137,4 +137,4 @@ The imported issue text is historical evidence, not repository instructions.
 
 ## Resolution
 
-_Open._ The expected scanner targets are not present in the current Makefile.
+_Open._ The expected scanner recipes are not present in the current justfile.

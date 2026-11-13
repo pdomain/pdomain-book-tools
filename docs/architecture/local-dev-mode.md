@@ -22,20 +22,19 @@ silently revert. In this repo, the usual override is the `[gpu]` extra. Any
 foreign editable install here fires the same detection. Downstream repos add
 editable sibling checkouts.
 
-`make upgrade-deps` detects the mode and refuses to clobber it. The
-`local-*` targets manage the mode. No other Make target is guarded. See the
-caveat below.
+`just upgrade-deps` and `just update-pdomain-deps` detect the mode and refuse
+to clobber it. The `local-*` recipes manage the mode. See the caveat below.
 
 ## The three canonical targets
 
-The supported workflow is three Make targets, shipped under spec #362:
+The supported workflow is three Just recipes, shipped under spec #362:
 
-- `make local-dev` — enter local-dev mode. Runs `uv sync --extra gpu`, then
+- `just local-dev` — enter local-dev mode. Runs `uv sync --extra gpu`, then
   writes both marker files (see below).
-- `make local-check` — print the current mode plus the installed torch
+- `just local-check` — print the current mode plus the installed torch
   version and location. Note the script prints `registry` as the name of
   the non-local (canonical) state.
-- `make local-upgrade-deps` — upgrade deps while staying in local-dev mode.
+- `just local-upgrade-deps` — upgrade deps while staying in local-dev mode.
   Refuses when the shell marker is absent.
 
 The older names `dev-local`, `check-dev-local`, and `upgrade-deps-local` are
@@ -44,9 +43,10 @@ replacement.
 
 ## How the upgrade-deps guard works
 
-When the venv is in local-dev mode, `make upgrade-deps` refuses to run
-instead of clobbering it, because its `uv sync --group dev` would revert
-every override. Detection is two-tier:
+When the venv is in local-dev mode, `just upgrade-deps` and `just
+update-pdomain-deps` refuse to run instead of clobbering it. Each would sync
+the canonical dev environment and could revert overrides. Detection is
+two-tier:
 
 1. `scripts/check_dev_local.py` exits 1 (dev-local) when any of these
    signals fire:
@@ -55,18 +55,19 @@ every override. Detection is two-tier:
    - the `.venv/.pdomain-dev-local` marker
    - a truthy `PDOMAIN_DEV_LOCAL` env var
 
-   It exits 0 (canonical) otherwise, and supports `--quiet` for Makefile
+   It exits 0 (canonical) otherwise, and supports `--quiet` for justfile
    branching.
-2. A shell fallback in the Makefile also refuses when
+2. A shell fallback in the justfile also refuses when
    `.venv/.pdomain-local-mode` exists.
 
 The env var is opt-in only. A falsey value (`PDOMAIN_DEV_LOCAL=0`) adds no
 signal of its own, and it does not bypass the other signals. There is no
 clobber escape hatch. To upgrade from local-dev mode, run
-`make local-upgrade-deps`. To return to canonical mode, rebuild the venv.
+`just local-upgrade-deps`. To return to canonical mode, rebuild the venv.
 
-**Only `upgrade-deps` is guarded.** These other dependency-syncing targets
-use an nvidia-smi hardware probe instead. `test`, `test-slow`,
+**`upgrade-deps` and `update-pdomain-deps` are guarded.** These other
+dependency-syncing targets use an nvidia-smi hardware probe instead. `test`,
+`test-slow`,
 `test-verbose`, `test-single`, `test-k`, and `coverage` run `sync-gpu`.
 `setup` runs `uv sync --group dev` with the same probe result inline. The
 probe is forced off when `CI` is set. It never consults the markers, the
@@ -84,7 +85,7 @@ Entering local-dev mode writes two markers, both inside `.venv/` so a venv
 rebuild removes them automatically:
 
 - `.venv/.pdomain-local-mode` — read by the shell scripts
-  (`local-check.sh`, `local-upgrade-deps.sh`) and the Makefile fallback.
+  (`local-check.sh`, `local-upgrade-deps.sh`) and the justfile fallback.
 - `.venv/.pdomain-dev-local` — read by the Python probe; written by
   `scripts/write_dev_local_marker.py`, which `local-dev.sh` invokes.
 
@@ -108,7 +109,7 @@ This repo publishes a contract for four downstream `pdomain-*` consumers:
 `pdomain-prep-for-pgdp`. Under this contract, a downstream venv is
 dev-local when `uv pip show pdomain-book-tools` reports an
 `Editable project location` line. The shared pattern comes from spec #200.
-The `Makefile` guard comment names it the "pdomain-ocr-cli canonical
+The former Makefile guard comment called it the "pdomain-ocr-cli canonical
 pattern." This doc records the contract as published here. It is not a
 verified audit of each consumer's current code.
 
@@ -125,7 +126,7 @@ from any other path, such as a relocated clone or a symlinked checkout.
 
 ## Evidence
 
-- Code: `Makefile` (`upgrade-deps`, `local-dev`, `local-check`,
+- Code: `justfile` (`upgrade-deps`, `local-dev`, `local-check`,
   `local-upgrade-deps`, deprecated aliases), `scripts/check_dev_local.py`,
   `scripts/write_dev_local_marker.py`, `scripts/local-dev.sh`,
   `scripts/local-check.sh`, `scripts/local-upgrade-deps.sh`
@@ -153,7 +154,7 @@ from any other path, such as a relocated clone or a symlinked checkout.
 - Extend the dev-local guard beyond `upgrade-deps`, or accept that
   `setup`, `test`, and `coverage` rely on the nvidia-smi auto-detect alone.
   See the guard caveat above.
-- No test drives the Make recipes end to end. Marker-only restoration
+- No test drives the Just recipes end to end. Marker-only restoration
   assumes GPU mode, rather than preserving an arbitrary prior environment.
 - The DocTR-from-Git probe would flag non-canonical `python-doctr` install
   URLs as dev-local without a marker. It stays deferred until a concrete

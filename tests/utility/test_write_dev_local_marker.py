@@ -1,6 +1,6 @@
 """Unit tests for ``scripts/write_dev_local_marker.py``.
 
-The marker-write helper backs the `make dev-local` recipe (spec
+The marker-write helper backs the `just dev-local` recipe (spec
 §2.2.2 / §4): it writes a self-explanatory marker file at
 ``.venv/.pdomain-dev-local`` that future ``check_dev_local`` invocations
 can pick up. Tests drive the pure helper so we don't have to spin up
@@ -113,7 +113,7 @@ def test_write_marker_content_is_self_explanatory(
 def test_write_marker_overwrites_existing(
     wm: _WriteDevLocalMarkerModule, tmp_path: Path
 ) -> None:
-    """Re-running ``make dev-local`` MUST refresh the marker rather
+    """Re-running ``just dev-local`` MUST refresh the marker rather
     than fail or no-op silently — the timestamp helps users understand
     when they last entered dev-local mode."""
     venv_dir = tmp_path / ".venv"
@@ -130,7 +130,7 @@ def test_write_marker_refuses_when_venv_missing(
     wm: _WriteDevLocalMarkerModule, tmp_path: Path
 ) -> None:
     """If the venv doesn't exist yet, fail loudly. The recipe should
-    have run ``make install`` first; a marker outside a venv is a
+    have run ``just setup`` first; a marker outside a venv is a
     stale-state class of bug."""
     venv_dir = tmp_path / ".venv-missing"
     assert not venv_dir.exists()

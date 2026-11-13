@@ -146,7 +146,7 @@ class TestOrientationDetectionRealModel:
     """End-to-end sanity: detection must actually DETECT, not just not crash.
 
     Uses the real (pretrained, cached) DocTR predictor on CPU. Marked slow;
-    run via ``make test-slow`` or ``-m slow``.
+    run via ``just test-slow`` or ``-m slow``.
     """
 
     @staticmethod

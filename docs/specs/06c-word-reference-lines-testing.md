@@ -343,7 +343,7 @@ Lives in `tests/ocr/test_block.py` (alongside the existing
 ## 12. CI integration
 
 No CI changes are required. New tests join the existing pytest run through
-`make test` and add no dependencies. The synthetic PIL glyph helper adds no
+`just test` and add no dependencies. The synthetic PIL glyph helper adds no
 font-file dependency. Coverage keeps the existing `fail_under = 0` posture,
 with no new gate.
 
@@ -366,7 +366,7 @@ with no new gate.
 - Testing approach covers: word-level unit tests (11.1), block-level
   unit tests (11.2), property tests (11.3), test-data constraints
   (11.4), and v1 exclusions (11.5).
-- `make ci` passes with no new test gates or CI infrastructure.
+- `just ci` passes with no new test gates or CI infrastructure.
 
 ## Trade-offs considered
 

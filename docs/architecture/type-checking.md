@@ -25,7 +25,7 @@ Two settings escalate checking beyond plain strict mode.
 `reportUnnecessaryTypeIgnoreComment` requires every suppression to still be
 needed. `reportImplicitOverride` requires overrides to say `@override`.
 
-`failOnWarnings = true`. The Makefile `typecheck` gate runs
+`failOnWarnings = true`. The justfile `typecheck` gate runs
 `uv run basedpyright` over the whole include, so any new diagnostic of any
 severity fails CI. `.basedpyright/baseline.json` contains no grandfathered
 files.
@@ -50,7 +50,7 @@ edit it on parallel file-level branches.
 
 ## Evidence
 
-- Code: `pyproject.toml` (`[tool.basedpyright]`), `Makefile` (`typecheck`),
+- Code: `pyproject.toml` (`[tool.basedpyright]`), `justfile` (`typecheck`),
   `typings/`, `.basedpyright/baseline.json`
 - Tests: `make ci AI=1`; `uv run basedpyright` reports 0 errors, 0 warnings,
   0 notes on GPU-capable and CPU-only dependency sets (2026-07-19)

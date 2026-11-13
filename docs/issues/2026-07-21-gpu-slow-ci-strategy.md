@@ -25,7 +25,7 @@ Level: I1
 
 ## Summary
 
-pytest default `-m "not slow"`; `make ci` uses `make test` not slow. GPU tests skip without CUDA / under CI; cupy sources omitted from CPU coverage. `make ci-slow` **aliases `ci`** (full CPU gate) and therefore **does not run** slow/GPU suites. Plan default: expand CPU parity + seed GPU fixtures; document residual risk.
+pytest default `-m "not slow"`; `just ci` uses `just test` not slow. GPU tests skip without CUDA / under CI; cupy sources omitted from CPU coverage. `just ci-slow` **aliases `ci`** (full CPU gate) and therefore **does not run** slow/GPU suites. Plan default: expand CPU parity + seed GPU fixtures; document residual risk.
 
 ## Impact
 
@@ -52,7 +52,7 @@ Related governed docs:
 ### 1. Decisive observation
 
 ```bash
-rg -n 'not slow|ci-slow|^ci:|^test:' Makefile pyproject.toml | head -30
+rg -n 'not slow|ci-slow|^ci:|^test:' justfile pyproject.toml | head -30
 rg -n 'skipif_ci|cupy_module' tests/conftest.py | head -20
 ```
 
@@ -76,7 +76,7 @@ addopts exclude slow; `ci-slow` aliases `ci`; cupy omitted under `.coveragerc.cp
 ## What is NOT broken
 
 - CPU suite remains the primary gate and is substantial.
-- slow tests exist and can be run with make test-slow.
+- slow tests exist and can be run with just test-slow.
 
 ## Resolution
 

@@ -82,7 +82,7 @@ all encodings. `# noqa: RUF00x` masks the problem instead of fixing it.
 
 **The rule.** Invoke Python, pytest, ruff, mypy/pyright, and any project-local
 CLI through `uv run`. Never call bare `python`, `python3`, `pytest`, or
-`pre-commit` from a Makefile target, CI step, or hook.
+`pre-commit` from a Just recipe, CI step, or hook.
 
 **Why.** Direct invocation skips the project's `.venv` and the lockfile-pinned
 toolchain; tests pass locally and fail in CI (or vice versa) because the bare
@@ -91,7 +91,7 @@ fast (<200 ms warm) and always selects the project venv.
 
 **Common high-confidence violations** (bot auto-fix candidates)
 
-- `python -m pytest` or `python3 script.py` in any `Makefile`, `*.sh`,
+- `python -m pytest` or `python3 script.py` in any `justfile`, `*.sh`,
   `.github/workflows/*.yml`, or `.pre-commit-config.yaml` hook.
 - `pre-commit run` (bare) instead of `uv run pre-commit run` in CI or scripts.
 - `ruff check` or `pyright` (bare) in scripts that don't activate a venv first.
@@ -280,7 +280,7 @@ All code paths that use GPU-specific libraries must be guarded by an
 availability check or placed behind the `[gpu]` extra. Test code must
 not import CuPy or CUDA-specific helpers unconditionally.
 
-**Why.** CI runs CPU-only. The `make sync-gpu` / `make local-dev` workflow
+**Why.** CI runs CPU-only. The `just sync-gpu` / `just local-dev` workflow
 exists precisely to add GPU extras locally without polluting the canonical
 lockfile. Unconditional GPU imports break CI silently.
 

@@ -15,10 +15,11 @@ Kind: process
 - **Read when:** changing lint rules, pre-commit hooks, commit-message checks, tests, coverage, or the full CI gate.
 - **Search terms:** quality gates, Ruff, pre-commit, gitlint, gitleaks, uv lock, warnings error, branch coverage.
 
-`make ci AI=1` is the repository's full pre-commit verification gate. The
-target performs setup, runs pre-commit across the repository, checks Ruff
+`AI=1 just ci` is the repository's full pre-commit verification gate. The
+recipe performs setup, runs pre-commit across the repository, checks Ruff
 formatting and lint without mutation, runs strict basedpyright, executes tests,
-builds the package, and reports layout-detector fork drift.
+builds the package, reports layout-detector fork drift, and runs `docgraph
+check --strict`.
 
 ## Pre-commit and commit-message checks
 
@@ -26,13 +27,13 @@ The pre-commit stage trims whitespace, fixes final newlines, validates YAML,
 JSON, and TOML, rejects large additions, detects debug statements and merge
 markers, and scans secrets with gitleaks. It runs Ruff import fixes, safe lint
 fixes, formatting, Markdown lint, and `uv lock --check`. The repository's
-`pre-commit-check` target skips the duplicate basedpyright hook; `make ci` runs
+`pre-commit-check` recipe skips the duplicate basedpyright hook; `just ci` runs
 the separate `typecheck` target afterward. The commit-msg stage runs gitlint.
 
 Every external hook revision is a full commit SHA with a `# frozen: <tag>`
 comment, because a tag can be moved upstream. The local
 `require-frozen-hook-revs` hook fails any other `rev:`. To bump the hooks, run
-`make update-hooks`. It runs `pre-commit autoupdate --freeze`, which moves each
+`just update-hooks`. It runs `pre-commit autoupdate --freeze`, which moves each
 hook to its latest release and writes the SHA. Node is pinned to 26.13.0 for
 the markdownlint hook, because unpinned nodeenv picks a prerelease and fails to
 build the environment.
@@ -48,7 +49,7 @@ families. `pyproject.toml` is the exact current rule authority.
 
 Pytest treats warnings as errors and measures branch coverage. The configured
 coverage threshold and soft target may strengthen independently of the original
-May 2026 rollout; current values in `pyproject.toml` and the Makefile are
+May 2026 rollout; current values in `pyproject.toml` and the justfile are
 authoritative.
 
 Coverage uses two source sets with one threshold. A GPU-capable local run uses
@@ -56,7 +57,7 @@ Coverage uses two source sets with one threshold. A GPU-capable local run uses
 coverage gate. A CPU-only or CI run uses `.coveragerc.cpu`, which omits
 `cupy_processing` because those paths cannot execute without the GPU extra.
 
-The Makefile selects the full configuration when it detects a usable NVIDIA
+The justfile selects the full configuration when it detects a usable NVIDIA
 GPU and `CI` is absent. This split keeps CPU-only results honest without
 removing GPU modules from full coverage. It does not establish a separate
 GPU-only threshold or a required remote GPU CI job.
@@ -72,6 +73,6 @@ the package, tests, and scripts.
 
 - **Configuration:** `.pre-commit-config.yaml`, `pyproject.toml`,
   `.coveragerc.cpu`, `.gitlint`, and `.editorconfig`
-- **Commands:** `Makefile` targets `pre-commit-check`, `lint-check`, `typecheck`, `test`, `build`, and `ci`
+- **Commands:** justfile recipes `pre-commit-check`, `lint-check`, `typecheck`, `test`, `build`, and `ci`
 - **Initial rollout:** commits `cbaa74a`, `4ab7a93`, `bd0de40`, `4a59ff2`, `b742231`, `c500d91`, `2e11974`, and `f809701`
 - **Current type-checking contract:** [`type-checking.md`](../architecture/type-checking.md)

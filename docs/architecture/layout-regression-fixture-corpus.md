@@ -56,7 +56,7 @@ That legacy track passes `drop_layout_words=True`. Its baselines describe figure
 
 A baseline change requires an explicit semantic review, not test-output regeneration. Reviewers inspect the unified diff and relevant debug overlays. They decide whether the output improves and promote individual cases with a stated reason. Bulk replacement hides regressions and is outside the corpus policy.
 
-Use `make layout-fixtures-regenerate` to regenerate layout JSON. OCR fixture generation and reorganize dumping use the scripts under `tests/fixtures/layout_regression/`. Run those scripts through the repository's `uv run` environment. Model or OCR changes receive the same case-by-case baseline review. Recognition drift can alter rendered text even when reading order remains stable.
+Use `just layout-fixtures-regenerate` to regenerate layout JSON. OCR fixture generation and reorganize dumping use the scripts under `tests/fixtures/layout_regression/`. Run those scripts through the repository's `uv run` environment. Model or OCR changes receive the same case-by-case baseline review. Recognition drift can alter rendered text even when reading order remains stable.
 
 ## Scope
 
@@ -83,7 +83,7 @@ The corpus does not contain representative tables, mathematical formulae, or cro
 - Layout corpus tests: `tests/layout/test_fixture_layouts.py`
 - Reorganize text tests: `tests/ocr/test_reorganize_page_utils_grouping.py`
 - Fixture tooling: `tests/fixtures/layout_regression/ocr_fixtures.py`, `tests/fixtures/layout_regression/regenerate_layouts.py`, `tests/fixtures/layout_regression/dump_reorganize_output.py`
-- Supported layout regeneration entrypoint: `Makefile` target `layout-fixtures-regenerate`
+- Supported layout regeneration entrypoint: justfile recipe `layout-fixtures-regenerate`
 
 ## Residual intent
 

@@ -1,13 +1,13 @@
 """Write the ``.pdomain-dev-local`` marker that flags a venv as dev-local.
 
-Backs the ``make dev-local`` recipe (spec §2.2.2 / §4): once the venv
+Backs the ``just dev-local`` recipe (spec §2.2.2 / §4): once the venv
 is in dev-local mode (sibling pdomain-* editables, ``[gpu]`` extra, doctr
 fork, etc.), this helper writes a small self-explanatory marker file
 inside the venv so that subsequent ``check_dev_local`` invocations
 flag the mode without needing to re-probe every override one by one.
 
 Lifecycle is anchored to the venv directory: a venv rebuild
-(``make remove-venv``) deletes the marker automatically — no
+(``just remove-venv``) deletes the marker automatically — no
 stale-marker class of bug.
 
 Architecture: ``docs/architecture/local-dev-mode.md``.
@@ -38,16 +38,16 @@ def write_marker(venv_dir: Path) -> Path:
     Content is a short human-readable note: a UTC timestamp plus a
     pointer to the spec, so a user who ``cat``s the file understands
     what it means without reading source. Always overwrites existing
-    content — re-running ``make dev-local`` should refresh the marker
+    content — re-running ``just dev-local`` should refresh the marker
     so the timestamp tells the truth.
 
     Raises ``FileNotFoundError`` if ``venv_dir`` does not exist;
-    callers must run ``make install`` first.
+    callers must run ``just setup`` first.
     """
     if not venv_dir.is_dir():
         raise FileNotFoundError(
             f"venv directory not found: {venv_dir} "
-            "(run `make install` first to create it)"
+            "(run `just setup` first to create it)"
         )
 
     target = venv_dir / MARKER_FILENAME
@@ -55,12 +55,12 @@ def write_marker(venv_dir: Path) -> Path:
     body = (
         f"This venv is in dev-local mode (entered {timestamp}).\n"
         "\n"
-        "Written by `make dev-local`. Detected by\n"
-        "`scripts/check_dev_local.py`, which makes `make upgrade-deps`\n"
-        "refuse-rather-than-clobber. Use `make upgrade-deps-local`\n"
+        "Written by `just dev-local`. Detected by\n"
+        "`scripts/check_dev_local.py`, which makes `just upgrade-deps`\n"
+        "refuse-rather-than-clobber. Use `just upgrade-deps-local`\n"
         "to upgrade dependencies without losing dev-local overrides.\n"
         "\n"
-        "Lifecycle is tied to this venv — `make remove-venv` deletes\n"
+        "Lifecycle is tied to this venv — `just remove-venv` deletes\n"
         "this file along with everything else.\n"
         "\n"
         "Architecture: docs/architecture/local-dev-mode.md\n"
@@ -73,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=(
             "Write the .pdomain-dev-local marker into the given venv "
-            "directory. Backs `make dev-local`."
+            "directory. Backs `just dev-local`."
         )
     )
     parser.add_argument(

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/local-upgrade-deps.sh — upgrade deps then restore GPU extras.
 #
-# Refuses if not in local-dev mode (use `make upgrade-deps` for registry mode).
+# Refuses if not in local-dev mode (use `just upgrade-deps` for registry mode).
 set -euo pipefail
 
 # uv installs into UV_PROJECT_ENVIRONMENT when that is set and into .venv
@@ -22,7 +22,7 @@ MARKER="$PROJECT_VENV/.pdomain-local-mode"
 
 if [[ ! -f "$MARKER" ]]; then
   echo "ERROR: not in local-dev mode (no marker at $MARKER)." >&2
-  echo "       Run 'make upgrade-deps' instead." >&2
+  echo "       Run 'just upgrade-deps' instead." >&2
   exit 1
 fi
 

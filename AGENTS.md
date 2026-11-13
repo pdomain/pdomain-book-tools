@@ -16,17 +16,17 @@ on it, so public API changes ripple downstream.
 
 | target | does |
 |---|---|
-| `make setup AI=1` | install all deps via uv + pre-commit hooks |
-| `make test AI=1` | `uv run pytest -n auto` (slow model-download tests excluded by default) |
-| `make test-slow AI=1` | run ALL tests including slow model-download smoke tests (needs network) |
-| `make test-k K='pattern' AI=1` | targeted test run |
-| `make lint AI=1` / `make format AI=1` | ruff check / ruff format |
-| `make build AI=1` | `uv build` (hatchling) |
-| `make ci AI=1` | full check including layout-fork-info |
-| `make coverage AI=1` | HTML report under `htmlcov/` |
-| `make local-dev` | switch to local-dev mode (GPU extras active + marker) |
-| `make local-check` | print local-dev mode status (marker + torch location) |
-| `make local-upgrade-deps` | upgrade deps + re-sync GPU extras (local-mode only) |
+| `AI=1 just setup` | install all deps via uv + pre-commit hooks |
+| `AI=1 just test` | `uv run pytest -n auto` (slow model-download tests excluded by default) |
+| `AI=1 just test-slow` | run ALL tests including slow model-download smoke tests (needs network) |
+| `K='pattern' AI=1 just test-k` | targeted test run |
+| `AI=1 just lint` / `AI=1 just format` | ruff check / ruff format |
+| `AI=1 just build` | `uv build` (hatchling) |
+| `AI=1 just ci` | full check including layout-fork-info |
+| `AI=1 just coverage` | HTML report under `htmlcov/` |
+| `just local-dev` | switch to local-dev mode (GPU extras active + marker) |
+| `just local-check` | print local-dev mode status (marker + torch location) |
+| `just local-upgrade-deps` | upgrade deps + re-sync GPU extras (local-mode only) |
 
 The local-dev commands above define this repository's supported workflow.
 
@@ -36,9 +36,9 @@ output for debugging.
 
 ## Rules
 
-- Always run `make ci AI=1` before committing.
-- Make targets first; fall back to `uv run …` only when no target exists.
-- Never `python -m pytest` / `python3 -m pytest`. Always `uv run pytest -n auto` or `make test`. Bare `python`/`python3`/`.venv/bin/python` miss the venv.
+- Always run `AI=1 just ci` before committing.
+- Use Just recipes first; fall back to `uv run …` only when no recipe exists.
+- Never `python -m pytest` / `python3 -m pytest`. Always `uv run pytest -n auto` or `just test`. Bare `python`/`python3`/`.venv/bin/python` miss the venv.
 - Preserve `is_normalized` semantics across `Point`, `BoundingBox`, and OCR model types.
 - Never silently coerce coordinate systems in merge/split/union; fail explicitly on mismatch.
 - Use `to_dict`/`from_dict` for deep-copy-safe transformations of OCR entities.
@@ -126,7 +126,7 @@ change any step below.
    worktree path + branch, use the `finishing-a-development-branch` skill to
    decide how to integrate.
 9. **TDD.** Write the failing test first where the plan calls for it.
-10. **Verify before committing.** Focused verification plus `make ci`.
+10. **Verify before committing.** Focused verification plus `just ci`.
 11. **Commit locally; do not push** without explicit say-so.
 
 <!-- workspace-process:end -->
@@ -135,11 +135,11 @@ change any step below.
 - Python package: `pdomain_book_tools/`, built with Hatchling and managed with uv.
 - Tests: `tests/`; repository automation: `scripts/`; documentation: `docs/`.
 - Primary project metadata and tool configuration: `pyproject.toml`.
-- Supported workflow entry points: `Makefile`.
+- Supported workflow entry points: `justfile`.
 <!-- <<< repo-setup:repo-facts -->
 <!-- >>> repo-setup:commands-and-gates sha256:69cbe1fd91401260b56ec6cf0e234e564e1fed0e0dbf86aa8672b0643775ced9 -->
-- `make test` runs the Python test suite.
-- `make lint` runs the repository lint workflow.
+- `just test` runs the Python test suite.
+- `just lint` runs the repository lint workflow.
 - `uv run pytest ...` is the direct allow-listed pytest fallback.
 - `uv run ruff check ...` and `uv run ruff format ...` are the direct allow-listed Ruff fallbacks.
 - `uv run basedpyright ...` is the direct allow-listed type-check fallback.

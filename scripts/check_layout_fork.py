@@ -76,7 +76,7 @@ def main() -> int:
     if pinned != fork_head:
         print(
             f"⚠️  WARNING: pinned SHA ({pinned}) does not match fork HEAD "
-            f"({fork_head}) — run 'make layout-fork-pin SHA={fork_head}'",
+            f"({fork_head}) — run 'SHA={fork_head} just layout-fork-pin'",
             file=sys.stderr,
         )
         return 0
@@ -98,7 +98,7 @@ def main() -> int:
 
     print(
         "⚠️  WARNING: upstream files differ from fork — run "
-        "'make layout-fork-update' to refresh, then 'make layout-fork-pin'",
+        "'just layout-fork-update' to refresh, then 'just layout-fork-pin'",
         file=sys.stderr,
     )
     print(f"   changed files: {', '.join(changed)}", file=sys.stderr)

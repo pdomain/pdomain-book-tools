@@ -33,5 +33,5 @@ touch "$MARKER"
 echo "[local-dev] ✓ GPU extras active; marker written: $MARKER"
 
 # Also write the Python-compatible marker used by check_dev_local.py
-# so the two-tier upgrade-deps guard (make upgrade-deps) detects local-dev.
+# so the two-tier upgrade-deps guard (just upgrade-deps) detects local-dev.
 uv run python "$REPO_ROOT/scripts/write_dev_local_marker.py" --venv "$PROJECT_VENV"

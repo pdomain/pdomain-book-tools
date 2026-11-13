@@ -166,7 +166,7 @@ def test_project_root_editable_does_not_flag(
 
 
 def test_marker_file_flags_dev_local(cdl: _CheckDevLocalModule, tmp_path: Path) -> None:
-    """Spec §2.2.2: a marker file written by ``make dev-local`` is the
+    """Spec §2.2.2: a marker file written by ``just dev-local`` is the
     fallback signal when the package probe doesn't fire."""
     project_root = tmp_path
     marker = tmp_path / ".pdomain-dev-local"
@@ -230,7 +230,7 @@ def test_cli_exit_zero_when_canonical(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """``check_dev_local`` exits 0 when canonical so the Makefile can
+    """``check_dev_local`` exits 0 when canonical so the justfile can
     use ``if scripts/check_dev_local.py; then ... ; fi``-style logic.
     Spec §2.4 — canonical-mode behavior unchanged."""
     project_root = tmp_path
@@ -248,7 +248,7 @@ def test_cli_exit_zero_when_canonical(
 def test_cli_exit_one_when_dev_local(
     cdl: _CheckDevLocalModule, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``check_dev_local`` exits 1 when dev-local so the Makefile can
+    """``check_dev_local`` exits 1 when dev-local so the justfile can
     branch and refuse to run a clobbering ``uv sync``."""
     project_root = tmp_path
     sibling_root = tmp_path.parent / "pdomain-ocr-cli"
@@ -302,7 +302,7 @@ class TestMarkerFilenameConsistency:
 
     ``local-dev.sh`` writes ``.venv/.pdomain-local-mode``.
     ``check_dev_local.py`` must detect the mode regardless of which marker
-    filename is present, so the two-tier Makefile guard works end-to-end.
+    filename is present, so the two-tier justfile guard works end-to-end.
     """
 
     def test_pdomain_local_mode_marker_detected(

@@ -2,7 +2,7 @@
 
 These tests load cached :class:`PageLayout` JSON from
 ``tests/fixtures/layout_regression/layout_outputs/`` (regenerated via
-``make layout-fixtures-regenerate``). The model itself is never invoked
+``just layout-fixtures-regenerate``). The model itself is never invoked
 here, so the suite stays fast and offline.
 """
 
@@ -36,7 +36,7 @@ CASES = _cases()
 
 @pytest.mark.skipif(
     not CASES,
-    reason="no layout fixtures present — run `make layout-fixtures-regenerate`",
+    reason="no layout fixtures present — run `just layout-fixtures-regenerate`",
 )
 class TestFixtureLayouts:
     @pytest.mark.parametrize(("case", "path"), CASES, ids=[c for c, _ in CASES])

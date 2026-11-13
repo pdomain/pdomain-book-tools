@@ -23,7 +23,7 @@ older than 24 hours. It leaves recent, non-matching, and missing directories
 alone. It also suppresses filesystem removal errors.
 
 The automatic cleanup is independent of the current working directory and does
-not replace the manual `make clean-debug` target.
+not replace the manual `just clean-debug` recipe.
 
 ## Evidence for the cleanup behavior
 
@@ -31,7 +31,7 @@ not replace the manual `make clean-debug` target.
 - Tests: `tests/test_debug_cleanup.py`
 - Artifacts: layout-regression debug run directories
 - Verified: 2026-11-07, when the focused tests passed. On 2026-07-13 a focused
-  review saw 24 related tests pass. The full repository gate is `make ci AI=1`
+  review saw 24 related tests pass. The full repository gate is `AI=1 just ci`
 
 ## Why cleanup still needs liveness tracking
 

@@ -5,14 +5,14 @@ installs, the ``[gpu]`` extra, an explicit
 ``PDOMAIN_DEV_LOCAL=1`` env var, or a ``.pdomain-dev-local`` marker file in the
 project environment —
 that ``uv sync --group dev`` (the canonical sync) would silently
-revert. ``make upgrade-deps`` and any future recipe that rebuilds the
+revert. ``just upgrade-deps`` and any future recipe that rebuilds the
 venv invokes this script to refuse-rather-than-clobber.
 
 Architecture: ``docs/architecture/local-dev-mode.md``.
 
 Exit code:
-- 0 if canonical (Makefile recipe proceeds normally).
-- 1 if dev-local (Makefile recipe refuses with a message pointing the
+- 0 if canonical (justfile recipe proceeds normally).
+- 1 if dev-local (justfile recipe refuses with a message pointing the
   user at ``local-upgrade-deps``).
 
 The detection logic is split into pure helpers so unit tests can drive
@@ -62,7 +62,7 @@ _THIS_PROJECT_NAME = "pdomain-book-tools"
 class DetectionResult:
     """Outcome of a dev-local probe.
 
-    ``is_dev_local`` is the boolean the Makefile branches on; ``reasons``
+    ``is_dev_local`` is the boolean the justfile branches on; ``reasons``
     is the human-readable list shown to the user so they know exactly
     what would have been clobbered.
     """
@@ -104,12 +104,12 @@ def detect_mode(
        these, so their presence means a ``--extra gpu`` was
        explicitly applied.
     3. **Marker file present** at ``marker_path`` (if supplied) — the
-       fallback signal written by ``make dev-local``.
+       fallback signal written by ``just dev-local``.
     4. **PDOMAIN_DEV_LOCAL env var set to a truthy value** — last-resort
        opt-in.
 
     Reasons for every fired signal accumulate in ``DetectionResult.reasons``
-    so the Makefile can show all of them at once rather than the user
+    so the justfile can show all of them at once rather than the user
     discovering them one at a time.
     """
     if env is None:
@@ -221,7 +221,7 @@ def _format_summary(result: DetectionResult) -> str:
         "",
     ]
     lines.append(
-        "Run `make local-upgrade-deps` instead of `make upgrade-deps` "
+        "Run `just local-upgrade-deps` instead of `just upgrade-deps` "
         "to upgrade without clobbering these overrides."
     )
     return "\n".join(lines)
@@ -249,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if not args.quiet:
-        # Print to stderr so a Makefile recipe that runs this in a
+        # Print to stderr so a justfile recipe that runs this in a
         # subshell can capture exit code without polluting stdout
         # (e.g. for use in `if ! python scripts/...; then`).
         print(_format_summary(result), file=sys.stderr)

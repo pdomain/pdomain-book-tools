@@ -319,7 +319,7 @@ Pick one and document:
 - Expand CPU-side parity tests that lock dual algorithms without CUDA
   (default above).
 
-Also decide whether `make ci-slow` should run slow tests (today it aliases
+Also decide whether `just ci-slow` should run slow tests (today it aliases
 `ci`).
 
 **Done when:** a written strategy exists. Default path is implemented.
@@ -498,7 +498,7 @@ Concrete batches for separate PRs / sessions:
 For every code slice:
 
 1. Focused tests for the changed contract.
-2. `make ci AI=1` (repo rule) before commit.
+2. `AI=1 just ci` (repo rule) before commit.
 3. After B1/B2: review text diffs by case. No silent bulk baseline rewrite.
 4. After dual-path changes: CPU tests required; GPU when available.
 5. Do not claim “complete” while matching cases remain in

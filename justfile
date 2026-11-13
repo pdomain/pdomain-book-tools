@@ -116,7 +116,7 @@ test-single:
     just --quiet sync-gpu
     if [ -z "${TEST:-}" ]; then
         echo "❌ Missing TEST parameter."
-        echo "   Example: make test-single TEST='tests/ocr/test_word.py::TestWord::test_word_scale'"
+        echo "   Example: TEST='tests/ocr/test_word.py::TestWord::test_word_scale' just test-single"
         exit 1
     fi
     echo "🧪 Running single test (parallelized): ${TEST:-}"
@@ -129,7 +129,7 @@ test-k:
     just --quiet sync-gpu
     if [ -z "${K:-}" ]; then
         echo "❌ Missing K parameter."
-        echo "   Example: make test-k K='test_word_scale'"
+        echo "   Example: K='test_word_scale' just test-k"
         exit 1
     fi
     echo "🧪 Running tests with -k (parallelized): ${K:-}"
@@ -159,14 +159,14 @@ upgrade-deps:
         echo "" >&2
         echo "❌ local-dev venv detected (GPU extras, editable siblings, or marker)." >&2
         echo "   Running 'uv sync' here would revert the venv to the canonical baseline." >&2
-        echo "   Use:  make local-upgrade-deps   (lock + sync + restore GPU extras)" >&2
+        echo "   Use:  just local-upgrade-deps   (lock + sync + restore GPU extras)" >&2
         echo "" >&2
         exit 1
     fi
     if [ -f "${UV_PROJECT_ENVIRONMENT:-.venv}/.pdomain-local-mode" ]; then
         echo "" >&2
         echo "❌ local-dev marker (${UV_PROJECT_ENVIRONMENT:-.venv}/.pdomain-local-mode) detected." >&2
-        echo "   Use:  make local-upgrade-deps" >&2
+        echo "   Use:  just local-upgrade-deps" >&2
         echo "" >&2
         exit 1
     fi
@@ -382,7 +382,7 @@ layout-fork-update:
         --commit-message "Re-sync from ${HF_LAYOUT_UPSTREAM:-PaddlePaddle/PP-DocLayout_plus-L_safetensors} ($(date -u +%Y-%m-%dT%H:%M:%SZ))" > /dev/null
     SHA=$(git ls-remote "https://huggingface.co/${HF_LAYOUT_FORK:-CT2534/PP-DocLayout_plus-L}" HEAD | cut -f1)
     echo "✅ Fork now at $SHA"
-    echo "   Pin it with: make layout-fork-pin SHA=$SHA"
+    echo "   Pin it with: SHA=$SHA just layout-fork-pin"
 
 layout-fixtures-regenerate:
     #!/usr/bin/env bash
@@ -401,7 +401,7 @@ layout-fork-pin:
         exit 1
     }
     if [ -z "${SHA:-}" ]; then
-        echo "❌ Missing SHA. Usage: make layout-fork-pin SHA=<commit>"
+        echo "❌ Missing SHA. Usage: SHA=<commit> just layout-fork-pin"
         exit 1
     fi
     if ! [ -f "${HF_LAYOUT_ADAPTER:-pdomain_book_tools/layout/adapters/pp_doclayout.py}" ]; then

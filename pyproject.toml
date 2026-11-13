@@ -434,7 +434,7 @@ addopts = [
     "--cov-branch",              # measure branch coverage (gates except-path testing)
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html",
-    "-m", "not slow",            # exclude slow (model-download) tests by default; use make test-slow to include
+    "-m", "not slow",            # exclude slow (model-download) tests by default; use just test-slow to include
 ]
 markers = [
     "gpu: marks tests as requiring GPU/CUDA functionality",
