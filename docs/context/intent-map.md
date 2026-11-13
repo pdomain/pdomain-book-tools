@@ -65,7 +65,7 @@ Kind: context
 - Consolidate the duplicate local-dev marker contracts
   (`.venv/.pdomain-local-mode` for the shell scripts,
   `.venv/.pdomain-dev-local` for the Python probe) into one shared contract.
-  Decide whether an intentional-clobber escape for `make upgrade-deps` is
+  Decide whether an intentional-clobber escape for `just upgrade-deps` is
   wanted. The old advertised `PDOMAIN_DEV_LOCAL=0` escape never worked, and its
   message was removed. Evidence: docs/architecture/local-dev-mode.md, Residual
   intent.

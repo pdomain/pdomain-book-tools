@@ -30,7 +30,7 @@ on it, so public API changes ripple downstream.
 
 The local-dev commands above define this repository's supported workflow.
 
-`AI=1` captures verbose output to `.ci-ai.log`; stdout shows `✅` on pass or
+`AI=1` captures verbose output to `.ci-ai.log`; stdout shows `PASS: <recipe>` on pass or
 filtered failure sections on error. Remove `AI=1` only if you need full verbose
 output for debugging.
 

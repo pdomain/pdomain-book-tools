@@ -453,7 +453,7 @@ diacritic-bearing characters. The new `extract_char_bboxes` function:
 
 - Real scanned word images from `tests/fixtures/layout_regression/`
   with per-char bbox annotations stored as JSON sidecars. Regeneration
-  is explicit (not automatic) via a `make regen-char-bbox-fixtures` target.
+  is explicit (not automatic) via a `just regen-char-bbox-fixtures` target.
 
 ---
 
