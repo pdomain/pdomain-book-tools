@@ -629,7 +629,7 @@ Kind: context
 - Old path: docs/issues/2026-11-10-floated-caption-thresholds-ignore-normalized-coords.md
 - Outcome: implemented
 - Superseded by: [Reorganize Page Pipeline](../architecture/reorganize-page-pipeline.md) and `tests/ocr/test_reorganize_branch_tables.py`
-- Removal commit: (fill after commit)
+- Removal commit: b1f76b1
 - Rationale kept: The split gap and the tail-absorption distances use the line boxes' coordinate width. A normalized distance is not compared with pixel `page.width`.
 - Remaining work: none
 
@@ -638,6 +638,6 @@ Kind: context
 - Old path: docs/issues/2026-07-21-image-io-heif-write-failures.md
 - Outcome: implemented
 - Superseded by: `pdomain_book_tools/image_processing/cv2_processing/io.py`, `pdomain_book_tools/image_processing/cv2_processing/encoding.py`, and `tests/image_processing/cv2_processing/test_encoding.py`
-- Removal commit: (fill after commit)
+- Removal commit: b1f76b1
 - Rationale kept: HEIF and AVIF load through Pillow when OpenCV cannot open them. `write_jpg` and `write_png` raise when `cv2.imwrite` fails. `encode_bgr_image_as_png` raises `ValueError` when `cv2.imencode` reports failure. Unused `opencv-cuda` left the `[gpu]` extra in `b868a2a`.
 - Remaining work: none
