@@ -21,6 +21,10 @@ GitHub Releases (with attached wheel + sdist) are at
   uses no contrib module. The floor returns to `>=4.12.0.88`. Packaging tests
   now require exactly one OpenCV package and no contrib-only `cv2` calls. See
   `docs/decisions/2026-11-14-opencv-python-not-contrib.md`.
+  Environments that had `opencv-contrib-python` end up with a damaged `cv2/`.
+  In a checkout, run `uv sync --reinstall-package opencv-python`. For installed
+  tools, see "Upgrading an environment that has contrib breaks cv2 once" in
+  the decision record.
 - **feat(matching): immutable PGDP-aware match graph and book manifests** — the
   public `pdomain_book_tools.matching` API now exposes immutable,
   source-neutral documents, bounded deterministic match graphs, reversible PGDP

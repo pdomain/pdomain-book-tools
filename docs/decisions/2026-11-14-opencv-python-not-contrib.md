@@ -207,6 +207,39 @@ this way. Every one worked after adding these packages:
 Alpine 3.24 is not supported for a different reason: PyTorch publishes no
 musllinux wheels.
 
+### Upgrading an environment that has contrib breaks cv2 once
+
+Removing `opencv-contrib-python` from an existing environment deletes its
+files from `cv2/`. Many of those paths belong to `opencv-python` too, so
+`opencv-python` is left with missing files. On 2026-11-14, a plain `uv sync`
+of this repository after the change left a `cv2` with no `__version__`.
+basedpyright then reported `warpPerspective` and `INTER_CUBIC` as unknown
+attributes of `cv2`.
+
+Only environments that had `opencv-contrib-python` installed need a repair.
+That includes other virtual environments and cached CI environments. Fresh
+installs are not affected.
+
+To check an environment, run:
+
+```sh
+uv run python -c "import cv2; print(cv2.__version__, cv2.warpPerspective)"
+```
+
+An `AttributeError` means the environment is broken. A version number and a
+function mean the environment is fine. On 2026-11-14 the repaired checkout
+printed `4.14.0`.
+
+To repair it:
+
+- In a development checkout, run `uv sync --reinstall-package opencv-python`.
+- For an installed pdomain-ocr-cli or pdomain-ocr-simple-gui, first run its
+  installer again. The installers pass `--reinstall` to `uv tool install`.
+  For a manual install, add `--reinstall-package opencv-python` or
+  `--reinstall` to the original `uv tool install` command.
+- If the tool still fails, run `uv tool uninstall <tool>`, then install it
+  again.
+
 ### Qt applications that import cv2
 
 `opencv-python` is a full build, so it still ships the Qt plugins that caused
