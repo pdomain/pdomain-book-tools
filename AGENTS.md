@@ -49,6 +49,7 @@ output for debugging.
 
 - 2024: `[layout]` install extra never shipped — `transformers` promoted to mandatory dep.
 - 0.11.0: `cupy-cuda12x`/`opencv-cuda` moved to `[project.optional-dependencies].gpu`.
+- 2026-11-14: this library depends on `opencv-python` only, never `opencv-contrib-python` or a headless build; python-doctr requires `opencv-python`, and two OpenCV packages corrupt `cv2/`. Applications may swap builds themselves ([decision](docs/decisions/2026-11-14-opencv-python-not-contrib.md)).
 - `aspect_ratio` param removed from `rescale_image` family; aspect shaping done downstream via `map_content_onto_scaled_canvas`.
 
 ## Issues

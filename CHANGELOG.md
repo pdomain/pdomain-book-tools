@@ -14,6 +14,13 @@ GitHub Releases (with attached wheel + sdist) are at
 
 ## [Unreleased — next minor]
 
+- **fix(deps): depend on `opencv-python`, not `opencv-contrib-python`** —
+  python-doctr requires `opencv-python`, so declaring contrib put two OpenCV
+  packages into every install. Both write the same `cv2` folder, and a mixed
+  folder broke OCR with `module 'cv2' has no attribute 'typing'`. The library
+  uses no contrib module. The floor returns to `>=4.12.0.88`. Packaging tests
+  now require exactly one OpenCV package and no contrib-only `cv2` calls. See
+  `docs/decisions/2026-11-14-opencv-python-not-contrib.md`.
 - **feat(matching): immutable PGDP-aware match graph and book manifests** — the
   public `pdomain_book_tools.matching` API now exposes immutable,
   source-neutral documents, bounded deterministic match graphs, reversible PGDP

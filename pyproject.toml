@@ -24,7 +24,7 @@ dependencies = [
     # numpy 2.5 requires Python >=3.12, so 3.11 resolves 2.4.6.
     # Both pairs import with cupy-cuda13x 14.2.0.
     "numpy (>=2.2,<2.6)",
-    "opencv-contrib-python>=5.0.0.93",
+    "opencv-python>=4.12.0.88",
     "pandas>=3.0.5",
     # Pure-Python contracts (geometry, text, typography, matching, ocr,
     # layout, licensing, and the PGDP readers) split out per the pdomain-ops

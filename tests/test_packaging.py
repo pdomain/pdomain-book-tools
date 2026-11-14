@@ -1,21 +1,20 @@
 """Packaging regression tests for pdomain-book-tools.
 
-These don't exercise the running library — they assert invariants about
-``pyproject.toml`` itself. The OpenCV PyPI ecosystem ships four mutually
-exclusive distributions (``opencv-python``, ``opencv-contrib-python``,
-``opencv-python-headless``, ``opencv-contrib-python-headless``) that all
-install into the same ``cv2`` namespace. Declaring more than one is a
-known footgun: pip resolves them independently, and whichever wheel
-unpacks last wins, so runtime behavior depends on install order across
-the wider environment. ``opencv-contrib-python`` is a strict superset of
-``opencv-python`` (adds ``xfeatures2d``, SIFT, etc.), so the right move
-is to keep contrib and drop the plain package.
+Most of these assert invariants about ``pyproject.toml`` itself. The OpenCV
+PyPI ecosystem ships four mutually exclusive distributions
+(``opencv-python``, ``opencv-contrib-python``, ``opencv-python-headless``,
+``opencv-contrib-python-headless``) that all install into the same ``cv2``
+folder. Installing more than one leaves a mix of files from each, which can
+break ``import cv2``. ``python-doctr`` requires ``opencv-python`` by name, so
+this library declares that same package and nothing else.
 
-Regression: H-17 in ``docs/review/bugs-high.md``.
+Decision record: ``docs/decisions/2026-11-14-opencv-python-not-contrib.md``.
 """
 
 from __future__ import annotations
 
+import importlib.metadata
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -44,19 +43,78 @@ def _dep_names(deps: list[str]) -> set[str]:
     return names
 
 
-def test_opencv_python_and_contrib_not_both_declared() -> None:
-    """Reject having both ``opencv-python`` and ``opencv-contrib-python``.
+OPENCV_DISTRIBUTIONS = frozenset(
+    {
+        "opencv-python",
+        "opencv-contrib-python",
+        "opencv-python-headless",
+        "opencv-contrib-python-headless",
+    }
+)
 
-    They install into the same ``cv2`` namespace; declaring both produces
-    nondeterministic installs depending on resolver/install order. Keep
-    only ``opencv-contrib-python`` (strict superset).
+# Modules that exist only in the contrib builds. Using any of them would need
+# opencv-contrib-python, which clashes with python-doctr's opencv-python.
+CONTRIB_ONLY_MODULES = (
+    "aruco",
+    "bgsegm",
+    "bioinspired",
+    "ccalib",
+    "face",
+    "freetype",
+    "img_hash",
+    "line_descriptor",
+    "optflow",
+    "saliency",
+    "structured_light",
+    "superres",
+    "text",
+    "tracking",
+    "xfeatures2d",
+    "ximgproc",
+    "xphoto",
+)
+
+
+def test_declares_only_opencv_python() -> None:
+    """Declare ``opencv-python``, the same package python-doctr requires.
+
+    Any other OpenCV distribution would install a second copy of ``cv2``
+    next to the one python-doctr brings in.
     """
-    names = _dep_names(_project_dependencies())
-    assert not ("opencv-python" in names and "opencv-contrib-python" in names), (
-        "pyproject.toml declares both 'opencv-python' and "
-        "'opencv-contrib-python'; keep only 'opencv-contrib-python' "
-        "(it is a strict superset). See H-17 in docs/review/bugs-high.md."
+    declared = _dep_names(_project_dependencies()) & OPENCV_DISTRIBUTIONS
+    assert declared == {"opencv-python"}, (
+        f"pyproject.toml declares {sorted(declared)}; declare only "
+        "'opencv-python', the package python-doctr requires. See "
+        "docs/decisions/2026-11-14-opencv-python-not-contrib.md."
     )
+
+
+def test_environment_has_one_opencv_distribution() -> None:
+    """The resolved environment holds exactly one OpenCV distribution.
+
+    Catches a dependency upgrade that brings a second ``cv2`` provider back,
+    which no installer reports.
+    """
+    installed = {
+        dist.metadata["Name"].lower()
+        for dist in importlib.metadata.distributions()
+        if dist.metadata["Name"]
+    }
+    assert installed & OPENCV_DISTRIBUTIONS == {"opencv-python"}
+
+
+def test_source_uses_no_contrib_only_module() -> None:
+    """Library code calls only modules that plain ``opencv-python`` ships."""
+    pattern = re.compile(r"\bcv2\.(" + "|".join(CONTRIB_ONLY_MODULES) + r")\b")
+    hits = [
+        f"{path.relative_to(REPO_ROOT)}:{lineno}"
+        for path in sorted((REPO_ROOT / "pdomain_book_tools").rglob("*.py"))
+        for lineno, line in enumerate(
+            path.read_text(encoding="utf-8").splitlines(), start=1
+        )
+        if pattern.search(line)
+    ]
+    assert not hits, f"contrib-only cv2 modules used at: {hits}"
 
 
 def test_opencv_headless_not_mixed_with_full() -> None:
@@ -71,11 +129,7 @@ def test_opencv_headless_not_mixed_with_full() -> None:
 
 
 def test_gpu_extra_does_not_declare_unused_opencv_cuda() -> None:
-    """No code imports ``cv2.cuda``, and the package drags in ``opencv-python``.
-
-    ``opencv-cuda`` depends on ``opencv-python``, which conflicts in the ``cv2``
-    namespace with the ``opencv-contrib-python`` this project requires.
-    """
+    """No code imports ``cv2.cuda``, so the ``[gpu]`` extra omits ``opencv-cuda``."""
     with PYPROJECT.open("rb") as fh:
         data = tomllib.load(fh)
     gpu_names = _dep_names(list(data["project"]["optional-dependencies"]["gpu"]))
